@@ -1,8 +1,8 @@
 use auto_ops::impl_op_ex;
-use ck_meow::Meow;
 use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
+use sha3::{Shake256, digest::{Update, ExtendableOutput, XofReader}};
 
 use crate::constants::SECURITY_PARAMETER;
 
@@ -197,7 +197,7 @@ impl_op_ex!(^ |u: &DoubleBitVector, v: &DoubleBitVector| -> DoubleBitVector { u.
 impl_op_ex!(^= |u: &mut DoubleBitVector, v: &DoubleBitVector| { u.xor_mut(v) });
 
 /// The context string for our PRG.
-const PRG_CTX: &[u8] = b"cait-sith v0.8.0 correlated OT PRG";
+const PRG_CTX: &[u8] = b"near one threshold signatures correlated OT PRG";
 
 /// Represents a matrix of bits.
 ///
@@ -303,32 +303,34 @@ impl SquareBitMatrix {
     pub fn expand_transpose(&self, sid: &[u8], rows: usize) -> BitMatrix {
         assert!(rows % SECURITY_PARAMETER == 0);
 
-        let mut meow = Meow::new(PRG_CTX);
-        meow.meta_ad(b"sid", false);
-        meow.ad(sid, false);
+        let mut hasher = Shake256::default();
+        hasher.update(PRG_CTX);
+        hasher.update(b"sid");
+        hasher.update(sid);
 
         let mut out = BitMatrix(vec![BitVector::zero(); rows]);
 
         // How many bytes to get rows bits?
         let row8 = (rows + 7) / 8;
+        hasher.update(b"row");
+
         for (j, row) in self.matrix.0.iter().enumerate() {
+            // We need to clone to make each row use the same prefix.
+            let mut hasher_row = hasher.clone();
+            for u in row.0 {
+                hasher_row.update(&u.to_le_bytes());
+            }
+            let hasher = hasher.clone();
+            let mut reader = hasher.finalize_xof();
             // Expand the row
             let mut expanded = vec![0u8; row8];
-            // We need to clone to make each row use the same prefix.
-            let mut meow = meow.clone();
-            meow.meta_ad(b"row", false);
-            meow.ad(b"", false);
-            for u in row.0 {
-                meow.ad(&u.to_le_bytes(), true);
-            }
-            meow.prf(&mut expanded, false);
+            reader.read(&mut expanded);
 
             // Now, write into the correct column
             for i in 0..rows {
                 out.0[i].0[j / 64] |= u64::from((expanded[i / 8] >> (i % 8)) & 1) << (j % 64);
             }
         }
-
         out
     }
 }

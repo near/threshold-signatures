@@ -6,7 +6,7 @@ use crate::crypto::{Commitment, Randomizer};
 use crate::ecdsa::triples::multiplication::multiplication_many;
 use crate::{
     compat::{CSCurve, SerializablePoint},
-    crypto::{commit, hash, Digest},
+    crypto::{commit, hash, HashOutput},
     ecdsa::math::{GroupPolynomial, Polynomial},
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     proofs::{dlog, dlogeq},
@@ -149,7 +149,7 @@ async fn do_generation<C: CSCurve>(
     let mut seen = ParticipantCounter::new(&participants);
     seen.put(me);
     while !seen.full() {
-        let (from, confirmation): (_, Digest) = chan.recv(wait1).await?;
+        let (from, confirmation): (_, HashOutput) = chan.recv(wait1).await?;
         if !seen.put(from) {
             continue;
         }
@@ -639,7 +639,7 @@ async fn do_generation_many<C: CSCurve, const N: usize>(
     let mut seen = ParticipantCounter::new(&participants);
     seen.put(me);
     while !seen.full() {
-        let (from, confirmation): (_, Vec<Digest>) = chan.recv(wait1).await?;
+        let (from, confirmation): (_, Vec<HashOutput>) = chan.recv(wait1).await?;
         if !seen.put(from) {
             continue;
         }

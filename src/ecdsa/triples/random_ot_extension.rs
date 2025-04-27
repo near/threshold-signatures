@@ -1,8 +1,8 @@
-use ck_meow::Meow;
 use elliptic_curve::CurveArithmetic;
 use magikitten::MeowRng;
 use rand_core::{OsRng, RngCore};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
+use sha2::{Sha256, Digest};
 
 use crate::{
     compat::CSCurve,
@@ -18,15 +18,17 @@ use super::{
     correlated_ot_extension::{correlated_ot_receiver, correlated_ot_sender, CorrelatedOtParams},
 };
 
-const MEOW_CTX: &[u8] = b"Random OT Extension Hash";
+const CTX: &[u8] = b"Random OT Extension Hash";
 
 fn hash_to_scalar<C: CSCurve>(i: usize, v: &BitVector) -> C::Scalar {
-    let mut meow = Meow::new(MEOW_CTX);
+    let mut hasher = Sha256::new();
     let i64 = u64::try_from(i).expect("failed to convert usize to u64");
-    meow.meta_ad(&i64.to_le_bytes(), false);
-    meow.ad(&v.bytes(), false);
-    let mut seed = [0u8; 32];
-    meow.prf(&mut seed, false);
+
+    hasher.update(CTX);
+    hasher.update(&i64.to_le_bytes());
+    hasher.update(&v.bytes());
+    let seed = hasher.finalize().into();
+
     // Could in theory avoid one PRF call by using a more direct RNG wrapper
     // over the prf function, but oh well.
     C::sample_scalar_constant_time(&mut MeowRng::new(&seed))

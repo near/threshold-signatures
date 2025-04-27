@@ -1,7 +1,7 @@
 use crate::{
     compat::CSCurve,
     constants::SECURITY_PARAMETER,
-    crypto::Digest,
+    crypto::HashOutput,
     participants::ParticipantList,
     protocol::{
         internal::{Context, PrivateChannel},
@@ -89,7 +89,7 @@ pub async fn multiplication_receiver<'a, C: CSCurve>(
 
 pub async fn multiplication<C: CSCurve>(
     ctx: Context<'_>,
-    sid: Digest,
+    sid: HashOutput,
     participants: ParticipantList,
     me: Participant,
     a_i: C::Scalar,
@@ -119,7 +119,7 @@ pub async fn multiplication<C: CSCurve>(
 
 pub async fn multiplication_many<C: CSCurve, const N: usize>(
     ctx: Context<'_>,
-    sid: Vec<Digest>,
+    sid: Vec<HashOutput>,
     participants: ParticipantList,
     me: Participant,
     av_iv: Vec<C::Scalar>,
