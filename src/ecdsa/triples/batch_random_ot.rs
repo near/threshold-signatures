@@ -17,7 +17,7 @@ use crate::{
 
 use super::bits::{BitMatrix, BitVector, SquareBitMatrix, SEC_PARAM_8};
 
-const BATCH_RANDOM_OT_HASH: &[u8] = b"NEAR threshold signatures batch ROT";
+const BATCH_RANDOM_OT_HASH: &[u8] = b"Near One threshold signatures batch ROT";
 
 fn hash<C: CSCurve>(
     i: usize,

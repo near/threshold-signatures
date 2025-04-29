@@ -1,5 +1,4 @@
 use elliptic_curve::{Field, ScalarPrimitive};
-use magikitten::MeowRng;
 use rand_core::{OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::slice::Iter;

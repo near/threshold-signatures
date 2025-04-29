@@ -1,5 +1,4 @@
 use elliptic_curve::{Field, Group};
-use magikitten::Transcript;
 use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
 

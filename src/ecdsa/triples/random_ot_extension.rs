@@ -1,5 +1,4 @@
 use elliptic_curve::CurveArithmetic;
-use magikitten::MeowRng;
 use rand_core::{OsRng, RngCore};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use sha2::{Sha256, Digest};

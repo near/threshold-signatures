@@ -1,8 +1,9 @@
 use elliptic_curve::{Field, Group};
-use magikitten::Transcript;
 use rand_core::CryptoRngCore;
+// use rand::prelude::SeedableRng;
+// use rand_chacha::ChaCha20Rng;
 use serde::{Deserialize, Serialize};
-
+use merlin::{Transcript, TranscriptRngBuilder, TranscriptRng};
 use crate::{
     compat::{CSCurve, SerializablePoint},
     serde::{deserialize_scalar, encode, serialize_projective_point, serialize_scalar},
@@ -64,17 +65,24 @@ pub fn prove<'a, C: CSCurve>(
     statement: Statement<'a, C>,
     witness: Witness<'a, C>,
 ) -> Proof<C> {
-    transcript.message(STATEMENT_LABEL, &encode(&statement));
+    transcript.append_message(STATEMENT_LABEL, &encode(&statement));
 
     let k = C::Scalar::random(rng);
     let big_k = statement.phi(&k);
 
-    transcript.message(
+    transcript.append_message(
         COMMITMENT_LABEL,
         &encode(&SerializablePoint::<C>::from_projective(&big_k)),
     );
 
-    let e = C::Scalar::random(&mut transcript.challenge(CHALLENGE_LABEL));
+    let mut seed = [0u8; 32];
+    transcript.challenge_bytes(CHALLENGE_LABEL, &mut seed);
+    let rng = transcript.build_rng();
+    let pub_rng = rng.rekey_with_witness_bytes(
+        "Rekeying with public data",
+        witness);
+
+    let e = C::Scalar::random(&mut pub_rng);
 
     let s = k + e * witness.x;
     Proof { e, s }

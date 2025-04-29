@@ -57,7 +57,7 @@ use crate::serde::{decode, encode_with_tag};
 use super::{Action, MessageData, Participant, Protocol, ProtocolError};
 use sha2::{Sha256, Digest};
 
-/// The domain for our use of meow here.
+/// The domain for our use of sha here.
 const DOMAIN: &[u8] = b"near one threshold signature channel tags";
 
 /// Represents a unique tag for a channel.

@@ -1,5 +1,4 @@
 use elliptic_curve::{Field, Group, ScalarPrimitive};
-use magikitten::Transcript;
 use rand_core::OsRng;
 
 use crate::crypto::{Commitment, Randomizer};
