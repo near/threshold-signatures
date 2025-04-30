@@ -6,6 +6,7 @@ use subtle::{Choice, ConditionallySelectable};
 
 use crate::{
     compat::CSCurve,
+    proofs::strobe_transcript::TranscriptRng,
     protocol::{
         internal::{make_protocol, Context, PrivateChannel},
         run_two_party_protocol, Participant, ProtocolError,
@@ -85,7 +86,7 @@ pub async fn mta_sender<C: CSCurve>(
 
     let mut alpha = delta[0] * C::Scalar::from(chi1);
 
-    let mut prng = MeowRng::new(&seed);
+    let mut prng = TranscriptRng::new(&seed);
     for &delta_i in &delta[1..] {
         let chi_i = C::Scalar::random(&mut prng);
         alpha += delta_i * chi_i;
@@ -117,7 +118,7 @@ pub async fn mta_receiver<C: CSCurve>(
     // Step 4
     let mut seed = [0u8; 32];
     OsRng.fill_bytes(&mut seed);
-    let mut prng = MeowRng::new(&seed);
+    let mut prng = TranscriptRng::new(&seed);
     let chi: Vec<C::Scalar> = (1..size).map(|_| C::Scalar::random(&mut prng)).collect();
 
     let mut chi1 = C::Scalar::ZERO;

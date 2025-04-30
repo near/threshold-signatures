@@ -8,7 +8,7 @@ use crate::{
     crypto::{commit, hash, HashOutput},
     ecdsa::math::{GroupPolynomial, Polynomial},
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
-    proofs::{dlog, dlogeq},
+    proofs::{dlog, dlogeq, strobe_transcript::Transcript},
     protocol::{
         internal::{make_protocol, Context},
         InitializationError, Participant, Protocol, ProtocolError,
@@ -23,7 +23,7 @@ pub type TripleGenerationOutput<C> = (TripleShare<C>, TriplePub<C>);
 
 pub type TripleGenerationOutputMany<C> = Vec<(TripleShare<C>, TriplePub<C>)>;
 
-const LABEL: &[u8] = b"cait-sith v0.8.0 triple generation";
+const LABEL: &[u8] = b"Near One threshold signatures triple generation";
 
 async fn do_generation<C: CSCurve>(
     ctx: Context<'_>,
@@ -100,7 +100,7 @@ async fn do_generation<C: CSCurve>(
     };
     let my_phi_proof0 = dlog::prove(
         &mut rng,
-        &mut transcript.forked(b"dlog0", &me.bytes()),
+        &mut transcript.fork(b"dlog0", &me.bytes()),
         statement0,
         witness0,
     );
@@ -112,7 +112,7 @@ async fn do_generation<C: CSCurve>(
     };
     let my_phi_proof1 = dlog::prove(
         &mut rng,
-        &mut transcript.forked(b"dlog1", &me.bytes()),
+        &mut transcript.fork(b"dlog1", &me.bytes()),
         statement1,
         witness1,
     );
@@ -220,7 +220,7 @@ async fn do_generation<C: CSCurve>(
             public: &their_big_e.evaluate_zero(),
         };
         if !dlog::verify(
-            &mut transcript.forked(b"dlog0", &from.bytes()),
+            &mut transcript.fork(b"dlog0", &from.bytes()),
             statement0,
             &their_phi_proof0,
         ) {
@@ -233,7 +233,7 @@ async fn do_generation<C: CSCurve>(
             public: &their_big_f.evaluate_zero(),
         };
         if !dlog::verify(
-            &mut transcript.forked(b"dlog1", &from.bytes()),
+            &mut transcript.fork(b"dlog1", &from.bytes()),
             statement1,
             &their_phi_proof1,
         ) {
@@ -284,7 +284,7 @@ async fn do_generation<C: CSCurve>(
     };
     let my_phi_proof = dlogeq::prove(
         &mut rng,
-        &mut transcript.forked(b"dlogeq0", &me.bytes()),
+        &mut transcript.fork(b"dlogeq0", &me.bytes()),
         statement,
         witness,
     );
@@ -319,7 +319,7 @@ async fn do_generation<C: CSCurve>(
         };
 
         if !dlogeq::verify(
-            &mut transcript.forked(b"dlogeq0", &from.bytes()),
+            &mut transcript.fork(b"dlogeq0", &from.bytes()),
             statement,
             &their_phi_proof,
         ) {
@@ -344,7 +344,7 @@ async fn do_generation<C: CSCurve>(
     let witness = dlog::Witness::<C> { x: &l0 };
     let my_phi_proof = dlog::prove(
         &mut rng,
-        &mut transcript.forked(b"dlog2", &me.bytes()),
+        &mut transcript.fork(b"dlog2", &me.bytes()),
         statement,
         witness,
     );
@@ -385,7 +385,7 @@ async fn do_generation<C: CSCurve>(
             public: &their_hat_big_c,
         };
         if !dlog::verify(
-            &mut transcript.forked(b"dlog2", &from.bytes()),
+            &mut transcript.fork(b"dlog2", &from.bytes()),
             statement,
             &their_phi_proof,
         ) {
@@ -571,7 +571,7 @@ async fn do_generation_many<C: CSCurve, const N: usize>(
         };
         let my_phi_proof0 = dlog::prove(
             &mut rng,
-            &mut transcript.forked(b"dlog0", &me.bytes()),
+            &mut transcript.fork(b"dlog0", &me.bytes()),
             statement0,
             witness0,
         );
@@ -583,7 +583,7 @@ async fn do_generation_many<C: CSCurve, const N: usize>(
         };
         let my_phi_proof1 = dlog::prove(
             &mut rng,
-            &mut transcript.forked(b"dlog1", &me.bytes()),
+            &mut transcript.fork(b"dlog1", &me.bytes()),
             statement1,
             witness1,
         );
@@ -721,7 +721,7 @@ async fn do_generation_many<C: CSCurve, const N: usize>(
                 public: &their_big_e.evaluate_zero(),
             };
             if !dlog::verify(
-                &mut transcript.forked(b"dlog0", &from.bytes()),
+                &mut transcript.fork(b"dlog0", &from.bytes()),
                 statement0,
                 their_phi_proof0,
             ) {
@@ -734,7 +734,7 @@ async fn do_generation_many<C: CSCurve, const N: usize>(
                 public: &their_big_f.evaluate_zero(),
             };
             if !dlog::verify(
-                &mut transcript.forked(b"dlog1", &from.bytes()),
+                &mut transcript.fork(b"dlog1", &from.bytes()),
                 statement1,
                 their_phi_proof1,
             ) {
@@ -799,7 +799,7 @@ async fn do_generation_many<C: CSCurve, const N: usize>(
         };
         let my_phi_proof = dlogeq::prove(
             &mut rng,
-            &mut transcript.forked(b"dlogeq0", &me.bytes()),
+            &mut transcript.fork(b"dlogeq0", &me.bytes()),
             statement,
             witness,
         );
@@ -842,7 +842,7 @@ async fn do_generation_many<C: CSCurve, const N: usize>(
             };
 
             if !dlogeq::verify(
-                &mut transcript.forked(b"dlogeq0", &from.bytes()),
+                &mut transcript.fork(b"dlogeq0", &from.bytes()),
                 statement,
                 their_phi_proof,
             ) {
@@ -872,7 +872,7 @@ async fn do_generation_many<C: CSCurve, const N: usize>(
         let witness = dlog::Witness::<C> { x: &l0 };
         let my_phi_proof = dlog::prove(
             &mut rng,
-            &mut transcript.forked(b"dlog2", &me.bytes()),
+            &mut transcript.fork(b"dlog2", &me.bytes()),
             statement,
             witness,
         );
@@ -933,7 +933,7 @@ async fn do_generation_many<C: CSCurve, const N: usize>(
                 public: &their_hat_big_c,
             };
             if !dlog::verify(
-                &mut transcript.forked(b"dlog2", &from.bytes()),
+                &mut transcript.fork(b"dlog2", &from.bytes()),
                 statement,
                 their_phi_proof,
             ) {

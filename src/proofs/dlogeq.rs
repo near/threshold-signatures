@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     compat::{CSCurve, SerializablePoint},
+    proofs::strobe_transcript::Transcript,
     serde::{deserialize_scalar, encode, serialize_projective_point, serialize_scalar},
 };
 
@@ -81,7 +82,11 @@ pub fn prove<'a, C: CSCurve>(
         )),
     );
 
-    let e = C::Scalar::random(&mut transcript.challenge(CHALLENGE_LABEL));
+    let mut seed = [0u8; 32];
+    transcript.challenge(CHALLENGE_LABEL, &mut seed);
+    let mut rng = transcript.build_rng(&seed);
+
+    let e = C::Scalar::random(&mut rng);
 
     let s = k + e * witness.x;
     Proof { e, s }
@@ -111,7 +116,12 @@ pub fn verify<C: CSCurve>(
         )),
     );
 
-    let e = C::Scalar::random(&mut transcript.challenge(CHALLENGE_LABEL));
+
+    let mut seed = [0u8; 32];
+    transcript.challenge(CHALLENGE_LABEL, &mut seed);
+    let mut rng = transcript.build_rng(&seed);
+
+    let e = C::Scalar::random(&mut rng);
 
     e == proof.e
 }
@@ -140,12 +150,12 @@ mod test {
 
         let proof = prove(
             &mut OsRng,
-            &mut transcript.forked(b"party", &[1]),
+            &mut transcript.fork(b"party", &[1]),
             statement,
             witness,
         );
 
-        let ok = verify(&mut transcript.forked(b"party", &[1]), statement, &proof);
+        let ok = verify(&mut transcript.fork(b"party", &[1]), statement, &proof);
 
         assert!(ok);
     }

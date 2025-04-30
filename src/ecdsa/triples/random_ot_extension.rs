@@ -4,12 +4,10 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use sha2::{Sha256, Digest};
 
 use crate::{
-    compat::CSCurve,
-    constants::SECURITY_PARAMETER,
-    protocol::{
+    compat::CSCurve, constants::SECURITY_PARAMETER, proofs::strobe_transcript::TranscriptRng, protocol::{
         internal::{make_protocol, Context, PrivateChannel},
         run_two_party_protocol, Participant, ProtocolError,
-    },
+    }
 };
 
 use super::{
@@ -30,7 +28,7 @@ fn hash_to_scalar<C: CSCurve>(i: usize, v: &BitVector) -> C::Scalar {
 
     // Could in theory avoid one PRF call by using a more direct RNG wrapper
     // over the prf function, but oh well.
-    C::sample_scalar_constant_time(&mut MeowRng::new(&seed))
+    C::sample_scalar_constant_time(&mut TranscriptRng::new(&seed))
 }
 
 fn adjust_size(size: usize) -> usize {
@@ -88,7 +86,7 @@ pub async fn random_ot_extension_sender<C: CSCurve>(
     let mu = adjusted_size / SECURITY_PARAMETER;
 
     // Step 7
-    let mut prng = MeowRng::new(&seed);
+    let mut prng = TranscriptRng::new(&seed);
     let chi: Vec<BitVector> = (0..mu).map(|_| BitVector::random(&mut prng)).collect();
 
     // Step 11
@@ -165,7 +163,7 @@ pub async fn random_ot_extension_receiver<C: CSCurve>(
     let mu = adjusted_size / SECURITY_PARAMETER;
 
     // Step 7
-    let mut prng = MeowRng::new(&seed);
+    let mut prng = TranscriptRng::new(&seed);
     let chi: Vec<BitVector> = (0..mu).map(|_| BitVector::random(&mut prng)).collect();
 
     // Step 8
