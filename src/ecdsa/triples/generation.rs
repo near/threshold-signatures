@@ -23,7 +23,7 @@ pub type TripleGenerationOutput<C> = (TripleShare<C>, TriplePub<C>);
 
 pub type TripleGenerationOutputMany<C> = Vec<(TripleShare<C>, TriplePub<C>)>;
 
-const LABEL: &[u8] = b"Near One threshold signatures triple generation";
+const LABEL: &[u8] = b"Near threshold signatures triple generation";
 
 async fn do_generation<C: CSCurve>(
     ctx: Context<'_>,
