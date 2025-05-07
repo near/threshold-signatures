@@ -1,13 +1,16 @@
 use elliptic_curve::CurveArithmetic;
 use rand_core::{OsRng, RngCore};
+use sha2::{Digest, Sha256};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
-use sha2::{Sha256, Digest};
 
 use crate::{
-    compat::CSCurve, constants::SECURITY_PARAMETER, proofs::strobe_transcript::TranscriptRng, protocol::{
+    compat::CSCurve,
+    constants::SECURITY_PARAMETER,
+    proofs::strobe_transcript::TranscriptRng,
+    protocol::{
         internal::{make_protocol, Context, PrivateChannel},
         run_two_party_protocol, Participant, ProtocolError,
-    }
+    },
 };
 
 use super::{

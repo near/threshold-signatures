@@ -5,8 +5,7 @@ use crate::protocol::internal::SharedChannel;
 use crate::protocol::{InitializationError, Participant, ProtocolError};
 
 use frost_core::keys::{
-    CoefficientCommitment, SecretShare, SigningShare,
-    VerifiableSecretSharingCommitment,
+    CoefficientCommitment, SecretShare, SigningShare, VerifiableSecretSharingCommitment,
 };
 use frost_core::{
     Challenge, Element, Error, Field, Group, Scalar, Signature, SigningKey, VerifyingKey,

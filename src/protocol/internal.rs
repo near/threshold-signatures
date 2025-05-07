@@ -55,7 +55,7 @@ use std::{collections::HashMap, error, future::Future, sync::Arc};
 use crate::serde::{decode, encode_with_tag};
 
 use super::{Action, MessageData, Participant, Protocol, ProtocolError};
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 
 /// The domain for our use of sha here.
 const DOMAIN: &[u8] = b"Near One threshold signatures  channel tags";

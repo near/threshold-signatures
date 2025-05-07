@@ -81,11 +81,7 @@ pub fn prove<'a, C: CSCurve>(
             SerializablePoint::<C>::from_projective(&big_k.1),
         )),
     );
-
-    let mut seed = [0u8; 32];
-    transcript.challenge(CHALLENGE_LABEL, &mut seed);
-    let mut rng = transcript.build_rng(&seed);
-
+    let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
     let e = C::Scalar::random(&mut rng);
 
     let s = k + e * witness.x;
@@ -115,12 +111,7 @@ pub fn verify<C: CSCurve>(
             SerializablePoint::<C>::from_projective(&big_k1),
         )),
     );
-
-
-    let mut seed = [0u8; 32];
-    transcript.challenge(CHALLENGE_LABEL, &mut seed);
-    let mut rng = transcript.build_rng(&seed);
-
+    let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
     let e = C::Scalar::random(&mut rng);
 
     e == proof.e

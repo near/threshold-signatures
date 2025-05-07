@@ -1,8 +1,11 @@
 use auto_ops::impl_op_ex;
 use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
+use sha3::{
+    digest::{ExtendableOutput, Update, XofReader},
+    Shake256,
+};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
-use sha3::{Shake256, digest::{Update, ExtendableOutput, XofReader}};
 
 use crate::constants::SECURITY_PARAMETER;
 

@@ -1,13 +1,11 @@
-use elliptic_curve::{Field, Group};
-use rand_core::CryptoRngCore;
-// use rand::prelude::SeedableRng;
-// use rand_chacha::ChaCha20Rng;
-use serde::{Deserialize, Serialize};
 use crate::{
     compat::{CSCurve, SerializablePoint},
     proofs::strobe_transcript::Transcript,
     serde::{deserialize_scalar, encode, serialize_projective_point, serialize_scalar},
 };
+use elliptic_curve::{Field, Group};
+use rand_core::CryptoRngCore;
+use serde::{Deserialize, Serialize};
 
 /// The label we use for hashing the statement.
 const STATEMENT_LABEL: &[u8] = b"dlog proof statement";
@@ -74,11 +72,7 @@ pub fn prove<'a, C: CSCurve>(
         COMMITMENT_LABEL,
         &encode(&SerializablePoint::<C>::from_projective(&big_k)),
     );
-
-    let mut seed = [0u8; 32];
-    transcript.challenge(CHALLENGE_LABEL, &mut seed);
-    let mut rng = transcript.build_rng(&seed);
-
+    let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
     let e = C::Scalar::random(&mut rng);
 
     let s = k + e * witness.x;
@@ -103,11 +97,7 @@ pub fn verify<C: CSCurve>(
         COMMITMENT_LABEL,
         &encode(&SerializablePoint::<C>::from_projective(&big_k)),
     );
-
-    let mut seed = [0u8; 32];
-    transcript.challenge(CHALLENGE_LABEL, &mut seed);
-    let mut rng = transcript.build_rng(&seed);
-
+    let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
     let e = C::Scalar::random(&mut rng);
 
     e == proof.e
