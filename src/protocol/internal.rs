@@ -58,7 +58,7 @@ use super::{Action, MessageData, Participant, Protocol, ProtocolError};
 use sha2::{Digest, Sha256};
 
 /// The domain for our use of sha here.
-const DOMAIN: &[u8] = b"Near One threshold signatures  channel tags";
+const DOMAIN: &[u8] = b"Near threshold signatures  channel tags";
 
 /// Represents a unique tag for a channel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Hash)]
