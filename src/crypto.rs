@@ -5,10 +5,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::serde::encode_writer;
 
-const COMMIT_LABEL: &[u8] = b"Near One threshold signature commitment";
+const COMMIT_LABEL: &[u8] = b"Near threshold signature commitment";
 const COMMIT_LEN: usize = 32;
 const RANDOMIZER_LEN: usize = 32;
-const HASH_LABEL: &[u8] = b"Near One threshold signature generic hash";
+const HASH_LABEL: &[u8] = b"Near threshold signature generic hash";
 const HASH_LEN: usize = 32;
 
 /// Represents the randomizer used to make a commit hiding.

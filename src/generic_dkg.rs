@@ -445,7 +445,7 @@ async fn do_keyshare<C: Ciphersuite>(
     let commit_domain_separator = domain_separator;
     let commitment_hash = domain_separate_hash(domain_separator, &(&me, &commitment, &session_id));
     let wait_round_1 = chan.next_waitpoint();
-    chan.send_many(wait_round_1, &commitment_hash).await;
+    chan.send_many(wait_round_1, &commitment_hash);
     // receive commitment_hash
     let mut all_hash_commitments = ParticipantMap::new(&participants);
     all_hash_commitments.put(me, commitment_hash);
@@ -501,8 +501,7 @@ async fn do_keyshare<C: Ciphersuite>(
         // using the evaluation secret polynomial on the identifier of the recipient
         let signing_share_to_p = evaluate_polynomial::<C>(&secret_coefficients, p)?;
         // send the evaluation privately to participant p
-        chan.send_private(wait_round_3, p, &signing_share_to_p)
-            .await;
+        chan.send_private(wait_round_3, p, &signing_share_to_p);
     }
 
     // compute the my secret evaluation of my private polynomial
