@@ -1,7 +1,6 @@
 use elliptic_curve::{Field, Group};
 use rand_core::OsRng;
 use sha2::{Digest, Sha256};
-use smol::stream::{self, StreamExt};
 use std::sync::Arc;
 use subtle::ConditionallySelectable;
 
