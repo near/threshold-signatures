@@ -403,7 +403,7 @@ async fn do_keyshare<C: Ciphersuite>(
     old_reshare_package: Option<(VerifyingKey<C>, ParticipantList)>,
     mut rng: OsRng,
 ) -> Result<KeygenOutput<C>, ProtocolError> {
-    let mut all_commitments = ParticipantMap::new(&participants);
+    let mut all_full_commitments = ParticipantMap::new(&participants);
     let mut domain_separator = 0;
     // Make sure you do not call do_keyshare with zero as secret on an old participant
     let (old_verification_key, old_participants) =
@@ -447,18 +447,24 @@ async fn do_keyshare<C: Ciphersuite>(
     let wait_round_1 = chan.next_waitpoint();
     chan.send_many(wait_round_1, &commitment_hash);
     // receive commitment_hash
+    let mut seen = ParticipantCounter::new(&participants);
     let mut all_hash_commitments = ParticipantMap::new(&participants);
     all_hash_commitments.put(me, commitment_hash);
-    while !all_hash_commitments.full() {
+    seen.put(me);
+    while !seen.full() {
         let (from, their_commitment_hash) = chan.recv(wait_round_1).await?;
+        if !seen.put(from) {
+            continue;
+        }
         all_hash_commitments.put(from, their_commitment_hash);
     }
 
     // Start Round 2
-    // add my commitment and proof to the map
-    all_commitments.put(me, commitment.clone());
+    // add my commitment to the map with the proper commitment sizes = threshold
+    let my_full_commitment = insert_identity_if_missing(threshold, &commitment);
+    all_full_commitments.put(me, my_full_commitment);
 
-    // Broadcast to all the commitment and the proof of knowledge
+    // Broadcast the commitment and the proof of knowledge
     let commitments_and_proofs_map = do_broadcast(
         &mut chan,
         &participants,
@@ -494,58 +500,19 @@ async fn do_keyshare<C: Ciphersuite>(
             &all_hash_commitments,
         )?;
 
-        // add received commitment and proof to the map
-        all_commitments.put(p, commitment_i.clone());
-
-        // Securely send to each other participant a secret share
-        // using the evaluation secret polynomial on the identifier of the recipient
-        let signing_share_to_p = evaluate_polynomial::<C>(&secret_coefficients, p)?;
-        // send the evaluation privately to participant p
-        chan.send_private(wait_round_3, p, &signing_share_to_p);
-    }
-
-    // compute the my secret evaluation of my private polynomial
-    let mut my_signing_share = evaluate_polynomial::<C>(&secret_coefficients, me)?.to_scalar();
-
-    // recreate the commitments map with the proper commitment sizes = threshold
-    let mut all_full_commitments = ParticipantMap::new(&participants);
-    let my_full_commitment = insert_identity_if_missing(threshold, all_commitments.index(me));
-    all_full_commitments.put(me, my_full_commitment);
-
-    // Start Round 4
-    // receive evaluations from all participants
-    let mut seen = ParticipantCounter::new(&participants);
-    seen.put(me);
-    while !seen.full() {
-        let (from, signing_share_from): (Participant, SigningShare<C>) =
-            chan.recv(wait_round_3).await?;
-        if !seen.put(from) {
-            continue;
-        }
-
-        let commitment_from = all_commitments.index(from);
 
         // in case the participant was new and it sent a polynomial of length
         // threshold -1 (because the zero term is not serializable)
-        let full_commitment_from = insert_identity_if_missing(threshold, commitment_from);
+        let full_commitment_i = insert_identity_if_missing(threshold, commitment_i);
 
-        // Verify the share
-        // this deviates from the original FROST DKG paper
-        // however it matches the FROST implementation of ZCash
-        validate_received_share::<C>(&me, &from, &signing_share_from, &full_commitment_from)?;
+        // add received full commitment
+        all_full_commitments.put(p, full_commitment_i);
 
-        // add full commitment
-        all_full_commitments.put(from, full_commitment_from);
-
-        // Compute the sum of all the owned secret shares
-        // At the end of this loop, I will be owning a valid secret signing share
-        my_signing_share = my_signing_share + signing_share_from.to_scalar();
     }
 
+    // Verify vk asap
     // cannot fail as all_commitments at least contains my commitment
-    let all_commitments_vec = all_full_commitments.into_vec_or_none().unwrap();
-    let all_commitments_refs = all_commitments_vec.iter().collect();
-
+    let all_commitments_refs = all_full_commitments.into_refs_or_none().unwrap();
     let verifying_key = public_key_from_commitments(all_commitments_refs)?;
 
     // In the case of Resharing, check if the old public key is the same as the new one
@@ -557,6 +524,40 @@ async fn do_keyshare<C: Ciphersuite>(
             ));
         }
     };
+
+    for p in participants.others(me) {
+        // Securely send to each other participant a secret share
+        // using the evaluation secret polynomial on the identifier of the recipient
+        let signing_share_to_p = evaluate_polynomial::<C>(&secret_coefficients, p)?;
+        // send the evaluation privately to participant p
+        chan.send_private(wait_round_3, p, &signing_share_to_p);
+    }
+
+
+    // Start Round 4
+    // compute my secret evaluation of my private polynomial
+    let mut my_signing_share = evaluate_polynomial::<C>(&secret_coefficients, me)?.to_scalar();
+    // receive evaluations from all participants
+    seen.clear();
+    seen.put(me);
+    while !seen.full() {
+        let (from, signing_share_from): (Participant, SigningShare<C>) =
+            chan.recv(wait_round_3).await?;
+        if !seen.put(from) {
+            continue;
+        }
+
+        // Verify the share
+        // this deviates from the original FROST DKG paper
+        // however it matches the FROST implementation of ZCash
+        let full_commitment_from = all_full_commitments.index(from);
+        validate_received_share::<C>(&me, &from, &signing_share_from, full_commitment_from)?;
+
+        // Compute the sum of all the owned secret shares
+        // At the end of this loop, I will be owning a valid secret signing share
+        my_signing_share = my_signing_share + signing_share_from.to_scalar();
+    }
+
 
     // Start Round 5
     broadcast_success(&mut chan, &participants, &me, session_id).await?;
