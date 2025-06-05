@@ -10,7 +10,7 @@ use std::{collections::HashMap, error, fmt};
 use crate::compat::CSCurve;
 use ::serde::{Deserialize, Serialize};
 
-use crate::generic_dkg::{BytesOrder, Ciphersuite};
+use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite};
 use frost_core::serialization::SerializableScalar;
 use frost_core::{Identifier, Scalar};
 

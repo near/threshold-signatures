@@ -1,38 +1,32 @@
+use crate::{
+    compat::{CSCurve, SerializablePoint},
+    serde::{deserialize_scalar, encode, serialize_projective_point, serialize_scalar},
+};
+use super::strobe_transcript::Transcript;
 use elliptic_curve::{Field, Group};
 use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    compat::{CSCurve, SerializablePoint},
-    proofs::strobe_transcript::Transcript,
-    serde::{deserialize_scalar, encode, serialize_projective_point, serialize_scalar},
-};
-
 /// The label we use for hashing the statement.
-const STATEMENT_LABEL: &[u8] = b"dlogeq proof statement";
+const STATEMENT_LABEL: &[u8] = b"dlog proof statement";
 /// The label we use for hashing the first prover message.
-const COMMITMENT_LABEL: &[u8] = b"dlogeq proof commitment";
+const COMMITMENT_LABEL: &[u8] = b"dlog proof commitment";
 /// The label we use for generating the challenge.
-const CHALLENGE_LABEL: &[u8] = b"dlogeq proof challenge";
+const CHALLENGE_LABEL: &[u8] = b"dlog proof challenge";
 
 /// The public statement for this proof.
 ///
-/// This statement claims knowledge of a scalar that's the discrete logarithm
-/// of one point under the standard generator, and of another point under an alternate generator.
+/// This statement claims knowledge of the discrete logarithm of some point.
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct Statement<'a, C: CSCurve> {
     #[serde(serialize_with = "serialize_projective_point::<C, _>")]
-    pub public0: &'a C::ProjectivePoint,
-    #[serde(serialize_with = "serialize_projective_point::<C, _>")]
-    pub generator1: &'a C::ProjectivePoint,
-    #[serde(serialize_with = "serialize_projective_point::<C, _>")]
-    pub public1: &'a C::ProjectivePoint,
+    pub public: &'a C::ProjectivePoint,
 }
 
 impl<'a, C: CSCurve> Statement<'a, C> {
     /// Calculate the homomorphism we want to prove things about.
-    fn phi(&self, x: &C::Scalar) -> (C::ProjectivePoint, C::ProjectivePoint) {
-        (C::ProjectivePoint::generator() * x, *self.generator1 * x)
+    fn phi(&self, x: &C::Scalar) -> C::ProjectivePoint {
+        C::ProjectivePoint::generator() * x
     }
 }
 
@@ -76,10 +70,7 @@ pub fn prove<'a, C: CSCurve>(
 
     transcript.message(
         COMMITMENT_LABEL,
-        &encode(&(
-            SerializablePoint::<C>::from_projective(&big_k.0),
-            SerializablePoint::<C>::from_projective(&big_k.1),
-        )),
+        &encode(&SerializablePoint::<C>::from_projective(&big_k)),
     );
     let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
     let e = C::Scalar::random(&mut rng);
@@ -100,16 +91,11 @@ pub fn verify<C: CSCurve>(
     let statement_data = encode(&statement);
     transcript.message(STATEMENT_LABEL, &statement_data);
 
-    let (phi0, phi1) = statement.phi(&proof.s);
-    let big_k0 = phi0 - *statement.public0 * proof.e;
-    let big_k1 = phi1 - *statement.public1 * proof.e;
+    let big_k: C::ProjectivePoint = statement.phi(&proof.s) - *statement.public * proof.e;
 
     transcript.message(
         COMMITMENT_LABEL,
-        &encode(&(
-            SerializablePoint::<C>::from_projective(&big_k0),
-            SerializablePoint::<C>::from_projective(&big_k1),
-        )),
+        &encode(&SerializablePoint::<C>::from_projective(&big_k)),
     );
     let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
     let e = C::Scalar::random(&mut rng);
@@ -122,18 +108,14 @@ mod test {
     use rand_core::OsRng;
 
     use super::*;
-
     use k256::{ProjectivePoint, Scalar, Secp256k1};
 
     #[test]
     fn test_valid_proof_verifies() {
         let x = Scalar::generate_biased(&mut OsRng);
 
-        let big_h = ProjectivePoint::GENERATOR * Scalar::generate_biased(&mut OsRng);
         let statement = Statement::<Secp256k1> {
-            public0: &(ProjectivePoint::GENERATOR * x),
-            generator1: &big_h,
-            public1: &(big_h * x),
+            public: &(ProjectivePoint::GENERATOR * x),
         };
         let witness = Witness { x: &x };
 

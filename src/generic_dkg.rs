@@ -1,4 +1,8 @@
-use crate::crypto::{hash, HashOutput};
+use crate::crypto::{
+    ciphersuite::Ciphersuite,
+    hash::{HashOutput, domain_separate_hash},
+    polynomials::generate_secret_polynomial,
+};
 use crate::echo_broadcast::do_broadcast;
 use crate::participants::{ParticipantCounter, ParticipantList, ParticipantMap};
 use crate::protocol::internal::SharedChannel;
@@ -11,19 +15,7 @@ use frost_core::{
     Challenge, Element, Error, Field, Group, Scalar, Signature, SigningKey, VerifyingKey,
 };
 use rand_core::{OsRng, RngCore};
-use serde::Serialize;
 use std::ops::Index;
-
-pub enum BytesOrder {
-    BigEndian,
-    LittleEndian,
-}
-
-pub trait ScalarSerializationFormat {
-    fn bytes_order() -> BytesOrder;
-}
-
-pub trait Ciphersuite: frost_core::Ciphersuite + ScalarSerializationFormat {}
 
 /// This function prevents calling keyshare function with inproper inputs
 fn assert_keyshare_inputs<C: Ciphersuite>(
@@ -58,29 +50,6 @@ fn assert_keyshare_inputs<C: Ciphersuite>(
         }
         Ok((None, None))
     }
-}
-
-/// Hashes using a domain separator
-/// The domain separator has to be manually incremented after the use of this function
-fn domain_separate_hash<T: Serialize>(domain_separator: u32, data: &T) -> HashOutput {
-    let preimage = (domain_separator, data);
-    hash(&preimage)
-}
-
-/// Creates a polynomial p of degree threshold - 1
-/// and sets p(0) = secret
-fn generate_secret_polynomial<C: Ciphersuite>(
-    secret: Scalar<C>,
-    threshold: usize,
-    rng: &mut OsRng,
-) -> Vec<Scalar<C>> {
-    let mut coefficients = Vec::with_capacity(threshold);
-    // insert the secret share
-    coefficients.push(secret);
-    for _ in 1..threshold {
-        coefficients.push(<C::Group as Group>::Field::random(rng));
-    }
-    coefficients
 }
 
 /// Creates a commitment vector of coefficients * G

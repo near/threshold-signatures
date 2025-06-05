@@ -1,34 +1,13 @@
 use sha2::{Digest, Sha256};
-
-use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
+use rand_core::CryptoRngCore;
 
 use crate::serde::encode_writer;
 
+use super::random::Randomizer;
+
 const COMMIT_LABEL: &[u8] = b"Near threshold signature commitment";
 const COMMIT_LEN: usize = 32;
-const RANDOMIZER_LEN: usize = 32;
-const HASH_LABEL: &[u8] = b"Near threshold signature generic hash";
-const HASH_LEN: usize = 32;
-
-/// Represents the randomizer used to make a commit hiding.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Randomizer([u8; RANDOMIZER_LEN]);
-
-impl Randomizer {
-    /// Generate a new randomizer value by sampling from an RNG.
-    fn random<R: CryptoRngCore>(rng: &mut R) -> Self {
-        let mut out = [0u8; RANDOMIZER_LEN];
-        rng.fill_bytes(&mut out);
-        Self(out)
-    }
-}
-
-impl AsRef<[u8]> for Randomizer {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
 
 /// Represents a commitment to some value.
 ///
@@ -67,22 +46,4 @@ pub fn commit<T: Serialize, R: CryptoRngCore>(rng: &mut R, val: &T) -> (Commitme
     let r = Randomizer::random(rng);
     let c = Commitment::compute(val, &r);
     (c, r)
-}
-
-/// The output of a generic hash function.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct HashOutput([u8; HASH_LEN]);
-
-impl AsRef<[u8]> for HashOutput {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-/// Hash some value to produce a short digest.
-pub fn hash<T: Serialize>(val: &T) -> HashOutput {
-    let mut hasher = Sha256::new();
-    hasher.update(HASH_LABEL);
-    encode_writer(&mut hasher, val);
-    HashOutput(hasher.finalize().into())
 }

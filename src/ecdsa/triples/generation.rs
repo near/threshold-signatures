@@ -1,11 +1,14 @@
 use elliptic_curve::{Field, Group, ScalarPrimitive};
 use rand_core::OsRng;
 
-use crate::crypto::{Commitment, Randomizer};
 use crate::ecdsa::triples::multiplication::multiplication_many;
 use crate::{
     compat::{CSCurve, SerializablePoint},
-    crypto::{commit, hash, HashOutput},
+    crypto::{
+        commit::{Commitment,commit},
+        hash::{hash, HashOutput},
+        random::Randomizer,
+    },
     ecdsa::math::{GroupPolynomial, Polynomial},
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     proofs::{dlog, dlogeq, strobe_transcript::Transcript},

@@ -1,6 +1,6 @@
 use crate::{
     compat::CSCurve,
-    crypto::HashOutput,
+    crypto::hash::{HashOutput, hash},
     participants::ParticipantList,
     protocol::{
         internal::{Comms, PrivateChannel},
@@ -128,14 +128,14 @@ pub async fn multiplication_many<C: CSCurve, const N: usize>(
     let bv_iv_arc = Arc::new(bv_iv);
     let mut tasks = Vec::with_capacity(participants.len() - 1);
     for i in 0..N {
-        let order_key_me = crate::crypto::hash(&(i, me));
+        let order_key_me = hash(&(i, me));
         for p in participants.others(me) {
             let sid_arc = sid_arc.clone();
             let av_iv_arc = av_iv_arc.clone();
             let bv_iv_arc = bv_iv_arc.clone();
             let fut = {
                 let chan = comms.private_channel(me, p).child(i as u64);
-                let order_key_other = crate::crypto::hash(&(i, p));
+                let order_key_other = hash(&(i, p));
 
                 async move {
                     // Use a deterministic but random comparison function to decide who
@@ -193,7 +193,7 @@ mod test {
     use rand_core::OsRng;
 
     use crate::{
-        crypto::hash,
+        crypto::hash::hash,
         participants::ParticipantList,
         protocol::{internal::make_protocol, run_protocol, Participant, Protocol, ProtocolError},
     };

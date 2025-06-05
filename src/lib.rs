@@ -1,12 +1,12 @@
 mod compat;
 mod crypto;
+use crypto::*;
 
 mod echo_broadcast;
 
 mod generic_dkg;
 mod participants;
 
-mod proofs;
 pub mod protocol;
 mod serde;
 
