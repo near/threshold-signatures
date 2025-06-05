@@ -5,19 +5,18 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 use crate::{
     compat::CSCurve,
-    constants::SECURITY_PARAMETER,
     proofs::strobe_transcript::TranscriptRng,
     protocol::{
-        internal::{make_protocol, PrivateChannel},
+        internal::{make_protocol, Comms, PrivateChannel},
         run_two_party_protocol, Participant, ProtocolError,
     },
 };
 
 use super::{
     bits::{BitMatrix, BitVector, ChoiceVector, DoubleBitVector, SquareBitMatrix},
+    constants::SECURITY_PARAMETER,
     correlated_ot_extension::{correlated_ot_receiver, correlated_ot_sender, CorrelatedOtParams},
 };
-use crate::protocol::internal::Comms;
 
 const CTX: &[u8] = b"Random OT Extension Hash";
 

@@ -7,7 +7,7 @@ use sha3::{
 };
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
-use crate::constants::SECURITY_PARAMETER;
+use super::constants::SECURITY_PARAMETER;
 
 pub const SEC_PARAM_64: usize = (SECURITY_PARAMETER + 64 - 1) / 64;
 pub const SEC_PARAM_8: usize = (SECURITY_PARAMETER + 8 - 1) / 8;
