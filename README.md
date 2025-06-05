@@ -59,7 +59,7 @@ The repository contains no mock implementation of the whole running protocol in 
 # Acknowledgements
 This implementation relies on
 [Cait-Sith](https://github.com/cronokirby/cait-sith) and
-[Frost](https://github.com/ZcashFoundation/frost) and was possible to contributors that actively put this togethers. We thus thank:
+[Frost](https://github.com/ZcashFoundation/frost) and was possible thanks to contributors that actively put this togethers:
 <center>
   Robin Cheng<br>
   Chelsea Komlo<br>
