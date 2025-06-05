@@ -1,20 +1,22 @@
 use crate::{
     compat::CSCurve,
-    constants::SECURITY_PARAMETER,
     crypto::HashOutput,
     participants::ParticipantList,
-    protocol::{internal::PrivateChannel, Participant, ProtocolError},
+    protocol::{
+        internal::{Comms, PrivateChannel},
+        Participant, ProtocolError
+    },
 };
 use std::sync::Arc;
 
 use super::{
     batch_random_ot::{batch_random_ot_receiver, batch_random_ot_sender},
+    constants::SECURITY_PARAMETER,
     mta::{mta_receiver, mta_sender},
     random_ot_extension::{
         random_ot_extension_receiver, random_ot_extension_sender, RandomOtExtensionParams,
     },
 };
-use crate::protocol::internal::Comms;
 use std::collections::VecDeque;
 
 pub async fn multiplication_sender<'a, C: CSCurve>(

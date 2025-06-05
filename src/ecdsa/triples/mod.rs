@@ -107,5 +107,6 @@ mod generation;
 mod mta;
 mod multiplication;
 mod random_ot_extension;
+mod constants;
 
 pub use generation::{generate_triple, generate_triple_many, TripleGenerationOutput};

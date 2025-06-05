@@ -6,16 +6,15 @@ use subtle::ConditionallySelectable;
 
 use crate::{
     compat::{CSCurve, SerializablePoint},
-    constants::SECURITY_PARAMETER,
     protocol::{
-        internal::{make_protocol, PrivateChannel},
+        internal::{make_protocol, Comms, PrivateChannel},
         run_two_party_protocol, Participant, ProtocolError,
     },
     serde::encode,
 };
 
+use super::constants::SECURITY_PARAMETER;
 use super::bits::{BitMatrix, BitVector, SquareBitMatrix, SEC_PARAM_8};
-use crate::protocol::internal::Comms;
 
 const BATCH_RANDOM_OT_HASH: &[u8] = b"Near threshold signatures batch ROT";
 
