@@ -33,5 +33,3 @@ pub mod sign;
 #[cfg(test)]
 mod test;
 pub mod triples;
-
-pub mod robust_ecdsa;
