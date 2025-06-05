@@ -267,7 +267,7 @@ async fn fut_wrapper(
 
 #[cfg(test)]
 mod tests {
-    use crate::crypto::hash;
+    use crate::crypto::hash::hash;
     use crate::participants::ParticipantList;
     use frost_core::{Field, Group};
     use frost_ed25519::{Ed25519Group, Ed25519ScalarField, Ed25519Sha512, Signature};

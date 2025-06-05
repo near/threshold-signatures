@@ -1,5 +1,5 @@
 //! This module serves as a wrapper for ECDSA scheme.
-use crate::generic_dkg::{BytesOrder, Ciphersuite, ScalarSerializationFormat};
+use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat};
 use frost_secp256k1::keys::SigningShare;
 use frost_secp256k1::{Secp256K1Sha256, VerifyingKey};
 

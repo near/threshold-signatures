@@ -9,7 +9,7 @@ use std::{collections::HashMap, mem, ops::Index};
 use frost_core::{Group, Scalar};
 use serde::Serialize;
 
-use crate::generic_dkg::Ciphersuite;
+use crate::crypto::ciphersuite::Ciphersuite;
 use crate::{compat::CSCurve, protocol::Participant};
 
 /// Represents a sorted list of participants.
