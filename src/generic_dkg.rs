@@ -1,7 +1,7 @@
 use crate::crypto::{
     ciphersuite::Ciphersuite,
     hash::{HashOutput, domain_separate_hash},
-    polynomials::generate_secret_polynomial,
+    polynomials::{evaluate_polynomial, generate_secret_polynomial},
 };
 use crate::echo_broadcast::do_broadcast;
 use crate::participants::{ParticipantCounter, ParticipantList, ParticipantMap};
@@ -274,15 +274,6 @@ fn insert_identity_if_missing<C: Ciphersuite>(
     commitment_i
 }
 
-// evaluates a polynomial on the identifier of the participant
-fn evaluate_polynomial<C: Ciphersuite>(
-    coefficients: &[Scalar<C>],
-    participant: Participant,
-) -> Result<SigningShare<C>, ProtocolError> {
-    let id = participant.to_identifier::<C>();
-    Ok(SigningShare::from_coefficients(coefficients, id))
-}
-
 // creates a signing share structure using my identifier, the received
 // signing share and the received commitment
 fn validate_received_share<C: Ciphersuite>(
@@ -390,7 +381,8 @@ async fn do_keyshare<C: Ciphersuite>(
     // this function does not add the zero coefficient
     let session_id = domain_separate_hash(domain_separator, &session_ids);
     domain_separator += 1;
-    let secret_coefficients = generate_secret_polynomial::<C>(secret, threshold, &mut rng);
+    // the degree of the polynomial is threshold - 1
+    let secret_coefficients = generate_secret_polynomial::<C>(secret, threshold-1, &mut rng);
 
     // Compute the multiplication of every coefficient of p with the generator G
     let coefficient_commitment = generate_coefficient_commitment::<C>(&secret_coefficients);
@@ -523,11 +515,9 @@ async fn do_keyshare<C: Ciphersuite>(
     }
 
 
-    // Start Round 5
     broadcast_success(&mut chan, &participants, &me, session_id).await?;
-    // will never panic as broadcast_success_failure would panic before it
 
-    // unwrap cannot fail as round 4 ensures failing if verification_key is None
+    // Return the key pair
     Ok(KeygenOutput {
         private_share: SigningShare::new(my_signing_share),
         public_key: verifying_key,
