@@ -4,6 +4,7 @@ use frost_secp256k1::{
     Group, Field,
 };
 
+
 use crate::{
     crypto::polynomials::{
         evaluate_multi_polynomials,
@@ -129,16 +130,26 @@ async fn do_presign(
 
     // Compute R_me = g^{k_me}
     let big_r_me = Secp256K1Group::generator() * shares[0];
-    let serialize_big_r_me = Secp256K1Group::serialize(&big_r_me)
-        .map_err(|_| {ProtocolError::AssertionFailed(
-            "The group element R could not be serialized as it is the identity.
-            Please retry the presigning".to_string())})?;
-
     // Compute w_me = a_me * k_me + b_me
     let w_me = shares[1] * shares[0] + shares[2];
-
     let wait_round_1 = chan.next_waitpoint();
-    chan.send_many(wait_round_1, &(&serialize_big_r_me, &w_me));
+    chan.send_many(wait_round_1, &(&big_r_me.to_affine(), &w_me));
+
+    // Receive and interpolate
+    seen.clear();
+    seen.put(me);
+    while !seen.full() {
+        let (from, (big_r_p, w_p)): (_ (AffinePoint, Scalar)) = chan.recv(wait_round_1).await?;
+        if !seen.put(from) {
+            continue;
+        }
+        // collect big_r_p in a map
+        // collect w_p in a map
+
+    }
+        // transform both maps into sorted vectors
+        // exponent interpolation of big R
+        // exponent interpolation of w
 
     Ok(())
 }
