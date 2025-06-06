@@ -2,6 +2,7 @@ use rand_core::OsRng;
 use frost_secp256k1::{
     Secp256K1Sha256, Secp256K1Group, Secp256K1ScalarField,
     Group, Field,
+    keys::SigningShare,
 };
 
 
@@ -66,15 +67,9 @@ fn random_secret_polynomial(
 fn evaluate_five_polynomials(
     polynomials: [&[Scalar]; 5],
     participant: Participant,
-)-> Result<[Scalar; 5], ProtocolError> {
+)-> Result<[SigningShare; 5], ProtocolError> {
     let package = evaluate_multi_polynomials::<C,5>(polynomials, participant)?;
-    let output: [Scalar; 5] = package
-        .iter()
-        .map( |signing_share| signing_share.to_scalar())
-        .collect::<Vec<_>>()
-        .try_into()
-        .expect("Package must contain exactly N elements");
-    Ok(output)
+    Ok(package)
 }
 
 
@@ -110,21 +105,25 @@ async fn do_presign(
     }
 
     // Evaluate my secret shares for my polynomials
-    let mut shares = evaluate_five_polynomials([&my_fk, &my_fa, &my_fb, &my_fd, &my_fe], me)?;
+    let shares = evaluate_five_polynomials([&my_fk, &my_fa, &my_fb, &my_fd, &my_fe], me)?;
+    // Extract the shares into a vec of scalars
+    let mut shares = shares.iter()
+        .map( |signing_share| signing_share.to_scalar())
+        .collect::<Vec<_>>();
 
     // Round 1
     // Receive evaluations from all participants
     let mut seen = ParticipantCounter::new(&participants);
     seen.put(me);
     while !seen.full() {
-        let (from, package): (_, [Scalar; 5]) = chan.recv(wait_round_0).await?;
+        let (from, package): (_, [SigningShare; 5]) = chan.recv(wait_round_0).await?;
         if !seen.put(from) {
             continue;
         }
 
         // calculate the respective sum of the received different shares from each participant
         for i in 0..shares.len(){
-            shares[i] += package[i];
+            shares[i] += package[i].to_scalar();
         }
     }
 
@@ -132,6 +131,9 @@ async fn do_presign(
     let big_r_me = Secp256K1Group::generator() * shares[0];
     // Compute w_me = a_me * k_me + b_me
     let w_me = shares[1] * shares[0] + shares[2];
+    let w_me = SigningShare::new(w_me);
+
+    // Send and receive
     let wait_round_1 = chan.next_waitpoint();
     chan.send_many(wait_round_1, &(&big_r_me.to_affine(), &w_me));
 
@@ -139,7 +141,7 @@ async fn do_presign(
     seen.clear();
     seen.put(me);
     while !seen.full() {
-        let (from, (big_r_p, w_p)): (_ (AffinePoint, Scalar)) = chan.recv(wait_round_1).await?;
+        let (from, (big_r_p, w_p)): (_ , (AffinePoint, SigningShare)) = chan.recv(wait_round_1).await?;
         if !seen.put(from) {
             continue;
         }
