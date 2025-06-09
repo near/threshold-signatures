@@ -2,7 +2,10 @@ use rand_core::OsRng;
 use frost_core::{
     Scalar,
     Group, Field,
-    keys::SigningShare,
+    keys::{
+        SigningShare,
+        VerifyingShare,
+    }
 };
 
 use super::ciphersuite::Ciphersuite;
@@ -59,36 +62,6 @@ pub fn evaluate_multi_polynomials<C: Ciphersuite, const N: usize>(
     )
 }
 
-// Computes polynomial interpolation on a specific point
-// using a sequence of sorted elements
-pub fn eval_interpolation<C: Ciphersuite>(
-    signingshares_map: &ParticipantMap<'_, SigningShare<C>>,
-    point: Option<&Scalar<C>>,
-)-> Result<SigningShare<C>, ProtocolError>{
-    let mut secret = <<C::Group as Group>::Field>::zero();
-    let identifiers: Vec<Scalar<C>> =  signingshares_map
-                    .participants()
-                    .iter()
-                    .map(|p| p.generic_scalar::<C>())
-                    .collect();
-    let shares = signingshares_map.into_refs_or_none()
-            .ok_or(ProtocolError::InvalidInterpolationArguments)?;
-
-
-    // Compute the Lagrange coefficients
-    for (id, share) in identifiers.iter().zip(shares) {
-        // would raise error if not enough shares or identifiers
-        let lagrange_coefficient =
-            compute_lagrange_coefficient::<C>(&identifiers, id, point)?;
-
-        // Compute y = f(0) via polynomial interpolation of these t-of-n solutions ('points) of f
-        secret = secret + (lagrange_coefficient * share.to_scalar());
-    }
-
-    Ok(SigningShare::new(secret))
-}
-
-
 /// Computes the lagrange coefficient lamda_i(x) using a set of coefficients
 pub fn compute_lagrange_coefficient<C: Ciphersuite>(
     points_set: &Vec<Scalar<C>>,
@@ -128,3 +101,60 @@ pub fn compute_lagrange_coefficient<C: Ciphersuite>(
             .map_err(|_| ProtocolError::InvalidInterpolationArguments)?;
     Ok(num * den)
 }
+
+// Computes polynomial interpolation on a specific point
+// using a sequence of sorted elements
+pub fn eval_interpolation<C: Ciphersuite>(
+    signingshares_map: &ParticipantMap<'_, SigningShare<C>>,
+    point: Option<&Scalar<C>>,
+)-> Result<SigningShare<C>, ProtocolError>{
+    let mut interpolation = <<C::Group as Group>::Field>::zero();
+    let identifiers: Vec<Scalar<C>> =  signingshares_map
+                    .participants()
+                    .iter()
+                    .map(|p| p.generic_scalar::<C>())
+                    .collect();
+    let shares = signingshares_map.into_refs_or_none()
+            .ok_or(ProtocolError::InvalidInterpolationArguments)?;
+
+    // Compute the Lagrange coefficients
+    for (id, share) in identifiers.iter().zip(shares) {
+        // would raise error if not enough shares or identifiers
+        let lagrange_coefficient =
+            compute_lagrange_coefficient::<C>(&identifiers, id, point)?;
+
+        // Compute y = f(point) via polynomial interpolation of these points of f
+        interpolation = interpolation + (lagrange_coefficient * share.to_scalar());
+    }
+
+    Ok(SigningShare::new(interpolation))
+}
+
+// Computes polynomial interpolation on the exponent on a specific point
+// using a sequence of sorted elements
+pub fn eval_exponent_interpolation<C:Ciphersuite>(
+    verifyingshares_map: ParticipantMap<'_, VerifyingShare<C>>,
+    point: Option<&Scalar<C>>,
+) -> Result<VerifyingShare<C>, ProtocolError>{
+    let mut interpolation = <C::Group as Group>::identity();
+    let identifiers: Vec<Scalar<C>> =  verifyingshares_map
+                    .participants()
+                    .iter()
+                    .map(|p| p.generic_scalar::<C>())
+                    .collect();
+    let shares = verifyingshares_map.into_refs_or_none()
+            .ok_or(ProtocolError::InvalidInterpolationArguments)?;
+
+    // Compute the Lagrange coefficients
+    for (id, share) in identifiers.iter().zip(shares) {
+        // would raise error if not enough shares or identifiers
+        let lagrange_coefficient =
+            compute_lagrange_coefficient::<C>(&identifiers, id, point)?;
+
+        // Compute y = g^f(point) via polynomial interpolation of these points of f
+        interpolation = interpolation + (share.to_element() * lagrange_coefficient);
+    }
+
+    Ok(VerifyingShare::new(interpolation))
+}
+
