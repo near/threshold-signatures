@@ -13,6 +13,7 @@ use crate::{
         evaluate_multi_polynomials,
         generate_secret_polynomial,
         eval_interpolation,
+        eval_exponent_interpolation,
     },
     ecdsa::KeygenOutput,
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
@@ -144,6 +145,9 @@ async fn do_presign(
 
     // Store the sent items
     let mut signingshares_map = ParticipantMap::new(&participants);
+
+    // ONLY FOR PASSIVE: Disregard t points for the verifying shares
+    todo!("Find a way to disregard t participants for the passive security of the verifying shares");
     let mut verifyingshares_map = ParticipantMap::new(&participants);
     signingshares_map.put(me, w_me);
     verifyingshares_map.put(me, big_r_me);
@@ -158,12 +162,16 @@ async fn do_presign(
         }
         // collect big_r_p and w_p in maps that will be later ordered
         signingshares_map.put(from, w_p);
+
+        // ONLY FOR PASSIVE: Disregard t points
         verifyingshares_map.put(from, big_r_p);
     }
 
     // polynomial interpolation of w
     let w = eval_interpolation(&signingshares_map, None);
     // exponent interpolation of big R
+
+    let big_r = eval_exponent_interpolation(verifyingshares_map, None);
     // CAREFUL NOT TO INTERPOLATE MYSELF?
 
     Ok(())
