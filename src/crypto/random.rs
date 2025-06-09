@@ -3,8 +3,6 @@ use rand_core::CryptoRngCore;
 
 const RANDOMIZER_LEN: usize = 32;
 
-// +++++++++ Randomizers +++++++++
-
 /// Represents the randomizer used to make a commit hiding.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Randomizer([u8; RANDOMIZER_LEN]);

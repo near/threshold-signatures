@@ -1,4 +1,4 @@
-// +++++++++ Generic Ciphersuite +++++++++
+// Generic Ciphersuite Trait
 pub enum BytesOrder {
     BigEndian,
     LittleEndian,

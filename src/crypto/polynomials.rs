@@ -1,13 +1,15 @@
 use rand_core::OsRng;
 use frost_core::{
     Scalar,
-    Group,
-    Field,
+    Group, Field,
     keys::SigningShare,
 };
 
 use super::ciphersuite::Ciphersuite;
-use crate::protocol::{Participant, ProtocolError};
+use crate::{
+    protocol::{Participant, ProtocolError},
+    participants::ParticipantMap,
+};
 
 /// Creates a polynomial p of degree threshold - 1
 /// and sets p(0) = secret
@@ -55,4 +57,74 @@ pub fn evaluate_multi_polynomials<C: Ciphersuite, const N: usize>(
         .try_into()
         .expect("Internal error: Vec did not match expected array size")
     )
+}
+
+// Computes polynomial interpolation on a specific point
+// using a sequence of sorted elements
+pub fn eval_interpolation<C: Ciphersuite>(
+    signingshares_map: &ParticipantMap<'_, SigningShare<C>>,
+    point: Option<&Scalar<C>>,
+)-> Result<SigningShare<C>, ProtocolError>{
+    let mut secret = <<C::Group as Group>::Field>::zero();
+    let identifiers: Vec<Scalar<C>> =  signingshares_map
+                    .participants()
+                    .iter()
+                    .map(|p| p.generic_scalar::<C>())
+                    .collect();
+    let shares = signingshares_map.into_refs_or_none()
+            .ok_or(ProtocolError::InvalidInterpolationArguments)?;
+
+
+    // Compute the Lagrange coefficients
+    for (id, share) in identifiers.iter().zip(shares) {
+        // would raise error if not enough shares or identifiers
+        let lagrange_coefficient =
+            compute_lagrange_coefficient::<C>(&identifiers, id, point)?;
+
+        // Compute y = f(0) via polynomial interpolation of these t-of-n solutions ('points) of f
+        secret = secret + (lagrange_coefficient * share.to_scalar());
+    }
+
+    Ok(SigningShare::new(secret))
+}
+
+
+/// Computes the lagrange coefficient lamda_i(x) using a set of coefficients
+pub fn compute_lagrange_coefficient<C: Ciphersuite>(
+    points_set: &Vec<Scalar<C>>,
+    i: &Scalar<C>,
+    x: Option<&Scalar<C>>,
+) -> Result<Scalar<C>, ProtocolError> {
+    let mut num = <<C::Group as Group>::Field>::one();
+    let mut den = <<C::Group as Group>::Field>::one();
+
+    if points_set.len() <= 1  || !points_set.contains(i){
+        // returns error if there is not enough points to interpolate
+        // or if i is not in the set of points
+        return Err(ProtocolError::InvalidInterpolationArguments)
+    }
+    if let Some(x) = x {
+        for j in points_set.iter() {
+            if *i == *j {
+
+                continue;
+            }
+            num = num * (*x - *j);
+            den = den * (*i - *j);
+        }
+    } else {
+        for j in points_set.iter() {
+            if *i == *j {
+                continue;
+            }
+            // Both signs inverted just to avoid requiring an extra negation
+            num = num * *j;
+            den = den * (*j - *i);
+        }
+    }
+
+    // raises error if the denominator is null, i.e., the set contains duplicates
+    let den = <<C::Group as Group>::Field>::invert(&den)
+            .map_err(|_| ProtocolError::InvalidInterpolationArguments)?;
+    Ok(num * den)
 }

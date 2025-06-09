@@ -25,6 +25,8 @@ pub enum ProtocolError {
     ErrorExtractVerificationKey,
     /// The sent commitment hash does not equal the hash of the sent commitment
     InvalidCommitmentHash,
+    /// The number of arguments are not valid for the polynomial interpolation
+    InvalidInterpolationArguments,
     /// Incorrect number of commitments.
     IncorrectNumberOfCommitments,
     /// The identifier of the signer whose share validation failed.
@@ -58,10 +60,16 @@ impl fmt::Display for ProtocolError {
                     f,
                     "the sent commitment_hash does not equals the hash of the commitment"
                 )
-            }
+            },
+            ProtocolError::InvalidInterpolationArguments => {
+                write!(
+                    f,
+                    "the provided elements are invalid for polynomial interpolation"
+                )
+            },
             ProtocolError::IncorrectNumberOfCommitments => {
                 write!(f, "incorrect number of commitments")
-            }
+            },
             ProtocolError::InvalidProofOfKnowledge(p) => write!(
                 f,
                 "the proof of knowledge of participant {p:?} is not valid."
