@@ -408,10 +408,15 @@ async fn do_keyshare<C: Ciphersuite>(
     let wait_round_1 = chan.next_waitpoint();
     chan.send_many(wait_round_1, &commitment_hash);
     // receive commitment_hash
+    let mut seen = ParticipantCounter::new(&participants);
     let mut all_hash_commitments = ParticipantMap::new(&participants);
     all_hash_commitments.put(me, commitment_hash);
-    while !all_hash_commitments.full() {
+    seen.put(me);
+    while !seen.full() {
         let (from, their_commitment_hash) = chan.recv(wait_round_1).await?;
+        if !seen.put(from) {
+            continue;
+        }
         all_hash_commitments.put(from, their_commitment_hash);
     }
 
@@ -494,7 +499,7 @@ async fn do_keyshare<C: Ciphersuite>(
     // compute my secret evaluation of my private polynomial
     let mut my_signing_share = evaluate_polynomial::<C>(&secret_coefficients, me)?.to_scalar();
     // receive evaluations from all participants
-    let mut seen = ParticipantCounter::new(&participants);
+    seen.clear();
     seen.put(me);
     while !seen.full() {
         let (from, signing_share_from): (Participant, SigningShare<C>) =
