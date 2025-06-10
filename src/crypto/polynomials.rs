@@ -133,17 +133,14 @@ pub fn eval_interpolation<C: Ciphersuite>(
 // Computes polynomial interpolation on the exponent on a specific point
 // using a sequence of sorted elements
 pub fn eval_exponent_interpolation<C:Ciphersuite>(
-    verifyingshares_map: ParticipantMap<'_, VerifyingShare<C>>,
+    identifiers: &Vec<Scalar<C>>,
+    shares: &Vec<&VerifyingShare<C>>,
     point: Option<&Scalar<C>>,
 ) -> Result<VerifyingShare<C>, ProtocolError>{
     let mut interpolation = <C::Group as Group>::identity();
-    let identifiers: Vec<Scalar<C>> =  verifyingshares_map
-                    .participants()
-                    .iter()
-                    .map(|p| p.generic_scalar::<C>())
-                    .collect();
-    let shares = verifyingshares_map.into_refs_or_none()
-            .ok_or(ProtocolError::InvalidInterpolationArguments)?;
+    if identifiers.len() != shares.len(){
+        return Err(ProtocolError::InvalidInterpolationArguments)
+    };
 
     // Compute the Lagrange coefficients
     for (id, share) in identifiers.iter().zip(shares) {

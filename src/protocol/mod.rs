@@ -23,6 +23,8 @@ pub enum ProtocolError {
     DKGNotSupported,
     /// Could not extract the verification Key from a commitment.
     ErrorExtractVerificationKey,
+    /// Encounter the Identity EC point when not supposed to
+    IdentityElement,
     /// The sent commitment hash does not equal the hash of the sent commitment
     InvalidCommitmentHash,
     /// The number of arguments are not valid for the polynomial interpolation
@@ -41,6 +43,8 @@ pub enum ProtocolError {
     MalformedSigningKey,
     /// Error in serializing point
     PointSerialization,
+    /// Encounter Zero Scalar when not supposed to
+    ZeroScalar,
     /// Some generic error happened.
     Other(Box<dyn error::Error + Send + Sync>),
 }
@@ -54,6 +58,10 @@ impl fmt::Display for ProtocolError {
             ProtocolError::ErrorExtractVerificationKey => write!(
                 f,
                 "could not extract the verification Key from the commitment."
+            ),
+            ProtocolError::IdentityElement => write!(
+                f,
+                "encoutered the identity element (identity point)."
             ),
             ProtocolError::InvalidCommitmentHash => {
                 write!(
@@ -84,6 +92,7 @@ impl fmt::Display for ProtocolError {
                 write!(f, "detected a malicious participant {p:?}.")
             }
             ProtocolError::MalformedSigningKey => write!(f, "the constructed signing key is null."),
+            ProtocolError::ZeroScalar => write!(f, "encountered a zero scalar."),
             ProtocolError::PointSerialization => {
                 write!(f, "The group element could not be serialized.")
             }
