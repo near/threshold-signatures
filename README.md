@@ -47,7 +47,7 @@ The following functionalities are provided:
 
 # Build and Test
 Building the crate is fairly simple using
-``cargo build``.
+``cargo build --features k256``.
 
 Run ``cargo test`` to run all the built-in test cases. Some the tests might take some time to run as they require running multiple participants at once.
 
