@@ -1,4 +1,7 @@
 use rand_core::OsRng;
+use elliptic_curve::{
+    point::AffineCoordinates,
+};
 use frost_secp256k1::{
     Secp256K1Sha256, Secp256K1Group, Secp256K1ScalarField,
     Group, Field,
@@ -27,6 +30,7 @@ use crate::{
     },
 };
 
+
 type C = Secp256K1Sha256;
 type Scalar = <Secp256K1ScalarField as Field>::Scalar;
 
@@ -50,9 +54,8 @@ pub struct PresignOutput {
     pub big_r: VerifyingShare,
 
     /// Our secret shares of the nonces.
-    pub h_i: SigningShare,
-    pub d_i: SigningShare,
-    pub e_i: SigningShare,
+    pub alpha_i: SigningShare,
+    pub beta_i: SigningShare,
 }
 
 /// Generates a secret polynomial where the comstant term is zero
@@ -89,9 +92,10 @@ async fn do_presign(
     mut chan: SharedChannel,
     participants: ParticipantList,
     me: Participant,
-    threshold: usize,
+    args: PresignArguments,
 ) -> Result<PresignOutput, ProtocolError> {
 
+    let threshold = args.threshold;
     // Round 0
     let mut rng = OsRng;
     // degree t random secret shares where t is the max number of malicious parties
@@ -204,11 +208,23 @@ async fn do_presign(
     // w is non-zero due to previous check and so I can unwrap safely
     let h_me = w.to_scalar().invert().unwrap() * shares[1];
 
+    // Some extra computation is pushed in this offline phase
+    let alpha_me = h_me + shares[3];
+
+    let big_r_x_coordinate: [u8; 32] = big_r.to_element()
+            .to_affine()
+            .x()
+            .try_into()
+            .expect("Slice is not 32 bytes long");
+    let big_r_x_coordinate = <Secp256K1ScalarField as Field>::deserialize(&big_r_x_coordinate)
+                            .map_err(|_| ProtocolError::ErrorReducingBytesToScalar)?;
+    let x_me = args.keygen_out.private_share.to_scalar();
+    let beta_me = h_me * big_r_x_coordinate* x_me + shares[4];
+
     Ok(PresignOutput{
         big_r,
-        h_i: SigningShare::new(h_me),
-        d_i: SigningShare::new(shares[3]),
-        e_i: SigningShare::new(shares[4]),
+        alpha_i: SigningShare::new(alpha_me),
+        beta_i: SigningShare::new(beta_me),
     })
 }
 
@@ -259,7 +275,7 @@ pub fn presign(
         ctx.shared_channel(),
         participants,
         me,
-        args.threshold,
+        args,
     );
     Ok(make_protocol(ctx, fut))
 }

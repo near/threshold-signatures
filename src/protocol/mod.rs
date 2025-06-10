@@ -23,6 +23,8 @@ pub enum ProtocolError {
     DKGNotSupported,
     /// Could not extract the verification Key from a commitment.
     ErrorExtractVerificationKey,
+    /// Error in reducing bytes to scalar
+    ErrorReducingBytesToScalar,
     /// Encounter the Identity EC point when not supposed to
     IdentityElement,
     /// The sent commitment hash does not equal the hash of the sent commitment
@@ -58,6 +60,10 @@ impl fmt::Display for ProtocolError {
             ProtocolError::ErrorExtractVerificationKey => write!(
                 f,
                 "could not extract the verification Key from the commitment."
+            ),
+            ProtocolError::ErrorReducingBytesToScalar => write!(
+                f,
+                "the given bytes are not mappable to a scalar without modular reduction."
             ),
             ProtocolError::IdentityElement => write!(
                 f,
