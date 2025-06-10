@@ -18,7 +18,13 @@ use crate::{
     },
     ecdsa::KeygenOutput,
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
-    protocol::{internal::SharedChannel, Participant, ProtocolError},
+    protocol::{
+        internal::{make_protocol, Comms, SharedChannel},
+        Participant,
+        ProtocolError,
+        InitializationError,
+        Protocol
+    },
 };
 
 type C = Secp256K1Sha256;
@@ -206,3 +212,54 @@ async fn do_presign(
     })
 }
 
+
+/// The presignature protocol.
+///
+/// This is the first phase of performing a signature, in which we perform
+/// all the work we can do without yet knowing the message to be signed.
+///
+/// This work does depend on the private key though, and it's crucial
+/// that a presignature is never used.
+pub fn presign(
+    participants: &[Participant],
+    me: Participant,
+    args: PresignArguments,
+) -> Result<impl Protocol<Output = PresignOutput>, InitializationError> {
+    if participants.len() < 2 {
+        return Err(InitializationError::BadParameters(format!(
+            "participant count cannot be strictly less than 2, found: {}",
+            participants.len()
+        )));
+    };
+
+    if args.threshold > participants.len() {
+        return Err(InitializationError::BadParameters(
+            "threshold must be less or equals to participant count".to_string(),
+        ));
+    }
+
+    if 2*args.threshold+1 > participants.len() {
+        return Err(InitializationError::BadParameters(
+            "2*threshold+1 must be less or equals to participant count".to_string(),
+        ));
+    }
+
+    let participants = ParticipantList::new(participants).ok_or_else(|| {
+        InitializationError::BadParameters("participant list cannot contain duplicates".to_string())
+    })?;
+
+    if !participants.contains(me){
+        return Err(InitializationError::BadParameters(
+            "Presign participant list does not contain me".to_string()
+        ));
+    };
+
+    let ctx = Comms::new();
+    let fut = do_presign(
+        ctx.shared_channel(),
+        participants,
+        me,
+        args.threshold,
+    );
+    Ok(make_protocol(ctx, fut))
+}
