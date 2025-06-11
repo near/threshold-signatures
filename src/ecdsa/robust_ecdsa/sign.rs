@@ -101,3 +101,40 @@ async fn do_sign<C: CSCurve>(
 
     Ok(sig)
 }
+
+
+// TODO: try to unify both sign functions in robust ecdsa and in ot_based_ecdsa
+pub fn sign<C: CSCurve>(
+    participants: &[Participant],
+    me: Participant,
+    public_key: C::AffinePoint,
+    presignature: PresignOutput,
+    msg_hash: Scalar,
+) -> Result<impl Protocol<Output = FullSignature<C>>, InitializationError> {
+
+    if participants.len() < 2 {
+        return Err(InitializationError::BadParameters(format!(
+            "participant count cannot be < 2, found: {}",
+            participants.len()
+        )));
+    };
+
+    let participants = ParticipantList::new(participants).ok_or_else(|| {
+        InitializationError::BadParameters("participant list cannot contain duplicates".to_string())
+    })?;
+
+    if !participants.contains(me){
+        return Err(InitializationError::BadParameters("participant list does not contain me".to_string()))
+    };
+
+    let ctx = Comms::new();
+    let fut = do_sign(
+        ctx.shared_channel(),
+        participants,
+        me,
+        public_key,
+        presignature,
+        msg_hash,
+    );
+    Ok(make_protocol(ctx, fut))
+}
