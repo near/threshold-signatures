@@ -212,6 +212,7 @@ pub fn presign<C: CSCurve>(
             "threshold must be <= participant count".to_string(),
         ));
     }
+
     // NOTE: We omit the check that the new participant set was present for
     // the triple generation, because presumably they need to have been present
     // in order to have shares.
@@ -232,6 +233,10 @@ pub fn presign<C: CSCurve>(
             "bt_participants list cannot contain duplicates".to_string(),
         )
     })?;
+
+    if !participants.contains(me){
+        return Err(InitializationError::BadParameters("participant list does not contain me".to_string()))
+    };
 
     let ctx = Comms::new();
     let fut = do_presign(
