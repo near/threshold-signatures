@@ -1,11 +1,15 @@
+use elliptic_curve::group::Curve;
 use frost_secp256k1::{
-    Secp256K1Sha256, Secp256K1ScalarField,
+    Secp256K1ScalarField,
     Field,
-    keys::SigningShare,
+    keys::{
+        SigningShare,
+        VerifyingShare,
+    }
 };
 
 use super::presign::PresignOutput;
-use k256::AffinePoint;
+use elliptic_curve::CurveArithmetic;
 
 use crate::{
     crypto::polynomials::eval_interpolation,
@@ -17,39 +21,46 @@ use crate::{
         InitializationError,
         Protocol
     },
-}
+    // TODO: The following crates need to be done away with
+    compat::CSCurve,
+    ecdsa::sign::FullSignature,
+};
 
-type C = Secp256K1Sha256;
 type Scalar = <Secp256K1ScalarField as Field>::Scalar;
 
-/// Represents a signature with extra information, to support different variants of ECDSA.
-///
-/// An ECDSA signature is usually two scalars. The first scalar is derived from
-/// a point on the curve, and because this process is lossy, some other variants
-/// of ECDSA also include some extra information in order to recover this point.
-///
-/// Furthermore, some signature formats may disagree on how precisely to serialize
-/// different values as bytes.
-///
-/// To support these variants, this simply gives you a normal signature, along with the entire
-/// first point.
-#[derive(Clone)]
-pub struct FullSignature {
-    /// This is the entire first point.
-    pub big_r: AffinePoint,
-    /// This is the second scalar, normalized to be in the lower range.
-    pub s: Scalar,
+
+/// Transforms a verification key of type Secp256k1SHA256 to CSCurve of cait-sith
+fn from_secp256k1sha256_to_cscurve_point<C: CSCurve>(
+    vshare: &VerifyingShare,
+) -> Result<<C as CurveArithmetic>::AffinePoint, ProtocolError> {
+    // serializes into a canonical byte array buf of length 33 bytes using the  affine point representation
+    let bytes = vshare
+        .serialize()
+        .map_err(|_| ProtocolError::PointSerialization)?;
+
+    let bytes: [u8; 33] = bytes.try_into().expect("Slice is not 33 bytes long");
+    let point = match C::from_bytes_to_affine(bytes) {
+        Some(point) => point,
+        _ => return Err(ProtocolError::PointSerialization),
+    };
+    Ok(point.to_affine())
 }
 
+/// Transforms a secret key of type Secp256k1Sha256 to CSCurve of cait-sith
+fn from_secp256k1sha256_to_cscurve_scalar<C: CSCurve>(private_share: &SigningShare) -> C::Scalar {
+    let bytes = private_share.to_scalar().to_bytes();
+    let bytes: [u8; 32] = bytes.try_into().expect("Slice is not 32 bytes long");
+    C::from_bytes_to_scalar(bytes).unwrap()
+}
 
-async fn do_sign(
+async fn do_sign<C: CSCurve>(
     mut chan: SharedChannel,
     participants: ParticipantList,
     me: Participant,
-    public_key: AffinePoint,
+    public_key: C::AffinePoint,
     presignature: PresignOutput,
     msg_hash: Scalar,
-) -> Result<FullSignature, ProtocolError> {
+) -> Result<FullSignature<C>, ProtocolError> {
     let s_me = msg_hash * presignature.alpha_i.to_scalar() + presignature.beta_i.to_scalar();
     let s_me = SigningShare::new(s_me);
 
@@ -70,19 +81,23 @@ async fn do_sign(
     }
 
     let s = eval_interpolation(&s_map, None)?;
-
-    // // Optionally, normalize s
+    // Only for formatting
+    let s = from_secp256k1sha256_to_cscurve_scalar::<C>(&s);
+    let big_r = from_secp256k1sha256_to_cscurve_point::<C>(&presignature.big_r)?;
+    // TODO:
+    // Normalize s
     // s.conditional_assign(&(-s), s.is_high());
     let sig = FullSignature {
-        big_r: presignature.big_r.to_element().to_affine(),
-        s: s.to_scalar(),
+        big_r,
+        s,
     };
 
+    let msg_hash = from_secp256k1sha256_to_cscurve_scalar::<C>(&SigningShare::new(msg_hash));
     if !sig.verify(&public_key, &msg_hash) {
         return Err(ProtocolError::AssertionFailed(
             "signature failed to verify".to_string(),
         ));
-    }
+    };
 
     Ok(sig)
 }

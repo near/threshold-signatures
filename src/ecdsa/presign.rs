@@ -59,7 +59,7 @@ fn from_secp256k1sha256_to_cscurve_vk<C: CSCurve>(
 }
 
 /// Transforms a secret key of type Secp256k1Sha256 to CSCurve of cait-sith
-fn from_secp256k1sha256_to_cscurve_sk<C: CSCurve>(private_share: &SigningShare) -> C::Scalar {
+fn from_secp256k1sha256_to_cscurve_scalar<C: CSCurve>(private_share: &SigningShare) -> C::Scalar {
     let bytes = private_share.to_scalar().to_bytes();
     let bytes: [u8; 32] = bytes.try_into().expect("Slice is not 32 bytes long");
     C::from_bytes_to_scalar(bytes).unwrap()
@@ -97,7 +97,7 @@ async fn do_presign<C: CSCurve>(
 
     let public_key = from_secp256k1sha256_to_cscurve_vk::<C>(&args.keygen_out.public_key)?;
     let big_x: C::ProjectivePoint = public_key;
-    let private_share = from_secp256k1sha256_to_cscurve_sk::<C>(&args.keygen_out.private_share);
+    let private_share = from_secp256k1sha256_to_cscurve_scalar::<C>(&args.keygen_out.private_share);
     let x_prime_i = sk_lambda * private_share;
 
     // Spec 1.4
