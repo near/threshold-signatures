@@ -278,3 +278,74 @@ pub fn presign(
     );
     Ok(make_protocol(ctx, fut))
 }
+
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use rand_core::OsRng;
+
+    use crate::{ecdsa::math::Polynomial, protocol::run_protocol};
+    use frost_secp256k1::keys::PublicKeyPackage;
+    use frost_secp256k1::VerifyingKey;
+    use std::collections::BTreeMap;
+
+    use k256::{ProjectivePoint, Secp256k1};
+
+    #[test]
+    fn test_presign() {
+        let participants = vec![
+            Participant::from(0u32),
+            Participant::from(1u32),
+            Participant::from(2u32),
+            Participant::from(3u32),
+            Participant::from(4u32),
+        ];
+        let max_malicious = 2;
+
+        let f = Polynomial::<Secp256k1>::random(&mut OsRng, max_malicious+1);
+        let big_x = ProjectivePoint::GENERATOR * f.evaluate_zero();
+
+
+        #[allow(clippy::type_complexity)]
+        let mut protocols: Vec<(
+            Participant,
+            Box<dyn Protocol<Output = PresignOutput>>,
+        )> = Vec::with_capacity(participants.len());
+
+        for p in participants.iter(){
+            // simulating the key packages for each participant
+            let private_share = f.evaluate(&p.scalar::<Secp256k1>());
+            let verifying_key = VerifyingKey::new(big_x);
+            let public_key_package = PublicKeyPackage::new(BTreeMap::new(), verifying_key);
+            let keygen_out = KeygenOutput {
+                private_share: SigningShare::new(private_share),
+                public_key: *public_key_package.verifying_key(),
+            };
+
+            let protocol = presign(
+                &participants[..],
+                *p,
+                PresignArguments {
+                    keygen_out,
+                    threshold: max_malicious,
+                },
+            );
+            assert!(protocol.is_ok());
+            let protocol = protocol.unwrap();
+            protocols.push((*p, Box::new(protocol)));
+        }
+
+        let result = run_protocol(protocols);
+        assert!(result.is_ok());
+        let result = result.unwrap();
+
+        assert!(result.len() == 5);
+        // testing that big_r is the same accross participants
+        assert_eq!(result[0].1.big_r, result[1].1.big_r);
+        assert_eq!(result[1].1.big_r, result[2].1.big_r);
+        assert_eq!(result[2].1.big_r, result[3].1.big_r);
+        assert_eq!(result[3].1.big_r, result[4].1.big_r);
+    }
+}
