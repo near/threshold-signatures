@@ -165,8 +165,10 @@ mod test {
     use rand_core::OsRng;
 
     use super::*;
+    use crate::ecdsa::robust_ecdsa::test::{run_presign, run_sign};
+
     use crate::ecdsa::test::{
-        assert_public_key_invariant, run_keygen, run_presign, run_reshare, run_sign,
+        assert_public_key_invariant, run_keygen, run_reshare
     };
     use crate::{compat::scalar_hash, ecdsa::math::Polynomial, protocol::run_protocol};
     use crate::compat::x_coordinate;
@@ -247,6 +249,105 @@ mod test {
             VerifyingKey::from(&PublicKey::from_affine(public_key).unwrap())
                 .verify(&msg[..], &sig)?;
         }
+        Ok(())
+    }
+
+    #[test]
+    fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
+        let participants = vec![
+            Participant::from(0u32),
+            Participant::from(1u32),
+            Participant::from(2u32),
+            Participant::from(3u32),
+            Participant::from(4u32),
+            Participant::from(5u32),
+            Participant::from(6u32),
+            Participant::from(7u32),
+            Participant::from(8u32),
+            Participant::from(9u32),
+            Participant::from(10u32),
+        ];
+        let max_malicious = 3;
+        let threshold = max_malicious+1;
+        let result0 = run_keygen(&participants, threshold)?;
+        assert_public_key_invariant(&result0)?;
+
+        let pub_key = result0[2].1.public_key.clone();
+
+        // Run heavy reshare
+        let max_malicious = 4;
+        let new_threshold = max_malicious+1;
+
+        let mut new_participant = participants.clone();
+        new_participant.push(Participant::from(31u32));
+        new_participant.push(Participant::from(32u32));
+        new_participant.push(Participant::from(33u32));
+        let mut key_packages = run_reshare(
+            &participants,
+            &pub_key,
+            result0,
+            threshold,
+            new_threshold,
+            new_participant.clone(),
+        )?;
+        assert_public_key_invariant(&key_packages)?;
+        key_packages.sort_by_key(|(p, _)| *p);
+
+        let public_key = key_packages[0].1.public_key.clone();
+
+        // Presign
+        let mut presign_result =
+            run_presign(key_packages, max_malicious);
+        presign_result.sort_by_key(|(p, _)| *p);
+
+        let msg = b"hello world";
+
+        run_sign(presign_result, public_key.to_element().to_affine(), msg);
+        Ok(())
+    }
+
+    #[test]
+    fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
+        let participants = vec![
+            Participant::from(0u32),
+            Participant::from(1u32),
+            Participant::from(2u32),
+            Participant::from(3u32),
+            Participant::from(4u32),
+        ];
+        let max_malicious = 2;
+        let threshold = max_malicious+1;
+        let result0 = run_keygen(&participants, threshold)?;
+        assert_public_key_invariant(&result0)?;
+
+        let pub_key = result0[2].1.public_key.clone();
+
+        // Run heavy reshare
+        let max_malicious = 1;
+        let new_threshold = max_malicious+1;
+        let mut new_participant = participants.clone();
+        new_participant.pop();
+        let mut key_packages = run_reshare(
+            &participants,
+            &pub_key,
+            result0,
+            threshold,
+            new_threshold,
+            new_participant.clone(),
+        )?;
+        assert_public_key_invariant(&key_packages)?;
+        key_packages.sort_by_key(|(p, _)| *p);
+
+        let public_key = key_packages[0].1.public_key.clone();
+
+        // Presign
+        let mut presign_result =
+            run_presign(key_packages, max_malicious);
+        presign_result.sort_by_key(|(p, _)| *p);
+
+        let msg = b"hello world";
+
+        run_sign(presign_result, public_key.to_element().to_affine(), msg);
         Ok(())
     }
 }
