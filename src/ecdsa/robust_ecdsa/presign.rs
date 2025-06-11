@@ -94,7 +94,6 @@ async fn do_presign(
     me: Participant,
     args: PresignArguments,
 ) -> Result<PresignOutput, ProtocolError> {
-
     let threshold = args.threshold;
     // Round 0
     let mut rng = OsRng;

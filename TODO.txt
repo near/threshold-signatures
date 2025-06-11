@@ -1,0 +1,6 @@
+Improve doc simon/cleanups,
+Separate and generalize robust_ecdsa with ot_based_ecdsa
+Unify interface (CSCurve vs frost curve)
+    This implies getting rid of the from from_secp256k1sha256_to_cscurve_vk and from_secp256k1sha256_to_cscurve_sk
+Add the active adversary functionality for robust ecdsa
+make sure k256 is always activated without --feature k256 build in cargo
