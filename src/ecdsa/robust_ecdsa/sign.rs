@@ -1,4 +1,8 @@
-use elliptic_curve::group::Curve;
+use elliptic_curve::{
+    scalar::IsHigh,
+    group::Curve,
+};
+
 use frost_secp256k1::{
     Secp256K1ScalarField,
     Field,
@@ -84,9 +88,15 @@ async fn do_sign<C: CSCurve>(
     // Only for formatting
     let s = from_secp256k1sha256_to_cscurve_scalar::<C>(&s);
     let big_r = from_secp256k1sha256_to_cscurve_point::<C>(&presignature.big_r)?;
-    // TODO:
+
     // Normalize s
-    // s.conditional_assign(&(-s), s.is_high());
+    let minus_s = -s;
+    let s = if s.is_high().into() {
+        minus_s
+    }else{
+        s
+    };
+
     let sig = FullSignature {
         big_r,
         s,
@@ -137,4 +147,106 @@ pub fn sign<C: CSCurve>(
         msg_hash,
     );
     Ok(make_protocol(ctx, fut))
+}
+
+
+
+
+#[cfg(test)]
+mod test {
+    use std::error::Error;
+
+    use ecdsa::Signature;
+    use frost_core::keys::{SigningShare, VerifyingShare};
+    use k256::{
+        ecdsa::signature::Verifier, ecdsa::VerifyingKey, ProjectivePoint, PublicKey, Scalar,
+        Secp256k1,
+    };
+    use rand_core::OsRng;
+
+    use super::*;
+    use crate::ecdsa::test::{
+        assert_public_key_invariant, run_keygen, run_presign, run_reshare, run_sign,
+    };
+    use crate::{compat::scalar_hash, ecdsa::math::Polynomial, protocol::run_protocol};
+    use crate::compat::x_coordinate;
+
+    #[test]
+    fn test_sign() -> Result<(), Box<dyn Error>> {
+        let max_malicious = 2;
+        let threshold = max_malicious + 1;
+        let msg = b"hello?";
+
+        // Run 4 times to test randomness
+        for _ in 0..4 {
+            let fx = Polynomial::<Secp256k1>::random(&mut OsRng, threshold);
+            // master secret key
+            let x = fx.evaluate_zero();
+            // master public key
+            let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
+
+
+
+            let fa = Polynomial::<Secp256k1>::random(&mut OsRng, threshold);
+            let fk = Polynomial::<Secp256k1>::random(&mut OsRng, threshold);
+
+            let fd = Polynomial::<Secp256k1>::extend_random(&mut OsRng, 2*max_malicious+1, &Scalar::ZERO);
+            let fe = Polynomial::<Secp256k1>::extend_random(&mut OsRng, 2*max_malicious+1, &Scalar::ZERO);
+
+            let k = fk.evaluate_zero();
+            let big_r = ProjectivePoint::GENERATOR * k;
+            let big_r_x_coordinate = x_coordinate::<Secp256k1>(&big_r.to_affine());
+
+            let big_r = VerifyingShare::new(big_r);
+
+            let w = fa.evaluate_zero()* k;
+            let w_invert = w.invert().unwrap();
+
+            let participants = vec![
+                                    Participant::from(0u32),
+                                    Participant::from(1u32),
+                                    Participant::from(2u32),
+                                    Participant::from(3u32),
+                                    Participant::from(4u32),
+                                ];
+
+            #[allow(clippy::type_complexity)]
+            let mut protocols: Vec<(
+                Participant,
+                Box<dyn Protocol<Output = FullSignature<Secp256k1>>>,
+            )> = Vec::with_capacity(participants.len());
+            for p in &participants {
+                let p_scalar = p.scalar::<Secp256k1>();
+                let h_i = fa.evaluate(&p_scalar) *w_invert;
+                let alpha_i = h_i + fd.evaluate(&p_scalar);
+                let beta_i = h_i * big_r_x_coordinate * fx.evaluate(&p_scalar) + fe.evaluate(&p_scalar);
+
+                let alpha_i = SigningShare::new(alpha_i);
+                let beta_i = SigningShare::new(beta_i);
+
+                let presignature = PresignOutput {
+                    big_r,
+                    alpha_i,
+                    beta_i
+                };
+
+                let protocol = sign(
+                    &participants,
+                    *p,
+                    public_key,
+                    presignature,
+                    scalar_hash(msg),
+                )?;
+                protocols.push((*p, Box::new(protocol)));
+            }
+
+            let result = run_protocol(protocols)?;
+            let sig = result[0].1.clone();
+            let sig =
+                Signature::from_scalars(x_coordinate::<Secp256k1>(&sig.big_r), sig.s)?;
+            VerifyingKey::from(&PublicKey::from_affine(public_key).unwrap())
+                .verify(&msg[..], &sig)?;
+        }
+        Ok(())
+    }
 }
