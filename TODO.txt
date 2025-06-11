@@ -5,3 +5,5 @@ Unify interface (CSCurve vs frost curve)
 Add the active adversary functionality for robust ecdsa
 make sure k256 is always activated without --feature k256 build in cargo
 Try adding (if possible) reducing the set of participant signers wrt set of presigners (just like in ot-based ecdsa implementation where you linearize the shares)
+
+Unify the test cases between the different ecdsa implementations
