@@ -27,7 +27,7 @@ use crate::{
     },
     // TODO: The following crates need to be done away with
     compat::CSCurve,
-    ecdsa::sign::FullSignature,
+    ecdsa::FullSignature,
 };
 
 type Scalar = <Secp256K1ScalarField as Field>::Scalar;
@@ -150,7 +150,16 @@ pub fn sign<C: CSCurve>(
 }
 
 
-
+pub(crate) fn sign_box<C: CSCurve>(
+    participants: &[Participant],
+    me: Participant,
+    public_key: C::AffinePoint,
+    presignature: PresignOutput,
+    msg_hash: Scalar,
+) -> Result<Box<dyn Protocol<Output = FullSignature<C>>>, InitializationError>{
+    sign(participants, me, public_key, presignature, msg_hash)
+        .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = FullSignature<C>>>)
+}
 
 #[cfg(test)]
 mod test {
@@ -165,13 +174,21 @@ mod test {
     use rand_core::OsRng;
 
     use super::*;
-    use crate::ecdsa::robust_ecdsa::test::{run_presign, run_sign};
-
-    use crate::ecdsa::test::{
-        assert_public_key_invariant, run_keygen, run_reshare
+    use crate::ecdsa::{
+        robust_ecdsa::test::run_presign,
+        test::{
+            assert_public_key_invariant,
+            run_keygen,
+            run_reshare,
+            run_sign,
+        },
+        math::Polynomial,
     };
-    use crate::{compat::scalar_hash, ecdsa::math::Polynomial, protocol::run_protocol};
-    use crate::compat::x_coordinate;
+
+    use crate::{
+        compat::{scalar_hash, x_coordinate},
+        protocol::run_protocol
+    };
 
     #[test]
     fn test_sign() -> Result<(), Box<dyn Error>> {
@@ -302,7 +319,7 @@ mod test {
 
         let msg = b"hello world";
 
-        run_sign(presign_result, public_key.to_element().to_affine(), msg);
+        run_sign(presign_result, public_key.to_element().to_affine(), msg, sign_box);
         Ok(())
     }
 
@@ -347,7 +364,7 @@ mod test {
 
         let msg = b"hello world";
 
-        run_sign(presign_result, public_key.to_element().to_affine(), msg);
+        run_sign(presign_result, public_key.to_element().to_affine(), msg, sign_box);
         Ok(())
     }
 }

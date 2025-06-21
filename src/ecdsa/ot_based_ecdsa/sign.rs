@@ -1,35 +1,16 @@
 use elliptic_curve::{ops::Invert, scalar::IsHigh, Field, Group, ScalarPrimitive};
 use subtle::ConditionallySelectable;
 
-use crate::protocol::internal::Comms;
+use super::presign::PresignOutput;
 use crate::{
     compat::{self, CSCurve},
-    ecdsa::presign::PresignOutput,
+    ecdsa::FullSignature,
     participants::{ParticipantCounter, ParticipantList},
     protocol::{
-        internal::{make_protocol, SharedChannel},
+        internal::{Comms, make_protocol, SharedChannel},
         InitializationError, Participant, Protocol, ProtocolError,
     },
 };
-
-/// Represents a signature with extra information, to support different variants of ECDSA.
-///
-/// An ECDSA signature is usually two scalars. The first scalar is derived from
-/// a point on the curve, and because this process is lossy, some other variants
-/// of ECDSA also include some extra information in order to recover this point.
-///
-/// Furthermore, some signature formats may disagree on how precisely to serialize
-/// different values as bytes.
-///
-/// To support these variants, this simply gives you a normal signature, along with the entire
-/// first point.
-#[derive(Clone)]
-pub struct FullSignature<C: CSCurve> {
-    /// This is the entire first point.
-    pub big_r: C::AffinePoint,
-    /// This is the second scalar, normalized to be in the lower range.
-    pub s: C::Scalar,
-}
 
 impl<C: CSCurve> FullSignature<C> {
     #[must_use]
@@ -150,11 +131,12 @@ mod test {
     };
     use rand_core::OsRng;
 
-    use super::*;
-    use crate::ecdsa::test::{
-        assert_public_key_invariant, run_keygen, run_presign, run_reshare, run_sign,
+    use crate::ecdsa::ot_based_ecdsa::{
+        test::{
+            assert_public_key_invariant, run_keygen, run_presign, run_reshare, run_sign,
+        },
+        triples::deal,
     };
-    use crate::ecdsa::triples::deal;
     use crate::{compat::scalar_hash, ecdsa::math::Polynomial, protocol::run_protocol};
 
     #[test]

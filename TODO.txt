@@ -7,3 +7,6 @@ make sure k256 is always activated without --feature k256 build in cargo
 Try adding (if possible) reducing the set of participant signers wrt set of presigners (just like in ot-based ecdsa implementation where you linearize the shares)
 
 Unify the test cases between the different ecdsa implementations
+
+
+Add the unified test to both ecdsa files
