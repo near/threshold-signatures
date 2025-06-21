@@ -1,17 +1,21 @@
-use crate::compat::CSCurve;
-use crate::ecdsa::triples::{TriplePub, TripleShare};
-use crate::ecdsa::KeygenOutput;
-use crate::participants::ParticipantCounter;
-use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
-use crate::protocol::{InitializationError, Protocol};
-use crate::{
-    participants::ParticipantList,
-    protocol::{Participant, ProtocolError},
-};
 use elliptic_curve::{Field, Group, ScalarPrimitive};
-use frost_secp256k1::keys::SigningShare;
-use frost_secp256k1::VerifyingKey;
+use frost_secp256k1::{
+    VerifyingKey,
+    keys::SigningShare,
+};
 use serde::{Deserialize, Serialize};
+
+use super::triples::{TriplePub, TripleShare};
+
+use crate::ecdsa::KeygenOutput;
+use crate::compat::CSCurve;
+use crate::protocol::{
+    Participant,
+    InitializationError, Protocol, ProtocolError,
+    internal::{make_protocol, Comms, SharedChannel}
+};
+use crate::participants::{ParticipantList, ParticipantCounter};
+
 
 /// The output of the presigning protocol.
 ///
@@ -255,9 +259,12 @@ mod test {
     use super::*;
     use rand_core::OsRng;
 
-    use crate::{ecdsa::math::Polynomial, ecdsa::triples, protocol::run_protocol};
-    use frost_secp256k1::keys::{PublicKeyPackage, VerifyingShare};
-    use frost_secp256k1::Identifier;
+    use crate::ecdsa::{
+        ot_based_ecdsa::triples,
+        math::Polynomial
+    };
+    use crate::protocol::run_protocol;
+    use frost_secp256k1::keys::PublicKeyPackage;
     use std::collections::BTreeMap;
 
     use k256::{ProjectivePoint, Secp256k1};
@@ -294,9 +301,8 @@ mod test {
             .zip(triple1_shares.into_iter())
         {
             let private_share = f.evaluate(&p.scalar::<Secp256k1>());
-            let dummy_tree: BTreeMap<Identifier, VerifyingShare> = BTreeMap::new();
             let verifying_key = VerifyingKey::new(big_x);
-            let public_key_package = PublicKeyPackage::new(dummy_tree, verifying_key);
+            let public_key_package = PublicKeyPackage::new(BTreeMap::new(), verifying_key);
             let keygen_out = KeygenOutput {
                 private_share: SigningShare::new(private_share),
                 public_key: *public_key_package.verifying_key(),
