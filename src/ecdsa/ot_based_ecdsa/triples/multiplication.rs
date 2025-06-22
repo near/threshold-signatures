@@ -199,7 +199,7 @@ mod test {
     };
 
     use super::multiplication;
-    use crate::ecdsa::triples::multiplication::multiplication_many;
+    use crate::ecdsa::ot_based_ecdsa::triples::multiplication::multiplication_many;
     use crate::protocol::internal::Comms;
 
     #[test]

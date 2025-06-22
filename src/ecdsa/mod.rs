@@ -72,4 +72,4 @@ pub mod math;
 mod test;
 
 pub mod robust_ecdsa;
-// pub mod ot_based_ecdsa;
+pub mod ot_based_ecdsa;

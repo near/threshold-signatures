@@ -1,7 +1,6 @@
 use elliptic_curve::{Field, Group, ScalarPrimitive};
 use rand_core::OsRng;
 
-use crate::ecdsa::triples::multiplication::multiplication_many;
 use crate::{
     compat::{CSCurve, SerializablePoint},
     crypto::{
@@ -18,7 +17,11 @@ use crate::{
     serde::encode,
 };
 
-use super::{multiplication::multiplication, TriplePub, TripleShare};
+use super::{
+    multiplication::{multiplication, multiplication_many},
+    TriplePub,
+    TripleShare
+};
 use crate::protocol::internal::Comms;
 
 /// The output of running the triple generation protocol.
@@ -1146,7 +1149,7 @@ mod test {
     use k256::{ProjectivePoint, Secp256k1};
 
     use crate::{
-        ecdsa::triples::generate_triple,
+        ecdsa::ot_based_ecdsa::triples::generate_triple,
         participants::ParticipantList,
         protocol::{run_protocol, Participant, Protocol, ProtocolError},
     };
