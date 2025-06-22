@@ -174,7 +174,7 @@ mod test {
     use ecdsa::elliptic_curve::{bigint::Bounded, Curve};
     use k256::{Scalar, Secp256k1};
     use rand_core::RngCore;
-    use crate::ecdsa::triples::constants::SECURITY_PARAMETER;
+    use crate::ecdsa::ot_based_ecdsa::triples::constants::SECURITY_PARAMETER;
     use super::*;
 
     #[test]

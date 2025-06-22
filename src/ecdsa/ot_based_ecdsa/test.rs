@@ -1,6 +1,47 @@
+use std::error::Error;
 use rand_core::OsRng;
-use super::presign::{presign, PresignArguments, PresignOutput};
-use super::triples::{self, TriplePub, TripleShare};
+use k256::Secp256k1;
+use super::presign::{
+    presign,
+    PresignArguments,
+    PresignOutput
+};
+use super::triples::{
+    deal,
+    TriplePub,
+    TripleShare
+};
+use super::sign::sign;
+use crate::protocol::{
+    run_protocol,
+    Participant,
+    Protocol,
+    InitializationError,
+};
+use crate::ecdsa::{
+    test::{
+        run_keygen,
+        run_reshare,
+        run_sign,
+        assert_public_key_invariant,
+    },
+    KeygenOutput,
+    FullSignature,
+};
+// TODO: The following crates need to be done away with
+use crate::compat::CSCurve;
+
+
+fn sign_box<C: CSCurve>(
+    participants: &[Participant],
+    me: Participant,
+    public_key: C::AffinePoint,
+    presignature: PresignOutput<C>,
+    msg_hash: C::Scalar,
+) -> Result<Box<dyn Protocol<Output = FullSignature<C>>>, InitializationError>{
+    sign(participants, me, public_key, presignature, msg_hash)
+        .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = FullSignature<C>>>)
+}
 
 pub fn run_presign(
     participants: Vec<(Participant, KeygenOutput)>,
@@ -46,6 +87,101 @@ pub fn run_presign(
     run_protocol(protocols).unwrap()
 }
 
+
+#[test]
+fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
+    let participants = vec![
+        Participant::from(0u32),
+        Participant::from(1u32),
+        Participant::from(2u32),
+        Participant::from(3u32),
+        Participant::from(4u32),
+    ];
+    let threshold = 3;
+    let result0 = run_keygen(&participants, threshold)?;
+    assert_public_key_invariant(&result0)?;
+
+    let pub_key = result0[2].1.public_key.clone();
+
+    // Run heavy reshare
+    let new_threshold = 5;
+    let mut new_participant = participants.clone();
+    new_participant.push(Participant::from(31u32));
+    new_participant.push(Participant::from(32u32));
+    new_participant.push(Participant::from(33u32));
+    let mut key_packages = run_reshare(
+        &participants,
+        &pub_key,
+        result0,
+        threshold,
+        new_threshold,
+        new_participant.clone(),
+    )?;
+    assert_public_key_invariant(&key_packages)?;
+    key_packages.sort_by_key(|(p, _)| *p);
+
+    let public_key = key_packages[0].1.public_key.clone();
+    // Prepare triples
+    let (pub0, shares0) = deal(&mut OsRng, &new_participant, new_threshold);
+    let (pub1, shares1) = deal(&mut OsRng, &new_participant, new_threshold);
+
+    // Presign
+    let mut presign_result =
+        run_presign(key_packages, shares0, shares1, &pub0, &pub1, new_threshold);
+    presign_result.sort_by_key(|(p, _)| *p);
+
+    let msg = b"hello world";
+
+    run_sign(presign_result, public_key.to_element().to_affine(), msg, sign_box);
+    Ok(())
+}
+
+#[test]
+fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
+    let participants = vec![
+        Participant::from(0u32),
+        Participant::from(1u32),
+        Participant::from(2u32),
+        Participant::from(3u32),
+        Participant::from(4u32),
+    ];
+    let threshold = 4;
+    let result0 = run_keygen(&participants, threshold)?;
+    assert_public_key_invariant(&result0)?;
+
+    let pub_key = result0[2].1.public_key.clone();
+
+    // Run heavy reshare
+    let new_threshold = 3;
+    let mut new_participant = participants.clone();
+    new_participant.pop();
+    let mut key_packages = run_reshare(
+        &participants,
+        &pub_key,
+        result0,
+        threshold,
+        new_threshold,
+        new_participant.clone(),
+    )?;
+    assert_public_key_invariant(&key_packages)?;
+    key_packages.sort_by_key(|(p, _)| *p);
+
+    let public_key = key_packages[0].1.public_key.clone();
+    // Prepare triples
+    let (pub0, shares0) = deal(&mut OsRng, &new_participant, new_threshold);
+    let (pub1, shares1) = deal(&mut OsRng, &new_participant, new_threshold);
+
+    // Presign
+    let mut presign_result =
+        run_presign(key_packages, shares0, shares1, &pub0, &pub1, new_threshold);
+    presign_result.sort_by_key(|(p, _)| *p);
+
+    let msg = b"hello world";
+
+    run_sign(presign_result, public_key.to_element().to_affine(), msg, sign_box);
+    Ok(())
+}
+
 #[test]
 fn test_e2e() -> Result<(), Box<dyn Error>> {
     let participants = vec![
@@ -62,15 +198,15 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
     assert_eq!(keygen_result[0].1.public_key, keygen_result[1].1.public_key);
     assert_eq!(keygen_result[1].1.public_key, keygen_result[2].1.public_key);
 
-    let (pub0, shares0) = triples::deal(&mut OsRng, &participants, threshold);
-    let (pub1, shares1) = triples::deal(&mut OsRng, &participants, threshold);
+    let (pub0, shares0) = deal(&mut OsRng, &participants, threshold);
+    let (pub1, shares1) = deal(&mut OsRng, &participants, threshold);
 
     let mut presign_result = run_presign(keygen_result, shares0, shares1, &pub0, &pub1, threshold);
     presign_result.sort_by_key(|(p, _)| *p);
 
     let msg = b"hello world";
 
-    run_sign(presign_result, public_key.to_element().to_affine(), msg);
+    run_sign(presign_result, public_key.to_element().to_affine(), msg, sign_box);
     Ok(())
 }
 
@@ -90,14 +226,14 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     assert_eq!(keygen_result[0].1.public_key, keygen_result[1].1.public_key);
     assert_eq!(keygen_result[1].1.public_key, keygen_result[2].1.public_key);
 
-    let (pub0, shares0) = triples::deal(&mut OsRng, &participants, threshold);
-    let (pub1, shares1) = triples::deal(&mut OsRng, &participants, threshold);
+    let (pub0, shares0) = deal(&mut OsRng, &participants, threshold);
+    let (pub1, shares1) = deal(&mut OsRng, &participants, threshold);
 
     let mut presign_result = run_presign(keygen_result, shares0, shares1, &pub0, &pub1, threshold);
     presign_result.sort_by_key(|(p, _)| *p);
 
     let msg = b"hello world";
 
-    run_sign(presign_result, public_key.to_element().to_affine(), msg);
+    run_sign(presign_result, public_key.to_element().to_affine(), msg, sign_box);
     Ok(())
 }

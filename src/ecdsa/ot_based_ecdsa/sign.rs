@@ -1,4 +1,7 @@
-use elliptic_curve::{ops::Invert, scalar::IsHigh, Field, Group, ScalarPrimitive};
+use elliptic_curve::{
+    scalar::IsHigh,
+    ScalarPrimitive
+};
 use subtle::ConditionallySelectable;
 
 use super::presign::PresignOutput;
@@ -11,20 +14,6 @@ use crate::{
         InitializationError, Participant, Protocol, ProtocolError,
     },
 };
-
-impl<C: CSCurve> FullSignature<C> {
-    #[must_use]
-    pub fn verify(&self, public_key: &C::AffinePoint, msg_hash: &C::Scalar) -> bool {
-        let r: C::Scalar = compat::x_coordinate::<C>(&self.big_r);
-        if r.is_zero().into() || self.s.is_zero().into() {
-            return false;
-        }
-        let s_inv = self.s.invert_vartime().unwrap();
-        let reproduced = (C::ProjectivePoint::generator() * (*msg_hash * s_inv))
-            + (C::ProjectivePoint::from(*public_key) * (r * s_inv));
-        compat::x_coordinate::<C>(&reproduced.into()) == r
-    }
-}
 
 async fn do_sign<C: CSCurve>(
     mut chan: SharedChannel,
@@ -123,21 +112,25 @@ pub fn sign<C: CSCurve>(
 #[cfg(test)]
 mod test {
     use std::error::Error;
-
     use ecdsa::Signature;
     use k256::{
         ecdsa::signature::Verifier, ecdsa::VerifyingKey, ProjectivePoint, PublicKey, Scalar,
         Secp256k1,
     };
     use rand_core::OsRng;
-
-    use crate::ecdsa::ot_based_ecdsa::{
-        test::{
-            assert_public_key_invariant, run_keygen, run_presign, run_reshare, run_sign,
-        },
-        triples::deal,
+    use super::{
+        PresignOutput,
+        FullSignature,
+        sign,
     };
-    use crate::{compat::scalar_hash, ecdsa::math::Polynomial, protocol::run_protocol};
+    use crate::{
+        ecdsa::math::Polynomial,
+        protocol::{run_protocol, Participant,Protocol}
+    };
+    use crate::compat::{
+        x_coordinate,
+        scalar_hash,
+    };
 
     #[test]
     fn test_sign() -> Result<(), Box<dyn Error>> {
@@ -185,104 +178,10 @@ mod test {
             let result = run_protocol(protocols)?;
             let sig = result[0].1.clone();
             let sig =
-                Signature::from_scalars(compat::x_coordinate::<Secp256k1>(&sig.big_r), sig.s)?;
+                Signature::from_scalars(x_coordinate::<Secp256k1>(&sig.big_r), sig.s)?;
             VerifyingKey::from(&PublicKey::from_affine(public_key).unwrap())
                 .verify(&msg[..], &sig)?;
         }
-        Ok(())
-    }
-
-    #[test]
-    fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
-        let participants = vec![
-            Participant::from(0u32),
-            Participant::from(1u32),
-            Participant::from(2u32),
-            Participant::from(3u32),
-            Participant::from(4u32),
-        ];
-        let threshold = 3;
-        let result0 = run_keygen(&participants, threshold)?;
-        assert_public_key_invariant(&result0)?;
-
-        let pub_key = result0[2].1.public_key.clone();
-
-        // Run heavy reshare
-        let new_threshold = 5;
-        let mut new_participant = participants.clone();
-        new_participant.push(Participant::from(31u32));
-        new_participant.push(Participant::from(32u32));
-        new_participant.push(Participant::from(33u32));
-        let mut key_packages = run_reshare(
-            &participants,
-            &pub_key,
-            result0,
-            threshold,
-            new_threshold,
-            new_participant.clone(),
-        )?;
-        assert_public_key_invariant(&key_packages)?;
-        key_packages.sort_by_key(|(p, _)| *p);
-
-        let public_key = key_packages[0].1.public_key.clone();
-        // Prepare triples
-        let (pub0, shares0) = deal(&mut OsRng, &new_participant, new_threshold);
-        let (pub1, shares1) = deal(&mut OsRng, &new_participant, new_threshold);
-
-        // Presign
-        let mut presign_result =
-            run_presign(key_packages, shares0, shares1, &pub0, &pub1, new_threshold);
-        presign_result.sort_by_key(|(p, _)| *p);
-
-        let msg = b"hello world";
-
-        run_sign(presign_result, public_key.to_element().to_affine(), msg);
-        Ok(())
-    }
-
-    #[test]
-    fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
-        let participants = vec![
-            Participant::from(0u32),
-            Participant::from(1u32),
-            Participant::from(2u32),
-            Participant::from(3u32),
-            Participant::from(4u32),
-        ];
-        let threshold = 4;
-        let result0 = run_keygen(&participants, threshold)?;
-        assert_public_key_invariant(&result0)?;
-
-        let pub_key = result0[2].1.public_key.clone();
-
-        // Run heavy reshare
-        let new_threshold = 3;
-        let mut new_participant = participants.clone();
-        new_participant.pop();
-        let mut key_packages = run_reshare(
-            &participants,
-            &pub_key,
-            result0,
-            threshold,
-            new_threshold,
-            new_participant.clone(),
-        )?;
-        assert_public_key_invariant(&key_packages)?;
-        key_packages.sort_by_key(|(p, _)| *p);
-
-        let public_key = key_packages[0].1.public_key.clone();
-        // Prepare triples
-        let (pub0, shares0) = deal(&mut OsRng, &new_participant, new_threshold);
-        let (pub1, shares1) = deal(&mut OsRng, &new_participant, new_threshold);
-
-        // Presign
-        let mut presign_result =
-            run_presign(key_packages, shares0, shares1, &pub0, &pub1, new_threshold);
-        presign_result.sort_by_key(|(p, _)| *p);
-
-        let msg = b"hello world";
-
-        run_sign(presign_result, public_key.to_element().to_affine(), msg);
         Ok(())
     }
 }
