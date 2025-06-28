@@ -1,5 +1,4 @@
 use std::error::Error;
-use k256::Scalar;
 
 use super::{
     presign::{presign, PresignArguments, PresignOutput},
@@ -16,19 +15,19 @@ use crate::ecdsa::{
     },
     KeygenOutput,
     FullSignature,
+    Scalar,
 };
-// TODO: The following crates need to be done away with
-use crate::compat::CSCurve;
+use k256::AffinePoint;
 
-fn sign_box<C: CSCurve>(
+fn sign_box(
     participants: &[Participant],
     me: Participant,
-    public_key: C::AffinePoint,
+    public_key: AffinePoint,
     presignature: PresignOutput,
     msg_hash: Scalar,
-) -> Result<Box<dyn Protocol<Output = FullSignature<C>>>, InitializationError>{
+) -> Result<Box<dyn Protocol<Output = FullSignature>>, InitializationError>{
     sign(participants, me, public_key, presignature, msg_hash)
-        .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = FullSignature<C>>>)
+        .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = FullSignature>>)
 }
 
 pub fn run_presign(

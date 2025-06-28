@@ -4,15 +4,12 @@ use elliptic_curve::{
 };
 
 use frost_secp256k1::{
-    Secp256K1ScalarField,
-    Field,
     keys::{
         SigningShare,
         VerifyingShare,
     }
 };
 
-use super::presign::PresignOutput;
 use elliptic_curve::CurveArithmetic;
 
 use crate::{
@@ -27,11 +24,10 @@ use crate::{
     },
     // TODO: The following crates need to be done away with
     compat::CSCurve,
-    ecdsa::FullSignature,
+    ecdsa::{FullSignature, Scalar},
 };
-
-type Scalar = <Secp256K1ScalarField as Field>::Scalar;
-
+use super::presign::PresignOutput;
+use k256::AffinePoint;
 
 /// Transforms a verification key of type Secp256k1SHA256 to CSCurve of cait-sith
 fn from_secp256k1sha256_to_cscurve_point<C: CSCurve>(
@@ -57,14 +53,14 @@ fn from_secp256k1sha256_to_cscurve_scalar<C: CSCurve>(private_share: &SigningSha
     C::from_bytes_to_scalar(bytes).unwrap()
 }
 
-async fn do_sign<C: CSCurve>(
+async fn do_sign(
     mut chan: SharedChannel,
     participants: ParticipantList,
     me: Participant,
-    public_key: C::AffinePoint,
+    public_key: AffinePoint,
     presignature: PresignOutput,
     msg_hash: Scalar,
-) -> Result<FullSignature<C>, ProtocolError> {
+) -> Result<FullSignature, ProtocolError> {
     let s_me = msg_hash * presignature.alpha_i.to_scalar() + presignature.beta_i.to_scalar();
     let s_me = SigningShare::new(s_me);
 
@@ -85,7 +81,7 @@ async fn do_sign<C: CSCurve>(
     }
 
     let s = eval_interpolation(&s_map, None)?;
-    // Only for formatting
+    // // Only for formatting
     let s = from_secp256k1sha256_to_cscurve_scalar::<C>(&s);
     let big_r = from_secp256k1sha256_to_cscurve_point::<C>(&presignature.big_r)?;
 
@@ -102,7 +98,6 @@ async fn do_sign<C: CSCurve>(
         s,
     };
 
-    let msg_hash = from_secp256k1sha256_to_cscurve_scalar::<C>(&SigningShare::new(msg_hash));
     if !sig.verify(&public_key, &msg_hash) {
         return Err(ProtocolError::AssertionFailed(
             "signature failed to verify".to_string(),
@@ -114,13 +109,13 @@ async fn do_sign<C: CSCurve>(
 
 
 // TODO: try to unify both sign functions in robust ecdsa and in ot_based_ecdsa
-pub fn sign<C: CSCurve>(
+pub fn sign(
     participants: &[Participant],
     me: Participant,
-    public_key: C::AffinePoint,
+    public_key: AffinePoint,
     presignature: PresignOutput,
     msg_hash: Scalar,
-) -> Result<impl Protocol<Output = FullSignature<C>>, InitializationError> {
+) -> Result<impl Protocol<Output = FullSignature>, InitializationError> {
 
     if participants.len() < 2 {
         return Err(InitializationError::BadParameters(format!(
@@ -214,7 +209,7 @@ mod test {
             #[allow(clippy::type_complexity)]
             let mut protocols: Vec<(
                 Participant,
-                Box<dyn Protocol<Output = FullSignature<Secp256k1>>>,
+                Box<dyn Protocol<Output = FullSignature>>,
             )> = Vec::with_capacity(participants.len());
             for p in &participants {
                 let p_scalar = p.scalar::<Secp256k1>();
