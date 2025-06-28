@@ -38,9 +38,9 @@ fn sign_box<C: CSCurve>(
     public_key: C::AffinePoint,
     presignature: PresignOutput<C>,
     msg_hash: C::Scalar,
-) -> Result<Box<dyn Protocol<Output = FullSignature<C>>>, InitializationError>{
+) -> Result<Box<dyn Protocol<Output = FullSignature>, InitializationError>{
     sign(participants, me, public_key, presignature, msg_hash)
-        .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = FullSignature<C>>>)
+        .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = FullSignature>>)
 }
 
 pub fn run_presign(

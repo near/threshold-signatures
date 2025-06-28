@@ -1,4 +1,4 @@
-use k256::{AffinePoint, Secp256k1, Scalar};
+use k256::{AffinePoint, Scalar};
 use std::error::Error;
 use frost_secp256k1::VerifyingKey;
 
@@ -130,7 +130,7 @@ pub fn run_sign <PresignOutput, F>(
     public_key: AffinePoint,
     msg: &[u8],
     sign_box: F,
-) -> Vec<(Participant, FullSignature<Secp256k1>)>
+) -> Vec<(Participant, FullSignature)>
 where
 F: Fn(
     &[Participant],
@@ -138,11 +138,11 @@ F: Fn(
     AffinePoint,
     PresignOutput,
     Scalar,
-) -> Result<Box<dyn Protocol<Output = FullSignature<Secp256k1>>>, InitializationError>
+) -> Result<Box<dyn Protocol<Output = FullSignature>>, InitializationError>
 {
     let mut protocols: Vec<(
         Participant,
-        Box<dyn Protocol<Output = FullSignature<Secp256k1>>>,
+        Box<dyn Protocol<Output = FullSignature>>,
     )> = Vec::with_capacity(participants_outs.len());
 
     let participant_list: Vec<Participant> = participants_outs.iter().map(|(p, _)| *p).collect();
