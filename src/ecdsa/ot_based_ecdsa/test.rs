@@ -1,6 +1,5 @@
 use std::error::Error;
 use rand_core::OsRng;
-use k256::Secp256k1;
 use super::presign::{
     presign,
     PresignArguments,
@@ -27,37 +26,38 @@ use crate::ecdsa::{
     },
     KeygenOutput,
     FullSignature,
+    Scalar,
+    AffinePoint,
+    Secp256K1Sha256
 };
-// TODO: The following crates need to be done away with
-use crate::compat::CSCurve;
 
 
-fn sign_box<C: CSCurve>(
+fn sign_box(
     participants: &[Participant],
     me: Participant,
-    public_key: C::AffinePoint,
-    presignature: PresignOutput<C>,
-    msg_hash: C::Scalar,
-) -> Result<Box<dyn Protocol<Output = FullSignature>, InitializationError>{
+    public_key: AffinePoint,
+    presignature: PresignOutput,
+    msg_hash: Scalar,
+) -> Result<Box<dyn Protocol<Output = FullSignature>>, InitializationError>{
     sign(participants, me, public_key, presignature, msg_hash)
         .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = FullSignature>>)
 }
 
 pub fn run_presign(
     participants: Vec<(Participant, KeygenOutput)>,
-    shares0: Vec<TripleShare<Secp256k1>>,
-    shares1: Vec<TripleShare<Secp256k1>>,
-    pub0: &TriplePub<Secp256k1>,
-    pub1: &TriplePub<Secp256k1>,
+    shares0: Vec<TripleShare<Secp256K1Sha256>>,
+    shares1: Vec<TripleShare<Secp256K1Sha256>>,
+    pub0: &TriplePub<Secp256K1Sha256>,
+    pub1: &TriplePub<Secp256K1Sha256>,
     threshold: usize,
-) -> Vec<(Participant, PresignOutput<Secp256k1>)> {
+) -> Vec<(Participant, PresignOutput)> {
     assert!(participants.len() == shares0.len());
     assert!(participants.len() == shares1.len());
 
     #[allow(clippy::type_complexity)]
     let mut protocols: Vec<(
         Participant,
-        Box<dyn Protocol<Output = PresignOutput<Secp256k1>>>,
+        Box<dyn Protocol<Output = PresignOutput>>,
     )> = Vec::with_capacity(participants.len());
 
     let participant_list: Vec<Participant> = participants.iter().map(|(p, _)| *p).collect();

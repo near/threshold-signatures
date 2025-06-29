@@ -16,8 +16,8 @@ use crate::ecdsa::{
     KeygenOutput,
     FullSignature,
     Scalar,
+    AffinePoint,
 };
-use k256::AffinePoint;
 
 fn sign_box(
     participants: &[Participant],
