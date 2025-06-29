@@ -6,8 +6,12 @@ use subtle::ConditionallySelectable;
 
 use super::presign::PresignOutput;
 use crate::{
-    compat::{self, CSCurve},
-    ecdsa::FullSignature,
+    ecdsa::{
+        FullSignature,
+        Scalar,
+        AffinePoint,
+        x_coordinate,
+    },
     participants::{ParticipantCounter, ParticipantList},
     protocol::{
         internal::{Comms, make_protocol, SharedChannel},
@@ -15,14 +19,14 @@ use crate::{
     },
 };
 
-async fn do_sign<C: CSCurve>(
+async fn do_sign(
     mut chan: SharedChannel,
     participants: ParticipantList,
     me: Participant,
-    public_key: C::AffinePoint,
-    presignature: PresignOutput<C>,
-    msg_hash: C::Scalar,
-) -> Result<FullSignature<C>, ProtocolError> {
+    public_key: AffinePoint,
+    presignature: PresignOutput,
+    msg_hash: Scalar,
+) -> Result<FullSignature, ProtocolError> {
     // Spec 1.1
     let lambda = participants.lagrange::<C>(me);
     let k_i = lambda * presignature.k;
@@ -31,31 +35,29 @@ async fn do_sign<C: CSCurve>(
     let sigma_i = lambda * presignature.sigma;
 
     // Spec 1.3
-    let r = compat::x_coordinate::<C>(&presignature.big_r);
-    let s_i: C::Scalar = msg_hash * k_i + r * sigma_i;
+    let r = x_coordinate(&presignature.big_r);
+    let s_i = msg_hash * k_i + r * sigma_i;
 
     // Spec 1.4
     let wait0 = chan.next_waitpoint();
-    {
-        let s_i: ScalarPrimitive<C> = s_i.into();
-        chan.send_many(wait0, &s_i);
-    }
+    chan.send_many(wait0, &s_i);
 
     // Spec 2.1 + 2.2
     let mut seen = ParticipantCounter::new(&participants);
-    let mut s: C::Scalar = s_i;
+    let mut s = s_i;
     seen.put(me);
     while !seen.full() {
-        let (from, s_j): (_, ScalarPrimitive<C>) = chan.recv(wait0).await?;
+        let (from, s_j): (_, Scalar) = chan.recv(wait0).await?;
         if !seen.put(from) {
             continue;
         }
-        s += C::Scalar::from(s_j)
+        s += s_j
     }
 
     // Spec 2.3
     // Optionally, normalize s
     s.conditional_assign(&(-s), s.is_high());
+
     let sig = FullSignature {
         big_r: presignature.big_r,
         s,
@@ -75,13 +77,13 @@ async fn do_sign<C: CSCurve>(
 /// **WARNING** You must absolutely hash an actual message before passing it to
 /// this function. Allowing the signing of arbitrary scalars *is* a security risk,
 /// and this function only tolerates this risk to allow for genericity.
-pub fn sign<C: CSCurve>(
+pub fn sign(
     participants: &[Participant],
     me: Participant,
-    public_key: C::AffinePoint,
-    presignature: PresignOutput<C>,
-    msg_hash: C::Scalar,
-) -> Result<impl Protocol<Output = FullSignature<C>>, InitializationError> {
+    public_key: AffinePoint,
+    presignature: PresignOutput,
+    msg_hash: Scalar,
+) -> Result<impl Protocol<Output = FullSignature>, InitializationError> {
     if participants.len() < 2 {
         return Err(InitializationError::BadParameters(format!(
             "participant count cannot be < 2, found: {}",
@@ -156,7 +158,7 @@ mod test {
             #[allow(clippy::type_complexity)]
             let mut protocols: Vec<(
                 Participant,
-                Box<dyn Protocol<Output = FullSignature<Secp256k1>>>,
+                Box<dyn Protocol<Output = FullSignature>>,
             )> = Vec::with_capacity(participants.len());
             for p in &participants {
                 let p_scalar = p.scalar::<Secp256k1>();

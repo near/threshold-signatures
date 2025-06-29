@@ -9,7 +9,7 @@ use elliptic_curve::{
 
 use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat};
 
-use k256::{ProjectivePoint, AffinePoint};
+use k256::ProjectivePoint;
 
 use rand_core::CryptoRngCore;
 
@@ -29,6 +29,8 @@ pub struct KeygenOutput {
 }
 
 pub type Scalar = <Secp256K1ScalarField as Field>::Scalar;
+pub type AffinePoint = k256::AffinePoint;
+
 /// This is the trait that any curve usable in this library must implement.
 /// This library does provide a few feature-gated implementations for curves
 /// itself, beyond that you'll need to implement this trait yourself.

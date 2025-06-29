@@ -1,16 +1,7 @@
-use elliptic_curve::{
-    scalar::IsHigh,
-    group::Curve,
-};
+use elliptic_curve::scalar::IsHigh;
 
-use frost_secp256k1::{
-    keys::{
-        SigningShare,
-        VerifyingShare,
-    }
-};
-
-use elliptic_curve::CurveArithmetic;
+use frost_secp256k1::keys::SigningShare;
+use subtle::ConditionallySelectable;
 
 use crate::{
     crypto::polynomials::eval_interpolation,
@@ -22,36 +13,9 @@ use crate::{
         InitializationError,
         Protocol
     },
-    // TODO: The following crates need to be done away with
-    compat::CSCurve,
-    ecdsa::{FullSignature, Scalar},
+    ecdsa::{FullSignature, Scalar, AffinePoint},
 };
 use super::presign::PresignOutput;
-use k256::AffinePoint;
-
-/// Transforms a verification key of type Secp256k1SHA256 to CSCurve of cait-sith
-fn from_secp256k1sha256_to_cscurve_point<C: CSCurve>(
-    vshare: &VerifyingShare,
-) -> Result<<C as CurveArithmetic>::AffinePoint, ProtocolError> {
-    // serializes into a canonical byte array buf of length 33 bytes using the  affine point representation
-    let bytes = vshare
-        .serialize()
-        .map_err(|_| ProtocolError::PointSerialization)?;
-
-    let bytes: [u8; 33] = bytes.try_into().expect("Slice is not 33 bytes long");
-    let point = match C::from_bytes_to_affine(bytes) {
-        Some(point) => point,
-        _ => return Err(ProtocolError::PointSerialization),
-    };
-    Ok(point.to_affine())
-}
-
-/// Transforms a secret key of type Secp256k1Sha256 to CSCurve of cait-sith
-fn from_secp256k1sha256_to_cscurve_scalar<C: CSCurve>(private_share: &SigningShare) -> C::Scalar {
-    let bytes = private_share.to_scalar().to_bytes();
-    let bytes: [u8; 32] = bytes.try_into().expect("Slice is not 32 bytes long");
-    C::from_bytes_to_scalar(bytes).unwrap()
-}
 
 async fn do_sign(
     mut chan: SharedChannel,
@@ -80,18 +44,11 @@ async fn do_sign(
         s_map.put(from, s_i);
     }
 
-    let s = eval_interpolation(&s_map, None)?;
-    // // Only for formatting
-    let s = from_secp256k1sha256_to_cscurve_scalar::<C>(&s);
-    let big_r = from_secp256k1sha256_to_cscurve_point::<C>(&presignature.big_r)?;
+    let mut s = eval_interpolation(&s_map, None)?.to_scalar();
+    let big_r = presignature.big_r.to_element().to_affine();
 
     // Normalize s
-    let minus_s = -s;
-    let s = if s.is_high().into() {
-        minus_s
-    }else{
-        s
-    };
+    s.conditional_assign(&(-s), s.is_high());
 
     let sig = FullSignature {
         big_r,

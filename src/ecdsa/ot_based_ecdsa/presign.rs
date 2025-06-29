@@ -22,13 +22,13 @@ use crate::participants::{ParticipantList, ParticipantCounter};
 /// This output is basically all the parts of the signature that we can perform
 /// without knowing the message.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PresignOutput<C: CSCurve> {
+pub struct PresignOutput {
     /// The public nonce commitment.
-    pub big_r: C::AffinePoint,
+    pub big_r: AffinePoint,
     /// Our share of the nonce value.
-    pub k: C::Scalar,
+    pub k: Scalar,
     /// Our share of the sigma value.
-    pub sigma: C::Scalar,
+    pub sigma: Scalar,
 }
 
 /// The arguments needed to create a presignature.
