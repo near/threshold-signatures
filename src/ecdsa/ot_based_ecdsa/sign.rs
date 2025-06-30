@@ -1,7 +1,4 @@
-use elliptic_curve::{
-    scalar::IsHigh,
-    ScalarPrimitive
-};
+use elliptic_curve::scalar::IsHigh;
 use subtle::ConditionallySelectable;
 
 use super::presign::PresignOutput;
@@ -11,6 +8,7 @@ use crate::{
         Scalar,
         AffinePoint,
         x_coordinate,
+        Secp256K1Sha256,
     },
     participants::{ParticipantCounter, ParticipantList},
     protocol::{
@@ -28,7 +26,7 @@ async fn do_sign(
     msg_hash: Scalar,
 ) -> Result<FullSignature, ProtocolError> {
     // Spec 1.1
-    let lambda = participants.lagrange::<C>(me);
+    let lambda = participants.generic_lagrange::<Secp256K1Sha256>(me);
     let k_i = lambda * presignature.k;
 
     // Spec 1.2

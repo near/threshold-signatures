@@ -1,4 +1,4 @@
-use elliptic_curve::{Field, Group, ScalarPrimitive};
+use elliptic_curve::Field;
 use frost_secp256k1::{
     VerifyingKey,
     keys::SigningShare,
@@ -7,7 +7,13 @@ use serde::{Deserialize, Serialize};
 
 use super::triples::{TriplePub, TripleShare};
 
-use crate::ecdsa::KeygenOutput;
+use crate::ecdsa::{
+    KeygenOutput,
+    AffinePoint,
+    Scalar,
+    ProjectivePoint,
+    Secp256K1Sha256
+};
 use crate::compat::CSCurve;
 use crate::protocol::{
     Participant,
@@ -33,11 +39,11 @@ pub struct PresignOutput {
 
 /// The arguments needed to create a presignature.
 #[derive(Debug, Clone)]
-pub struct PresignArguments<C: CSCurve> {
+pub struct PresignArguments {
     /// The first triple's public information, and our share.
-    pub triple0: (TripleShare<C>, TriplePub<C>),
+    pub triple0: (TripleShare, TriplePub),
     /// Ditto, for the second triple.
-    pub triple1: (TripleShare<C>, TriplePub<C>),
+    pub triple1: (TripleShare, TriplePub),
     /// The output of key generation, i.e. our share of the secret key, and the public key package.
     /// This is of type KeygenOutput<Secp256K1Sha256> from Frost implementation
     pub keygen_out: KeygenOutput,
@@ -45,53 +51,29 @@ pub struct PresignArguments<C: CSCurve> {
     pub threshold: usize,
 }
 
-/// Transforms a verification key of type Secp256k1SHA256 to CSCurve of cait-sith
-fn from_secp256k1sha256_to_cscurve_vk<C: CSCurve>(
-    verifying_key: &VerifyingKey,
-) -> Result<C::ProjectivePoint, ProtocolError> {
-    // serializes into a canonical byte array buf of length 33 bytes using the  affine point representation
-    let bytes = verifying_key
-        .serialize()
-        .map_err(|_| ProtocolError::PointSerialization)?;
-
-    let bytes: [u8; 33] = bytes.try_into().expect("Slice is not 33 bytes long");
-    let point = match C::from_bytes_to_affine(bytes) {
-        Some(point) => point,
-        _ => return Err(ProtocolError::PointSerialization),
-    };
-    Ok(point)
-}
-
-/// Transforms a secret key of type Secp256k1Sha256 to CSCurve of cait-sith
-fn from_secp256k1sha256_to_cscurve_scalar<C: CSCurve>(private_share: &SigningShare) -> C::Scalar {
-    let bytes = private_share.to_scalar().to_bytes();
-    let bytes: [u8; 32] = bytes.try_into().expect("Slice is not 32 bytes long");
-    C::from_bytes_to_scalar(bytes).unwrap()
-}
-
-async fn do_presign<C: CSCurve>(
+async fn do_presign(
     mut chan: SharedChannel,
     participants: ParticipantList,
     me: Participant,
     bt_participants: ParticipantList,
     bt_id: Participant,
-    args: PresignArguments<C>,
-) -> Result<PresignOutput<C>, ProtocolError> {
+    args: PresignArguments,
+) -> Result<PresignOutput, ProtocolError> {
     // Spec 1.2 + 1.3
-    let big_k: C::ProjectivePoint = args.triple0.1.big_a.into();
+    let big_k: ProjectivePoint = args.triple0.1.big_a.into();
 
     let big_d = args.triple0.1.big_b;
     let big_kd = args.triple0.1.big_c;
 
-    let big_a: C::ProjectivePoint = args.triple1.1.big_a.into();
-    let big_b: C::ProjectivePoint = args.triple1.1.big_b.into();
+    let big_a: ProjectivePoint = args.triple1.1.big_a.into();
+    let big_b: ProjectivePoint = args.triple1.1.big_b.into();
 
-    let sk_lambda = participants.lagrange::<C>(me);
-    let bt_lambda = bt_participants.lagrange::<C>(bt_id);
+    let sk_lambda = participants.generic_lagrange::<Secp256K1Sha256>(me);
+    let bt_lambda = bt_participants.generic_lagrange::<Secp256K1Sha256>(bt_id);
 
     let k_i = args.triple0.0.a;
     let k_prime_i = bt_lambda * k_i;
-    let kd_i: C::Scalar = bt_lambda * args.triple0.0.c; // if this is zero, then the broadcast kdi is also zero.
+    let kd_i: Scalar = bt_lambda * args.triple0.0.c; // if this is zero, then the broadcast kdi is also zero.
 
     let a_i = args.triple1.0.a;
     let b_i = args.triple1.0.b;
@@ -99,36 +81,28 @@ async fn do_presign<C: CSCurve>(
     let a_prime_i = bt_lambda * a_i;
     let b_prime_i = bt_lambda * b_i;
 
-    let public_key = from_secp256k1sha256_to_cscurve_vk::<C>(&args.keygen_out.public_key)?;
-    let big_x: C::ProjectivePoint = public_key;
-    let private_share = from_secp256k1sha256_to_cscurve_scalar::<C>(&args.keygen_out.private_share);
+    let big_x: ProjectivePoint = args.keygen_out.public_key.to_element();
+    let private_share = args.keygen_out.private_share.to_scalar();
     let x_prime_i = sk_lambda * private_share;
 
     // Spec 1.4
     let wait0 = chan.next_waitpoint();
-    {
-        let kd_i: ScalarPrimitive<C> = kd_i.into();
-        chan.send_many(wait0, &kd_i);
-    }
+    chan.send_many(wait0, &kd_i);
 
     // Spec 1.9
-    let ka_i: C::Scalar = k_prime_i + a_prime_i;
-    let xb_i: C::Scalar = x_prime_i + b_prime_i;
+    let ka_i: Scalar = k_prime_i + a_prime_i;
+    let xb_i: Scalar = x_prime_i + b_prime_i;
 
     // Spec 1.10
     let wait1 = chan.next_waitpoint();
-    {
-        let ka_i: ScalarPrimitive<C> = ka_i.into();
-        let xb_i: ScalarPrimitive<C> = xb_i.into();
-        chan.send_many(wait1, &(ka_i, xb_i));
-    }
+    chan.send_many(wait1, &(ka_i, xb_i));
 
     // Spec 2.1 and 2.2
     let mut kd = kd_i;
     let mut seen = ParticipantCounter::new(&participants);
     seen.put(me);
     while !seen.full() {
-        let (from, kd_j): (_, ScalarPrimitive<C>) = chan.recv(wait0).await?;
+        let (from, kd_j): (_, Scalar) = chan.recv(wait0).await?;
 
         if kd_j.is_zero().into() {
             return Err(ProtocolError::AssertionFailed(
@@ -139,11 +113,11 @@ async fn do_presign<C: CSCurve>(
         if !seen.put(from) {
             continue;
         }
-        kd += C::Scalar::from(kd_j);
+        kd += Scalar::from(kd_j);
     }
 
     // Spec 2.3
-    if big_kd != (C::ProjectivePoint::generator() * kd).into() {
+    if big_kd != (ProjectivePoint::GENERATOR * kd).to_affine() {
         return Err(ProtocolError::AssertionFailed(
             "received incorrect shares of kd".to_string(),
         ));
@@ -155,18 +129,18 @@ async fn do_presign<C: CSCurve>(
     seen.clear();
     seen.put(me);
     while !seen.full() {
-        let (from, (ka_j, xb_j)): (_, (ScalarPrimitive<C>, ScalarPrimitive<C>)) =
+        let (from, (ka_j, xb_j)): (_, (Scalar, Scalar)) =
             chan.recv(wait1).await?;
         if !seen.put(from) {
             continue;
         }
-        ka += C::Scalar::from(ka_j);
-        xb += C::Scalar::from(xb_j);
+        ka += Scalar::from(ka_j);
+        xb += Scalar::from(xb_j);
     }
 
     // Spec 2.6
-    if (C::ProjectivePoint::generator() * ka != big_k + big_a)
-        || (C::ProjectivePoint::generator() * xb != big_x + big_b)
+    if (ProjectivePoint::GENERATOR * ka != big_k + big_a)
+        || (ProjectivePoint::GENERATOR * xb != big_x + big_b)
     {
         return Err(ProtocolError::AssertionFailed(
             "received incorrect shares of additive triple phase.".to_string(),
@@ -174,10 +148,10 @@ async fn do_presign<C: CSCurve>(
     }
 
     // Spec 2.7
-    let kd_inv: Option<C::Scalar> = kd.invert().into();
+    let kd_inv: Option<Scalar> = kd.invert().into();
     let kd_inv =
         kd_inv.ok_or_else(|| ProtocolError::AssertionFailed("failed to invert kd".to_string()))?;
-    let big_r = (C::ProjectivePoint::from(big_d) * kd_inv).into();
+    let big_r = (ProjectivePoint::from(big_d) * kd_inv).into();
 
     // Spec 2.8
     let lambda_diff = bt_lambda * sk_lambda.invert().expect("to invert sk_lambda");
@@ -197,13 +171,13 @@ async fn do_presign<C: CSCurve>(
 ///
 /// This work does depend on the private key though, and it's crucial
 /// that a presignature is never used.
-pub fn presign<C: CSCurve>(
+pub fn presign(
     participants: &[Participant],
     me: Participant,
     bt_participants: &[Participant],
     bt_id: Participant,
-    args: PresignArguments<C>,
-) -> Result<impl Protocol<Output = PresignOutput<C>>, InitializationError> {
+    args: PresignArguments,
+) -> Result<impl Protocol<Output = PresignOutput>, InitializationError> {
     if participants.len() < 2 {
         return Err(InitializationError::BadParameters(format!(
             "participant count cannot be < 2, found: {}",
@@ -291,7 +265,7 @@ mod test {
         #[allow(clippy::type_complexity)]
         let mut protocols: Vec<(
             Participant,
-            Box<dyn Protocol<Output = PresignOutput<Secp256k1>>>,
+            Box<dyn Protocol<Output = PresignOutput>>,
         )> = Vec::with_capacity(participants.len());
 
         for ((p, triple0), triple1) in participants

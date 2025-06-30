@@ -25,11 +25,18 @@
 //! This protocol requires a setup protocol to be one once beforehand.
 //! After this setup protocol has been run, an arbitarary number of triples can
 //! be generated.
-use elliptic_curve::{Field, Group};
 use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
 
-use crate::{compat::CSCurve, ecdsa::math::Polynomial, protocol::Participant};
+use crate::{
+    ecdsa::math::Polynomial,
+    ecdsa::{
+        AffinePoint,
+        Scalar,
+        ProjectivePoint,
+    },
+    protocol::Participant
+};
 
 /// Represents the public part of a triple.
 ///
@@ -37,10 +44,10 @@ use crate::{compat::CSCurve, ecdsa::math::Polynomial, protocol::Participant};
 ///
 /// We also record who participated in the protocol,
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct TriplePub<C: CSCurve> {
-    pub big_a: C::AffinePoint,
-    pub big_b: C::AffinePoint,
-    pub big_c: C::AffinePoint,
+pub struct TriplePub {
+    pub big_a: AffinePoint,
+    pub big_b: AffinePoint,
+    pub big_c: AffinePoint,
     /// The participants in generating this triple.
     pub participants: Vec<Participant>,
     /// The threshold which will be able to reconstruct it.
@@ -53,23 +60,23 @@ pub struct TriplePub<C: CSCurve> {
 ///
 /// i.e. we have a share of a, b, and c such that a * b = c.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct TripleShare<C: CSCurve> {
-    pub a: C::Scalar,
-    pub b: C::Scalar,
-    pub c: C::Scalar,
+pub struct TripleShare {
+    pub a: Scalar,
+    pub b: Scalar,
+    pub c: Scalar,
 }
 
 /// Create a new triple from scratch.
 ///
 /// This can be used to generate a triple if you then trust the person running
 /// this code to forget about the values they generated.
-pub fn deal<C: CSCurve>(
+pub fn deal(
     rng: &mut impl CryptoRngCore,
     participants: &[Participant],
     threshold: usize,
-) -> (TriplePub<C>, Vec<TripleShare<C>>) {
-    let a = C::Scalar::random(&mut *rng);
-    let b = C::Scalar::random(&mut *rng);
+) -> (TriplePub, Vec<TripleShare>) {
+    let a = Scalar::random(&mut *rng);
+    let b = Scalar::random(&mut *rng);
     let c = a * b;
 
     let f_a = Polynomial::<C>::extend_random(rng, threshold, &a);
@@ -90,9 +97,9 @@ pub fn deal<C: CSCurve>(
     }
 
     let triple_pub = TriplePub {
-        big_a: (C::ProjectivePoint::generator() * a).into(),
-        big_b: (C::ProjectivePoint::generator() * b).into(),
-        big_c: (C::ProjectivePoint::generator() * c).into(),
+        big_a: (ProjectivePoint::GENERATOR * a).into(),
+        big_b: (ProjectivePoint::GENERATOR * b).into(),
+        big_c: (ProjectivePoint::GENERATOR * c).into(),
         participants: participants_owned,
         threshold,
     };
