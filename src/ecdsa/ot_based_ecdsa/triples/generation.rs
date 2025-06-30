@@ -25,9 +25,9 @@ use super::{
 use crate::protocol::internal::Comms;
 
 /// The output of running the triple generation protocol.
-pub type TripleGenerationOutput<C> = (TripleShare<C>, TriplePub<C>);
+pub type TripleGenerationOutput = (TripleShare, TriplePub);
 
-pub type TripleGenerationOutputMany<C> = Vec<(TripleShare<C>, TriplePub<C>)>;
+pub type TripleGenerationOutputMany = Vec<(TripleShare, TriplePub)>;
 
 const LABEL: &[u8] = b"Near threshold signatures triple generation";
 
@@ -36,7 +36,7 @@ async fn do_generation<C: CSCurve>(
     participants: ParticipantList,
     me: Participant,
     threshold: usize,
-) -> Result<TripleGenerationOutput<C>, ProtocolError> {
+) -> Result<TripleGenerationOutput, ProtocolError> {
     let mut rng = OsRng;
     let mut chan = comms.shared_channel();
     let mut transcript = Transcript::new(LABEL);
@@ -1093,7 +1093,7 @@ pub fn generate_triple<C: CSCurve>(
     participants: &[Participant],
     me: Participant,
     threshold: usize,
-) -> Result<impl Protocol<Output = TripleGenerationOutput<C>>, InitializationError> {
+) -> Result<impl Protocol<Output = TripleGenerationOutput>, InitializationError> {
     if participants.len() < 2 {
         return Err(InitializationError::BadParameters(format!(
             "participant count cannot be < 2, found: {}",
@@ -1121,7 +1121,7 @@ pub fn generate_triple_many<C: CSCurve, const N: usize>(
     participants: &[Participant],
     me: Participant,
     threshold: usize,
-) -> Result<impl Protocol<Output = TripleGenerationOutputMany<C>>, InitializationError> {
+) -> Result<impl Protocol<Output = TripleGenerationOutputMany>, InitializationError> {
     if participants.len() < 2 {
         return Err(InitializationError::BadParameters(format!(
             "participant count cannot be < 2, found: {}",
@@ -1168,7 +1168,7 @@ mod test {
         #[allow(clippy::type_complexity)]
         let mut protocols: Vec<(
             Participant,
-            Box<dyn Protocol<Output = TripleGenerationOutput<Secp256k1>>>,
+            Box<dyn Protocol<Output = TripleGenerationOutput>>,
         )> = Vec::with_capacity(participants.len());
 
         for &p in &participants {
@@ -1226,7 +1226,7 @@ mod test {
         #[allow(clippy::type_complexity)]
         let mut protocols: Vec<(
             Participant,
-            Box<dyn Protocol<Output = TripleGenerationOutputMany<Secp256k1>>>,
+            Box<dyn Protocol<Output = TripleGenerationOutputMany>>,
         )> = Vec::with_capacity(participants.len());
 
         for &p in &participants {

@@ -28,7 +28,6 @@ use crate::ecdsa::{
     FullSignature,
     Scalar,
     AffinePoint,
-    Secp256K1Sha256
 };
 
 
@@ -45,10 +44,10 @@ fn sign_box(
 
 pub fn run_presign(
     participants: Vec<(Participant, KeygenOutput)>,
-    shares0: Vec<TripleShare<Secp256K1Sha256>>,
-    shares1: Vec<TripleShare<Secp256K1Sha256>>,
-    pub0: &TriplePub<Secp256K1Sha256>,
-    pub1: &TriplePub<Secp256K1Sha256>,
+    shares0: Vec<TripleShare>,
+    shares1: Vec<TripleShare>,
+    pub0: &TriplePub,
+    pub1: &TriplePub,
     threshold: usize,
 ) -> Vec<(Participant, PresignOutput)> {
     assert!(participants.len() == shares0.len());

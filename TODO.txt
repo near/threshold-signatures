@@ -10,3 +10,7 @@ Unify the test cases between the different ecdsa implementations
 
 
 Add the unified test to both ecdsa files
+
+
+
+Do away with lagrange::<CSCurve> and rename generic lagrange to lagrange

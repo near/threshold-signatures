@@ -21,6 +21,8 @@ use frost_secp256k1::{
     Field,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use k256::AffinePoint;
+
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 pub struct KeygenOutput {
@@ -29,7 +31,6 @@ pub struct KeygenOutput {
 }
 
 pub type Scalar = <Secp256K1ScalarField as Field>::Scalar;
-pub type AffinePoint = k256::AffinePoint;
 
 /// This is the trait that any curve usable in this library must implement.
 /// This library does provide a few feature-gated implementations for curves
