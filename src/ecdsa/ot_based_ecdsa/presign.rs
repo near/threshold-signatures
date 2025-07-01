@@ -1,8 +1,4 @@
-use elliptic_curve::Field;
-use frost_secp256k1::{
-    VerifyingKey,
-    keys::SigningShare,
-};
+
 use serde::{Deserialize, Serialize};
 
 use super::triples::{TriplePub, TripleShare};
@@ -14,7 +10,6 @@ use crate::ecdsa::{
     ProjectivePoint,
     Secp256K1Sha256
 };
-use crate::compat::CSCurve;
 use crate::protocol::{
     Participant,
     InitializationError, Protocol, ProtocolError,
@@ -231,17 +226,18 @@ pub fn presign(
 #[cfg(test)]
 mod test {
     use super::*;
-    use rand_core::OsRng;
 
     use crate::ecdsa::{
-        ot_based_ecdsa::triples,
-        math::Polynomial
+        ot_based_ecdsa::triples::test::deal,
     };
     use crate::protocol::run_protocol;
-    use frost_secp256k1::keys::PublicKeyPackage;
     use std::collections::BTreeMap;
-
+    use rand_core::OsRng;
     use k256::{ProjectivePoint, Secp256k1};
+    use frost_secp256k1::{
+        VerifyingKey,
+        keys::{SigningShare, PublicKeyPackage}
+    };
 
     #[test]
     fn test_presign() {
@@ -258,9 +254,9 @@ mod test {
         let threshold = 2;
 
         let (triple0_pub, triple0_shares) =
-            triples::deal(&mut OsRng, &participants, original_threshold);
+            deal(&mut OsRng, &participants, original_threshold).unwrap();
         let (triple1_pub, triple1_shares) =
-            triples::deal(&mut OsRng, &participants, original_threshold);
+            deal(&mut OsRng, &participants, original_threshold).unwrap();
 
         #[allow(clippy::type_complexity)]
         let mut protocols: Vec<(

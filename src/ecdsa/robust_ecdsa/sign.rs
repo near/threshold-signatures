@@ -64,8 +64,6 @@ async fn do_sign(
     Ok(sig)
 }
 
-
-// TODO: try to unify both sign functions in robust ecdsa and in ot_based_ecdsa
 pub fn sign(
     participants: &[Participant],
     me: Participant,
@@ -109,21 +107,25 @@ mod test {
     use ecdsa::Signature;
     use frost_core::keys::{SigningShare, VerifyingShare};
     use k256::{
-        ecdsa::signature::Verifier, ecdsa::VerifyingKey, ProjectivePoint, PublicKey, Scalar,
-        Secp256k1,
+        ecdsa::signature::Verifier, ecdsa::VerifyingKey, PublicKey,
     };
     use rand_core::OsRng;
 
-    use super::*;
     use crate::ecdsa::{
-        math::Polynomial,
+        Scalar,
+        ProjectivePoint,
+        Secp256K1Sha256,
+        x_coordinate,
     };
+    use super::*;
 
     use crate::{
-        compat::{scalar_hash, x_coordinate},
-        protocol::run_protocol
+        compat::{scalar_hash},
+        protocol::run_protocol,
+        crypto::polynomials::generate_secret_polynomial
     };
 
+    type C = Secp256K1Sha256;
     #[test]
     fn test_sign() -> Result<(), Box<dyn Error>> {
         let max_malicious = 2;
@@ -132,16 +134,14 @@ mod test {
 
         // Run 4 times to test randomness
         for _ in 0..4 {
-            let fx = Polynomial::<Secp256k1>::random(&mut OsRng, threshold);
+            let fx = generate_secret_polynomial::<C>(None, threshold-1, &mut OsRng);
             // master secret key
             let x = fx.evaluate_zero();
             // master public key
             let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
 
-
-
-            let fa = Polynomial::<Secp256k1>::random(&mut OsRng, threshold);
-            let fk = Polynomial::<Secp256k1>::random(&mut OsRng, threshold);
+            let fa = generate_secret_polynomial::<C>(None, threshold-1, &mut OsRng);
+            let fk = generate_secret_polynomial::<C>(None, threshold-1, &mut OsRng);
 
             let fd = Polynomial::<Secp256k1>::extend_random(&mut OsRng, 2*max_malicious+1, &Scalar::ZERO);
             let fe = Polynomial::<Secp256k1>::extend_random(&mut OsRng, 2*max_malicious+1, &Scalar::ZERO);
@@ -196,7 +196,7 @@ mod test {
             let result = run_protocol(protocols)?;
             let sig = result[0].1.clone();
             let sig =
-                Signature::from_scalars(x_coordinate::<Secp256k1>(&sig.big_r), sig.s)?;
+                Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
             VerifyingKey::from(&PublicKey::from_affine(public_key).unwrap())
                 .verify(&msg[..], &sig)?;
         }

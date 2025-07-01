@@ -64,7 +64,7 @@ fn zero_secret_polynomial(
     rng: &mut OsRng,
 )-> Vec<Scalar> {
     let secret = Secp256K1ScalarField::zero();
-    generate_secret_polynomial::<C>(secret, degree, rng)
+    generate_secret_polynomial::<C>(Some(secret), degree, rng)
 }
 
 /// Generates a secret polynomial where the comstant term is random
@@ -73,7 +73,7 @@ fn random_secret_polynomial(
     rng: &mut OsRng,
 )-> Vec<Scalar> {
     let secret = Secp256K1ScalarField::random(rng);
-    generate_secret_polynomial::<C>(secret, degree, rng)
+    generate_secret_polynomial::<C>(Some(secret), degree, rng)
 }
 
 /// Evaluate five polynomials at once
@@ -286,7 +286,7 @@ mod test {
     use super::*;
     use rand_core::OsRng;
 
-    use crate::{ecdsa::math::Polynomial, protocol::run_protocol};
+    use crate::{protocol::run_protocol};
     use frost_secp256k1::keys::PublicKeyPackage;
     use frost_secp256k1::VerifyingKey;
     use std::collections::BTreeMap;
