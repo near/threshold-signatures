@@ -112,9 +112,10 @@ mod test {
     use rand_core::OsRng;
 
     use crate::ecdsa::{
-        Scalar,
         ProjectivePoint,
         Secp256K1Sha256,
+        Secp256K1ScalarField,
+        Field,
         x_coordinate,
     };
     use super::*;
@@ -122,7 +123,11 @@ mod test {
     use crate::{
         compat::{scalar_hash},
         protocol::run_protocol,
-        crypto::polynomials::generate_secret_polynomial
+        crypto::polynomials::{
+            generate_polynomial,
+            evaluate_polynomial_on_participant,
+            evaluate_polynomial_on_zero,
+        }
     };
 
     type C = Secp256K1Sha256;
@@ -134,25 +139,26 @@ mod test {
 
         // Run 4 times to test randomness
         for _ in 0..4 {
-            let fx = generate_secret_polynomial::<C>(None, threshold-1, &mut OsRng);
+            let fx = generate_polynomial::<C>(None, threshold-1, &mut OsRng);
             // master secret key
-            let x = fx.evaluate_zero();
+            let x = evaluate_polynomial_on_zero(&fx).to_scalar();
             // master public key
-            let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
+            let public_key = ProjectivePoint::GENERATOR * x;
+            let public_key = public_key.to_affine();
 
-            let fa = generate_secret_polynomial::<C>(None, threshold-1, &mut OsRng);
-            let fk = generate_secret_polynomial::<C>(None, threshold-1, &mut OsRng);
+            let fa = generate_polynomial::<C>(None, threshold-1, &mut OsRng);
+            let fk = generate_polynomial::<C>(None, threshold-1, &mut OsRng);
 
-            let fd = Polynomial::<Secp256k1>::extend_random(&mut OsRng, 2*max_malicious+1, &Scalar::ZERO);
-            let fe = Polynomial::<Secp256k1>::extend_random(&mut OsRng, 2*max_malicious+1, &Scalar::ZERO);
+            let fd = generate_polynomial::<C>(Some(Secp256K1ScalarField::zero()), 2*max_malicious, &mut OsRng);
+            let fe = generate_polynomial::<C>(Some(Secp256K1ScalarField::zero()), 2*max_malicious, &mut OsRng);
 
-            let k = fk.evaluate_zero();
-            let big_r = ProjectivePoint::GENERATOR * k;
-            let big_r_x_coordinate = x_coordinate::<Secp256k1>(&big_r.to_affine());
+            let k = evaluate_polynomial_on_zero(&fk).to_scalar();
+            let big_r = ProjectivePoint::GENERATOR * k.clone();
+            let big_r_x_coordinate = x_coordinate(&big_r.to_affine());
 
             let big_r = VerifyingShare::new(big_r);
 
-            let w = fa.evaluate_zero()* k;
+            let w = evaluate_polynomial_on_zero(&fa).to_scalar() * k;
             let w_invert = w.invert().unwrap();
 
             let participants = vec![
@@ -168,11 +174,11 @@ mod test {
                 Participant,
                 Box<dyn Protocol<Output = FullSignature>>,
             )> = Vec::with_capacity(participants.len());
-            for p in &participants {
-                let p_scalar = p.scalar::<Secp256k1>();
-                let h_i = fa.evaluate(&p_scalar) *w_invert;
-                let alpha_i = h_i + fd.evaluate(&p_scalar);
-                let beta_i = h_i * big_r_x_coordinate * fx.evaluate(&p_scalar) + fe.evaluate(&p_scalar);
+            for p in participants {
+                let h_i = evaluate_polynomial_on_participant(&fa, p).unwrap() *w_invert;
+                let alpha_i = h_i + evaluate_polynomial_on_participant(&fd, p).unwrap();
+                let beta_i = h_i * big_r_x_coordinate * evaluate_polynomial_on_participant(&fx, p).unwrap()
+                                + evaluate_polynomial_on_participant(&fe, p).unwrap();
 
                 let alpha_i = SigningShare::new(alpha_i);
                 let beta_i = SigningShare::new(beta_i);

@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     crypto::polynomials::{
         evaluate_multi_polynomials,
-        generate_secret_polynomial,
+        generate_polynomial,
         eval_interpolation,
         eval_exponent_interpolation,
     },
@@ -64,16 +64,7 @@ fn zero_secret_polynomial(
     rng: &mut OsRng,
 )-> Vec<Scalar> {
     let secret = Secp256K1ScalarField::zero();
-    generate_secret_polynomial::<C>(Some(secret), degree, rng)
-}
-
-/// Generates a secret polynomial where the comstant term is random
-fn random_secret_polynomial(
-    degree: usize,
-    rng: &mut OsRng,
-)-> Vec<Scalar> {
-    let secret = Secp256K1ScalarField::random(rng);
-    generate_secret_polynomial::<C>(Some(secret), degree, rng)
+    generate_polynomial::<C>(Some(secret), degree, rng)
 }
 
 /// Evaluate five polynomials at once
@@ -84,7 +75,6 @@ fn evaluate_five_polynomials(
     let package = evaluate_multi_polynomials::<C,5>(polynomials, participant)?;
     Ok(package)
 }
-
 
 /// /!\ Warning: the threshold in this scheme is the exactly the
 ///              same as the max number of malicious parties.
@@ -98,9 +88,9 @@ async fn do_presign(
     // Round 0
     let mut rng = OsRng;
     // degree t random secret shares where t is the max number of malicious parties
-    let my_fk = random_secret_polynomial(threshold, &mut rng);
+    let my_fk = generate_polynomial::<C>(None, threshold, &mut rng);
     let my_fk = my_fk.as_slice();
-    let my_fa = random_secret_polynomial(threshold, &mut rng);
+    let my_fa = generate_polynomial::<C>(None, threshold, &mut rng);
     let my_fa = my_fa.as_slice();
 
     // degree 2t zero secret shares where t is the max number of malicious parties
@@ -286,12 +276,18 @@ mod test {
     use super::*;
     use rand_core::OsRng;
 
-    use crate::{protocol::run_protocol};
+    use crate::{
+        protocol::run_protocol,
+        crypto::polynomials::{
+            generate_polynomial,
+            evaluate_polynomial_on_participant,
+        },
+    };
     use frost_secp256k1::keys::PublicKeyPackage;
     use frost_secp256k1::VerifyingKey;
     use std::collections::BTreeMap;
 
-    use k256::{ProjectivePoint, Secp256k1};
+    use k256::{ProjectivePoint};
 
     #[test]
     fn test_presign() {
@@ -304,7 +300,7 @@ mod test {
         ];
         let max_malicious = 2;
 
-        let f = Polynomial::<Secp256k1>::random(&mut OsRng, max_malicious+1);
+        let f = generate_polynomial::<C>(None, max_malicious, &mut OsRng);
         let big_x = ProjectivePoint::GENERATOR * f.evaluate_zero();
 
 
@@ -314,19 +310,19 @@ mod test {
             Box<dyn Protocol<Output = PresignOutput>>,
         )> = Vec::with_capacity(participants.len());
 
-        for p in participants.iter(){
+        for p in participants{
             // simulating the key packages for each participant
-            let private_share = f.evaluate(&p.scalar::<Secp256k1>());
+            let private_share = evaluate_polynomial_on_participant::<C>(&f, p).unwrap();
             let verifying_key = VerifyingKey::new(big_x);
             let public_key_package = PublicKeyPackage::new(BTreeMap::new(), verifying_key);
             let keygen_out = KeygenOutput {
-                private_share: SigningShare::new(private_share),
+                private_share,
                 public_key: *public_key_package.verifying_key(),
             };
 
             let protocol = presign(
                 &participants[..],
-                *p,
+                p,
                 PresignArguments {
                     keygen_out,
                     threshold: max_malicious,
@@ -334,7 +330,7 @@ mod test {
             );
             assert!(protocol.is_ok());
             let protocol = protocol.unwrap();
-            protocols.push((*p, Box::new(protocol)));
+            protocols.push((p, Box::new(protocol)));
         }
 
         let result = run_protocol(protocols);

@@ -5,7 +5,8 @@ use frost_core::{
     keys::{
         SigningShare,
         VerifyingShare,
-    }
+    },
+    Identifier,
 };
 
 use super::ciphersuite::Ciphersuite;
@@ -16,7 +17,8 @@ use crate::{
 
 /// Creates a polynomial p of degree threshold - 1
 /// and sets p(0) = secret
-pub fn generate_secret_polynomial<C: Ciphersuite>(
+/// if the secret is not given then it is picked at random
+pub fn generate_polynomial<C: Ciphersuite>(
     secret: Option<Scalar<C>>,
     degree: usize,
     rng: &mut impl CryptoRngCore,
@@ -33,12 +35,35 @@ pub fn generate_secret_polynomial<C: Ciphersuite>(
     coefficients
 }
 
-/// Evaluates a polynomial on the identifier of a participant
+/// Basically returns the constant term
+/// Evaluate the polynomial with the given coefficients (constant term first)
+pub fn evaluate_polynomial_on_zero<C: Ciphersuite>(
+    coefficients: &[Scalar<C>],
+) -> SigningShare<C> {
+    SigningShare::new(coefficients[0])
+}
+
+/// Evaluates a polynomial on a certain scalar
 /// Evaluate the polynomial with the given coefficients (constant term first)
 /// at the point x=identifier using Horner's method.
 /// Implements [`polynomial_evaluate`] from the spec.
 /// [`polynomial_evaluate`]: https://datatracker.ietf.org/doc/html/rfc9591#name-additional-polynomial-opera
 pub fn evaluate_polynomial<C: Ciphersuite>(
+    coefficients: &[Scalar<C>],
+    point: Scalar<C>,
+) -> Result<SigningShare<C>, ProtocolError> {
+    // creating this dummy id is only to be able to call the from_coefficients function
+    let point_id = Identifier::new(point);
+    if point_id.is_err(){
+        evaluate_polynomial_on_zero(coefficients)
+    } else{
+        SigningShare::from_coefficients(coefficients, point_id)
+    }
+}
+
+
+/// Evaluates a polynomial on the identifier of a participant
+pub fn evaluate_polynomial_on_participant<C: Ciphersuite>(
     coefficients: &[Scalar<C>],
     participant: Participant,
 ) -> Result<SigningShare<C>, ProtocolError> {
@@ -55,7 +80,7 @@ pub fn evaluate_multi_polynomials<C: Ciphersuite, const N: usize>(
     let mut result_vec = Vec::with_capacity(N);
 
     for poly in polynomials.iter() {
-        let eval = evaluate_polynomial::<C>(poly, participant)?;
+        let eval = evaluate_polynomial_on_participant::<C>(poly, participant)?;
         result_vec.push(eval);
     }
     Ok(result_vec

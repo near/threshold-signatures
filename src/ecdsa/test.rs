@@ -23,7 +23,7 @@ pub(crate) fn run_keygen(
     let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = KeygenOutput>>)> =
         Vec::with_capacity(participants.len());
 
-    for p in participants.iter() {
+    for p in participants {
         let protocol = keygen(participants, *p, threshold)?;
         protocols.push((*p, Box::new(protocol)));
     }

@@ -7,7 +7,7 @@ use crate::{
         commit::{Commitment,commit},
         hash::{hash, HashOutput},
         random::Randomizer,
-        polynomials::generate_secret_polynomial
+        polynomials::generate_polynomial
     },
     // ecdsa::math::{GroupPolynomial, Polynomial},
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
@@ -36,7 +36,7 @@ type C = Secp256K1Sha256;
 
 
 const LABEL: &[u8] = b"Near threshold signatures triple generation";
-const NAME: &[u8] = b"Secp256K1Sha256"
+const NAME: &[u8] = b"Secp256K1Sha256";
 async fn do_generation(
     comms: Comms,
     participants: ParticipantList,
@@ -57,9 +57,9 @@ async fn do_generation(
     );
 
     // Spec 1.2
-    let e = generate_secret_polynomial::<C>(None, threshold-1, &mut rng);
-    let f = generate_secret_polynomial::<C>(None, threshold-1, &mut rng);
-    let l = generate_secret_polynomial::<C>(None, threshold-1, &mut rng);
+    let e = generate_polynomial::<C>(None, threshold-1, &mut rng);
+    let f = generate_polynomial::<C>(None, threshold-1, &mut rng);
+    let l = generate_polynomial::<C>(None, threshold-1, &mut rng);
 
     // Spec 1.3
     l.set_zero(C::Scalar::ZERO);
