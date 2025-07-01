@@ -121,16 +121,22 @@ mod test {
     use super::{
         PresignOutput,
         FullSignature,
+        Secp256K1Sha256,
         sign,
+        x_coordinate,
     };
     use crate::{
-        protocol::{run_protocol, Participant,Protocol}
+        protocol::{run_protocol, Participant,Protocol},
+        crypto::polynomials::{
+            generate_polynomial,
+            evaluate_polynomial_on_zero,
+        },
     };
     use crate::compat::{
-        x_coordinate,
         scalar_hash,
     };
 
+    type C = Secp256K1Sha256;
     #[test]
     fn test_sign() -> Result<(), Box<dyn Error>> {
         let threshold = 2;
@@ -138,18 +144,18 @@ mod test {
 
         // Run 4 times for flakiness reasons
         for _ in 0..4 {
-            let f = generate_secret_polynomial::<C>(None, threshold-1, &mut OsRng);;
-            let x = f.evaluate_zero();
+            let f = generate_polynomial::<C>(None, threshold-1, &mut OsRng);;
+            let x = evaluate_polynomial_on_zero::<C>(f);
             let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
 
-            let g = generate_secret_polynomial::<C>(None, threshold-1, &mut OsRng);;
+            let g = generate_polynomial::<C>(None, threshold-1, &mut OsRng);;
 
-            let k: Scalar = g.evaluate_zero();
+            let k= evaluate_polynomial_on_zero::<C>(g);
             let big_k = (ProjectivePoint::GENERATOR * k.invert().unwrap()).to_affine();
 
             let sigma = k * x;
 
-            let h = Polynomial::<Secp256k1>::extend_random(&mut OsRng, threshold, &sigma);
+            let h = generate_polynomial::<C>(Some(sigma), threshold-1,&mut OsRng);
 
             let participants = vec![Participant::from(0u32), Participant::from(1u32)];
             #[allow(clippy::type_complexity)]
@@ -177,7 +183,7 @@ mod test {
             let result = run_protocol(protocols)?;
             let sig = result[0].1.clone();
             let sig =
-                Signature::from_scalars(x_coordinate::<Secp256k1>(&sig.big_r), sig.s)?;
+                Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
             VerifyingKey::from(&PublicKey::from_affine(public_key).unwrap())
                 .verify(&msg[..], &sig)?;
         }

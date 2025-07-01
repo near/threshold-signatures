@@ -1,7 +1,7 @@
 use crate::crypto::{
     ciphersuite::Ciphersuite,
     hash::{HashOutput, domain_separate_hash},
-    polynomials::{evaluate_polynomial, generate_secret_polynomial},
+    polynomials::{evaluate_polynomial_on_participant, generate_polynomial},
 };
 use crate::echo_broadcast::do_broadcast;
 use crate::participants::{ParticipantCounter, ParticipantList, ParticipantMap};
@@ -382,7 +382,7 @@ async fn do_keyshare<C: Ciphersuite>(
     let session_id = domain_separate_hash(domain_separator, &session_ids);
     domain_separator += 1;
     // the degree of the polynomial is threshold - 1
-    let secret_coefficients = generate_secret_polynomial::<C>(Some(secret), threshold-1, &mut rng);
+    let secret_coefficients = generate_polynomial::<C>(Some(secret), threshold-1, &mut rng);
 
     // Compute the multiplication of every coefficient of p with the generator G
     let coefficient_commitment = generate_coefficient_commitment::<C>(&secret_coefficients);
@@ -489,7 +489,7 @@ async fn do_keyshare<C: Ciphersuite>(
     for p in participants.others(me) {
         // Securely send to each other participant a secret share
         // using the evaluation secret polynomial on the identifier of the recipient
-        let signing_share_to_p = evaluate_polynomial::<C>(&secret_coefficients, p)?;
+        let signing_share_to_p = evaluate_polynomial_on_participant::<C>(&secret_coefficients, p)?;
         // send the evaluation privately to participant p
         chan.send_private(wait_round_3, p, &signing_share_to_p);
     }
@@ -497,7 +497,7 @@ async fn do_keyshare<C: Ciphersuite>(
 
     // Start Round 4
     // compute my secret evaluation of my private polynomial
-    let mut my_signing_share = evaluate_polynomial::<C>(&secret_coefficients, me)?.to_scalar();
+    let mut my_signing_share = evaluate_polynomial_on_participant::<C>(&secret_coefficients, me)?.to_scalar();
     // receive evaluations from all participants
     seen.clear();
     seen.put(me);

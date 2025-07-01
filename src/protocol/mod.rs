@@ -7,7 +7,6 @@
 //! to serialize the emssages it produces.
 use std::{collections::HashMap, error, fmt};
 
-use crate::compat::CSCurve;
 use ::serde::{Deserialize, Serialize};
 
 use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite};
@@ -147,12 +146,6 @@ impl Participant {
     /// Return this participant as little endian bytes.
     pub fn bytes(&self) -> [u8; 4] {
         self.0.to_le_bytes()
-    }
-
-    /// Return the scalar associated with this participant.
-    /// The implementation follows the original cait-sith library
-    pub fn scalar<C: CSCurve>(&self) -> C::Scalar {
-        C::Scalar::from(self.0 as u64 + 1)
     }
 
     /// Return the scalar associated with this participant.
