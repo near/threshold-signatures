@@ -159,7 +159,7 @@ impl FullSignature{
 
 
 pub mod dkg_ecdsa;
-pub mod math;
+// pub mod math;
 pub mod robust_ecdsa;
 pub mod ot_based_ecdsa;
 #[cfg(test)]

@@ -6,9 +6,9 @@ use super::presign::{
     PresignOutput
 };
 use super::triples::{
-    deal,
     TriplePub,
-    TripleShare
+    TripleShare,
+    test::deal,
 };
 use super::sign::sign;
 use crate::protocol::{
@@ -121,8 +121,8 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
 
     let public_key = key_packages[0].1.public_key.clone();
     // Prepare triples
-    let (pub0, shares0) = deal(&mut OsRng, &new_participant, new_threshold);
-    let (pub1, shares1) = deal(&mut OsRng, &new_participant, new_threshold);
+    let (pub0, shares0) = deal(&mut OsRng, &new_participant, new_threshold).unwrap();
+    let (pub1, shares1) = deal(&mut OsRng, &new_participant, new_threshold).unwrap();
 
     // Presign
     let mut presign_result =
@@ -167,8 +167,8 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
 
     let public_key = key_packages[0].1.public_key.clone();
     // Prepare triples
-    let (pub0, shares0) = deal(&mut OsRng, &new_participant, new_threshold);
-    let (pub1, shares1) = deal(&mut OsRng, &new_participant, new_threshold);
+    let (pub0, shares0) = deal(&mut OsRng, &new_participant, new_threshold).unwrap();
+    let (pub1, shares1) = deal(&mut OsRng, &new_participant, new_threshold).unwrap();
 
     // Presign
     let mut presign_result =
@@ -197,8 +197,8 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
     assert_eq!(keygen_result[0].1.public_key, keygen_result[1].1.public_key);
     assert_eq!(keygen_result[1].1.public_key, keygen_result[2].1.public_key);
 
-    let (pub0, shares0) = deal(&mut OsRng, &participants, threshold);
-    let (pub1, shares1) = deal(&mut OsRng, &participants, threshold);
+    let (pub0, shares0) = deal(&mut OsRng, &participants, threshold).unwrap();
+    let (pub1, shares1) = deal(&mut OsRng, &participants, threshold).unwrap();
 
     let mut presign_result = run_presign(keygen_result, shares0, shares1, &pub0, &pub1, threshold);
     presign_result.sort_by_key(|(p, _)| *p);
@@ -225,8 +225,8 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     assert_eq!(keygen_result[0].1.public_key, keygen_result[1].1.public_key);
     assert_eq!(keygen_result[1].1.public_key, keygen_result[2].1.public_key);
 
-    let (pub0, shares0) = deal(&mut OsRng, &participants, threshold);
-    let (pub1, shares1) = deal(&mut OsRng, &participants, threshold);
+    let (pub0, shares0) = deal(&mut OsRng, &participants, threshold).unwrap();
+    let (pub1, shares1) = deal(&mut OsRng, &participants, threshold).unwrap();
 
     let mut presign_result = run_presign(keygen_result, shares0, shares1, &pub0, &pub1, threshold);
     presign_result.sort_by_key(|(p, _)| *p);

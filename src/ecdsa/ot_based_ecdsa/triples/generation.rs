@@ -1,4 +1,4 @@
-use elliptic_curve::{Field, Group, ScalarPrimitive};
+use elliptic_curve::{Group, ScalarPrimitive};
 use rand_core::OsRng;
 
 use crate::{
@@ -7,14 +7,18 @@ use crate::{
         commit::{Commitment,commit},
         hash::{hash, HashOutput},
         random::Randomizer,
+        polynomials::generate_secret_polynomial
     },
-    ecdsa::math::{GroupPolynomial, Polynomial},
+    // ecdsa::math::{GroupPolynomial, Polynomial},
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     proofs::{dlog, dlogeq, strobe_transcript::Transcript},
     protocol::{
         internal::make_protocol, InitializationError, Participant, Protocol, ProtocolError,
     },
     serde::encode,
+    ecdsa::{
+        Secp256K1Sha256
+    }
 };
 
 use super::{
@@ -28,10 +32,12 @@ use crate::protocol::internal::Comms;
 pub type TripleGenerationOutput = (TripleShare, TriplePub);
 
 pub type TripleGenerationOutputMany = Vec<(TripleShare, TriplePub)>;
+type C = Secp256K1Sha256;
+
 
 const LABEL: &[u8] = b"Near threshold signatures triple generation";
-
-async fn do_generation<C: CSCurve>(
+const NAME: &[u8] = b"Secp256K1Sha256"
+async fn do_generation(
     comms: Comms,
     participants: ParticipantList,
     me: Participant,
@@ -42,7 +48,7 @@ async fn do_generation<C: CSCurve>(
     let mut transcript = Transcript::new(LABEL);
 
     // Spec 1.1
-    transcript.message(b"group", C::NAME);
+    transcript.message(b"group", NAME);
     transcript.message(b"participants", &encode(&participants));
     // To allow interop between platforms where usize is different
     transcript.message(
@@ -51,9 +57,9 @@ async fn do_generation<C: CSCurve>(
     );
 
     // Spec 1.2
-    let e: Polynomial<C> = Polynomial::random(&mut rng, threshold);
-    let f: Polynomial<C> = Polynomial::random(&mut rng, threshold);
-    let mut l: Polynomial<C> = Polynomial::random(&mut rng, threshold);
+    let e = generate_secret_polynomial::<C>(None, threshold-1, &mut rng);
+    let f = generate_secret_polynomial::<C>(None, threshold-1, &mut rng);
+    let l = generate_secret_polynomial::<C>(None, threshold-1, &mut rng);
 
     // Spec 1.3
     l.set_zero(C::Scalar::ZERO);
@@ -484,7 +490,7 @@ async fn do_generation<C: CSCurve>(
     ))
 }
 
-async fn do_generation_many<C: CSCurve, const N: usize>(
+async fn do_generation_many<const N: usize>(
     comms: Comms,
     participants: ParticipantList,
     me: Participant,
@@ -497,7 +503,7 @@ async fn do_generation_many<C: CSCurve, const N: usize>(
     let mut transcript = Transcript::new(LABEL);
 
     // Spec 1.1
-    transcript.message(b"group", C::NAME);
+    transcript.message(b"group", NAME);
     transcript.message(b"participants", &encode(&participants));
     // To allow interop between platforms where usize is different
     transcript.message(

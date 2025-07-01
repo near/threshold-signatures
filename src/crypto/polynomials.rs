@@ -1,4 +1,4 @@
-use rand_core::OsRng;
+use rand_core::CryptoRngCore;
 use frost_core::{
     Scalar,
     Group, Field,
@@ -17,13 +17,15 @@ use crate::{
 /// Creates a polynomial p of degree threshold - 1
 /// and sets p(0) = secret
 pub fn generate_secret_polynomial<C: Ciphersuite>(
-    secret: Scalar<C>,
+    secret: Option<Scalar<C>>,
     degree: usize,
-    rng: &mut OsRng,
+    rng: &mut impl CryptoRngCore,
 ) -> Vec<Scalar<C>> {
     let poly_size = degree+1;
     let mut coefficients = Vec::with_capacity(poly_size);
-    // insert the secret share
+    // insert the secret share if exists
+    let secret = secret.unwrap_or_else(|| <C::Group as Group>::Field::random(rng));
+
     coefficients.push(secret);
     for _ in 1..poly_size {
         coefficients.push(<C::Group as Group>::Field::random(rng));

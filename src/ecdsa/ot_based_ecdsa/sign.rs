@@ -124,7 +124,6 @@ mod test {
         sign,
     };
     use crate::{
-        ecdsa::math::Polynomial,
         protocol::{run_protocol, Participant,Protocol}
     };
     use crate::compat::{
@@ -139,11 +138,11 @@ mod test {
 
         // Run 4 times for flakiness reasons
         for _ in 0..4 {
-            let f = Polynomial::<Secp256k1>::random(&mut OsRng, threshold);
+            let f = generate_secret_polynomial::<C>(None, threshold-1, &mut OsRng);;
             let x = f.evaluate_zero();
             let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
 
-            let g = Polynomial::<Secp256k1>::random(&mut OsRng, threshold);
+            let g = generate_secret_polynomial::<C>(None, threshold-1, &mut OsRng);;
 
             let k: Scalar = g.evaluate_zero();
             let big_k = (ProjectivePoint::GENERATOR * k.invert().unwrap()).to_affine();

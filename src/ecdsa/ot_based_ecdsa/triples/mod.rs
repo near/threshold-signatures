@@ -25,17 +25,14 @@
 //! This protocol requires a setup protocol to be one once beforehand.
 //! After this setup protocol has been run, an arbitarary number of triples can
 //! be generated.
-use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    ecdsa::math::Polynomial,
     ecdsa::{
         AffinePoint,
         Scalar,
-        ProjectivePoint,
     },
-    protocol::Participant
+    protocol::Participant,
 };
 
 /// Represents the public part of a triple.
@@ -66,47 +63,6 @@ pub struct TripleShare {
     pub c: Scalar,
 }
 
-/// Create a new triple from scratch.
-///
-/// This can be used to generate a triple if you then trust the person running
-/// this code to forget about the values they generated.
-pub fn deal(
-    rng: &mut impl CryptoRngCore,
-    participants: &[Participant],
-    threshold: usize,
-) -> (TriplePub, Vec<TripleShare>) {
-    let a = Scalar::random(&mut *rng);
-    let b = Scalar::random(&mut *rng);
-    let c = a * b;
-
-    let f_a = Polynomial::<C>::extend_random(rng, threshold, &a);
-    let f_b = Polynomial::<C>::extend_random(rng, threshold, &b);
-    let f_c = Polynomial::<C>::extend_random(rng, threshold, &c);
-
-    let mut shares = Vec::with_capacity(participants.len());
-    let mut participants_owned = Vec::with_capacity(participants.len());
-
-    for p in participants {
-        participants_owned.push(*p);
-        let p_scalar = p.scalar::<C>();
-        shares.push(TripleShare {
-            a: f_a.evaluate(&p_scalar),
-            b: f_b.evaluate(&p_scalar),
-            c: f_c.evaluate(&p_scalar),
-        });
-    }
-
-    let triple_pub = TriplePub {
-        big_a: (ProjectivePoint::GENERATOR * a).into(),
-        big_b: (ProjectivePoint::GENERATOR * b).into(),
-        big_c: (ProjectivePoint::GENERATOR * c).into(),
-        participants: participants_owned,
-        threshold,
-    };
-
-    (triple_pub, shares)
-}
-
 mod batch_random_ot;
 mod bits;
 mod correlated_ot_extension;
@@ -117,3 +73,6 @@ mod random_ot_extension;
 mod constants;
 
 pub use generation::{generate_triple, generate_triple_many, TripleGenerationOutput};
+
+#[cfg(test)]
+pub mod test;
