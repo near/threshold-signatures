@@ -281,6 +281,7 @@ mod test {
         crypto::polynomials::{
             generate_polynomial,
             evaluate_polynomial_on_participant,
+            evaluate_polynomial_on_zero,
         },
     };
     use frost_secp256k1::keys::PublicKeyPackage;
@@ -301,7 +302,7 @@ mod test {
         let max_malicious = 2;
 
         let f = generate_polynomial::<C>(None, max_malicious, &mut OsRng);
-        let big_x = ProjectivePoint::GENERATOR * f.evaluate_zero();
+        let big_x = ProjectivePoint::GENERATOR * evaluate_polynomial_on_zero::<C>(&f).to_scalar();
 
 
         #[allow(clippy::type_complexity)]
@@ -310,9 +311,9 @@ mod test {
             Box<dyn Protocol<Output = PresignOutput>>,
         )> = Vec::with_capacity(participants.len());
 
-        for p in participants{
+        for p in &participants{
             // simulating the key packages for each participant
-            let private_share = evaluate_polynomial_on_participant::<C>(&f, p).unwrap();
+            let private_share = evaluate_polynomial_on_participant::<C>(&f, *p).unwrap();
             let verifying_key = VerifyingKey::new(big_x);
             let public_key_package = PublicKeyPackage::new(BTreeMap::new(), verifying_key);
             let keygen_out = KeygenOutput {
@@ -322,7 +323,7 @@ mod test {
 
             let protocol = presign(
                 &participants[..],
-                p,
+                *p,
                 PresignArguments {
                     keygen_out,
                     threshold: max_malicious,
@@ -330,7 +331,7 @@ mod test {
             );
             assert!(protocol.is_ok());
             let protocol = protocol.unwrap();
-            protocols.push((p, Box::new(protocol)));
+            protocols.push((*p, Box::new(protocol)));
         }
 
         let result = run_protocol(protocols);

@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use super::strobe_transcript::Transcript;
 
 use crate::{
-    compat::{CSCurve, SerializablePoint},
     serde::{deserialize_scalar, encode, serialize_projective_point, serialize_scalar},
 };
 

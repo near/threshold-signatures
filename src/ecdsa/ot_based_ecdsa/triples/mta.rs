@@ -7,7 +7,7 @@ use subtle::{Choice, ConditionallySelectable};
 use crate::protocol::internal::Comms;
 use crate::{
     compat::CSCurve,
-    proofs::strobe_transcript::TranscriptRng,
+    crypto::proofs::strobe_transcript::TranscriptRng,
     protocol::{
         internal::{make_protocol, PrivateChannel},
         run_two_party_protocol, Participant, ProtocolError,

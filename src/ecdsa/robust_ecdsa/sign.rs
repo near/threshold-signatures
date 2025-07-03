@@ -141,10 +141,9 @@ mod test {
         for _ in 0..4 {
             let fx = generate_polynomial::<C>(None, threshold-1, &mut OsRng);
             // master secret key
-            let x = evaluate_polynomial_on_zero(&fx).to_scalar();
+            let x = evaluate_polynomial_on_zero::<C>(&fx).to_scalar();
             // master public key
-            let public_key = ProjectivePoint::GENERATOR * x;
-            let public_key = public_key.to_affine();
+            let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
 
             let fa = generate_polynomial::<C>(None, threshold-1, &mut OsRng);
             let fk = generate_polynomial::<C>(None, threshold-1, &mut OsRng);
@@ -152,13 +151,13 @@ mod test {
             let fd = generate_polynomial::<C>(Some(Secp256K1ScalarField::zero()), 2*max_malicious, &mut OsRng);
             let fe = generate_polynomial::<C>(Some(Secp256K1ScalarField::zero()), 2*max_malicious, &mut OsRng);
 
-            let k = evaluate_polynomial_on_zero(&fk).to_scalar();
+            let k = evaluate_polynomial_on_zero::<C>(&fk).to_scalar();
             let big_r = ProjectivePoint::GENERATOR * k.clone();
             let big_r_x_coordinate = x_coordinate(&big_r.to_affine());
 
             let big_r = VerifyingShare::new(big_r);
 
-            let w = evaluate_polynomial_on_zero(&fa).to_scalar() * k;
+            let w = evaluate_polynomial_on_zero::<C>(&fa).to_scalar() * k;
             let w_invert = w.invert().unwrap();
 
             let participants = vec![
@@ -174,11 +173,14 @@ mod test {
                 Participant,
                 Box<dyn Protocol<Output = FullSignature>>,
             )> = Vec::with_capacity(participants.len());
-            for p in participants {
-                let h_i = evaluate_polynomial_on_participant(&fa, p).unwrap() *w_invert;
-                let alpha_i = h_i + evaluate_polynomial_on_participant(&fd, p).unwrap();
-                let beta_i = h_i * big_r_x_coordinate * evaluate_polynomial_on_participant(&fx, p).unwrap()
-                                + evaluate_polynomial_on_participant(&fe, p).unwrap();
+            for p in &participants {
+                let h_i = w_invert
+                        * evaluate_polynomial_on_participant::<C>(&fa, *p).unwrap().to_scalar();
+                let alpha_i = h_i
+                        + evaluate_polynomial_on_participant::<C>(&fd, *p).unwrap().to_scalar();
+                let beta_i = h_i * big_r_x_coordinate
+                        * evaluate_polynomial_on_participant::<C>(&fx, *p).unwrap().to_scalar()
+                        + evaluate_polynomial_on_participant::<C>(&fe, *p).unwrap().to_scalar();
 
                 let alpha_i = SigningShare::new(alpha_i);
                 let beta_i = SigningShare::new(beta_i);

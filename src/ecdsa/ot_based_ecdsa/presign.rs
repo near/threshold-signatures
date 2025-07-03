@@ -17,7 +17,6 @@ use crate::protocol::{
 };
 use crate::participants::{ParticipantList, ParticipantCounter};
 
-
 /// The output of the presigning protocol.
 ///
 /// This output is basically all the parts of the signature that we can perform
@@ -108,7 +107,7 @@ async fn do_presign(
         if !seen.put(from) {
             continue;
         }
-        kd += Scalar::from(kd_j);
+        kd += kd_j;
     }
 
     // Spec 2.3
@@ -129,8 +128,8 @@ async fn do_presign(
         if !seen.put(from) {
             continue;
         }
-        ka += Scalar::from(ka_j);
-        xb += Scalar::from(xb_j);
+        ka += ka_j;
+        xb += xb_j;
     }
 
     // Spec 2.6
@@ -146,7 +145,7 @@ async fn do_presign(
     let kd_inv: Option<Scalar> = kd.invert().into();
     let kd_inv =
         kd_inv.ok_or_else(|| ProtocolError::AssertionFailed("failed to invert kd".to_string()))?;
-    let big_r = (ProjectivePoint::from(big_d) * kd_inv).into();
+    let big_r = (big_d * kd_inv).into();
 
     // Spec 2.8
     let lambda_diff = bt_lambda * sk_lambda.invert().expect("to invert sk_lambda");
@@ -226,19 +225,27 @@ pub fn presign(
 #[cfg(test)]
 mod test {
     use super::*;
-
-    use crate::ecdsa::{
-        ot_based_ecdsa::triples::test::deal,
+    use crate::{
+        ecdsa::{
+            ot_based_ecdsa::triples::test::deal,
+            ProjectivePoint,
+            Secp256K1Sha256
+        },
+        protocol::run_protocol,
+        crypto::polynomials::{
+            generate_polynomial,
+            evaluate_polynomial_on_zero,
+            evaluate_polynomial_on_participant,
+        },
     };
-    use crate::protocol::run_protocol;
     use std::collections::BTreeMap;
     use rand_core::OsRng;
-    use k256::{ProjectivePoint, Secp256k1};
     use frost_secp256k1::{
         VerifyingKey,
         keys::{SigningShare, PublicKeyPackage}
     };
 
+    type C = Secp256K1Sha256;
     #[test]
     fn test_presign() {
         let participants = vec![
@@ -248,8 +255,8 @@ mod test {
             Participant::from(3u32),
         ];
         let original_threshold = 2;
-        let f = Polynomial::<Secp256k1>::random(&mut OsRng, original_threshold);
-        let big_x = ProjectivePoint::GENERATOR * f.evaluate_zero();
+        let f =  generate_polynomial::<C>(None, original_threshold-1, &mut OsRng);
+        let big_x = ProjectivePoint::GENERATOR * evaluate_polynomial_on_zero::<C>(&f).to_scalar();
 
         let threshold = 2;
 
@@ -270,7 +277,8 @@ mod test {
             .zip(triple0_shares.into_iter())
             .zip(triple1_shares.into_iter())
         {
-            let private_share = f.evaluate(&p.scalar::<Secp256k1>());
+            let private_share = evaluate_polynomial_on_participant::<C>(&f, *p).unwrap().to_scalar();
+            // let private_share = f.evaluate(&p.scalar::<Secp256k1>());
             let verifying_key = VerifyingKey::new(big_x);
             let public_key_package = PublicKeyPackage::new(BTreeMap::new(), verifying_key);
             let keygen_out = KeygenOutput {
@@ -309,11 +317,11 @@ mod test {
         let k_shares = vec![result[0].1.k, result[1].1.k];
         let sigma_shares = vec![result[0].1.sigma, result[1].1.sigma];
         let p_list = ParticipantList::new(&participants).unwrap();
-        let k = p_list.lagrange::<Secp256k1>(participants[0]) * k_shares[0]
-            + p_list.lagrange::<Secp256k1>(participants[1]) * k_shares[1];
+        let k = p_list.generic_lagrange::<C>(participants[0]) * k_shares[0]
+            + p_list.generic_lagrange::<C>(participants[1]) * k_shares[1];
         assert_eq!(ProjectivePoint::GENERATOR * k.invert().unwrap(), big_k);
-        let sigma = p_list.lagrange::<Secp256k1>(participants[0]) * sigma_shares[0]
-            + p_list.lagrange::<Secp256k1>(participants[1]) * sigma_shares[1];
-        assert_eq!(sigma, k * f.evaluate_zero());
+        let sigma = p_list.generic_lagrange::<C>(participants[0]) * sigma_shares[0]
+            + p_list.generic_lagrange::<C>(participants[1]) * sigma_shares[1];
+        assert_eq!(sigma, k * evaluate_polynomial_on_zero::<C>(&f).to_scalar());
     }
 }

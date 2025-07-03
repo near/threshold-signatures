@@ -13,7 +13,7 @@ use crate::crypto::{
     ciphersuite::Ciphersuite,
     polynomials::compute_lagrange_coefficient,
 };
-use crate::{compat::CSCurve, protocol::Participant};
+use crate::protocol::Participant;
 
 /// Represents a sorted list of participants.
 ///
@@ -85,27 +85,6 @@ impl ParticipantList {
         Some(self.participants[index])
     }
 
-    /// Get the lagrange coefficient for a participant, relative to this list.
-    /// The lagrange coefficient are evaluated to zero
-    /// Use cait-sith library curve type
-    pub fn lagrange<C: CSCurve>(&self, p: Participant) -> C::Scalar {
-        use elliptic_curve::Field;
-
-        let p_scalar = p.scalar::<C>();
-
-        let mut top = C::Scalar::ONE;
-        let mut bot = C::Scalar::ONE;
-        for q in &self.participants {
-            if p == *q {
-                continue;
-            }
-            let q_scalar = q.scalar::<C>();
-            top *= q_scalar;
-            bot *= q_scalar - p_scalar;
-        }
-
-        top * bot.invert().unwrap()
-    }
 
     /// Get the lagrange coefficient for a participant, relative to this list.
     /// The lagrange coefficient are evaluated to zero

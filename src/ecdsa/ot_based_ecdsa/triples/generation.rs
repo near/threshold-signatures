@@ -11,13 +11,16 @@ use crate::{
     },
     // ecdsa::math::{GroupPolynomial, Polynomial},
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
-    proofs::{dlog, dlogeq, strobe_transcript::Transcript},
+    crypto::proofs::{dlog, dlogeq, strobe_transcript::Transcript},
     protocol::{
         internal::make_protocol, InitializationError, Participant, Protocol, ProtocolError,
     },
     serde::encode,
     ecdsa::{
-        Secp256K1Sha256
+        Secp256K1Sha256,
+        Secp256K1ScalarField,
+        Field,
+        Scalar,
     }
 };
 
@@ -59,10 +62,8 @@ async fn do_generation(
     // Spec 1.2
     let e = generate_polynomial::<C>(None, threshold-1, &mut rng);
     let f = generate_polynomial::<C>(None, threshold-1, &mut rng);
-    let l = generate_polynomial::<C>(None, threshold-1, &mut rng);
-
     // Spec 1.3
-    l.set_zero(C::Scalar::ZERO);
+    let l = generate_polynomial::<C>(Some(Secp256K1ScalarField::zero()), threshold-1, &mut rng);
 
     // Spec 1.4
     let big_e_i = e.commit();
@@ -163,8 +164,8 @@ async fn do_generation(
         // Spec 2.8
         let wait3 = chan.next_waitpoint();
         for p in participants.others(me) {
-            let a_i_j: ScalarPrimitive<C> = e.evaluate(&p.scalar::<C>()).into();
-            let b_i_j: ScalarPrimitive<C> = f.evaluate(&p.scalar::<C>()).into();
+            let a_i_j: Scalar = e.evaluate(&p.scalar::<C>()).into();
+            let b_i_j: Scalar = f.evaluate(&p.scalar::<C>()).into();
             chan.send_private(wait3, p, &(a_i_j, b_i_j));
         }
         let mut a_i = e.evaluate(&me.scalar::<C>());
@@ -279,7 +280,7 @@ async fn do_generation(
         seen.clear();
         seen.put(me);
         while !seen.full() {
-            let (from, (a_j_i, b_j_i)): (_, (ScalarPrimitive<C>, ScalarPrimitive<C>)) =
+            let (from, (a_j_i, b_j_i)): (_, (Scalar, Scalar)) =
                 chan.recv(wait3).await?;
             if !seen.put(from) {
                 continue;
@@ -410,7 +411,7 @@ async fn do_generation(
     l.set_zero(l0);
     let wait6 = chan.next_waitpoint();
     for p in participants.others(me) {
-        let c_i_j: ScalarPrimitive<C> = l.evaluate(&p.scalar::<C>()).into();
+        let c_i_j: Scalar = l.evaluate(&p.scalar::<C>()).into();
         chan.send_private(wait6, p, &c_i_j);
     }
     let mut c_i = l.evaluate(&me.scalar::<C>());
@@ -456,7 +457,7 @@ async fn do_generation(
     seen.clear();
     seen.put(me);
     while !seen.full() {
-        let (from, c_j_i): (_, ScalarPrimitive<C>) = chan.recv(wait6).await?;
+        let (from, c_j_i): (_, Scalar) = chan.recv(wait6).await?;
         if !seen.put(from) {
             continue;
         }
@@ -669,8 +670,8 @@ async fn do_generation_many<const N: usize>(
             for i in 0..N {
                 let e = &e_v[i];
                 let f = &f_v[i];
-                let a_i_j: ScalarPrimitive<C> = e.evaluate(&p.scalar::<C>()).into();
-                let b_i_j: ScalarPrimitive<C> = f.evaluate(&p.scalar::<C>()).into();
+                let a_i_j: Scalar = e.evaluate(&p.scalar::<C>()).into();
+                let b_i_j: Scalar = f.evaluate(&p.scalar::<C>()).into();
                 a_i_j_v.push(a_i_j);
                 b_i_j_v.push(b_i_j);
             }
@@ -810,7 +811,7 @@ async fn do_generation_many<const N: usize>(
         while !seen.full() {
             let (from, (a_j_i_v, b_j_i_v)): (
                 _,
-                (Vec<ScalarPrimitive<C>>, Vec<ScalarPrimitive<C>>),
+                (Vec<Scalar>, Vec<Scalar>),
             ) = chan.recv(wait3).await?;
             if !seen.put(from) {
                 continue;
@@ -972,7 +973,7 @@ async fn do_generation_many<const N: usize>(
         let mut c_i_j_v = Vec::new();
         for i in 0..N {
             let l = &mut l_v[i];
-            let c_i_j: ScalarPrimitive<C> = l.evaluate(&p.scalar::<C>()).into();
+            let c_i_j: Scalar = l.evaluate(&p.scalar::<C>()).into();
             c_i_j_v.push(c_i_j);
         }
         chan.send_private(wait6, p, &c_i_j_v);
@@ -1039,7 +1040,7 @@ async fn do_generation_many<const N: usize>(
     seen.clear();
     seen.put(me);
     while !seen.full() {
-        let (from, c_j_i_v): (_, Vec<ScalarPrimitive<C>>) = chan.recv(wait6).await?;
+        let (from, c_j_i_v): (_, Vec<Scalar>) = chan.recv(wait6).await?;
         if !seen.put(from) {
             continue;
         }
@@ -1152,16 +1153,19 @@ pub fn generate_triple_many<C: CSCurve, const N: usize>(
 
 #[cfg(test)]
 mod test {
-    use k256::{ProjectivePoint, Secp256k1};
-
     use crate::{
-        ecdsa::ot_based_ecdsa::triples::generate_triple,
+        ecdsa::{
+            ot_based_ecdsa::triples::generate_triple,
+            ProjectivePoint,
+            Secp256K1Sha256
+        },
         participants::ParticipantList,
         protocol::{run_protocol, Participant, Protocol, ProtocolError},
     };
 
     use super::{generate_triple_many, TripleGenerationOutput, TripleGenerationOutputMany};
 
+    type C = Secp256K1Sha256;
     #[test]
     fn test_triple_generation() -> Result<(), ProtocolError> {
         let participants = vec![
@@ -1200,19 +1204,19 @@ mod test {
         ];
         let p_list = ParticipantList::new(&participants).unwrap();
 
-        let a = p_list.lagrange::<Secp256k1>(participants[0]) * triple_shares[0].a
-            + p_list.lagrange::<Secp256k1>(participants[1]) * triple_shares[1].a
-            + p_list.lagrange::<Secp256k1>(participants[2]) * triple_shares[2].a;
+        let a = p_list.generic_lagrange::<C>(participants[0]) * triple_shares[0].a
+            + p_list.generic_lagrange::<C>(participants[1]) * triple_shares[1].a
+            + p_list.generic_lagrange::<C>(participants[2]) * triple_shares[2].a;
         assert_eq!(ProjectivePoint::GENERATOR * a, triple_pub.big_a);
 
-        let b = p_list.lagrange::<Secp256k1>(participants[0]) * triple_shares[0].b
-            + p_list.lagrange::<Secp256k1>(participants[1]) * triple_shares[1].b
-            + p_list.lagrange::<Secp256k1>(participants[2]) * triple_shares[2].b;
+        let b = p_list.generic_lagrange::<C>(participants[0]) * triple_shares[0].b
+            + p_list.generic_lagrange::<C>(participants[1]) * triple_shares[1].b
+            + p_list.generic_lagrange::<C>(participants[2]) * triple_shares[2].b;
         assert_eq!(ProjectivePoint::GENERATOR * b, triple_pub.big_b);
 
-        let c = p_list.lagrange::<Secp256k1>(participants[0]) * triple_shares[0].c
-            + p_list.lagrange::<Secp256k1>(participants[1]) * triple_shares[1].c
-            + p_list.lagrange::<Secp256k1>(participants[2]) * triple_shares[2].c;
+        let c = p_list.generic_lagrange::<C>(participants[0]) * triple_shares[0].c
+            + p_list.generic_lagrange::<C>(participants[1]) * triple_shares[1].c
+            + p_list.generic_lagrange::<C>(participants[2]) * triple_shares[2].c;
         assert_eq!(ProjectivePoint::GENERATOR * c, triple_pub.big_c);
 
         assert_eq!(a * b, c);
@@ -1258,19 +1262,19 @@ mod test {
         ];
         let p_list = ParticipantList::new(&participants).unwrap();
 
-        let a = p_list.lagrange::<Secp256k1>(participants[0]) * triple_shares[0].a
-            + p_list.lagrange::<Secp256k1>(participants[1]) * triple_shares[1].a
-            + p_list.lagrange::<Secp256k1>(participants[2]) * triple_shares[2].a;
+        let a = p_list.generic_lagrange::<C>(participants[0]) * triple_shares[0].a
+            + p_list.generic_lagrange::<C>(participants[1]) * triple_shares[1].a
+            + p_list.generic_lagrange::<C>(participants[2]) * triple_shares[2].a;
         assert_eq!(ProjectivePoint::GENERATOR * a, triple_pub.big_a);
 
-        let b = p_list.lagrange::<Secp256k1>(participants[0]) * triple_shares[0].b
-            + p_list.lagrange::<Secp256k1>(participants[1]) * triple_shares[1].b
-            + p_list.lagrange::<Secp256k1>(participants[2]) * triple_shares[2].b;
+        let b = p_list.generic_lagrange::<C>(participants[0]) * triple_shares[0].b
+            + p_list.generic_lagrange::<C>(participants[1]) * triple_shares[1].b
+            + p_list.generic_lagrange::<C>(participants[2]) * triple_shares[2].b;
         assert_eq!(ProjectivePoint::GENERATOR * b, triple_pub.big_b);
 
-        let c = p_list.lagrange::<Secp256k1>(participants[0]) * triple_shares[0].c
-            + p_list.lagrange::<Secp256k1>(participants[1]) * triple_shares[1].c
-            + p_list.lagrange::<Secp256k1>(participants[2]) * triple_shares[2].c;
+        let c = p_list.generic_lagrange::<C>(participants[0]) * triple_shares[0].c
+            + p_list.generic_lagrange::<C>(participants[1]) * triple_shares[1].c
+            + p_list.generic_lagrange::<C>(participants[2]) * triple_shares[2].c;
         assert_eq!(ProjectivePoint::GENERATOR * c, triple_pub.big_c);
 
         assert_eq!(a * b, c);
