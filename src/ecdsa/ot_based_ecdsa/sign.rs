@@ -114,8 +114,10 @@ mod test {
     use std::error::Error;
     use ecdsa::Signature;
     use k256::{
-        ecdsa::signature::Verifier, ecdsa::VerifyingKey, ProjectivePoint, PublicKey, Scalar,
-        Secp256k1,
+        ecdsa::signature::Verifier,
+        ecdsa::VerifyingKey,
+        ProjectivePoint,
+        PublicKey,
     };
     use rand_core::OsRng;
     use super::{
@@ -130,6 +132,7 @@ mod test {
         crypto::polynomials::{
             generate_polynomial,
             evaluate_polynomial_on_zero,
+            evaluate_polynomial_on_participant,
         },
     };
     use crate::compat::{
@@ -145,12 +148,12 @@ mod test {
         // Run 4 times for flakiness reasons
         for _ in 0..4 {
             let f = generate_polynomial::<C>(None, threshold-1, &mut OsRng);;
-            let x = evaluate_polynomial_on_zero::<C>(f);
+            let x = evaluate_polynomial_on_zero::<C>(&f).to_scalar();
             let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
 
             let g = generate_polynomial::<C>(None, threshold-1, &mut OsRng);;
 
-            let k= evaluate_polynomial_on_zero::<C>(g);
+            let k = evaluate_polynomial_on_zero::<C>(&g).to_scalar();
             let big_k = (ProjectivePoint::GENERATOR * k.invert().unwrap()).to_affine();
 
             let sigma = k * x;
@@ -164,11 +167,14 @@ mod test {
                 Box<dyn Protocol<Output = FullSignature>>,
             )> = Vec::with_capacity(participants.len());
             for p in &participants {
-                let p_scalar = p.scalar::<Secp256k1>();
                 let presignature = PresignOutput {
                     big_r: big_k,
-                    k: g.evaluate(&p_scalar),
-                    sigma: h.evaluate(&p_scalar),
+                    k: evaluate_polynomial_on_participant::<C>(&g, *p)
+                            .unwrap()
+                            .to_scalar(),
+                    sigma: evaluate_polynomial_on_participant::<C>(&h, *p)
+                            .unwrap()
+                            .to_scalar(),
                 };
                 let protocol = sign(
                     &participants,

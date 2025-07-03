@@ -1,9 +1,10 @@
 use crate::{
-    compat::{CSCurve, SerializablePoint},
+    compat::SerializablePoint,
     serde::{deserialize_scalar, encode, serialize_projective_point, serialize_scalar},
+    crypto::ciphersuite::Ciphersuite,
+    Group,
 };
 use super::strobe_transcript::Transcript;
-use elliptic_curve::{Field, Group};
 use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
 
@@ -18,12 +19,12 @@ const CHALLENGE_LABEL: &[u8] = b"dlog proof challenge";
 ///
 /// This statement claims knowledge of the discrete logarithm of some point.
 #[derive(Debug, Clone, Copy, Serialize)]
-pub struct Statement<'a, C: CSCurve> {
+pub struct Statement<'a, C: Ciphersuite> {
     #[serde(serialize_with = "serialize_projective_point::<C, _>")]
-    pub public: &'a C::ProjectivePoint,
+    pub public: &'a Ciphersuite::Group::Element,
 }
 
-impl<'a, C: CSCurve> Statement<'a, C> {
+impl<'a, C: Ciphersuite> Statement<'a, C> {
     /// Calculate the homomorphism we want to prove things about.
     fn phi(&self, x: &C::Scalar) -> C::ProjectivePoint {
         C::ProjectivePoint::generator() * x

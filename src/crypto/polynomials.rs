@@ -51,12 +51,13 @@ pub fn evaluate_polynomial_on_zero<C: Ciphersuite>(
 pub fn evaluate_polynomial<C: Ciphersuite>(
     coefficients: &[Scalar<C>],
     point: Scalar<C>,
-) -> Result<SigningShare<C>, ProtocolError> {
+) -> SigningShare<C> {
     // creating this dummy id is only to be able to call the from_coefficients function
     let point_id = Identifier::new(point);
     if point_id.is_err(){
-        evaluate_polynomial_on_zero(coefficients)
+        evaluate_polynomial_on_zero::<C>(coefficients)
     } else{
+        let point_id = point_id.unwrap();
         SigningShare::from_coefficients(coefficients, point_id)
     }
 }

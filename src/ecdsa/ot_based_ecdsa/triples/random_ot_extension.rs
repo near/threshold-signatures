@@ -5,7 +5,7 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 use crate::{
     compat::CSCurve,
-    proofs::strobe_transcript::TranscriptRng,
+    crypto::proofs::strobe_transcript::TranscriptRng,
     protocol::{
         internal::{make_protocol, Comms, PrivateChannel},
         run_two_party_protocol, Participant, ProtocolError,
