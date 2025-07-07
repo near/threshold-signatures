@@ -4,7 +4,6 @@ use sha2::{Digest, Sha256};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 use crate::{
-    compat::CSCurve,
     crypto::proofs::strobe_transcript::TranscriptRng,
     protocol::{
         internal::{make_protocol, Comms, PrivateChannel},
