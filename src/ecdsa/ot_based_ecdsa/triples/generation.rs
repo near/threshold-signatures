@@ -1,8 +1,8 @@
-use elliptic_curve::{Group, ScalarPrimitive};
+use elliptic_curve::Group;
 use rand_core::OsRng;
 
 use crate::{
-    compat::{CSCurve, SerializablePoint},
+    compat::SerializablePoint,
     crypto::{
         commit::{Commitment,commit},
         hash::{hash, HashOutput},
