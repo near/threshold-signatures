@@ -1,25 +1,27 @@
+use frost_core::keys::CoefficientCommitment;
 use rand_core::OsRng;
 use elliptic_curve::{
     point::AffineCoordinates,
 };
-use frost_secp256k1::{
-    Secp256K1Sha256, Secp256K1Group, Secp256K1ScalarField,
-    Group, Field,
-    keys::{
-        SigningShare,
-        VerifyingShare
-    },
-};
+use frost_secp256k1::{Secp256K1Group,Group};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     crypto::polynomials::{
-        evaluate_multi_polynomials,
+        eval_multi_polynomials,
         generate_polynomial,
         eval_interpolation,
         eval_exponent_interpolation,
     },
-    ecdsa::KeygenOutput,
+    ecdsa::{
+        KeygenOutput,
+        Scalar,
+        AffinePoint,
+        SigningShare,
+        Secp256K1Sha256,
+        Secp256K1ScalarField,
+        Field,
+    },
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     protocol::{
         internal::{make_protocol, Comms, SharedChannel},
@@ -30,9 +32,7 @@ use crate::{
     },
 };
 
-
 type C = Secp256K1Sha256;
-type Scalar = <Secp256K1ScalarField as Field>::Scalar;
 
 
 /// The arguments needed to create a presignature.
@@ -51,11 +51,11 @@ pub struct PresignArguments {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PresignOutput {
     /// The public nonce commitment.
-    pub big_r: VerifyingShare,
+    pub big_r: AffinePoint,
 
     /// Our secret shares of the nonces.
-    pub alpha_i: SigningShare,
-    pub beta_i: SigningShare,
+    pub alpha_i: Scalar,
+    pub beta_i: Scalar,
 }
 
 /// Generates a secret polynomial where the comstant term is zero
@@ -68,11 +68,11 @@ fn zero_secret_polynomial(
 }
 
 /// Evaluate five polynomials at once
-fn evaluate_five_polynomials(
+fn eval_five_polynomials(
     polynomials: [&[Scalar]; 5],
     participant: Participant,
 )-> Result<[SigningShare; 5], ProtocolError> {
-    let package = evaluate_multi_polynomials::<C,5>(polynomials, participant)?;
+    let package = eval_multi_polynomials::<C,5>(polynomials, participant)?;
     Ok(package)
 }
 
@@ -106,13 +106,13 @@ async fn do_presign(
 
     for p in participants.others(me) {
         // Securely send to each other participant a secret share
-        let package = evaluate_five_polynomials([my_fk, my_fa, my_fb, my_fd, my_fe], p)?;
+        let package = eval_five_polynomials([my_fk, my_fa, my_fb, my_fd, my_fe], p)?;
         // send the evaluation privately to participant p
         chan.send_private(wait_round_0, p, &package);
     }
 
     // Evaluate my secret shares for my polynomials
-    let shares = evaluate_five_polynomials([my_fk, my_fa, my_fb, my_fd, my_fe], me)?;
+    let shares = eval_five_polynomials([my_fk, my_fa, my_fb, my_fd, my_fe], me)?;
     // Extract the shares into a vec of scalars
     let mut shares: Vec<Scalar> = shares.iter()
         .map( |signing_share| signing_share.to_scalar())
@@ -136,7 +136,7 @@ async fn do_presign(
 
     // Compute R_me = g^{k_me}
     let big_r_me = Secp256K1Group::generator() * shares[0];
-    let big_r_me = VerifyingShare::new(big_r_me);
+    let big_r_me = CoefficientCommitment::new(big_r_me);
 
     // Compute w_me = a_me * k_me + b_me
     let w_me = shares[1] * shares[0] + shares[2];
@@ -156,7 +156,7 @@ async fn do_presign(
     seen.clear();
     seen.put(me);
     while !seen.full() {
-        let (from, (big_r_p, w_p)): (_ , (VerifyingShare, SigningShare)) = chan.recv(wait_round_1).await?;
+        let (from, (big_r_p, w_p)): (_ , (CoefficientCommitment, SigningShare)) = chan.recv(wait_round_1).await?;
         if !seen.put(from) {
             continue;
         }
@@ -190,7 +190,7 @@ async fn do_presign(
     if w.to_scalar().is_zero().into(){
         return Err(ProtocolError::ZeroScalar)
     }
-    if big_r.to_element().eq(&<Secp256K1Group as Group>::identity()){
+    if big_r.value().eq(&<Secp256K1Group as Group>::identity()){
         return Err(ProtocolError::IdentityElement)
     }
 
@@ -200,7 +200,7 @@ async fn do_presign(
     // Some extra computation is pushed in this offline phase
     let alpha_me = h_me + shares[3];
 
-    let big_r_x_coordinate: [u8; 32] = big_r.to_element()
+    let big_r_x_coordinate: [u8; 32] = big_r.value()
             .to_affine()
             .x()
             .try_into()
@@ -280,8 +280,8 @@ mod test {
         protocol::run_protocol,
         crypto::polynomials::{
             generate_polynomial,
-            evaluate_polynomial_on_participant,
-            evaluate_polynomial_on_zero,
+            eval_polynomial_on_participant,
+            eval_polynomial_on_zero,
         },
     };
     use frost_secp256k1::keys::PublicKeyPackage;
@@ -302,7 +302,7 @@ mod test {
         let max_malicious = 2;
 
         let f = generate_polynomial::<C>(None, max_malicious, &mut OsRng);
-        let big_x = ProjectivePoint::GENERATOR * evaluate_polynomial_on_zero::<C>(&f).to_scalar();
+        let big_x = ProjectivePoint::GENERATOR * eval_polynomial_on_zero::<C>(&f).to_scalar();
 
 
         #[allow(clippy::type_complexity)]
@@ -313,7 +313,7 @@ mod test {
 
         for p in &participants{
             // simulating the key packages for each participant
-            let private_share = evaluate_polynomial_on_participant::<C>(&f, *p).unwrap();
+            let private_share = eval_polynomial_on_participant::<C>(&f, *p).unwrap();
             let verifying_key = VerifyingKey::new(big_x);
             let public_key_package = PublicKeyPackage::new(BTreeMap::new(), verifying_key);
             let keygen_out = KeygenOutput {

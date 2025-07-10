@@ -56,7 +56,7 @@ impl<'a, C: Ciphersuite> Statement<'a, C> {
     }
 
     /// Encode into Vec<u8>: some sort of serialization
-    pub fn encode(&self) -> Vec<u8>{
+    fn encode(&self) -> Vec<u8>{
         let mut enc =  Vec::new();
         enc.extend_from_slice(b"statement:");
         // None of the following calls should panic as neither public and generator are identity

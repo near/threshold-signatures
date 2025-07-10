@@ -6,7 +6,6 @@ use subtle::{Choice, ConditionallySelectable};
 
 use crate::protocol::internal::Comms;
 use crate::{
-    compat::CSCurve,
     crypto::proofs::strobe_transcript::TranscriptRng,
     protocol::{
         internal::{make_protocol, PrivateChannel},
@@ -14,9 +13,9 @@ use crate::{
     },
 };
 
-struct MTAScalars<C: CSCurve>(Vec<(ScalarPrimitive<C>, ScalarPrimitive<C>)>);
+struct MTAScalars(Vec<(ScalarPrimitive<C>, ScalarPrimitive<C>)>);
 
-impl<C: CSCurve> MTAScalars<C> {
+impl MTAScalars {
     const SCALAR_LEN: usize = (C::BITS + 7) >> 3;
 
     fn len(&self) -> usize {
@@ -28,7 +27,7 @@ impl<C: CSCurve> MTAScalars<C> {
     }
 }
 
-impl<C: CSCurve> Serialize for MTAScalars<C> {
+impl Serialize for MTAScalars {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         let mut out = Vec::with_capacity(self.len() * Self::SCALAR_LEN * 2);
         for (s0, s1) in self.iter() {
@@ -39,7 +38,7 @@ impl<C: CSCurve> Serialize for MTAScalars<C> {
     }
 }
 
-impl<'de, C: CSCurve> Deserialize<'de> for MTAScalars<C> {
+impl<'de> Deserialize<'de> for MTAScalars {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let bytes = Vec::<u8>::deserialize(d)?;
         if bytes.len() % (Self::SCALAR_LEN * 2) != 0 {
@@ -58,7 +57,7 @@ impl<'de, C: CSCurve> Deserialize<'de> for MTAScalars<C> {
 }
 
 /// The sender for multiplicative to additive conversion.
-pub async fn mta_sender<C: CSCurve>(
+pub async fn mta_sender(
     mut chan: PrivateChannel,
     v: Vec<(C::Scalar, C::Scalar)>,
     a: C::Scalar,
@@ -97,7 +96,7 @@ pub async fn mta_sender<C: CSCurve>(
 }
 
 /// The receiver for multiplicative to additive conversion.
-pub async fn mta_receiver<C: CSCurve>(
+pub async fn mta_receiver(
     mut chan: PrivateChannel,
     tv: Vec<(Choice, C::Scalar)>,
     b: C::Scalar,
