@@ -2,8 +2,8 @@ use crate::crypto::{
     ciphersuite::Ciphersuite,
     hash::{HashOutput, domain_separate_hash},
     polynomials::{
+        Polynomial,
         eval_polynomial_on_participant,
-        generate_polynomial,
         commit_polynomial,
     },
 };
@@ -127,7 +127,7 @@ fn proof_of_knowledge<C: Ciphersuite>(
     rng: &mut OsRng,
 ) -> Result<Signature<C>, ProtocolError> {
     // creates an identifier for the participant
-    let id = me.generic_scalar::<C>();
+    let id = me.scalar::<C>();
     let vk_share = coefficient_commitment[0];
 
     // pick a random k_i and compute R_id = g^{k_id},
@@ -178,7 +178,7 @@ fn internal_verify_proof_of_knowledge<C: Ciphersuite>(
     proof_of_knowledge: &Signature<C>,
 ) -> Result<(), ProtocolError> {
     // creates an identifier for the participant
-    let id = participant.generic_scalar::<C>();
+    let id = participant.scalar::<C>();
     let vk_share = commitment.coefficients().first().unwrap();
 
     let big_r = proof_of_knowledge.R();
@@ -384,7 +384,7 @@ async fn do_keyshare<C: Ciphersuite>(
     let session_id = domain_separate_hash(domain_separator, &session_ids);
     domain_separator += 1;
     // the degree of the polynomial is threshold - 1
-    let secret_coefficients = generate_polynomial::<C>(Some(secret), threshold-1, &mut rng);
+    let secret_coefficients = Polynomial::<C>::generate_polynomial(Some(secret), threshold-1, &mut rng);
 
     // Compute the multiplication of every coefficient of p with the generator G
     let coefficient_commitment = generate_coefficient_commitment::<C>(&secret_coefficients);

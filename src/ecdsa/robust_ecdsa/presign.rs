@@ -6,8 +6,8 @@ use frost_secp256k1::{Secp256K1Group,Group};
 
 use crate::{
     crypto::polynomials::{
+        Polynomial,
         eval_multi_polynomials,
-        generate_polynomial,
         eval_interpolation,
         eval_exponent_interpolation,
     },
@@ -148,7 +148,7 @@ async fn do_presign(
     let identifiers: Vec<Scalar> =  verifyingshares_map
                     .participants()
                     .iter()
-                    .map(|p| p.generic_scalar::<C>())
+                    .map(|p| p.scalar::<C>())
                     .collect();
     let verifying_shares = verifyingshares_map.into_refs_or_none()
             .ok_or(ProtocolError::InvalidInterpolationArguments)?;
@@ -253,7 +253,7 @@ mod test {
     use crate::{
         protocol::run_protocol,
         crypto::polynomials::{
-            generate_polynomial,
+            Polynomial,
             eval_polynomial_on_participant,
             eval_polynomial_on_zero,
         },
@@ -276,7 +276,7 @@ mod test {
         ];
         let max_malicious = 2;
 
-        let f = generate_polynomial::<C>(None, max_malicious, &mut OsRng);
+        let f = Polynomial::<C>::generate_polynomial(None, max_malicious, &mut OsRng);
         let big_x = ProjectivePoint::GENERATOR * eval_polynomial_on_zero::<C>(&f).to_scalar();
 
 

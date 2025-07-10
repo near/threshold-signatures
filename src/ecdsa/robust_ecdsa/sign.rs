@@ -124,7 +124,7 @@ mod test {
         compat::{scalar_hash},
         protocol::run_protocol,
         crypto::polynomials::{
-            generate_polynomial,
+            Polynomial,
             eval_polynomial_on_participant,
             eval_polynomial_on_zero,
         }
@@ -139,17 +139,17 @@ mod test {
 
         // Run 4 times to test randomness
         for _ in 0..4 {
-            let fx = generate_polynomial::<C>(None, threshold-1, &mut OsRng);
+            let fx = Polynomial::<C>::generate_polynomial(None, threshold-1, &mut OsRng);
             // master secret key
             let x = eval_polynomial_on_zero::<C>(&fx).to_scalar();
             // master public key
             let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
 
-            let fa = generate_polynomial::<C>(None, threshold-1, &mut OsRng);
-            let fk = generate_polynomial::<C>(None, threshold-1, &mut OsRng);
+            let fa = Polynomial::<C>::generate_polynomial(None, threshold-1, &mut OsRng);
+            let fk = Polynomial::<C>::generate_polynomial(None, threshold-1, &mut OsRng);
 
-            let fd = generate_polynomial::<C>(Some(Secp256K1ScalarField::zero()), 2*max_malicious, &mut OsRng);
-            let fe = generate_polynomial::<C>(Some(Secp256K1ScalarField::zero()), 2*max_malicious, &mut OsRng);
+            let fd = Polynomial::<C>::generate_polynomial(Some(Secp256K1ScalarField::zero()), 2*max_malicious, &mut OsRng);
+            let fe = Polynomial::<C>::generate_polynomial(Some(Secp256K1ScalarField::zero()), 2*max_malicious, &mut OsRng);
 
             let k = eval_polynomial_on_zero::<C>(&fk).to_scalar();
             let big_r = ProjectivePoint::GENERATOR * k.clone();

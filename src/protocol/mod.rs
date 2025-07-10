@@ -149,7 +149,7 @@ impl Participant {
     }
 
     /// Return the scalar associated with this participant.
-    pub fn generic_scalar<C: Ciphersuite>(&self) -> Scalar<C> {
+    pub fn scalar<C: Ciphersuite>(&self) -> Scalar<C> {
         let mut bytes = [0u8; 32];
         let id = (self.0 as u64) + 1;
 
@@ -166,7 +166,7 @@ impl Participant {
 
     /// Returns a Frost identifier used in the frost library
     pub fn to_identifier<C: Ciphersuite>(&self) -> Identifier<C> {
-        let id = self.generic_scalar::<C>();
+        let id = self.scalar::<C>();
         // creating an identifier as required by the syntax of frost_core
         // cannot panic as the previous line ensures id is neq zero
         Identifier::new(id).unwrap()

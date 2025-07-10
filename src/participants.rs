@@ -90,11 +90,11 @@ impl ParticipantList {
     /// The lagrange coefficient are evaluated to zero
     /// Use generic frost library types
     pub fn generic_lagrange<C: Ciphersuite>(&self, p: Participant) -> Scalar<C> {
-        let p = p.generic_scalar::<C>();
+        let p = p.scalar::<C>();
         let identifiers: Vec<Scalar<C>> =  self
                     .participants()
                     .iter()
-                    .map(|p| p.generic_scalar::<C>())
+                    .map(|p| p.scalar::<C>())
                     .collect();
         compute_lagrange_coefficient::<C>(&identifiers, &p, None).unwrap()
     }

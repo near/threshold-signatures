@@ -12,7 +12,7 @@ use crate::{
     protocol::Participant,
     crypto::polynomials::{
         generate_polynomial,
-        evaluate_polynomial_on_participant,
+        eval_polynomial_on_participant,
     },
 };
 use super::{TriplePub, TripleShare};
@@ -43,9 +43,9 @@ pub fn deal(
     for p in participants {
         participants_owned.push(*p);
         shares.push(TripleShare {
-            a: evaluate_polynomial_on_participant::<C>(&f_a, *p)?.to_scalar(),
-            b: evaluate_polynomial_on_participant::<C>(&f_b, *p)?.to_scalar(),
-            c: evaluate_polynomial_on_participant::<C>(&f_c, *p)?.to_scalar(),
+            a: eval_polynomial_on_participant::<C>(&f_a, *p)?.to_scalar(),
+            b: eval_polynomial_on_participant::<C>(&f_b, *p)?.to_scalar(),
+            c: eval_polynomial_on_participant::<C>(&f_c, *p)?.to_scalar(),
         });
     }
 
