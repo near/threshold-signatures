@@ -1,7 +1,7 @@
 use elliptic_curve::scalar::IsHigh;
 use subtle::ConditionallySelectable;
 
-use super::presign::PresignOutput;
+use super::PresignOutput;
 use crate::{
     ecdsa::{
         FullSignature,

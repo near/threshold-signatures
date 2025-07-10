@@ -1,11 +1,5 @@
 
-use serde::{Deserialize, Serialize};
-
-use super::triples::{TriplePub, TripleShare};
-
 use crate::ecdsa::{
-    KeygenOutput,
-    AffinePoint,
     Scalar,
     ProjectivePoint,
     Secp256K1Sha256
@@ -16,34 +10,7 @@ use crate::protocol::{
     internal::{make_protocol, Comms, SharedChannel}
 };
 use crate::participants::{ParticipantList, ParticipantCounter};
-
-/// The output of the presigning protocol.
-///
-/// This output is basically all the parts of the signature that we can perform
-/// without knowing the message.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PresignOutput {
-    /// The public nonce commitment.
-    pub big_r: AffinePoint,
-    /// Our share of the nonce value.
-    pub k: Scalar,
-    /// Our share of the sigma value.
-    pub sigma: Scalar,
-}
-
-/// The arguments needed to create a presignature.
-#[derive(Debug, Clone)]
-pub struct PresignArguments {
-    /// The first triple's public information, and our share.
-    pub triple0: (TripleShare, TriplePub),
-    /// Ditto, for the second triple.
-    pub triple1: (TripleShare, TriplePub),
-    /// The output of key generation, i.e. our share of the secret key, and the public key package.
-    /// This is of type KeygenOutput<Secp256K1Sha256> from Frost implementation
-    pub keygen_out: KeygenOutput,
-    /// The desired threshold for the presignature, which must match the original threshold
-    pub threshold: usize,
-}
+use super::{PresignArguments, PresignOutput};
 
 async fn do_presign(
     mut chan: SharedChannel,
@@ -229,7 +196,8 @@ mod test {
         ecdsa::{
             ot_based_ecdsa::triples::test::deal,
             ProjectivePoint,
-            Secp256K1Sha256
+            Secp256K1Sha256,
+            KeygenOutput,
         },
         protocol::run_protocol,
         crypto::polynomials::{

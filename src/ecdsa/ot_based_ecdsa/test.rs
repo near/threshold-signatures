@@ -1,16 +1,12 @@
 use std::error::Error;
 use rand_core::OsRng;
-use super::presign::{
-    presign,
+use super::{
+    PresignOutput,
     PresignArguments,
-    PresignOutput
+    triples::{TriplePub, TripleShare, test::deal},
+    presign::presign,
+    sign::sign,
 };
-use super::triples::{
-    TriplePub,
-    TripleShare,
-    test::deal,
-};
-use super::sign::sign;
 use crate::protocol::{
     run_protocol,
     Participant,

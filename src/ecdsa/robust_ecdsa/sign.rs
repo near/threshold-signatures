@@ -15,7 +15,7 @@ use crate::{
     },
     ecdsa::{FullSignature, Scalar, AffinePoint},
 };
-use super::presign::PresignOutput;
+use super::PresignOutput;
 
 async fn do_sign(
     mut chan: SharedChannel,
@@ -25,7 +25,7 @@ async fn do_sign(
     presignature: PresignOutput,
     msg_hash: Scalar,
 ) -> Result<FullSignature, ProtocolError> {
-    let s_me = msg_hash * presignature.alpha_i.to_scalar() + presignature.beta_i.to_scalar();
+    let s_me = msg_hash * presignature.alpha_i + presignature.beta_i;
     let s_me = SigningShare::new(s_me);
 
     let wait_round = chan.next_waitpoint();
@@ -45,7 +45,7 @@ async fn do_sign(
     }
 
     let mut s = eval_interpolation(&s_map, None)?.to_scalar();
-    let big_r = presignature.big_r.to_element().to_affine();
+    let big_r = presignature.big_r;
 
     // Normalize s
     s.conditional_assign(&(-s), s.is_high());
