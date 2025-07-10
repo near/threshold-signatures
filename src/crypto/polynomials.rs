@@ -4,7 +4,7 @@ use frost_core::{
     Group, Field,
     keys::{
         SigningShare,
-        VerifyingShare,
+        CoefficientCommitment,
     },
     Identifier,
 };
@@ -35,9 +35,8 @@ pub fn generate_polynomial<C: Ciphersuite>(
     coefficients
 }
 
-/// Basically returns the constant term
-/// Evaluate the polynomial with the given coefficients (constant term first)
-pub fn evaluate_polynomial_on_zero<C: Ciphersuite>(
+/// Returns the constant term (constant term is the first coefficient)
+pub fn eval_polynomial_on_zero<C: Ciphersuite>(
     coefficients: &[Scalar<C>],
 ) -> SigningShare<C> {
     SigningShare::new(coefficients[0])
@@ -48,14 +47,14 @@ pub fn evaluate_polynomial_on_zero<C: Ciphersuite>(
 /// at the point x=identifier using Horner's method.
 /// Implements [`polynomial_evaluate`] from the spec.
 /// [`polynomial_evaluate`]: https://datatracker.ietf.org/doc/html/rfc9591#name-additional-polynomial-opera
-pub fn evaluate_polynomial<C: Ciphersuite>(
+pub fn eval_polynomial<C: Ciphersuite>(
     coefficients: &[Scalar<C>],
     point: Scalar<C>,
 ) -> SigningShare<C> {
     // creating this dummy id is only to be able to call the from_coefficients function
     let point_id = Identifier::new(point);
     if point_id.is_err(){
-        evaluate_polynomial_on_zero::<C>(coefficients)
+        eval_polynomial_on_zero::<C>(coefficients)
     } else{
         let point_id = point_id.unwrap();
         SigningShare::from_coefficients(coefficients, point_id)
@@ -64,7 +63,7 @@ pub fn evaluate_polynomial<C: Ciphersuite>(
 
 
 /// Evaluates a polynomial on the identifier of a participant
-pub fn evaluate_polynomial_on_participant<C: Ciphersuite>(
+pub fn eval_polynomial_on_participant<C: Ciphersuite>(
     coefficients: &[Scalar<C>],
     participant: Participant,
 ) -> Result<SigningShare<C>, ProtocolError> {
@@ -74,14 +73,14 @@ pub fn evaluate_polynomial_on_participant<C: Ciphersuite>(
 
 
 /// Evaluates multiple polynomials of the same type on the same identifier
-pub fn evaluate_multi_polynomials<C: Ciphersuite, const N: usize>(
+pub fn eval_multi_polynomials<C: Ciphersuite, const N: usize>(
     polynomials: [&[Scalar<C>]; N],
     participant: Participant,
 ) -> Result<[SigningShare<C>; N], ProtocolError> {
     let mut result_vec = Vec::with_capacity(N);
 
     for poly in polynomials.iter() {
-        let eval = evaluate_polynomial_on_participant::<C>(poly, participant)?;
+        let eval = eval_polynomial_on_participant::<C>(poly, participant)?;
         result_vec.push(eval);
     }
     Ok(result_vec
@@ -130,8 +129,8 @@ pub fn compute_lagrange_coefficient<C: Ciphersuite>(
     Ok(num * den)
 }
 
-// Computes polynomial interpolation on a specific point
-// using a sequence of sorted elements
+/// Computes polynomial interpolation on a specific point
+/// using a sequence of sorted elements
 pub fn eval_interpolation<C: Ciphersuite>(
     signingshares_map: &ParticipantMap<'_, SigningShare<C>>,
     point: Option<&Scalar<C>>,
@@ -158,13 +157,13 @@ pub fn eval_interpolation<C: Ciphersuite>(
     Ok(SigningShare::new(interpolation))
 }
 
-// Computes polynomial interpolation on the exponent on a specific point
-// using a sequence of sorted elements
+/// Computes polynomial interpolation on the exponent on a specific point
+/// using a sequence of sorted elements
 pub fn eval_exponent_interpolation<C:Ciphersuite>(
     identifiers: &Vec<Scalar<C>>,
-    shares: &Vec<&VerifyingShare<C>>,
+    shares: &Vec<&CoefficientCommitment<C>>,
     point: Option<&Scalar<C>>,
-) -> Result<VerifyingShare<C>, ProtocolError>{
+) -> Result<CoefficientCommitment<C>, ProtocolError>{
     let mut interpolation = <C::Group as Group>::identity();
     if identifiers.len() != shares.len(){
         return Err(ProtocolError::InvalidInterpolationArguments)
@@ -180,6 +179,16 @@ pub fn eval_exponent_interpolation<C:Ciphersuite>(
         interpolation = interpolation + (share.to_element() * lagrange_coefficient);
     }
 
-    Ok(VerifyingShare::new(interpolation))
+    Ok(CoefficientCommitment::new(interpolation))
 }
 
+/// Commits to a polynomial returning a sequence of group coefficients
+/// Creates a commitment vector of coefficients * G
+pub fn commit_polynomial<C: Ciphersuite>(
+    coefficients: &[Scalar<C>],
+) -> Vec<CoefficientCommitment<C>> {
+    // Computes the multiplication of every coefficient of p with the generator G
+    coefficients.iter().map(
+        |c| CoefficientCommitment::new(<C::Group as Group>::generator() * *c)
+    ).collect()
+}

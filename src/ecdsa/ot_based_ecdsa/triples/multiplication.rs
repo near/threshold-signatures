@@ -1,5 +1,4 @@
 use crate::{
-    compat::CSCurve,
     crypto::hash::{HashOutput, hash},
     participants::ParticipantList,
     protocol::{
@@ -19,7 +18,7 @@ use super::{
 };
 use std::collections::VecDeque;
 
-pub async fn multiplication_sender<'a, C: CSCurve>(
+pub async fn multiplication_sender<'a>(
     chan: PrivateChannel,
     sid: &[u8],
     a_i: &C::Scalar,
@@ -52,7 +51,7 @@ pub async fn multiplication_sender<'a, C: CSCurve>(
     Ok(gamma0? + gamma1?)
 }
 
-pub async fn multiplication_receiver<'a, C: CSCurve>(
+pub async fn multiplication_receiver<'a>(
     chan: PrivateChannel,
     sid: &[u8],
     a_i: &C::Scalar,
@@ -85,7 +84,7 @@ pub async fn multiplication_receiver<'a, C: CSCurve>(
     Ok(gamma0? + gamma1?)
 }
 
-pub async fn multiplication<C: CSCurve>(
+pub async fn multiplication(
     comms: Comms,
     sid: HashOutput,
     participants: ParticipantList,
@@ -114,7 +113,7 @@ pub async fn multiplication<C: CSCurve>(
     Ok(out)
 }
 
-pub async fn multiplication_many<C: CSCurve, const N: usize>(
+pub async fn multiplication_many<const N: usize>(
     comms: Comms,
     sid: Vec<HashOutput>,
     participants: ParticipantList,

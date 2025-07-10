@@ -38,7 +38,7 @@ impl<'a, C: Ciphersuite> Statement<'a, C> {
     }
 
     /// Encode into Vec<u8>: some sort of serialization
-    pub fn encode(&self) -> Vec<u8>{
+    fn encode(&self) -> Vec<u8>{
         let mut enc =  Vec::new();
         enc.extend_from_slice(b"statement:");
 
@@ -58,12 +58,6 @@ impl<'a, C: Ciphersuite> Statement<'a, C> {
 #[derive(Clone, Copy)]
 pub struct Witness<'a, C: Ciphersuite> {
     pub x: &'a Scalar<C>,
-}
-
-impl<'a, C: Ciphersuite> Witness<'a, C> {
-    fn encode(&self) -> Vec<u8>{
-        <C::Group as Group>::Field::serialize(self.x).as_ref().into()
-    }
 }
 
 /// Represents a proof of the statement.

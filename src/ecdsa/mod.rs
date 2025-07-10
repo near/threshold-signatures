@@ -7,10 +7,7 @@ use elliptic_curve::{
     point::AffineCoordinates,
 };
 
-use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat};
-
-use k256::ProjectivePoint;
-
+use frost_core::keys::CoefficientCommitment;
 use rand_core::CryptoRngCore;
 
 use frost_secp256k1::{
@@ -21,8 +18,9 @@ use frost_secp256k1::{
     Field,
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use k256::AffinePoint;
+use k256::{AffinePoint, ProjectivePoint};
 
+use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat};
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 pub struct KeygenOutput {
@@ -31,6 +29,7 @@ pub struct KeygenOutput {
 }
 
 pub type Scalar = <Secp256K1ScalarField as Field>::Scalar;
+pub type CoefficientCommitment = CoefficientCommitment::<Secp256K1Sha256>;
 
 /// This is the trait that any curve usable in this library must implement.
 /// This library does provide a few feature-gated implementations for curves
@@ -160,6 +159,6 @@ impl FullSignature{
 
 pub mod dkg_ecdsa;
 pub mod robust_ecdsa;
-// pub mod ot_based_ecdsa;
+pub mod ot_based_ecdsa;
 #[cfg(test)]
 mod test;

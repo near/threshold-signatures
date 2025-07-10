@@ -131,8 +131,8 @@ mod test {
         protocol::{run_protocol, Participant,Protocol},
         crypto::polynomials::{
             generate_polynomial,
-            evaluate_polynomial_on_zero,
-            evaluate_polynomial_on_participant,
+            eval_polynomial_on_zero,
+            eval_polynomial_on_participant,
         },
     };
     use crate::compat::{
@@ -148,12 +148,12 @@ mod test {
         // Run 4 times for flakiness reasons
         for _ in 0..4 {
             let f = generate_polynomial::<C>(None, threshold-1, &mut OsRng);;
-            let x = evaluate_polynomial_on_zero::<C>(&f).to_scalar();
+            let x = eval_polynomial_on_zero::<C>(&f).to_scalar();
             let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
 
             let g = generate_polynomial::<C>(None, threshold-1, &mut OsRng);;
 
-            let k = evaluate_polynomial_on_zero::<C>(&g).to_scalar();
+            let k = eval_polynomial_on_zero::<C>(&g).to_scalar();
             let big_k = (ProjectivePoint::GENERATOR * k.invert().unwrap()).to_affine();
 
             let sigma = k * x;
@@ -169,10 +169,10 @@ mod test {
             for p in &participants {
                 let presignature = PresignOutput {
                     big_r: big_k,
-                    k: evaluate_polynomial_on_participant::<C>(&g, *p)
+                    k: eval_polynomial_on_participant::<C>(&g, *p)
                             .unwrap()
                             .to_scalar(),
-                    sigma: evaluate_polynomial_on_participant::<C>(&h, *p)
+                    sigma: eval_polynomial_on_participant::<C>(&h, *p)
                             .unwrap()
                             .to_scalar(),
                 };

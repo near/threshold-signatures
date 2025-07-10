@@ -1,21 +1,28 @@
 use elliptic_curve::Group;
 use rand_core::OsRng;
+use serde::Serialize;
 
 use crate::{
-    compat::SerializablePoint,
     crypto::{
         commit::{Commitment,commit},
         hash::{hash, HashOutput},
         random::Randomizer,
-        polynomials::generate_polynomial
+        polynomials::{
+            generate_polynomial,
+            commit_polynomial,
+            eval_polynomial_on_zero,
+        },
     },
     // ecdsa::math::{GroupPolynomial, Polynomial},
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     crypto::proofs::{dlog, dlogeq, strobe_transcript::Transcript},
     protocol::{
-        internal::make_protocol, InitializationError, Participant, Protocol, ProtocolError,
+        internal::{make_protocol, Comms},
+        InitializationError,
+        Participant,
+        Protocol,
+        ProtocolError,
     },
-    serde::encode,
     ecdsa::{
         Secp256K1Sha256,
         Secp256K1ScalarField,
@@ -29,7 +36,13 @@ use super::{
     TriplePub,
     TripleShare
 };
-use crate::protocol::internal::Comms;
+
+
+/// Encode an arbitrary serializable value into a vec.
+fn encode<T: Serialize>(val: &T) -> Vec<u8> {
+    rmp_serde::encode::to_vec(val).expect("failed to encode value")
+}
+
 
 /// The output of running the triple generation protocol.
 pub type TripleGenerationOutput = (TripleShare, TriplePub);
@@ -66,9 +79,9 @@ async fn do_generation(
     let l = generate_polynomial::<C>(Some(Secp256K1ScalarField::zero()), threshold-1, &mut rng);
 
     // Spec 1.4
-    let big_e_i = e.commit();
-    let big_f_i = f.commit();
-    let big_l_i = l.commit();
+    let big_e_i = commit_polynomial::<C>(&e);
+    let big_f_i = commit_polynomial::<C>(&f);
+    let big_l_i = commit_polynomial::<C>(&l);
 
     // Spec 1.5
     let (my_commitment, my_randomizer) = commit(&mut rng, &(&big_e_i, &big_f_i, &big_l_i));
@@ -93,9 +106,9 @@ async fn do_generation(
 
     // Spec 2.4
     let multiplication_task = {
-        let e0 = e.evaluate_zero();
-        let f0 = f.evaluate_zero();
-        multiplication::<C>(
+        let e0 = eval_polynomial_on_zero::<C>(&e);
+        let f0 = eval_polynomial_on_zero::<C>(&f);
+        multiplication(
             comms.clone(),
             my_confirmation,
             participants.clone(),
@@ -105,7 +118,7 @@ async fn do_generation(
         )
     };
 
-    struct ParallelToMultiplicationTaskOutput<'a, C: CSCurve> {
+    struct ParallelToMultiplicationTaskOutput<'a> {
         seen: ParticipantCounter<'a>,
         big_e: GroupPolynomial<C>,
         big_f: GroupPolynomial<C>,
@@ -531,9 +544,9 @@ async fn do_generation_many<const N: usize>(
         l.set_zero(C::Scalar::ZERO);
 
         // Spec 1.4
-        let big_e_i = e.commit();
-        let big_f_i = f.commit();
-        let big_l_i = l.commit();
+        let big_e_i = commit_polynomial::<C>(&e);
+        let big_f_i = commit_polynomial::<C>(&f);
+        let big_l_i = commit_polynomial::<C>(&l);
 
         // Spec 1.5
         let (my_commitment, my_randomizer) = commit(&mut rng, &(&big_e_i, &big_f_i, &big_l_i));
@@ -595,7 +608,7 @@ async fn do_generation_many<const N: usize>(
         )
     };
 
-    struct ParallelToMultiplicationTaskOutput<'a, C: CSCurve> {
+    struct ParallelToMultiplicationTaskOutput<'a> {
         seen: ParticipantCounter<'a>,
         big_e_v: Vec<GroupPolynomial<C>>,
         big_f_v: Vec<GroupPolynomial<C>>,
@@ -1096,7 +1109,7 @@ async fn do_generation_many<const N: usize>(
 ///
 /// The resulting triple will be threshold shared, according to the threshold
 /// provided to this function.
-pub fn generate_triple<C: CSCurve>(
+pub fn generate_triple(
     participants: &[Participant],
     me: Participant,
     threshold: usize,
@@ -1124,7 +1137,7 @@ pub fn generate_triple<C: CSCurve>(
 }
 
 /// As [`generate_triple`] but for many triples at once
-pub fn generate_triple_many<C: CSCurve, const N: usize>(
+pub fn generate_triple_many<const N: usize>(
     participants: &[Participant],
     me: Participant,
     threshold: usize,

@@ -19,7 +19,7 @@ use super::{
 
 const CTX: &[u8] = b"Random OT Extension Hash";
 
-fn hash_to_scalar<C: CSCurve>(i: usize, v: &BitVector) -> C::Scalar {
+fn hash_to_scalar(i: usize, v: &BitVector) -> C::Scalar {
     let mut hasher = Sha256::new();
     let i64 = u64::try_from(i).expect("failed to convert usize to u64");
 
@@ -59,7 +59,7 @@ pub type RandomOTExtensionSenderOut<C> = Vec<(
 /// The result that the receiver gets.
 pub type RandomOTExtensionReceiverOut<C> = Vec<(Choice, <C as CurveArithmetic>::Scalar)>;
 
-pub async fn random_ot_extension_sender<C: CSCurve>(
+pub async fn random_ot_extension_sender(
     mut chan: PrivateChannel,
     params: RandomOtExtensionParams<'_>,
     delta: BitVector,
@@ -129,7 +129,7 @@ pub async fn random_ot_extension_sender<C: CSCurve>(
     Ok(out)
 }
 
-pub async fn random_ot_extension_receiver<C: CSCurve>(
+pub async fn random_ot_extension_receiver(
     mut chan: PrivateChannel,
     params: RandomOtExtensionParams<'_>,
     k0: &SquareBitMatrix,
@@ -200,7 +200,7 @@ pub async fn random_ot_extension_receiver<C: CSCurve>(
 
 /// Run the random OT protocol between two parties.
 #[allow(dead_code)]
-fn run_random_ot<C: CSCurve>(
+fn run_random_ot(
     (delta, k): (BitVector, SquareBitMatrix),
     (k0, k1): (SquareBitMatrix, SquareBitMatrix),
     sid: Vec<u8>,
