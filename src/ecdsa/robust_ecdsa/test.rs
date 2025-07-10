@@ -1,7 +1,9 @@
 use std::error::Error;
 
 use super::{
-    presign::{presign, PresignArguments, PresignOutput},
+    PresignOutput,
+    PresignArguments,
+    presign::presign,
     sign::sign,
 };
 

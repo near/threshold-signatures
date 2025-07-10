@@ -1,10 +1,8 @@
-use frost_core::keys::CoefficientCommitment;
 use rand_core::OsRng;
 use elliptic_curve::{
     point::AffineCoordinates,
 };
 use frost_secp256k1::{Secp256K1Group,Group};
-use serde::{Deserialize, Serialize};
 
 use crate::{
     crypto::polynomials::{
@@ -14,13 +12,12 @@ use crate::{
         eval_exponent_interpolation,
     },
     ecdsa::{
-        KeygenOutput,
-        Scalar,
-        AffinePoint,
         SigningShare,
         Secp256K1Sha256,
         Secp256K1ScalarField,
         Field,
+        Commitment,
+        Scalar,
     },
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     protocol::{
@@ -31,34 +28,11 @@ use crate::{
         Protocol
     },
 };
+use super::{PresignOutput, PresignArguments};
 
 type C = Secp256K1Sha256;
 
-
-/// The arguments needed to create a presignature.
-#[derive(Debug, Clone)]
-pub struct PresignArguments {
-    /// The output of key generation, i.e. our share of the secret key, and the public key package.
-    /// This is of type KeygenOutput<Secp256K1Sha256> from Frost implementation
-    pub keygen_out: KeygenOutput,
-    /// The desired threshold for the presignature, which must match the original threshold
-    pub threshold: usize,
-}
-
-/// The output of the presigning protocol.
-/// Contains the signature precomputed parts performed
-/// independently of the message
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PresignOutput {
-    /// The public nonce commitment.
-    pub big_r: AffinePoint,
-
-    /// Our secret shares of the nonces.
-    pub alpha_i: Scalar,
-    pub beta_i: Scalar,
-}
-
-/// Generates a secret polynomial where the comstant term is zero
+/// Generates a secret polynomial where the constant term is zero
 fn zero_secret_polynomial(
     degree: usize,
     rng: &mut OsRng,
@@ -136,7 +110,7 @@ async fn do_presign(
 
     // Compute R_me = g^{k_me}
     let big_r_me = Secp256K1Group::generator() * shares[0];
-    let big_r_me = CoefficientCommitment::new(big_r_me);
+    let big_r_me = Commitment::new(big_r_me);
 
     // Compute w_me = a_me * k_me + b_me
     let w_me = shares[1] * shares[0] + shares[2];
@@ -156,7 +130,7 @@ async fn do_presign(
     seen.clear();
     seen.put(me);
     while !seen.full() {
-        let (from, (big_r_p, w_p)): (_ , (CoefficientCommitment, SigningShare)) = chan.recv(wait_round_1).await?;
+        let (from, (big_r_p, w_p)): (_ , (Commitment, SigningShare)) = chan.recv(wait_round_1).await?;
         if !seen.put(from) {
             continue;
         }
@@ -211,9 +185,9 @@ async fn do_presign(
     let beta_me = h_me * big_r_x_coordinate* x_me + shares[4];
 
     Ok(PresignOutput{
-        big_r,
-        alpha_i: SigningShare::new(alpha_me),
-        beta_i: SigningShare::new(beta_me),
+        big_r: big_r.value().to_affine(),
+        alpha_i: alpha_me,
+        beta_i: beta_me,
     })
 }
 
@@ -283,6 +257,7 @@ mod test {
             eval_polynomial_on_participant,
             eval_polynomial_on_zero,
         },
+        ecdsa::KeygenOutput,
     };
     use frost_secp256k1::keys::PublicKeyPackage;
     use frost_secp256k1::VerifyingKey;

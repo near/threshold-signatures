@@ -29,7 +29,7 @@ pub struct KeygenOutput {
 }
 
 pub type Scalar = <Secp256K1ScalarField as Field>::Scalar;
-pub type CoefficientCommitment = CoefficientCommitment::<Secp256K1Sha256>;
+pub type Commitment = CoefficientCommitment::<Secp256K1Sha256>;
 
 /// This is the trait that any curve usable in this library must implement.
 /// This library does provide a few feature-gated implementations for curves
