@@ -343,9 +343,9 @@ mod test {
         let participants = ParticipantList::new(participants).unwrap();
 
         if !participants.contains(me) {
-            return Err(ProtocolError::AssertionFailed(format!(
-                "Does not contain me"
-            )));
+            return Err(ProtocolError::AssertionFailed(
+                "Does not contain me".to_string(),
+            ));
         }
         let comms = Comms::new();
         let chan = comms.shared_channel();
@@ -385,14 +385,12 @@ mod test {
         let vote_true = MessageType::Send(true);
         let vote_false = MessageType::Send(false);
 
-        let mut cnt = 0;
-        for p in participants.others(me) {
+        for (cnt, p) in participants.others(me).enumerate() {
             if cnt >= participants.len() / 2 {
                 chan.send_private(wait_broadcast, p, &(&sid, &vote_false));
             } else {
                 chan.send_private(wait_broadcast, p, &(&sid, &vote_true));
             }
-            cnt += 1;
         }
 
         let vote_list =
@@ -414,14 +412,12 @@ mod test {
         let vote_true = MessageType::Send(true);
         let vote_false = MessageType::Send(false);
 
-        let mut cnt = 0;
-        for p in participants.others(me) {
+        for (cnt, p) in participants.others(me).enumerate() {
             if cnt >= participants.len() / 2 {
                 chan.send_private(wait_broadcast, p, &(&sid, &vote_false));
             } else {
                 chan.send_private(wait_broadcast, p, &(&sid, &vote_true));
             }
-            cnt += 1;
         }
 
         let vote_list =
@@ -440,9 +436,9 @@ mod test {
         let participants = ParticipantList::new(participants).unwrap();
 
         if !participants.contains(me) {
-            return Err(ProtocolError::AssertionFailed(format!(
-                "Does not contain me"
-            )));
+            return Err(ProtocolError::AssertionFailed(
+                "Does not contain me".to_string(),
+            ));
         }
         let comms = Comms::new();
         let chan = comms.shared_channel();
@@ -461,9 +457,9 @@ mod test {
         let participants = ParticipantList::new(participants).unwrap();
 
         if !participants.contains(me) {
-            return Err(ProtocolError::AssertionFailed(format!(
-                "Does not contain me"
-            )));
+            return Err(ProtocolError::AssertionFailed(
+                "Does not contain me".to_string(),
+            ));
         }
         let comms = Comms::new();
         let chan = comms.shared_channel();
@@ -481,7 +477,7 @@ mod test {
         assert_eq!(honest_participants.len(), honest_votes.len());
 
         let mut participants = honest_participants.to_vec();
-        participants.push(dishonest_participant.clone());
+        participants.push(*dishonest_participant);
 
         let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = Vec<bool>>>)> =
             Vec::with_capacity(participants.len());
@@ -509,7 +505,7 @@ mod test {
         assert_eq!(honest_participants.len(), honest_votes.len());
 
         let mut participants = honest_participants.to_vec();
-        participants.push(dishonest_participant.clone());
+        participants.push(*dishonest_participant);
 
         let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = Vec<bool>>>)> =
             Vec::with_capacity(participants.len());

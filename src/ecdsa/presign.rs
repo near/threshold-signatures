@@ -325,8 +325,8 @@ mod test {
         let big_k = result[2].1.big_r;
 
         let participants = vec![result[0].0, result[1].0];
-        let k_shares = vec![result[0].1.k, result[1].1.k];
-        let sigma_shares = vec![result[0].1.sigma, result[1].1.sigma];
+        let k_shares = [result[0].1.k, result[1].1.k];
+        let sigma_shares = [result[0].1.sigma, result[1].1.sigma];
         let p_list = ParticipantList::new(&participants).unwrap();
         let k = p_list.lagrange::<Secp256k1>(participants[0]) * k_shares[0]
             + p_list.lagrange::<Secp256k1>(participants[1]) * k_shares[1];
