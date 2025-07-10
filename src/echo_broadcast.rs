@@ -355,6 +355,7 @@ mod test {
     }
 
     /// All participants are assumed to be honest here
+    #[allow(clippy::type_complexity)]
     fn broadcast_honest(
         participants: &[Participant],
         votes: &[bool],
@@ -469,6 +470,7 @@ mod test {
         Ok(make_protocol(comms, fut))
     }
 
+    #[allow(clippy::type_complexity)]
     fn broadcast_dishonest_v1(
         honest_participants: &[Participant],
         dishonest_participant: &Participant,
@@ -497,6 +499,7 @@ mod test {
         Ok(result)
     }
 
+    #[allow(clippy::type_complexity)]
     fn broadcast_dishonest_v2(
         honest_participants: &[Participant],
         dishonest_participant: &Participant,

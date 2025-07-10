@@ -703,6 +703,7 @@ async fn do_generation_many<C: CSCurve, const N: usize>(
         seen.clear();
         seen.put(me);
         while !seen.full() {
+            #[allow(clippy::type_complexity)]
             let (
                 from,
                 (
@@ -795,6 +796,7 @@ async fn do_generation_many<C: CSCurve, const N: usize>(
         seen.clear();
         seen.put(me);
         while !seen.full() {
+            #[allow(clippy::type_complexity)]
             let (from, (a_j_i_v, b_j_i_v)): (
                 _,
                 (Vec<ScalarPrimitive<C>>, Vec<ScalarPrimitive<C>>),
@@ -862,6 +864,7 @@ async fn do_generation_many<C: CSCurve, const N: usize>(
             big_c_v.push(*big_c_i_v_i);
         }
         while !seen.full() {
+            #[allow(clippy::type_complexity)]
             let (from, (big_c_j_v, their_phi_proofs)): (
                 _,
                 (Vec<SerializablePoint<C>>, Vec<dlogeq::Proof<C>>),
@@ -976,6 +979,7 @@ async fn do_generation_many<C: CSCurve, const N: usize>(
     }
 
     while !seen.full() {
+        #[allow(clippy::type_complexity)]
         let (from, (their_hat_big_c_i_points, their_phi_proofs)): (
             _,
             (Vec<SerializablePoint<C>>, Vec<dlog::Proof<C>>),

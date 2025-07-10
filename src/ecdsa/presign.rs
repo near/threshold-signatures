@@ -61,6 +61,7 @@ fn from_secp256k1sha256_to_cscurve_vk<C: CSCurve>(
 /// Transforms a secret key of type Secp256k1Sha256 to CSCurve of cait-sith
 fn from_secp256k1sha256_to_cscurve_sk<C: CSCurve>(private_share: &SigningShare) -> C::Scalar {
     let bytes = private_share.to_scalar().to_bytes();
+    #[allow(clippy::unnecessary_fallible_conversions)]
     let bytes: [u8; 32] = bytes.try_into().expect("Slice is not 32 bytes long");
     C::from_bytes_to_scalar(bytes).unwrap()
 }

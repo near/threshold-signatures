@@ -289,6 +289,7 @@ mod test {
                     .collect()
             });
 
+        #[allow(clippy::type_complexity)]
         let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = Vec<Scalar>>>)> =
             Vec::with_capacity(prep.len());
 
