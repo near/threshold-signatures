@@ -1,7 +1,7 @@
 [package]
-name = "mpc-threshold-signatures"
-description = "MPC Threshold Signatures"
-repository = "https://github.com/near/mpc-threshold-signatures"
+name = "threshold-signatures"
+description = "Threshold Signatures"
+repository = "https://github.com/near/threshold-signatures"
 version = "0.8.0"
 edition = "2021"
 license = "MIT"

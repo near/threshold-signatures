@@ -1159,38 +1159,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
 
 [[package]]
-name = "mpc-threshold-signatures"
-version = "0.8.0"
-dependencies = [
- "auto_ops",
- "byteorder",
- "criterion",
- "digest",
- "easy-parallel",
- "ecdsa",
- "elliptic-curve",
- "event-listener 2.5.3",
- "frost-core",
- "frost-ed25519",
- "frost-secp256k1",
- "futures",
- "haisou-chan",
- "itertools 0.14.0",
- "k256",
- "keccak",
- "rand",
- "rand_core 0.6.4",
- "rmp-serde",
- "serde",
- "sha2",
- "sha3",
- "smol",
- "structopt",
- "subtle",
- "zeroize",
-]
-
-[[package]]
 name = "num-traits"
 version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1848,6 +1816,38 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.101",
+]
+
+[[package]]
+name = "threshold-signatures"
+version = "0.8.0"
+dependencies = [
+ "auto_ops",
+ "byteorder",
+ "criterion",
+ "digest",
+ "easy-parallel",
+ "ecdsa",
+ "elliptic-curve",
+ "event-listener 2.5.3",
+ "frost-core",
+ "frost-ed25519",
+ "frost-secp256k1",
+ "futures",
+ "haisou-chan",
+ "itertools 0.14.0",
+ "k256",
+ "keccak",
+ "rand",
+ "rand_core 0.6.4",
+ "rmp-serde",
+ "serde",
+ "sha2",
+ "sha3",
+ "smol",
+ "structopt",
+ "subtle",
+ "zeroize",
 ]
 
 [[package]]
