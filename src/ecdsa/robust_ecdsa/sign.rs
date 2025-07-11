@@ -1,10 +1,11 @@
 use elliptic_curve::scalar::IsHigh;
 
+use frost_core::serialization::SerializableScalar;
 use frost_secp256k1::keys::SigningShare;
 use subtle::ConditionallySelectable;
 
 use crate::{
-    crypto::polynomials::eval_interpolation,
+    crypto::polynomials::Polynomial,
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     protocol::{
         internal::{make_protocol, Comms, SharedChannel},
@@ -13,9 +14,15 @@ use crate::{
         InitializationError,
         Protocol
     },
-    ecdsa::{FullSignature, Scalar, AffinePoint},
+    ecdsa::{
+        FullSignature,
+        Scalar,
+        AffinePoint,
+        Secp256K1Sha256,
+    },
 };
 use super::PresignOutput;
+type C = Secp256K1Sha256;
 
 async fn do_sign(
     mut chan: SharedChannel,
@@ -26,7 +33,7 @@ async fn do_sign(
     msg_hash: Scalar,
 ) -> Result<FullSignature, ProtocolError> {
     let s_me = msg_hash * presignature.alpha_i + presignature.beta_i;
-    let s_me = SigningShare::new(s_me);
+    let s_me = SerializableScalar(s_me);
 
     let wait_round = chan.next_waitpoint();
     chan.send_many(wait_round, &s_me);
@@ -37,14 +44,14 @@ async fn do_sign(
 
     seen.put(me);
     while !seen.full() {
-        let (from, s_i): (_, SigningShare) = chan.recv(wait_round).await?;
+        let (from, s_i): (_, SerializableScalar<C>) = chan.recv(wait_round).await?;
         if !seen.put(from) {
             continue;
         }
         s_map.put(from, s_i);
     }
 
-    let mut s = eval_interpolation(&s_map, None)?.to_scalar();
+    let mut s = Polynomial::<C>::eval_interpolation(&s_map, None)?.0;
     let big_r = presignature.big_r;
 
     // Normalize s
@@ -123,11 +130,6 @@ mod test {
     use crate::{
         compat::{scalar_hash},
         protocol::run_protocol,
-        crypto::polynomials::{
-            Polynomial,
-            eval_polynomial_on_participant,
-            eval_polynomial_on_zero,
-        }
     };
 
     type C = Secp256K1Sha256;
@@ -141,7 +143,7 @@ mod test {
         for _ in 0..4 {
             let fx = Polynomial::<C>::generate_polynomial(None, threshold-1, &mut OsRng);
             // master secret key
-            let x = eval_polynomial_on_zero::<C>(&fx).to_scalar();
+            let x = fx.eval_on_zero().0;
             // master public key
             let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
 
@@ -151,13 +153,12 @@ mod test {
             let fd = Polynomial::<C>::generate_polynomial(Some(Secp256K1ScalarField::zero()), 2*max_malicious, &mut OsRng);
             let fe = Polynomial::<C>::generate_polynomial(Some(Secp256K1ScalarField::zero()), 2*max_malicious, &mut OsRng);
 
-            let k = eval_polynomial_on_zero::<C>(&fk).to_scalar();
+            let k = fk.eval_on_zero().0;
             let big_r = ProjectivePoint::GENERATOR * k.clone();
             let big_r_x_coordinate = x_coordinate(&big_r.to_affine());
 
-            let big_r = VerifyingShare::new(big_r);
 
-            let w = eval_polynomial_on_zero::<C>(&fa).to_scalar() * k;
+            let w = fa.eval_on_zero().0 * k;
             let w_invert = w.invert().unwrap();
 
             let participants = vec![
@@ -175,18 +176,15 @@ mod test {
             )> = Vec::with_capacity(participants.len());
             for p in &participants {
                 let h_i = w_invert
-                        * eval_polynomial_on_participant::<C>(&fa, *p).unwrap().to_scalar();
+                        * fa.eval_on_participant(*p).0;
                 let alpha_i = h_i
-                        + eval_polynomial_on_participant::<C>(&fd, *p).unwrap().to_scalar();
+                        + fd.eval_on_participant(*p).0;
                 let beta_i = h_i * big_r_x_coordinate
-                        * eval_polynomial_on_participant::<C>(&fx, *p).unwrap().to_scalar()
-                        + eval_polynomial_on_participant::<C>(&fe, *p).unwrap().to_scalar();
-
-                let alpha_i = SigningShare::new(alpha_i);
-                let beta_i = SigningShare::new(beta_i);
+                        * fx.eval_on_participant(*p).0
+                        + fe.eval_on_participant(*p).0;
 
                 let presignature = PresignOutput {
-                    big_r,
+                    big_r: big_r.to_affine(),
                     alpha_i,
                     beta_i
                 };

@@ -96,7 +96,7 @@ impl ParticipantList {
                     .iter()
                     .map(|p| p.scalar::<C>())
                     .collect();
-        compute_lagrange_coefficient::<C>(&identifiers, &p, None).unwrap()
+        compute_lagrange_coefficient::<C>(&identifiers, &p, None).unwrap().0
     }
 
     /// Return the intersection of this list with another list.

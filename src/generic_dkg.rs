@@ -1,11 +1,7 @@
 use crate::crypto::{
     ciphersuite::Ciphersuite,
-    hash::{HashOutput, domain_separate_hash},
-    polynomials::{
-        Polynomial,
-        eval_polynomial_on_participant,
-        commit_polynomial,
-    },
+    hash::{domain_separate_hash, HashOutput},
+    polynomials::{Polynomial, PolynomialCommitment},
 };
 use crate::echo_broadcast::do_broadcast;
 use crate::participants::{ParticipantCounter, ParticipantList, ParticipantMap};
@@ -59,18 +55,15 @@ fn assert_keyshare_inputs<C: Ciphersuite>(
 /// Creates a commitment vector of coefficients * G
 /// If the first coefficient is set to zero then skip it
 fn generate_coefficient_commitment<C: Ciphersuite>(
-    secret_coefficients: &[Scalar<C>],
-) -> Vec<CoefficientCommitment<C>> {
+    secret_coefficients: &Polynomial<C>,
+) -> PolynomialCommitment<C> {
+    let mut secret_coefficients = secret_coefficients.get_coefficients();
     // we skip the zero share as neither zero scalar
     // nor identity group element are serializable
-    let secret_coefficients = if secret_coefficients.first()
-        == Some(&<C::Group as Group>::Field::zero())
-    {
-            &secret_coefficients[1..]
-    } else {
-        secret_coefficients
+    if secret_coefficients.first() == Some(&<C::Group as Group>::Field::zero()){
+            secret_coefficients.remove(0);
     };
-    commit_polynomial(secret_coefficients)
+    Polynomial::new(secret_coefficients).commit_polynomial()
 }
 
 /// Generates the challenge for the proof of knowledge
@@ -122,20 +115,20 @@ fn proof_of_knowledge<C: Ciphersuite>(
     session_id: &HashOutput,
     domain_separator: u32,
     me: Participant,
-    coefficients: &[Scalar<C>],
-    coefficient_commitment: &[CoefficientCommitment<C>],
+    coefficients: &Polynomial<C>,
+    coefficient_commitment: &PolynomialCommitment<C>,
     rng: &mut OsRng,
 ) -> Result<Signature<C>, ProtocolError> {
     // creates an identifier for the participant
     let id = me.scalar::<C>();
-    let vk_share = coefficient_commitment[0];
+    let vk_share = coefficient_commitment.eval_on_zero();
 
     // pick a random k_i and compute R_id = g^{k_id},
     let (k, big_r) = <C>::generate_nonce(rng);
 
     // compute H(id, context_string, g^{a_0} , R_id) as a scalar
     let hash = challenge::<C>(session_id, domain_separator, id, &vk_share, &big_r)?;
-    let a_0 = coefficients[0];
+    let a_0 = coefficients.eval_on_zero().0;
     let mu = k + a_0 * hash.to_scalar();
     Ok(Signature::new(big_r, mu))
 }
@@ -148,8 +141,8 @@ fn compute_proof_of_knowledge<C: Ciphersuite>(
     domain_separator: u32,
     me: Participant,
     old_participants: Option<ParticipantList>,
-    coefficients: &[Scalar<C>],
-    coefficient_commitment: &[CoefficientCommitment<C>],
+    coefficients: &Polynomial<C>,
+    coefficient_commitment: &PolynomialCommitment<C>,
     rng: &mut OsRng,
 ) -> Result<Option<Signature<C>>, ProtocolError> {
     // I am allowed to send none only if I am a new participant
@@ -402,7 +395,7 @@ async fn do_keyshare<C: Ciphersuite>(
     domain_separator += 1;
 
     // Create the public polynomial = secret coefficients times G
-    let commitment = VerifiableSecretSharingCommitment::new(coefficient_commitment);
+    let commitment = VerifiableSecretSharingCommitment::new(coefficient_commitment.get_coefficients());
 
     // hash commitment and send it
     let commit_domain_separator = domain_separator;
@@ -491,7 +484,7 @@ async fn do_keyshare<C: Ciphersuite>(
     for p in participants.others(me) {
         // Securely send to each other participant a secret share
         // using the evaluation secret polynomial on the identifier of the recipient
-        let signing_share_to_p = eval_polynomial_on_participant::<C>(&secret_coefficients, p)?;
+        let signing_share_to_p = secret_coefficients.eval_on_participant(p);
         // send the evaluation privately to participant p
         chan.send_private(wait_round_3, p, &signing_share_to_p);
     }
@@ -499,7 +492,7 @@ async fn do_keyshare<C: Ciphersuite>(
 
     // Start Round 4
     // compute my secret evaluation of my private polynomial
-    let mut my_signing_share = eval_polynomial_on_participant::<C>(&secret_coefficients, me)?.to_scalar();
+    let mut my_signing_share = secret_coefficients.eval_on_participant(me).0;
     // receive evaluations from all participants
     seen.clear();
     seen.put(me);

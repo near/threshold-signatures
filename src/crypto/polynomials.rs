@@ -21,8 +21,8 @@ impl <C: Ciphersuite> Polynomial<C>{
         Polynomial(coefficients)
     }
 
-    pub fn get_coefficients(self) -> Vec<Scalar<C>> {
-        self.0
+    pub fn get_coefficients(&self) -> Vec<Scalar<C>> {
+        self.0.to_vec()
     }
 
     /// Outputs the degree of the polynomial
@@ -163,11 +163,17 @@ impl <C: Ciphersuite> Polynomial<C>{
 pub struct PolynomialCommitment<C:Ciphersuite>(Vec<CoefficientCommitment<C>>);
 
 impl <C: Ciphersuite> PolynomialCommitment<C>{
-
     pub fn new(coefcommitments: Vec<CoefficientCommitment<C>>)-> Self{
         PolynomialCommitment(coefcommitments)
     }
 
+    /// Returns the coefficients of the
+    pub fn get_coefficients(&self) -> Vec<CoefficientCommitment<C>> {
+        self.0.to_vec()
+    }
+
+    /// Evaluates the commited polynomial on zero
+    /// In other words, outputs the constant term
     pub fn eval_on_zero(&self) -> CoefficientCommitment<C>{
         self.0[0]
     }
