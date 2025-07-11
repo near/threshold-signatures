@@ -72,13 +72,13 @@ pub(crate) fn run_reshare(
         let mut is_break = false;
         for (p, k) in &keys {
             if p == new_participant {
-                setup.push((p, (Some(k.private_share), k.public_key)));
+                setup.push((*p, (Some(k.private_share), k.public_key)));
                 is_break = true;
                 break;
             }
         }
         if !is_break {
-            setup.push((new_participant, (None, *pub_key)));
+            setup.push((*new_participant, (None, *pub_key)));
         }
     }
 
@@ -93,9 +93,9 @@ pub(crate) fn run_reshare(
             out.1,
             &new_participants,
             new_threshold,
-            **p,
+            *p,
         )?;
-        protocols.push((**p, Box::new(protocol)));
+        protocols.push((*p, Box::new(protocol)));
     }
 
     let result = run_protocol(protocols)?;
