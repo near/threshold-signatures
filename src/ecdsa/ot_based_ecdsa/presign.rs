@@ -29,8 +29,8 @@ async fn do_presign(
     let big_a: ProjectivePoint = args.triple1.1.big_a.into();
     let big_b: ProjectivePoint = args.triple1.1.big_b.into();
 
-    let sk_lambda = participants.generic_lagrange::<Secp256K1Sha256>(me);
-    let bt_lambda = bt_participants.generic_lagrange::<Secp256K1Sha256>(bt_id);
+    let sk_lambda = participants.lagrange::<Secp256K1Sha256>(me);
+    let bt_lambda = bt_participants.lagrange::<Secp256K1Sha256>(bt_id);
 
     let k_i = args.triple0.0.a;
     let k_prime_i = bt_lambda * k_i;
@@ -200,11 +200,7 @@ mod test {
             KeygenOutput,
         },
         protocol::run_protocol,
-        crypto::polynomials::{
-            generate_polynomial,
-            eval_polynomial_on_zero,
-            eval_polynomial_on_participant,
-        },
+        crypto::polynomials::Polynomial,
     };
     use std::collections::BTreeMap;
     use rand_core::OsRng;
@@ -223,8 +219,8 @@ mod test {
             Participant::from(3u32),
         ];
         let original_threshold = 2;
-        let f =  generate_polynomial::<C>(None, original_threshold-1, &mut OsRng);
-        let big_x = ProjectivePoint::GENERATOR * eval_polynomial_on_zero::<C>(&f).to_scalar();
+        let f =  Polynomial::<C>::generate_polynomial(None, original_threshold-1, &mut OsRng);
+        let big_x = ProjectivePoint::GENERATOR * f.eval_on_zero().0;
 
         let threshold = 2;
 
@@ -245,7 +241,7 @@ mod test {
             .zip(triple0_shares.into_iter())
             .zip(triple1_shares.into_iter())
         {
-            let private_share = eval_polynomial_on_participant::<C>(&f, *p).unwrap().to_scalar();
+            let private_share = f.eval_on_participant(*p).unwrap().to_scalar();
             let verifying_key = VerifyingKey::new(big_x);
             let public_key_package = PublicKeyPackage::new(BTreeMap::new(), verifying_key);
             let keygen_out = KeygenOutput {
@@ -284,11 +280,11 @@ mod test {
         let k_shares = vec![result[0].1.k, result[1].1.k];
         let sigma_shares = vec![result[0].1.sigma, result[1].1.sigma];
         let p_list = ParticipantList::new(&participants).unwrap();
-        let k = p_list.generic_lagrange::<C>(participants[0]) * k_shares[0]
-            + p_list.generic_lagrange::<C>(participants[1]) * k_shares[1];
+        let k = p_list.lagrange::<C>(participants[0]) * k_shares[0]
+            + p_list.lagrange::<C>(participants[1]) * k_shares[1];
         assert_eq!(ProjectivePoint::GENERATOR * k.invert().unwrap(), big_k);
-        let sigma = p_list.generic_lagrange::<C>(participants[0]) * sigma_shares[0]
-            + p_list.generic_lagrange::<C>(participants[1]) * sigma_shares[1];
-        assert_eq!(sigma, k * eval_polynomial_on_zero::<C>(&f).to_scalar());
+        let sigma = p_list.lagrange::<C>(participants[0]) * sigma_shares[0]
+            + p_list.lagrange::<C>(participants[1]) * sigma_shares[1];
+        assert_eq!(sigma, k * f.eval_on_zero().0);
     }
 }

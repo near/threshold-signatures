@@ -600,7 +600,7 @@ pub(crate) async fn do_reshare<C: Ciphersuite>(
     let intersection = old_participants.intersection(&participants);
     // either extract the share and linearize it or set it to zero
     let secret = old_signing_key
-        .map(|x_i| intersection.generic_lagrange::<C>(me) * x_i.to_scalar())
+        .map(|x_i| intersection.lagrange::<C>(me) * x_i.to_scalar())
         .unwrap_or(<C::Group as Group>::Field::zero());
 
     let old_reshare_package = Some((old_public_key, old_participants));

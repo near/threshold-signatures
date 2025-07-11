@@ -1,7 +1,6 @@
 use elliptic_curve::scalar::IsHigh;
 
 use frost_core::serialization::SerializableScalar;
-use frost_secp256k1::keys::SigningShare;
 use subtle::ConditionallySelectable;
 
 use crate::{
@@ -112,7 +111,6 @@ mod test {
     use std::error::Error;
 
     use ecdsa::Signature;
-    use frost_core::keys::{SigningShare, VerifyingShare};
     use k256::{
         ecdsa::signature::Verifier, ecdsa::VerifyingKey, PublicKey,
     };

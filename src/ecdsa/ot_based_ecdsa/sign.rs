@@ -26,7 +26,7 @@ async fn do_sign(
     msg_hash: Scalar,
 ) -> Result<FullSignature, ProtocolError> {
     // Spec 1.1
-    let lambda = participants.generic_lagrange::<Secp256K1Sha256>(me);
+    let lambda = participants.lagrange::<Secp256K1Sha256>(me);
     let k_i = lambda * presignature.k;
 
     // Spec 1.2
@@ -129,11 +129,7 @@ mod test {
     };
     use crate::{
         protocol::{run_protocol, Participant,Protocol},
-        crypto::polynomials::{
-            generate_polynomial,
-            eval_polynomial_on_zero,
-            eval_polynomial_on_participant,
-        },
+        crypto::polynomials::Polynomial,
     };
     use crate::compat::{
         scalar_hash,
@@ -147,18 +143,18 @@ mod test {
 
         // Run 4 times for flakiness reasons
         for _ in 0..4 {
-            let f = generate_polynomial::<C>(None, threshold-1, &mut OsRng);;
-            let x = eval_polynomial_on_zero::<C>(&f).to_scalar();
+            let f = Polynomial::<C>::generate_polynomial(None, threshold-1, &mut OsRng);;
+            let x = f.eval_on_zero().0;
             let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
 
-            let g = generate_polynomial::<C>(None, threshold-1, &mut OsRng);;
+            let g = Polynomial::<C>::generate_polynomial(None, threshold-1, &mut OsRng);;
 
-            let k = eval_polynomial_on_zero::<C>(&g).to_scalar();
+            let k = g.eval_on_zero().0;
             let big_k = (ProjectivePoint::GENERATOR * k.invert().unwrap()).to_affine();
 
             let sigma = k * x;
 
-            let h = generate_polynomial::<C>(Some(sigma), threshold-1,&mut OsRng);
+            let h = Polynomial::<C>::generate_polynomial(Some(sigma), threshold-1,&mut OsRng);
 
             let participants = vec![Participant::from(0u32), Participant::from(1u32)];
             #[allow(clippy::type_complexity)]
@@ -169,10 +165,10 @@ mod test {
             for p in &participants {
                 let presignature = PresignOutput {
                     big_r: big_k,
-                    k: eval_polynomial_on_participant::<C>(&g, *p)
+                    k: g.eval_on_participant(*p)
                             .unwrap()
                             .to_scalar(),
-                    sigma: eval_polynomial_on_participant::<C>(&h, *p)
+                    sigma: h.eval_on_participant(*p)
                             .unwrap()
                             .to_scalar(),
                 };
