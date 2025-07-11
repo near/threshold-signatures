@@ -198,7 +198,7 @@ pub async fn batch_random_ot_receiver_many<C: CSCurve, const N: usize>(
 
     let mut big_y_v = vec![];
     let mut deltav = vec![];
-    for big_y_affine in big_y_affine_v.iter() {
+    for big_y_affine in big_y_affine_v.iter().take(N) {
         let big_y = big_y_affine.to_projective();
         if bool::from(big_y.is_identity()) {
             return Err(ProtocolError::AssertionFailed(
@@ -250,7 +250,7 @@ pub async fn batch_random_ot_receiver_many<C: CSCurve, const N: usize>(
             let wait0 = chan.next_waitpoint();
 
             let mut big_x_i_affine_v = Vec::new();
-            for big_x_i_v_j in big_x_i_v.iter() {
+            for big_x_i_v_j in big_x_i_v.iter().take(N) {
                 let big_x_i_affine = SerializablePoint::<C>::from_projective(big_x_i_v_j);
                 big_x_i_affine_v.push(big_x_i_affine);
             }

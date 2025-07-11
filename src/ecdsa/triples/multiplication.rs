@@ -175,7 +175,7 @@ pub async fn multiplication_many<C: CSCurve, const N: usize>(
         .into_iter()
         .collect::<VecDeque<_>>();
 
-    for oi in outs.iter_mut() {
+    for oi in outs.iter_mut().take(N) {
         for _ in participants.others(me) {
             let result = results.pop_front().unwrap();
             *oi += result;

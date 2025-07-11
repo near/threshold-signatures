@@ -541,9 +541,9 @@ async fn do_generation_many<C: CSCurve, const N: usize>(
 
     // Spec 2.1
     let mut all_commitments_vec: Vec<ParticipantMap<Commitment>> = vec![];
-    for comi in my_commitments {
+    for comi in my_commitments.iter().take(N) {
         let mut m = ParticipantMap::new(&participants);
-        m.put(me, comi);
+        m.put(me, *comi);
         all_commitments_vec.push(m);
     }
 
@@ -559,7 +559,7 @@ async fn do_generation_many<C: CSCurve, const N: usize>(
 
     // Spec 2.2
     let mut my_confirmations = vec![];
-    for comi in all_commitments_vec.iter() {
+    for comi in all_commitments_vec.iter().take(N) {
         let my_confirmation = hash(comi);
         my_confirmations.push(my_confirmation);
     }
@@ -860,7 +860,7 @@ async fn do_generation_many<C: CSCurve, const N: usize>(
         seen.clear();
         seen.put(me);
         let mut big_c_v = vec![];
-        for big_c_i_v_i in big_c_i_v.iter() {
+        for big_c_i_v_i in big_c_i_v.iter().take(N) {
             big_c_v.push(*big_c_i_v_i);
         }
         while !seen.full() {
@@ -925,7 +925,7 @@ async fn do_generation_many<C: CSCurve, const N: usize>(
     let mut hat_big_c_i_points = vec![];
     let mut hat_big_c_i_v = vec![];
     let mut my_phi_proofs = vec![];
-    for l0 in l0_v.iter() {
+    for l0 in l0_v.iter().take(N) {
         // Spec 4.5
         let hat_big_c_i = C::ProjectivePoint::generator() * l0;
 
@@ -959,13 +959,13 @@ async fn do_generation_many<C: CSCurve, const N: usize>(
     let mut c_i_v = vec![];
     for p in participants.others(me) {
         let mut c_i_j_v = Vec::new();
-        for l in l_v.iter_mut() {
+        for l in l_v.iter_mut().take(N) {
             let c_i_j: ScalarPrimitive<C> = l.evaluate(&p.scalar::<C>()).into();
             c_i_j_v.push(c_i_j);
         }
         chan.send_private(wait6, p, &c_i_j_v);
     }
-    for l in l_v.iter_mut() {
+    for l in l_v.iter_mut().take(N) {
         let c_i = l.evaluate(&me.scalar::<C>());
         c_i_v.push(c_i);
     }
@@ -974,7 +974,7 @@ async fn do_generation_many<C: CSCurve, const N: usize>(
     seen.clear();
     seen.put(me);
     let mut hat_big_c_v = vec![];
-    for hat_big_c_i_v_i in hat_big_c_i_v.iter() {
+    for hat_big_c_i_v_i in hat_big_c_i_v.iter().take(N) {
         hat_big_c_v.push(*hat_big_c_i_v_i);
     }
 
