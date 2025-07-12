@@ -10,10 +10,7 @@ use crate::{
         Field,
     },
     protocol::Participant,
-    crypto::polynomials::{
-        generate_polynomial,
-        eval_polynomial_on_participant,
-    },
+    crypto::polynomials::Polynomial,
 };
 use super::{TriplePub, TripleShare};
 type C = Secp256K1Sha256;
@@ -33,9 +30,9 @@ pub fn deal(
     let b = Secp256K1ScalarField::random(&mut *rng);
     let c = a * b;
 
-    let f_a = generate_polynomial::<C>(Some(a), threshold-1, rng);
-    let f_b = generate_polynomial::<C>(Some(b), threshold-1, rng);
-    let f_c = generate_polynomial::<C>(Some(c), threshold-1, rng);
+    let f_a = Polynomial::<C>::generate_polynomial(Some(a), threshold-1, rng);
+    let f_b = Polynomial::<C>::generate_polynomial(Some(b), threshold-1, rng);
+    let f_c = Polynomial::<C>::generate_polynomial(Some(c), threshold-1, rng);
 
     let mut shares = Vec::with_capacity(participants.len());
     let mut participants_owned = Vec::with_capacity(participants.len());
@@ -43,9 +40,9 @@ pub fn deal(
     for p in participants {
         participants_owned.push(*p);
         shares.push(TripleShare {
-            a: eval_polynomial_on_participant::<C>(&f_a, *p)?.to_scalar(),
-            b: eval_polynomial_on_participant::<C>(&f_b, *p)?.to_scalar(),
-            c: eval_polynomial_on_participant::<C>(&f_c, *p)?.to_scalar(),
+            a: f_a.eval_on_participant(*p).0,
+            b: f_b.eval_on_participant(*p).0,
+            c: f_c.eval_on_participant(*p).0,
         });
     }
 

@@ -7,13 +7,9 @@ use crate::{
         commit::{Commitment,commit},
         hash::{hash, HashOutput},
         random::Randomizer,
-        polynomials::{
-            generate_polynomial,
-            commit_polynomial,
-            eval_polynomial_on_zero,
-        },
+        polynomials::{Polynomial, PolynomialCommitment},
     },
-    // ecdsa::math::{GroupPolynomial, Polynomial},
+    // ecdsa::math::{PolynomialCommitment, Polynomial},
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     crypto::proofs::{dlog, dlogeq, strobe_transcript::Transcript},
     protocol::{
@@ -28,6 +24,7 @@ use crate::{
         Secp256K1ScalarField,
         Field,
         Scalar,
+        ProjectivePoint,
     }
 };
 
@@ -73,15 +70,15 @@ async fn do_generation(
     );
 
     // Spec 1.2
-    let e = generate_polynomial::<C>(None, threshold-1, &mut rng);
-    let f = generate_polynomial::<C>(None, threshold-1, &mut rng);
+    let e = Polynomial::<C>::generate_polynomial(None, threshold-1, &mut rng);
+    let f = Polynomial::<C>::generate_polynomial(None, threshold-1, &mut rng);
     // Spec 1.3
-    let l = generate_polynomial::<C>(Some(Secp256K1ScalarField::zero()), threshold-1, &mut rng);
+    let l = Polynomial::<C>::generate_polynomial(Some(Secp256K1ScalarField::zero()), threshold-1, &mut rng);
 
     // Spec 1.4
-    let big_e_i = commit_polynomial::<C>(&e);
-    let big_f_i = commit_polynomial::<C>(&f);
-    let big_l_i = commit_polynomial::<C>(&l);
+    let big_e_i = e.commit_polynomial();
+    let big_f_i = f.commit_polynomial();
+    let big_l_i = l.commit_polynomial();
 
     // Spec 1.5
     let (my_commitment, my_randomizer) = commit(&mut rng, &(&big_e_i, &big_f_i, &big_l_i));
@@ -106,8 +103,8 @@ async fn do_generation(
 
     // Spec 2.4
     let multiplication_task = {
-        let e0 = eval_polynomial_on_zero::<C>(&e);
-        let f0 = eval_polynomial_on_zero::<C>(&f);
+        let e0 = e.eval_on_zero();
+        let f0 = f.eval_on_zero();
         multiplication(
             comms.clone(),
             my_confirmation,
@@ -120,12 +117,12 @@ async fn do_generation(
 
     struct ParallelToMultiplicationTaskOutput<'a> {
         seen: ParticipantCounter<'a>,
-        big_e: GroupPolynomial<C>,
-        big_f: GroupPolynomial<C>,
-        big_l: GroupPolynomial<C>,
-        big_c: C::ProjectivePoint,
-        a_i: C::Scalar,
-        b_i: C::Scalar,
+        big_e: PolynomialCommitment<C>,
+        big_f: PolynomialCommitment<C>,
+        big_l: PolynomialCommitment<C>,
+        big_c: ProjectivePoint,
+        a_i: Scalar,
+        b_i: Scalar,
     }
     let parallel_to_multiplication_task = async {
         // Spec 2.5
@@ -134,10 +131,10 @@ async fn do_generation(
 
         // Spec 2.6
         let statement0 = dlog::Statement::<C> {
-            public: &big_e_i.evaluate_zero(),
+            public: &big_e_i.eval_on_zero().value(),
         };
         let witness0 = dlog::Witness::<C> {
-            x: &e.evaluate_zero(),
+            x: &e.eval_on_zero().0,
         };
         let my_phi_proof0 = dlog::prove(
             &mut rng,
@@ -146,10 +143,10 @@ async fn do_generation(
             witness0,
         );
         let statement1 = dlog::Statement::<C> {
-            public: &big_f_i.evaluate_zero(),
+            public: &big_f_i.eval_on_zero().value(),
         };
         let witness1 = dlog::Witness::<C> {
-            x: &f.evaluate_zero(),
+            x: &f.eval_on_zero().0,
         };
         let my_phi_proof1 = dlog::prove(
             &mut rng,
@@ -177,12 +174,12 @@ async fn do_generation(
         // Spec 2.8
         let wait3 = chan.next_waitpoint();
         for p in participants.others(me) {
-            let a_i_j: Scalar = e.evaluate(&p.scalar::<C>()).into();
-            let b_i_j: Scalar = f.evaluate(&p.scalar::<C>()).into();
+            let a_i_j: Scalar = e.eval_on_participant(p).0;
+            let b_i_j: Scalar = f.eval_on_participant(p).0;
             chan.send_private(wait3, p, &(a_i_j, b_i_j));
         }
-        let mut a_i = e.evaluate(&me.scalar::<C>());
-        let mut b_i = f.evaluate(&me.scalar::<C>());
+        let mut a_i = e.eval_on_participant(me);
+        let mut b_i = f.eval_on_participant(me);
 
         // Spec 3.1 + 3.2
         let mut seen = ParticipantCounter::new(&participants);
@@ -220,9 +217,9 @@ async fn do_generation(
             ): (
                 _,
                 (
-                    GroupPolynomial<C>,
-                    GroupPolynomial<C>,
-                    GroupPolynomial<C>,
+                    PolynomialCommitment<C>,
+                    PolynomialCommitment<C>,
+                    PolynomialCommitment<C>,
                     _,
                     _,
                     _,
@@ -241,7 +238,7 @@ async fn do_generation(
                 )));
             }
 
-            if !bool::from(their_big_l.evaluate_zero().is_identity()) {
+            if !bool::from(their_big_l.eval_on_zero().is_identity()) {
                 return Err(ProtocolError::AssertionFailed(format!(
                     "L(0) from {from:?} is not 0"
                 )));
@@ -257,7 +254,7 @@ async fn do_generation(
             }
 
             let statement0 = dlog::Statement::<C> {
-                public: &their_big_e.evaluate_zero(),
+                public: &their_big_e.eval_on_zero(),
             };
 
             if !dlog::verify(
@@ -271,7 +268,7 @@ async fn do_generation(
             }
 
             let statement1 = dlog::Statement::<C> {
-                public: &their_big_f.evaluate_zero(),
+                public: &their_big_f.eval_on_zero(),
             };
             if !dlog::verify(
                 &mut transcript.fork(b"dlog1", &from.bytes()),
@@ -283,7 +280,7 @@ async fn do_generation(
                 )));
             }
 
-            big_e_j_zero.put(from, their_big_e.evaluate_zero());
+            big_e_j_zero.put(from, their_big_e.eval_on_zero());
             big_e += &their_big_e;
             big_f += &their_big_f;
             big_l += &their_big_l;
@@ -303,8 +300,8 @@ async fn do_generation(
         }
 
         // Spec 3.7
-        if big_e.evaluate(&me.scalar::<C>()) != C::ProjectivePoint::generator() * a_i
-            || big_f.evaluate(&me.scalar::<C>()) != C::ProjectivePoint::generator() * b_i
+        if big_e.eval_on_participant(me) != ProjectivePoint::GENERATOR * a_i
+            || big_f.eval_on_participant(me) != ProjectivePoint::GENERATOR * b_i
         {
             return Err(ProtocolError::AssertionFailed(
                 "received bad private share".to_string(),
@@ -312,16 +309,16 @@ async fn do_generation(
         }
 
         // Spec 3.8
-        let big_c_i = big_f.evaluate_zero() * e.evaluate_zero();
+        let big_c_i = big_f.eval_on_zero() * e.eval_on_zero();
 
         // Spec 3.9
         let statement = dlogeq::Statement::<C> {
-            public0: &big_e_i.evaluate_zero(),
-            generator1: &big_f.evaluate_zero(),
+            public0: &big_e_i.eval_on_zero(),
+            generator1: &big_f.eval_on_zero(),
             public1: &big_c_i,
         };
         let witness = dlogeq::Witness {
-            x: &e.evaluate_zero(),
+            x: &e.eval_on_zero(),
         };
         let my_phi_proof = dlogeq::prove(
             &mut rng,
@@ -354,7 +351,7 @@ async fn do_generation(
 
             let statement = dlogeq::Statement::<C> {
                 public0: &big_e_j_zero[from],
-                generator1: &big_f.evaluate_zero(),
+                generator1: big_f.eval_on_zero(),
                 public1: &big_c_j,
             };
 
@@ -396,7 +393,7 @@ async fn do_generation(
     ) = futures::future::try_join(multiplication_task, parallel_to_multiplication_task).await?;
 
     // Spec 4.5
-    let hat_big_c_i = C::ProjectivePoint::generator() * l0;
+    let hat_big_c_i = ProjectivePoint::GENERATOR * l0;
 
     // Spec 4.6
     let statement = dlog::Statement::<C> {
@@ -424,10 +421,10 @@ async fn do_generation(
     l.set_zero(l0);
     let wait6 = chan.next_waitpoint();
     for p in participants.others(me) {
-        let c_i_j: Scalar = l.evaluate(&p.scalar::<C>()).into();
+        let c_i_j: Scalar = l.eval_on_participant(p).into();
         chan.send_private(wait6, p, &c_i_j);
     }
-    let mut c_i = l.evaluate(&me.scalar::<C>());
+    let mut c_i = l.eval_on_participant(me);
 
     // Spec 5.1 + 5.2 + 5.3
     seen.clear();
@@ -460,7 +457,7 @@ async fn do_generation(
     big_l.set_zero(hat_big_c);
 
     // Spec 5.4
-    if big_l.evaluate_zero() != big_c {
+    if big_l.eval_on_zero() != big_c {
         return Err(ProtocolError::AssertionFailed(
             "final polynomial doesn't match C value".to_owned(),
         ));
@@ -474,18 +471,18 @@ async fn do_generation(
         if !seen.put(from) {
             continue;
         }
-        c_i += C::Scalar::from(c_j_i);
+        c_i += Scalar::from(c_j_i);
     }
 
     // Spec 5.7
-    if big_l.evaluate(&me.scalar::<C>()) != C::ProjectivePoint::generator() * c_i {
+    if big_l.eval_on_participant(me) != ProjectivePoint::GENERATOR * c_i {
         return Err(ProtocolError::AssertionFailed(
             "received bad private share of c".to_string(),
         ));
     }
 
-    let big_a = big_e.evaluate_zero().into();
-    let big_b = big_f.evaluate_zero().into();
+    let big_a = big_e.eval_on_zero().into();
+    let big_b = big_f.eval_on_zero().into();
     let big_c = big_c.into();
 
     Ok((
@@ -541,12 +538,12 @@ async fn do_generation_many<const N: usize>(
         let mut l: Polynomial<C> = Polynomial::random(&mut rng, threshold);
 
         // Spec 1.3
-        l.set_zero(C::Scalar::ZERO);
+        l.set_zero(Scalar::ZERO);
 
         // Spec 1.4
-        let big_e_i = commit_polynomial::<C>(&e);
-        let big_f_i = commit_polynomial::<C>(&f);
-        let big_l_i = commit_polynomial::<C>(&l);
+        let big_e_i = e.commit_polynomial:();
+        let big_f_i = f.commit_polynomial();
+        let big_l_i = l.commit_polynomial();
 
         // Spec 1.5
         let (my_commitment, my_randomizer) = commit(&mut rng, &(&big_e_i, &big_f_i, &big_l_i));
@@ -596,8 +593,8 @@ async fn do_generation_many<const N: usize>(
 
     // Spec 2.4
     let multiplication_task = {
-        let e0_v: Vec<_> = e_v.iter().map(|e| e.evaluate_zero()).collect();
-        let f0_v: Vec<_> = f_v.iter().map(|f| f.evaluate_zero()).collect();
+        let e0_v: Vec<_> = e_v.iter().map(|e| e.eval_on_zero()).collect();
+        let f0_v: Vec<_> = f_v.iter().map(|f| f.eval_on_zero()).collect();
         multiplication_many::<C, N>(
             comms.clone(),
             my_confirmations.clone(),
@@ -610,12 +607,12 @@ async fn do_generation_many<const N: usize>(
 
     struct ParallelToMultiplicationTaskOutput<'a> {
         seen: ParticipantCounter<'a>,
-        big_e_v: Vec<GroupPolynomial<C>>,
-        big_f_v: Vec<GroupPolynomial<C>>,
-        big_l_v: Vec<GroupPolynomial<C>>,
-        big_c_v: Vec<C::ProjectivePoint>,
-        a_i_v: Vec<C::Scalar>,
-        b_i_v: Vec<C::Scalar>,
+        big_e_v: Vec<PolynomialCommitment<C>>,
+        big_f_v: Vec<PolynomialCommitment<C>>,
+        big_l_v: Vec<PolynomialCommitment<C>>,
+        big_c_v: Vec<ProjectivePoint>,
+        a_i_v: Vec<Scalar>,
+        b_i_v: Vec<Scalar>,
     }
     let parallel_to_multiplication_task = async {
         // Spec 2.5
@@ -632,10 +629,10 @@ async fn do_generation_many<const N: usize>(
             let f = &f_v[i];
             // Spec 2.6
             let statement0 = dlog::Statement::<C> {
-                public: &big_e_i.evaluate_zero(),
+                public: &big_e_i.eval_on_zero(),
             };
             let witness0 = dlog::Witness::<C> {
-                x: &e.evaluate_zero(),
+                x: &e.eval_on_zero(),
             };
             let my_phi_proof0 = dlog::prove(
                 &mut rng,
@@ -644,10 +641,10 @@ async fn do_generation_many<const N: usize>(
                 witness0,
             );
             let statement1 = dlog::Statement::<C> {
-                public: &big_f_i.evaluate_zero(),
+                public: &big_f_i.eval_on_zero(),
             };
             let witness1 = dlog::Witness::<C> {
-                x: &f.evaluate_zero(),
+                x: &f.eval_on_zero(),
             };
             let my_phi_proof1 = dlog::prove(
                 &mut rng,
@@ -683,8 +680,8 @@ async fn do_generation_many<const N: usize>(
             for i in 0..N {
                 let e = &e_v[i];
                 let f = &f_v[i];
-                let a_i_j: Scalar = e.evaluate(&p.scalar::<C>()).into();
-                let b_i_j: Scalar = f.evaluate(&p.scalar::<C>()).into();
+                let a_i_j: Scalar = e.eval_on_participant(p).into();
+                let b_i_j: Scalar = f.eval_on_participant(p).into();
                 a_i_j_v.push(a_i_j);
                 b_i_j_v.push(b_i_j);
             }
@@ -695,8 +692,8 @@ async fn do_generation_many<const N: usize>(
         for i in 0..N {
             let e = &e_v[i];
             let f = &f_v[i];
-            let a_i = e.evaluate(&me.scalar::<C>());
-            let b_i = f.evaluate(&me.scalar::<C>());
+            let a_i = e.eval_on_participant(me);
+            let b_i = f.eval_on_participant(me);
             a_i_v.push(a_i);
             b_i_v.push(b_i);
         }
@@ -743,9 +740,9 @@ async fn do_generation_many<const N: usize>(
             ): (
                 _,
                 (
-                    Vec<GroupPolynomial<C>>,
-                    Vec<GroupPolynomial<C>>,
-                    Vec<GroupPolynomial<C>>,
+                    Vec<PolynomialCommitment<C>>,
+                    Vec<PolynomialCommitment<C>>,
+                    Vec<PolynomialCommitment<C>>,
                     Vec<Randomizer>,
                     Vec<dlog::Proof<C>>,
                     Vec<dlog::Proof<C>>,
@@ -771,7 +768,7 @@ async fn do_generation_many<const N: usize>(
                         "polynomial from {from:?} has the wrong length"
                     )));
                 }
-                if !bool::from(their_big_l.evaluate_zero().is_identity()) {
+                if !bool::from(their_big_l.eval_on_zero().is_identity()) {
                     return Err(ProtocolError::AssertionFailed(format!(
                         "L(0) from {from:?} is not 0"
                     )));
@@ -785,7 +782,7 @@ async fn do_generation_many<const N: usize>(
                     )));
                 }
                 let statement0 = dlog::Statement::<C> {
-                    public: &their_big_e.evaluate_zero(),
+                    public: &their_big_e.eval_on_zero(),
                 };
                 if !dlog::verify(
                     &mut transcript.fork(b"dlog0", &from.bytes()),
@@ -798,7 +795,7 @@ async fn do_generation_many<const N: usize>(
                 }
 
                 let statement1 = dlog::Statement::<C> {
-                    public: &their_big_f.evaluate_zero(),
+                    public: &their_big_f.eval_on_zero(),
                 };
                 if !dlog::verify(
                     &mut transcript.fork(b"dlog1", &from.bytes()),
@@ -810,7 +807,7 @@ async fn do_generation_many<const N: usize>(
                     )));
                 }
 
-                big_e_j_zero_v[i].put(from, their_big_e.evaluate_zero());
+                big_e_j_zero_v[i].put(from, their_big_e.eval_on_zero());
 
                 big_e_v[i] += their_big_e;
                 big_f_v[i] += their_big_f;
@@ -847,24 +844,24 @@ async fn do_generation_many<const N: usize>(
             let b_i = &b_i_v[i];
             let e = &e_v[i];
             // Spec 3.7
-            let check1 = big_e.evaluate(&me.scalar::<C>()) != C::ProjectivePoint::generator() * a_i;
-            let check2 = big_f.evaluate(&me.scalar::<C>()) != C::ProjectivePoint::generator() * b_i;
+            let check1 = big_e.eval_on_participant(me) != ProjectivePoint::GENERATOR * a_i;
+            let check2 = big_f.eval_on_participant(me) != ProjectivePoint::GENERATOR * b_i;
             if check1 || check2 {
                 return Err(ProtocolError::AssertionFailed(
                     "received bad private share".to_string(),
                 ));
             }
             // Spec 3.8
-            let big_c_i = big_f.evaluate_zero() * e.evaluate_zero();
+            let big_c_i = big_f.eval_on_zero() * e.eval_on_zero();
             let big_e_i = &big_e_i_v[i];
             // Spec 3.9
             let statement = dlogeq::Statement::<C> {
-                public0: &big_e_i.evaluate_zero(),
-                generator1: &big_f.evaluate_zero(),
+                public0: &big_e_i.eval_on_zero(),
+                generator1: &big_f.eval_on_zero(),
                 public1: &big_c_i,
             };
             let witness = dlogeq::Witness {
-                x: &e.evaluate_zero(),
+                x: &e.eval_on_zero(),
             };
             let my_phi_proof = dlogeq::prove(
                 &mut rng,
@@ -905,7 +902,7 @@ async fn do_generation_many<const N: usize>(
 
                 let statement = dlogeq::Statement::<C> {
                     public0: &big_e_j_zero[from],
-                    generator1: &big_f.evaluate_zero(),
+                    generator1: &big_f.eval_on_zero(),
                     public1: &big_c_j,
                 };
 
@@ -952,7 +949,7 @@ async fn do_generation_many<const N: usize>(
     for i in 0..N {
         // Spec 4.5
         let l0 = l0_v[i];
-        let hat_big_c_i = C::ProjectivePoint::generator() * l0;
+        let hat_big_c_i = ProjectivePoint::GENERATOR * l0;
 
         // Spec 4.6
         let statement = dlog::Statement::<C> {
@@ -986,14 +983,14 @@ async fn do_generation_many<const N: usize>(
         let mut c_i_j_v = Vec::new();
         for i in 0..N {
             let l = &mut l_v[i];
-            let c_i_j: Scalar = l.evaluate(&p.scalar::<C>()).into();
+            let c_i_j: Scalar = l.eval_on_participant(p).into();
             c_i_j_v.push(c_i_j);
         }
         chan.send_private(wait6, p, &c_i_j_v);
     }
     for i in 0..N {
         let l = &mut l_v[i];
-        let c_i = l.evaluate(&me.scalar::<C>());
+        let c_i = l.eval_on_participant(me);
         c_i_v.push(c_i);
     }
 
@@ -1042,7 +1039,7 @@ async fn do_generation_many<const N: usize>(
         big_l.set_zero(*hat_big_c);
 
         // Spec 5.4
-        if big_l.evaluate_zero() != *big_c {
+        if big_l.eval_on_zero() != *big_c {
             return Err(ProtocolError::AssertionFailed(
                 "final polynomial doesn't match C value".to_owned(),
             ));
@@ -1059,7 +1056,7 @@ async fn do_generation_many<const N: usize>(
         }
         for i in 0..N {
             let c_j_i = c_j_i_v[i];
-            c_i_v[i] += C::Scalar::from(c_j_i);
+            c_i_v[i] += Scalar::from(c_j_i);
         }
     }
 
@@ -1074,13 +1071,13 @@ async fn do_generation_many<const N: usize>(
         let big_f = &big_f_v[i];
         let big_c = &big_c_v[i];
 
-        if big_l.evaluate(&me.scalar::<C>()) != C::ProjectivePoint::generator() * c_i {
+        if big_l.eval_on_participant(me) != ProjectivePoint::GENERATOR * c_i {
             return Err(ProtocolError::AssertionFailed(
                 "received bad private share of c".to_string(),
             ));
         }
-        let big_a = big_e.evaluate_zero().into();
-        let big_b = big_f.evaluate_zero().into();
+        let big_a = big_e.eval_on_zero().into();
+        let big_b = big_f.eval_on_zero().into();
         let big_c = (*big_c).into();
 
         ret.push((
