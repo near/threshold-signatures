@@ -80,7 +80,7 @@ pub async fn mta_sender(
     let delta: Vec<_> = (0..size).map(|_| Scalar::random(&mut OsRng)).collect();
 
     // Step 2
-    let c: MTAScalars<C> = MTAScalars(
+    let c: MTAScalars = MTAScalars(
         delta
             .iter()
             .zip(v.iter())
@@ -117,7 +117,7 @@ pub async fn mta_receiver(
 
     // Step 3
     let wait0 = chan.next_waitpoint();
-    let c: MTAScalars<C> = chan.recv(wait0).await?;
+    let c: MTAScalars = chan.recv(wait0).await?;
     if c.len() != tv.len() {
         return Err(ProtocolError::AssertionFailed(
             "length of c was incorrect".to_owned(),
@@ -171,26 +171,25 @@ fn run_mta(
         r,
         &mut make_protocol(
             ctx_s.clone(),
-            mta_sender::<C>(ctx_s.private_channel(s, r), v, a),
+            mta_sender(ctx_s.private_channel(s, r), v, a),
         ),
         &mut make_protocol(
             ctx_r.clone(),
-            mta_receiver::<C>(ctx_r.private_channel(r, s), tv, b),
+            mta_receiver(ctx_r.private_channel(r, s), tv, b),
         ),
     )
 }
 
 #[cfg(test)]
 mod test {
-    use ecdsa::elliptic_curve::{bigint::Bounded, Curve};
-    use k256::{Scalar, Secp256k1};
+    use k256::Scalar;
     use rand_core::RngCore;
-    use crate::ecdsa::ot_based_ecdsa::triples::constants::SECURITY_PARAMETER;
+    use crate::ecdsa::ot_based_ecdsa::triples::constants::{BITS, SECURITY_PARAMETER};
     use super::*;
 
     #[test]
     fn test_mta() -> Result<(), ProtocolError> {
-        let batch_size = <<Secp256k1 as Curve>::Uint as Bounded>::BITS + SECURITY_PARAMETER;
+        let batch_size = BITS + SECURITY_PARAMETER;
 
         let v: Vec<_> = (0..batch_size)
             .map(|_| {
@@ -210,7 +209,7 @@ mod test {
 
         let a = Scalar::generate_biased(&mut OsRng);
         let b = Scalar::generate_biased(&mut OsRng);
-        let (alpha, beta) = run_mta::<Secp256k1>((v, a), (tv, b))?;
+        let (alpha, beta) = run_mta((v, a), (tv, b))?;
 
         assert_eq!(a * b, alpha + beta);
 

@@ -354,7 +354,7 @@ async fn do_generation(
 
             let statement = dlogeq::Statement::<C> {
                 public0: &big_e_j_zero[from].value(),
-                generator1: big_f.eval_on_zero().value(),
+                generator1: &big_f.eval_on_zero().value(),
                 public1: &big_c_j,
             };
 
@@ -598,7 +598,7 @@ async fn do_generation_many<const N: usize>(
     let multiplication_task = {
         let e0_v: Vec<_> = e_v.iter().map(|e| e.eval_on_zero()).collect();
         let f0_v: Vec<_> = f_v.iter().map(|f| f.eval_on_zero()).collect();
-        multiplication_many::<C, N>(
+        multiplication_many::<N>(
             comms.clone(),
             my_confirmations.clone(),
             participants.clone(),
@@ -763,9 +763,9 @@ async fn do_generation_many<const N: usize>(
                 let their_randomizer = &their_randomizers[i];
                 let their_phi_proof0 = &their_phi_proof0_v[i];
                 let their_phi_proof1 = &their_phi_proof1_v[i];
-                if their_big_e.len() != threshold
-                    || their_big_f.len() != threshold
-                    || their_big_l.len() != threshold
+                if their_big_e.degree() != threshold - 1
+                    || their_big_f.degree() != threshold - 1
+                    || their_big_l.degree() != threshold - 1
                 {
                     return Err(ProtocolError::AssertionFailed(format!(
                         "polynomial from {from:?} has the wrong length"
@@ -1160,7 +1160,7 @@ pub fn generate_triple_many<const N: usize>(
     })?;
 
     let ctx = Comms::new();
-    let fut = do_generation_many::<C, N>(ctx.clone(), participants, me, threshold);
+    let fut = do_generation_many::<N>(ctx.clone(), participants, me, threshold);
     Ok(make_protocol(ctx, fut))
 }
 
@@ -1253,7 +1253,7 @@ mod test {
         )> = Vec::with_capacity(participants.len());
 
         for &p in &participants {
-            let protocol = generate_triple_many::<Secp256k1, 1>(&participants, p, threshold);
+            let protocol = generate_triple_many::<1>(&participants, p, threshold);
             assert!(protocol.is_ok());
             let protocol = protocol.unwrap();
             protocols.push((p, Box::new(protocol)));
