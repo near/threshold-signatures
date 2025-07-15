@@ -1,4 +1,4 @@
-use elliptic_curve::CurveArithmetic;
+use elliptic_curve::bigint::U512;
 use rand_core::{OsRng, RngCore};
 use sha2::{Digest, Sha256};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
@@ -9,6 +9,9 @@ use crate::{
         internal::{make_protocol, Comms, PrivateChannel},
         run_two_party_protocol, Participant, ProtocolError,
     },
+    ecdsa::{
+        Scalar,
+    },
 };
 
 use super::{
@@ -17,9 +20,11 @@ use super::{
     correlated_ot_extension::{correlated_ot_receiver, correlated_ot_sender, CorrelatedOtParams},
 };
 
+use elliptic_curve::ops::Reduce;
+
 const CTX: &[u8] = b"Random OT Extension Hash";
 
-fn hash_to_scalar(i: usize, v: &BitVector) -> C::Scalar {
+fn hash_to_scalar(i: usize, v: &BitVector) -> Scalar {
     let mut hasher = Sha256::new();
     let i64 = u64::try_from(i).expect("failed to convert usize to u64");
 
@@ -28,9 +33,9 @@ fn hash_to_scalar(i: usize, v: &BitVector) -> C::Scalar {
     hasher.update(&v.bytes());
     let seed = hasher.finalize().into();
 
-    // Could in theory avoid one PRF call by using a more direct RNG wrapper
-    // over the prf function, but oh well.
-    C::sample_scalar_constant_time(&mut TranscriptRng::new(&seed))
+    let mut data = [0u8; 64];
+    TranscriptRng::new(&seed).fill_bytes(&mut data);
+    <Scalar as Reduce<U512>>::reduce_bytes(&data.into())
 }
 
 fn adjust_size(size: usize) -> usize {
@@ -51,20 +56,17 @@ pub struct RandomOtExtensionParams<'sid> {
 }
 
 /// The result that the sender gets.
-pub type RandomOTExtensionSenderOut<C> = Vec<(
-    <C as CurveArithmetic>::Scalar,
-    <C as CurveArithmetic>::Scalar,
-)>;
+pub type RandomOTExtensionSenderOut = Vec<(Scalar, Scalar)>;
 
 /// The result that the receiver gets.
-pub type RandomOTExtensionReceiverOut<C> = Vec<(Choice, <C as CurveArithmetic>::Scalar)>;
+pub type RandomOTExtensionReceiverOut = Vec<(Choice, Scalar)>;
 
 pub async fn random_ot_extension_sender(
     mut chan: PrivateChannel,
     params: RandomOtExtensionParams<'_>,
     delta: BitVector,
     k: &SquareBitMatrix,
-) -> Result<RandomOTExtensionSenderOut<C>, ProtocolError> {
+) -> Result<RandomOTExtensionSenderOut, ProtocolError> {
     let adjusted_size = adjust_size(params.batch_size);
 
     // Step 2
@@ -121,8 +123,8 @@ pub async fn random_ot_extension_sender(
     let mut out = Vec::with_capacity(params.batch_size);
 
     for (i, q_i) in q.rows().take(params.batch_size).enumerate() {
-        let v0_i = hash_to_scalar::<C>(i, q_i);
-        let v1_i = hash_to_scalar::<C>(i, &(q_i ^ delta));
+        let v0_i = hash_to_scalar(i, q_i);
+        let v1_i = hash_to_scalar(i, &(q_i ^ delta));
         out.push((v0_i, v1_i))
     }
 
@@ -134,7 +136,7 @@ pub async fn random_ot_extension_receiver(
     params: RandomOtExtensionParams<'_>,
     k0: &SquareBitMatrix,
     k1: &SquareBitMatrix,
-) -> Result<RandomOTExtensionReceiverOut<C>, ProtocolError> {
+) -> Result<RandomOTExtensionReceiverOut, ProtocolError> {
     let adjusted_size = adjust_size(params.batch_size);
 
     // Step 1
@@ -192,7 +194,7 @@ pub async fn random_ot_extension_receiver(
         .zip(t.rows())
         .take(params.batch_size)
         .enumerate()
-        .map(|(i, (b_i, t_i))| (b_i, hash_to_scalar::<C>(i, t_i)))
+        .map(|(i, (b_i, t_i))| (b_i, hash_to_scalar(i, t_i)))
         .collect();
 
     Ok(out)
@@ -207,8 +209,8 @@ fn run_random_ot(
     batch_size: usize,
 ) -> Result<
     (
-        RandomOTExtensionSenderOut<C>,
-        RandomOTExtensionReceiverOut<C>,
+        RandomOTExtensionSenderOut,
+        RandomOTExtensionReceiverOut,
     ),
     ProtocolError,
 > {
@@ -228,14 +230,14 @@ fn run_random_ot(
                 sid: &sid_s,
                 batch_size,
             };
-            random_ot_extension_sender::<C>(comms_s.private_channel(s, r), params, delta, &k).await
+            random_ot_extension_sender(comms_s.private_channel(s, r), params, delta, &k).await
         }),
         &mut make_protocol(comms_r.clone(), async move {
             let params = RandomOtExtensionParams {
                 sid: &sid_r,
                 batch_size,
             };
-            random_ot_extension_receiver::<C>(comms_r.private_channel(r, s), params, &k0, &k1).await
+            random_ot_extension_receiver(comms_r.private_channel(r, s), params, &k0, &k1).await
         }),
     )
 }
@@ -246,14 +248,14 @@ mod test {
 
     use super::*;
 
-    use k256::{Scalar, Secp256k1};
+    use k256::{Scalar};
 
     #[test]
     fn test_random_ot() -> Result<(), ProtocolError> {
-        let ((k0, k1), (delta, k)) = run_batch_random_ot::<Secp256k1>()?;
+        let ((k0, k1), (delta, k)) = run_batch_random_ot()?;
         let batch_size = 16;
         let (sender_out, receiver_out) =
-            run_random_ot::<Secp256k1>((delta, k), (k0, k1), b"test sid".to_vec(), batch_size)?;
+            run_random_ot((delta, k), (k0, k1), b"test sid".to_vec(), batch_size)?;
         assert_eq!(sender_out.len(), batch_size);
         assert_eq!(receiver_out.len(), batch_size);
         for ((v0_i, v1_i), (b_i, vb_i)) in sender_out.iter().zip(receiver_out.iter()) {

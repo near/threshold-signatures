@@ -1,8 +1,11 @@
-use elliptic_curve::{Field, ScalarPrimitive};
+use elliptic_curve::{bigint::Bounded, Field, Curve};
 use rand_core::{OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::slice::Iter;
 use subtle::{Choice, ConditionallySelectable};
+use frost_core::serialization::SerializableScalar;
+
+use k256::Secp256k1;
 
 use crate::protocol::internal::Comms;
 use crate::{
@@ -13,16 +16,25 @@ use crate::{
     },
 };
 
-struct MTAScalars(Vec<(ScalarPrimitive<C>, ScalarPrimitive<C>)>);
+use crate::{
+    ecdsa::{
+        Secp256K1Sha256,
+        Scalar,
+    }
+};
+
+type C = Secp256K1Sha256;
+
+struct MTAScalars(Vec<(SerializableScalar<C>, SerializableScalar<C>)>);
 
 impl MTAScalars {
-    const SCALAR_LEN: usize = (C::BITS + 7) >> 3;
+    const SCALAR_LEN: usize = (<<Secp256k1 as Curve>::Uint as Bounded>::BITS + 7) >> 3;
 
     fn len(&self) -> usize {
         self.0.len()
     }
 
-    fn iter(&self) -> Iter<'_, (ScalarPrimitive<C>, ScalarPrimitive<C>)> {
+    fn iter(&self) -> Iter<'_, (SerializableScalar<C>, SerializableScalar<C>)> {
         self.0.iter()
     }
 }
@@ -46,9 +58,9 @@ impl<'de> Deserialize<'de> for MTAScalars {
         }
         let mut out = Vec::with_capacity(bytes.len() / (Self::SCALAR_LEN * 2));
         for chunk in bytes.chunks_exact(Self::SCALAR_LEN * 2) {
-            let s0 = ScalarPrimitive::from_slice(&chunk[..Self::SCALAR_LEN])
+            let s0 = SerializableScalar::from_slice(&chunk[..Self::SCALAR_LEN])
                 .map_err(serde::de::Error::custom)?;
-            let s1 = ScalarPrimitive::from_slice(&chunk[Self::SCALAR_LEN..])
+            let s1 = SerializableScalar::from_slice(&chunk[Self::SCALAR_LEN..])
                 .map_err(serde::de::Error::custom)?;
             out.push((s0, s1));
         }
@@ -59,13 +71,13 @@ impl<'de> Deserialize<'de> for MTAScalars {
 /// The sender for multiplicative to additive conversion.
 pub async fn mta_sender(
     mut chan: PrivateChannel,
-    v: Vec<(C::Scalar, C::Scalar)>,
-    a: C::Scalar,
-) -> Result<C::Scalar, ProtocolError> {
+    v: Vec<(Scalar, Scalar)>,
+    a: Scalar,
+) -> Result<Scalar, ProtocolError> {
     let size = v.len();
 
     // Step 1
-    let delta: Vec<_> = (0..size).map(|_| C::Scalar::random(&mut OsRng)).collect();
+    let delta: Vec<_> = (0..size).map(|_| Scalar::random(&mut OsRng)).collect();
 
     // Step 2
     let c: MTAScalars<C> = MTAScalars(
@@ -82,13 +94,13 @@ pub async fn mta_sender(
 
     // Step 7
     let wait1 = chan.next_waitpoint();
-    let (chi1, seed): (ScalarPrimitive<C>, [u8; 32]) = chan.recv(wait1).await?;
+    let (chi1, seed): (SerializableScalar<C>, [u8; 32]) = chan.recv(wait1).await?;
 
-    let mut alpha = delta[0] * C::Scalar::from(chi1);
+    let mut alpha = delta[0] * Scalar::from(chi1);
 
     let mut prng = TranscriptRng::new(&seed);
     for &delta_i in &delta[1..] {
-        let chi_i = C::Scalar::random(&mut prng);
+        let chi_i = Scalar::random(&mut prng);
         alpha += delta_i * chi_i;
     }
 
@@ -98,9 +110,9 @@ pub async fn mta_sender(
 /// The receiver for multiplicative to additive conversion.
 pub async fn mta_receiver(
     mut chan: PrivateChannel,
-    tv: Vec<(Choice, C::Scalar)>,
-    b: C::Scalar,
-) -> Result<C::Scalar, ProtocolError> {
+    tv: Vec<(Choice, Scalar)>,
+    b: Scalar,
+) -> Result<Scalar, ProtocolError> {
     let size = tv.len();
 
     // Step 3
@@ -112,18 +124,18 @@ pub async fn mta_receiver(
         ));
     }
     let mut m = tv.iter().zip(c.iter()).map(|((t_i, v_i), (c0_i, c1_i))| {
-        C::Scalar::conditional_select(&(*c0_i).into(), &(*c1_i).into(), *t_i) - v_i
+        Scalar::conditional_select(&(*c0_i).into(), &(*c1_i).into(), *t_i) - v_i
     });
 
     // Step 4
     let mut seed = [0u8; 32];
     OsRng.fill_bytes(&mut seed);
     let mut prng = TranscriptRng::new(&seed);
-    let chi: Vec<C::Scalar> = (1..size).map(|_| C::Scalar::random(&mut prng)).collect();
+    let chi: Vec<Scalar> = (1..size).map(|_| Scalar::random(&mut prng)).collect();
 
-    let mut chi1 = C::Scalar::ZERO;
+    let mut chi1 = Scalar::ZERO;
     for ((t_i, _), &chi_i) in tv.iter().skip(1).zip(chi.iter()) {
-        chi1 += C::Scalar::conditional_select(&chi_i, &(-chi_i), *t_i);
+        chi1 += Scalar::conditional_select(&chi_i, &(-chi_i), *t_i);
     }
     chi1 = b - chi1;
     chi1.conditional_assign(&(-chi1), tv[0].0);
@@ -137,7 +149,7 @@ pub async fn mta_receiver(
 
     // Step 6
     let wait1 = chan.next_waitpoint();
-    let chi1: ScalarPrimitive<C> = chi1.into();
+    let chi1: SerializableScalar<C> = chi1.into();
     chan.send(wait1, &(chi1, seed));
 
     Ok(beta)
@@ -145,10 +157,10 @@ pub async fn mta_receiver(
 
 /// Run the multiplicative to additive protocol
 #[allow(dead_code, clippy::type_complexity)]
-fn run_mta<C: CSCurve>(
-    (v, a): (Vec<(C::Scalar, C::Scalar)>, C::Scalar),
-    (tv, b): (Vec<(Choice, C::Scalar)>, C::Scalar),
-) -> Result<(C::Scalar, C::Scalar), ProtocolError> {
+fn run_mta(
+    (v, a): (Vec<(Scalar, Scalar)>, Scalar),
+    (tv, b): (Vec<(Choice, Scalar)>, Scalar),
+) -> Result<(Scalar, Scalar), ProtocolError> {
     let s = Participant::from(0u32);
     let r = Participant::from(1u32);
     let ctx_s = Comms::new();

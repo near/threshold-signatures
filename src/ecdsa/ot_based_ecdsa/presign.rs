@@ -241,7 +241,7 @@ mod test {
             .zip(triple0_shares.into_iter())
             .zip(triple1_shares.into_iter())
         {
-            let private_share = f.eval_on_participant(*p).unwrap().to_scalar();
+            let private_share = f.eval_on_participant(*p).0;
             let verifying_key = VerifyingKey::new(big_x);
             let public_key_package = PublicKeyPackage::new(BTreeMap::new(), verifying_key);
             let keygen_out = KeygenOutput {

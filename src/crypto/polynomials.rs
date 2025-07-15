@@ -12,6 +12,8 @@ use crate::{
     participants::ParticipantMap,
 };
 
+use std::ops::Add;
+
 pub struct Polynomial<C:Ciphersuite>(Vec<Scalar<C>>);
 
 impl <C: Ciphersuite> Polynomial<C>{
@@ -160,7 +162,8 @@ impl <C: Ciphersuite> Polynomial<C>{
 
 /******************* Polynomial Commitment *******************/
 /// Contains the commited coefficients of a polynomial i.e. coeff * G
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[serde(bound = "C: serde::Serialize")]
 pub struct PolynomialCommitment<C:Ciphersuite>(Vec<CoefficientCommitment<C>>);
 
 impl <C: Ciphersuite> PolynomialCommitment<C>{
@@ -173,13 +176,43 @@ impl <C: Ciphersuite> PolynomialCommitment<C>{
         self.0.to_vec()
     }
 
+    /// Outputs the degree of the commited polynomial
+    pub fn degree(&self) -> usize{
+        let mut degree = self.0.len();
+        // loop as long as the higher terms are zero
+        while degree > 0 && self.0[degree - 1].value() == <C::Group as Group>::identity() {
+            degree -= 1;
+        }
+        if degree == 0 {
+            0
+        } else {
+            degree - 1
+        }
+    }
+
     /// Evaluates the commited polynomial on zero
     /// In other words, outputs the constant term
     pub fn eval_on_zero(&self) -> CoefficientCommitment<C>{
         self.0[0]
     }
 
-    /// Computes polynomial interpolation on the exponent on a specific point
+
+    /// Evaluates the commited polynomial at a specific value
+    pub fn eval_on_point(&self, point: Scalar<C>) -> CoefficientCommitment<C> {
+        let mut out = C::Group::identity();
+        for c in self.0.iter().rev() {
+            out = out * point + c.value();
+        }
+        CoefficientCommitment::new(out)
+    }
+
+    /// Evaluates the commited polynomial on a participant identifier.
+    pub fn eval_on_participant(&self, participant: Participant) -> CoefficientCommitment<C> {
+        let id = participant.scalar::<C>();
+        self.eval_on_point(id)
+    }
+
+    /// Computes polynomial interpolation on the exponent on a spcoefcommitmentscoefcommitmentsecific point
     /// using a sequence of sorted elements
     pub fn eval_exponent_interpolation(
         identifiers: &Vec<Scalar<C>>,
@@ -206,7 +239,19 @@ impl <C: Ciphersuite> PolynomialCommitment<C>{
 
 }
 
+impl<C: Ciphersuite> Add for &PolynomialCommitment<C> {
+    type Output = PolynomialCommitment<C>;
 
+    fn add(self, rhs: Self) -> Self::Output {
+        let coefficients = self
+            .0
+            .iter()
+            .zip(rhs.0.iter())
+            .map(|(a, b)| CoefficientCommitment::new(a.value() + b.value()))
+            .collect();
+        PolynomialCommitment::new(coefficients)
+    }
+}
 
 /// Computes the lagrange coefficient using a set of given points
 /// lamda_i(x) = \prod_j (x - x_j)/(x_i - x_j)

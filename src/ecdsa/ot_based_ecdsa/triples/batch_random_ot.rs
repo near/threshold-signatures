@@ -26,7 +26,7 @@ fn hash(
     big_x_i: &VerifyingKey,
     big_y: &VerifyingKey,
     p: &VerifyingKey,
-) -> BitVector {
+) -> Result<BitVector, ProtocolError> {
     let mut hasher = Sha256::new();
     hasher.update(BATCH_RANDOM_OT_HASH);
     hasher.update(&(i as u64).to_le_bytes());
@@ -39,7 +39,7 @@ fn hash(
     // it is possible to take the first 128 bits out
     let bytes: [u8; SEC_PARAM_8] = bytes[0..SEC_PARAM_8].try_into().unwrap();
 
-    BitVector::from_bytes(&bytes)
+    Ok(BitVector::from_bytes(&bytes))
 }
 
 type BatchRandomOTOutputSender = (SquareBitMatrix, SquareBitMatrix);
@@ -66,8 +66,8 @@ pub async fn batch_random_ot_sender(
 
             let y_big_x_i = ser_big_x_i.to_element() * y;
 
-            let big_k0 = hash(i, &ser_big_x_i, &ser_big_y, &VerifyingKey::new(y_big_x_i));
-            let big_k1 = hash(i, &ser_big_x_i, &ser_big_y, &VerifyingKey::new(y_big_x_i - big_z));
+            let big_k0 = hash(i, &ser_big_x_i, &ser_big_y, &VerifyingKey::new(y_big_x_i))?;
+            let big_k1 = hash(i, &ser_big_x_i, &ser_big_y, &VerifyingKey::new(y_big_x_i - big_z))?;
 
             Ok::<_, ProtocolError>((big_k0, big_k1))
         }

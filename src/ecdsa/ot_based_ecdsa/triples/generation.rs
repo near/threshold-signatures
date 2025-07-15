@@ -1,6 +1,8 @@
 use elliptic_curve::Group;
 use rand_core::OsRng;
 use serde::Serialize;
+use frost_core::serialization::SerializableScalar;
+use frost_core::keys::CoefficientCommitment;
 
 use crate::{
     crypto::{
@@ -174,12 +176,12 @@ async fn do_generation(
         // Spec 2.8
         let wait3 = chan.next_waitpoint();
         for p in participants.others(me) {
-            let a_i_j: Scalar = e.eval_on_participant(p).0;
-            let b_i_j: Scalar = f.eval_on_participant(p).0;
+            let a_i_j = e.eval_on_participant(p);
+            let b_i_j = f.eval_on_participant(p);
             chan.send_private(wait3, p, &(a_i_j, b_i_j));
         }
-        let mut a_i = e.eval_on_participant(me);
-        let mut b_i = f.eval_on_participant(me);
+        let mut a_i = e.eval_on_participant(me).0;
+        let mut b_i = f.eval_on_participant(me).0;
 
         // Spec 3.1 + 3.2
         let mut seen = ParticipantCounter::new(&participants);
@@ -229,9 +231,9 @@ async fn do_generation(
                 continue;
             }
 
-            if their_big_e.len() != threshold
-                || their_big_f.len() != threshold
-                || their_big_l.len() != threshold
+            if their_big_e.degree() != threshold - 1
+                || their_big_f.degree() != threshold - 1
+                || their_big_l.degree() != threshold - 1
             {
                 return Err(ProtocolError::AssertionFailed(format!(
                     "polynomial from {from:?} has the wrong length"
@@ -254,7 +256,7 @@ async fn do_generation(
             }
 
             let statement0 = dlog::Statement::<C> {
-                public: &their_big_e.eval_on_zero(),
+                public: &their_big_e.eval_on_zero().value(),
             };
 
             if !dlog::verify(
@@ -268,7 +270,7 @@ async fn do_generation(
             }
 
             let statement1 = dlog::Statement::<C> {
-                public: &their_big_f.eval_on_zero(),
+                public: &their_big_f.eval_on_zero().value(),
             };
             if !dlog::verify(
                 &mut transcript.fork(b"dlog1", &from.bytes()),
@@ -281,27 +283,28 @@ async fn do_generation(
             }
 
             big_e_j_zero.put(from, their_big_e.eval_on_zero());
-            big_e += &their_big_e;
-            big_f += &their_big_f;
-            big_l += &their_big_l;
+            big_e = &big_e + &their_big_e;
+            big_f = &big_f + &their_big_f;
+            big_l = &big_l + &their_big_l;
         }
 
         // Spec 3.5 + 3.6
         seen.clear();
         seen.put(me);
         while !seen.full() {
-            let (from, (a_j_i, b_j_i)): (_, (Scalar, Scalar)) =
-                chan.recv(wait3).await?;
+            let (from, (a_j_i, b_j_i))
+                : (_, (SerializableScalar<C>, SerializableScalar<C>))
+                = chan.recv(wait3).await?;
             if !seen.put(from) {
                 continue;
             }
-            a_i += &a_j_i.into();
-            b_i += &b_j_i.into();
+            a_i += &a_j_i.0;
+            b_i += &b_j_i.0;
         }
 
         // Spec 3.7
-        if big_e.eval_on_participant(me) != ProjectivePoint::GENERATOR * a_i
-            || big_f.eval_on_participant(me) != ProjectivePoint::GENERATOR * b_i
+        if big_e.eval_on_participant(me).value() != ProjectivePoint::GENERATOR * a_i
+            || big_f.eval_on_participant(me).value() != ProjectivePoint::GENERATOR * b_i
         {
             return Err(ProtocolError::AssertionFailed(
                 "received bad private share".to_string(),
@@ -309,16 +312,16 @@ async fn do_generation(
         }
 
         // Spec 3.8
-        let big_c_i = big_f.eval_on_zero() * e.eval_on_zero();
+        let big_c_i = big_f.eval_on_zero().value() * e.eval_on_zero().0;
 
         // Spec 3.9
         let statement = dlogeq::Statement::<C> {
-            public0: &big_e_i.eval_on_zero(),
-            generator1: &big_f.eval_on_zero(),
+            public0: &big_e_i.eval_on_zero().value(),
+            generator1: &big_f.eval_on_zero().value(),
             public1: &big_c_i,
         };
         let witness = dlogeq::Witness {
-            x: &e.eval_on_zero(),
+            x: &e.eval_on_zero().0,
         };
         let my_phi_proof = dlogeq::prove(
             &mut rng,
@@ -332,7 +335,7 @@ async fn do_generation(
         chan.send_many(
             wait4,
             &(
-                SerializablePoint::<C>::from_projective(&big_c_i),
+                CoefficientCommitment::<C>::new(big_c_i),
                 my_phi_proof,
             ),
         );
@@ -342,16 +345,16 @@ async fn do_generation(
         seen.put(me);
         let mut big_c = big_c_i;
         while !seen.full() {
-            let (from, (big_c_j, their_phi_proof)): (_, (SerializablePoint<C>, _)) =
+            let (from, (big_c_j, their_phi_proof)): (_, (CoefficientCommitment<C>, _)) =
                 chan.recv(wait4).await?;
             if !seen.put(from) {
                 continue;
             }
-            let big_c_j = big_c_j.to_projective();
+            let big_c_j = big_c_j.value();
 
             let statement = dlogeq::Statement::<C> {
-                public0: &big_e_j_zero[from],
-                generator1: big_f.eval_on_zero(),
+                public0: &big_e_j_zero[from].value(),
+                generator1: big_f.eval_on_zero().value(),
                 public1: &big_c_j,
             };
 
@@ -412,7 +415,7 @@ async fn do_generation(
     chan.send_many(
         wait5,
         &(
-            SerializablePoint::<C>::from_projective(&hat_big_c_i),
+            CoefficientCommitment::<C>::new(&hat_big_c_i),
             my_phi_proof,
         ),
     );
@@ -421,7 +424,7 @@ async fn do_generation(
     l.set_zero(l0);
     let wait6 = chan.next_waitpoint();
     for p in participants.others(me) {
-        let c_i_j: Scalar = l.eval_on_participant(p).into();
+        let c_i_j = l.eval_on_participant(p);
         chan.send_private(wait6, p, &c_i_j);
     }
     let mut c_i = l.eval_on_participant(me);
@@ -541,7 +544,7 @@ async fn do_generation_many<const N: usize>(
         l.set_zero(Scalar::ZERO);
 
         // Spec 1.4
-        let big_e_i = e.commit_polynomial:();
+        let big_e_i = e.commit_polynomial();
         let big_f_i = f.commit_polynomial();
         let big_l_i = l.commit_polynomial();
 
@@ -782,7 +785,7 @@ async fn do_generation_many<const N: usize>(
                     )));
                 }
                 let statement0 = dlog::Statement::<C> {
-                    public: &their_big_e.eval_on_zero(),
+                    public: &their_big_e.eval_on_zero().value(),
                 };
                 if !dlog::verify(
                     &mut transcript.fork(b"dlog0", &from.bytes()),

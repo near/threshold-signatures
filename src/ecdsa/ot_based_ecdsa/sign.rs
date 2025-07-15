@@ -143,11 +143,11 @@ mod test {
 
         // Run 4 times for flakiness reasons
         for _ in 0..4 {
-            let f = Polynomial::<C>::generate_polynomial(None, threshold-1, &mut OsRng);;
+            let f = Polynomial::<C>::generate_polynomial(None, threshold-1, &mut OsRng);
             let x = f.eval_on_zero().0;
             let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
 
-            let g = Polynomial::<C>::generate_polynomial(None, threshold-1, &mut OsRng);;
+            let g = Polynomial::<C>::generate_polynomial(None, threshold-1, &mut OsRng);
 
             let k = g.eval_on_zero().0;
             let big_k = (ProjectivePoint::GENERATOR * k.invert().unwrap()).to_affine();
@@ -165,12 +165,8 @@ mod test {
             for p in &participants {
                 let presignature = PresignOutput {
                     big_r: big_k,
-                    k: g.eval_on_participant(*p)
-                            .unwrap()
-                            .to_scalar(),
-                    sigma: h.eval_on_participant(*p)
-                            .unwrap()
-                            .to_scalar(),
+                    k: g.eval_on_participant(*p).0,
+                    sigma: h.eval_on_participant(*p).0,
                 };
                 let protocol = sign(
                     &participants,
