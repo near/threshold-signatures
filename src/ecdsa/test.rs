@@ -7,7 +7,7 @@ use crate::ecdsa::dkg_ecdsa::{keygen, refresh, reshare};
 use crate::ecdsa::{
     presign::{presign, PresignArguments, PresignOutput},
     sign::{sign, FullSignature},
-    triples::{self, TriplePub, TripleShare},
+    triples::{self, TriplePub, TripleShare, generate_triple, TripleGenerationOutput},
     KeygenOutput,
 };
 use crate::protocol::{run_protocol, Participant, Protocol};
@@ -249,6 +249,83 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
 
     let msg = b"hello world";
 
+    run_sign(presign_result, public_key.to_element().to_affine(), msg);
+    Ok(())
+}
+
+
+#[test]
+fn test_robustness() -> Result<(), Box<dyn Error>> {
+    let participants_count = 7;
+    let mut participants: Vec<_> = (0..participants_count)
+        .map(|_| Participant::from(rand::random::<u32>()))
+        .collect();
+    participants.sort();
+    let threshold = 4;
+
+    let mut keygen_result = run_keygen(&participants.clone(), threshold)?;
+    keygen_result.sort_by_key(|(p, _)| *p);
+
+    let public_key = keygen_result[0].1.public_key.clone();
+
+    let mut protocols: Vec<(
+        Participant,
+        Box<dyn Protocol<Output = TripleGenerationOutput<Secp256k1>>>,
+    )> = Vec::with_capacity(participants.len());
+
+    keygen_result.sort_by_key(|(p, _)| *p);
+    println!("keygen: {:?}",keygen_result.len());
+    // do it a second time for the second triple tuple
+    participants.remove(0);
+    keygen_result.remove(0);
+    println!("triples: {:?}",keygen_result.len());
+    for &p in &participants {
+        let protocol = generate_triple(&participants, p, threshold);
+        assert!(protocol.is_ok());
+        let protocol = protocol.unwrap();
+        protocols.push((p, Box::new(protocol)));
+    }
+
+    let mut triples_0 = run_protocol(protocols)?;
+    triples_0.sort_by_key(|(p, _)| *p);
+
+    let mut protocols: Vec<(
+    Participant,
+    Box<dyn Protocol<Output = TripleGenerationOutput<Secp256k1>>>,
+    )> = Vec::with_capacity(participants.len());
+
+    // do it a second time for the second triple tuple
+    for &p in &participants {
+        let protocol = generate_triple(&participants, p, threshold);
+        assert!(protocol.is_ok());
+        let protocol = protocol.unwrap();
+        protocols.push((p, Box::new(protocol)));
+    }
+
+    let mut triples_1 = run_protocol(protocols)?;
+    triples_1.sort_by_key(|(p, _)| *p);
+
+    let (mut shares0, pub0): (Vec<_>, Vec<_>) = triples_0
+        .into_iter()
+        .map(|(_, (share, pubkey))| (share, pubkey))
+        .unzip();
+
+    let (mut shares1, pub1): (Vec<_>, Vec<_>) = triples_1
+        .into_iter()
+        .map(|(_, (share, pubkey))| (share, pubkey))
+        .unzip();
+
+
+    keygen_result.remove(0);
+    shares0.remove(0);
+    shares1.remove(0);
+    println!("presign: {:?}",keygen_result.len());
+    let mut presign_result = run_presign(keygen_result, shares0, shares1, &pub0[0], &pub1[0], threshold);
+    presign_result.sort_by_key(|(p, _)| *p);
+    println!("sign: {:?}",presign_result.len());
+
+    let msg = b"hello world";
+    presign_result.remove(0);
     run_sign(presign_result, public_key.to_element().to_affine(), msg);
     Ok(())
 }
