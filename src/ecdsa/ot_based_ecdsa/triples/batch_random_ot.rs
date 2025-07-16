@@ -8,6 +8,7 @@ use crate::{
         Field,
         ProjectivePoint,
         Secp256K1ScalarField,
+        CoefficientCommitment,
     },
     protocol::{
         internal::{make_protocol, Comms, PrivateChannel},
@@ -22,9 +23,9 @@ const BATCH_RANDOM_OT_HASH: &[u8] = b"Near threshold signatures batch ROT";
 
 fn hash(
     i: usize,
-    big_x_i: &VerifyingKey,
-    big_y: &VerifyingKey,
-    p: &VerifyingKey,
+    big_x_i: &CoefficientCommitment,
+    big_y: &CoefficientCommitment,
+    p: &CoefficientCommitment,
 ) -> Result<BitVector, ProtocolError> {
     let mut hasher = Sha256::new();
     hasher.update(BATCH_RANDOM_OT_HASH);
@@ -53,7 +54,7 @@ pub async fn batch_random_ot_sender(
 
     // One way to be able to serialize and send big_y a verifying key out of it
     // as it contains a private struct SerializableElement
-    let ser_big_y = VerifyingKey::new(big_y);
+    let ser_big_y = CoefficientCommitment::new(big_y);
     let wait0 = chan.next_waitpoint();
     chan.send(wait0, &ser_big_y);
 
@@ -61,12 +62,12 @@ pub async fn batch_random_ot_sender(
         let mut chan = chan.child(i as u64);
         async move {
             let wait0 = chan.next_waitpoint();
-            let ser_big_x_i: VerifyingKey = chan.recv(wait0).await?;
+            let ser_big_x_i: CoefficientCommitment = chan.recv(wait0).await?;
 
-            let y_big_x_i = ser_big_x_i.to_element() * y;
+            let y_big_x_i = ser_big_x_i.value() * y;
 
-            let big_k0 = hash(i, &ser_big_x_i, &ser_big_y, &VerifyingKey::new(y_big_x_i))?;
-            let big_k1 = hash(i, &ser_big_x_i, &ser_big_y, &VerifyingKey::new(y_big_x_i - big_z))?;
+            let big_k0 = hash(i, &ser_big_x_i, &ser_big_y, &CoefficientCommitment::new(y_big_x_i))?;
+            let big_k1 = hash(i, &ser_big_x_i, &ser_big_y, &CoefficientCommitment::new(y_big_x_i - big_z))?;
 
             Ok::<_, ProtocolError>((big_k0, big_k1))
         }
@@ -98,7 +99,7 @@ pub async fn batch_random_ot_sender_many<const N: usize>(
     let wait0 = chan.next_waitpoint();
     let mut big_y_ser_v = vec![];
     for i in 0..N {
-        let big_y_verkey = VerifyingKey::new(big_y_v[i]);
+        let big_y_verkey = CoefficientCommitment::new(big_y_v[i]);
         big_y_ser_v.push(big_y_verkey);
     }
     chan.send(wait0, &big_y_ser_v);
@@ -113,16 +114,16 @@ pub async fn batch_random_ot_sender_many<const N: usize>(
         let mut chan = chan.child(i as u64);
         async move {
             let wait0 = chan.next_waitpoint();
-            let big_x_i_verkey_v: Vec<VerifyingKey> = chan.recv(wait0).await?;
+            let big_x_i_verkey_v: Vec<CoefficientCommitment> = chan.recv(wait0).await?;
 
             let mut ret = vec![];
             for j in 0..N {
                 let y = &yv_arc.as_slice()[j];
                 let big_y_verkey = &big_y_verkey_v_arc.as_slice()[j];
                 let big_z = &big_z_v_arc.as_slice()[j];
-                let y_big_x_i = big_x_i_verkey_v[j].to_element() * *y;
-                let big_k0 = hash(i, &big_x_i_verkey_v[j], big_y_verkey, &VerifyingKey::new(y_big_x_i));
-                let big_k1 = hash(i, &big_x_i_verkey_v[j], big_y_verkey, &VerifyingKey::new(y_big_x_i - big_z));
+                let y_big_x_i = big_x_i_verkey_v[j].value() * *y;
+                let big_k0 = hash(i, &big_x_i_verkey_v[j], big_y_verkey, &CoefficientCommitment::new(y_big_x_i))?;
+                let big_k1 = hash(i, &big_x_i_verkey_v[j], big_y_verkey, &CoefficientCommitment::new(y_big_x_i - big_z))?;
                 ret.push((big_k0, big_k1));
             }
 
@@ -160,8 +161,8 @@ pub async fn batch_random_ot_receiver(
     // Step 3
     let wait0 = chan.next_waitpoint();
     // deserialization prevents receiving the identity
-    let big_y_verkey: VerifyingKey = chan.recv(wait0).await?;
-    let big_y = big_y_verkey.to_element();
+    let big_y_verkey: CoefficientCommitment = chan.recv(wait0).await?;
+    let big_y = big_y_verkey.value();
     let delta = BitVector::random(&mut OsRng);
 
     let out = delta
@@ -176,13 +177,13 @@ pub async fn batch_random_ot_receiver(
 
             // Step 6
             let wait0 = chan.next_waitpoint();
-            let big_x_i_verkey = VerifyingKey::new(big_x_i);
+            let big_x_i_verkey = CoefficientCommitment::new(big_x_i);
             chan.send(wait0, &big_x_i_verkey);
 
             // Step 5
-            hash(i, &big_x_i_verkey, &big_y_verkey, &VerifyingKey::new(big_y * x_i))
+            hash(i, &big_x_i_verkey, &big_y_verkey, &CoefficientCommitment::new(big_y * x_i))
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, _>>()?;
     let big_k: BitMatrix = out.into_iter().collect();
     Ok((delta, big_k.try_into().unwrap()))
 }
@@ -194,13 +195,13 @@ pub async fn batch_random_ot_receiver_many<const N: usize>(
     // Step 3
     let wait0 = chan.next_waitpoint();
     // deserialization prevents receiving the identity
-    let big_y_verkey_v: Vec<VerifyingKey> = chan.recv(wait0).await?;
+    let big_y_verkey_v: Vec<CoefficientCommitment> = chan.recv(wait0).await?;
 
     let mut big_y_v = vec![];
     let mut deltav = vec![];
     for i in 0..N {
         let big_y_verkey = big_y_verkey_v[i];
-        let big_y = big_y_verkey.to_element();
+        let big_y = big_y_verkey.value();
         let delta = BitVector::random(&mut OsRng);
         big_y_v.push(big_y);
         deltav.push(delta);
@@ -246,7 +247,7 @@ pub async fn batch_random_ot_receiver_many<const N: usize>(
 
             let mut big_x_i_verkey_v = Vec::new();
             for j in 0..N {
-                let big_x_i_verkey = VerifyingKey::new(big_x_i_v[j]);
+                let big_x_i_verkey = CoefficientCommitment::new(big_x_i_v[j]);
                 big_x_i_verkey_v.push(big_x_i_verkey);
             }
             chan.send(wait0, &big_x_i_verkey_v);
@@ -258,7 +259,7 @@ pub async fn batch_random_ot_receiver_many<const N: usize>(
                 let big_y_verkey = big_y_verkey_v_arc[j];
                 let big_y = big_y_v_arc[j];
                 let x_i = x_i_v[j];
-                hashv.push(hash(i, &big_x_i_verkey, &big_y_verkey, &VerifyingKey::new(big_y * x_i)));
+                hashv.push(hash(i, &big_x_i_verkey, &big_y_verkey, &CoefficientCommitment::new(big_y * x_i))?);
             }
             hashv
         };

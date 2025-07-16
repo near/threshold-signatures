@@ -1054,13 +1054,13 @@ async fn do_generation_many<const N: usize>(
     seen.clear();
     seen.put(me);
     while !seen.full() {
-        let (from, c_j_i_v): (_, Vec<Scalar>) = chan.recv(wait6).await?;
+        let (from, c_j_i_v): (_, Vec<SerializableScalar<C>>) = chan.recv(wait6).await?;
         if !seen.put(from) {
             continue;
         }
         for i in 0..N {
-            let c_j_i = c_j_i_v[i];
-            c_i_v[i] += Scalar::from(c_j_i);
+            let c_j_i = c_j_i_v[i].0;
+            c_i_v[i] += c_j_i;
         }
     }
 
@@ -1075,13 +1075,13 @@ async fn do_generation_many<const N: usize>(
         let big_f = &big_f_v[i];
         let big_c = &big_c_v[i];
 
-        if big_l.eval_on_participant(me) != ProjectivePoint::GENERATOR * c_i {
+        if big_l.eval_on_participant(me).value() != ProjectivePoint::GENERATOR * c_i {
             return Err(ProtocolError::AssertionFailed(
                 "received bad private share of c".to_string(),
             ));
         }
-        let big_a = big_e.eval_on_zero().into();
-        let big_b = big_f.eval_on_zero().into();
+        let big_a = big_e.eval_on_zero().value().to_affine();
+        let big_b = big_f.eval_on_zero().value().to_affine();
         let big_c = (*big_c).into();
 
         ret.push((
