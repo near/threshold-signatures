@@ -4,7 +4,6 @@ use frost_core::serialization::SerializableScalar;
 use subtle::ConditionallySelectable;
 
 use crate::{
-    crypto::polynomials::Polynomial,
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     protocol::{
         internal::{make_protocol, Comms, SharedChannel},
@@ -18,6 +17,7 @@ use crate::{
         Scalar,
         AffinePoint,
         Secp256K1Sha256,
+        Polynomial,
     },
 };
 use super::PresignOutput;
@@ -50,7 +50,7 @@ async fn do_sign(
         s_map.put(from, s_i);
     }
 
-    let mut s = Polynomial::<C>::eval_interpolation(&s_map, None)?.0;
+    let mut s = Polynomial::eval_interpolation(&s_map, None)?.0;
     let big_r = presignature.big_r;
 
     // Normalize s
@@ -139,17 +139,17 @@ mod test {
 
         // Run 4 times to test randomness
         for _ in 0..4 {
-            let fx = Polynomial::<C>::generate_polynomial(None, threshold-1, &mut OsRng);
+            let fx = Polynomial::generate_polynomial(None, threshold-1, &mut OsRng);
             // master secret key
             let x = fx.eval_on_zero().0;
             // master public key
             let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
 
-            let fa = Polynomial::<C>::generate_polynomial(None, threshold-1, &mut OsRng);
-            let fk = Polynomial::<C>::generate_polynomial(None, threshold-1, &mut OsRng);
+            let fa = Polynomial::generate_polynomial(None, threshold-1, &mut OsRng);
+            let fk = Polynomial::generate_polynomial(None, threshold-1, &mut OsRng);
 
-            let fd = Polynomial::<C>::generate_polynomial(Some(Secp256K1ScalarField::zero()), 2*max_malicious, &mut OsRng);
-            let fe = Polynomial::<C>::generate_polynomial(Some(Secp256K1ScalarField::zero()), 2*max_malicious, &mut OsRng);
+            let fd = Polynomial::generate_polynomial(Some(Secp256K1ScalarField::zero()), 2*max_malicious, &mut OsRng);
+            let fe = Polynomial::generate_polynomial(Some(Secp256K1ScalarField::zero()), 2*max_malicious, &mut OsRng);
 
             let k = fk.eval_on_zero().0;
             let big_r = ProjectivePoint::GENERATOR * k.clone();

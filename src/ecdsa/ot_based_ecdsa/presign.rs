@@ -2,7 +2,7 @@
 use crate::ecdsa::{
     Scalar,
     ProjectivePoint,
-    Secp256K1Sha256
+    Secp256K1Sha256,
 };
 use crate::protocol::{
     Participant,
@@ -198,9 +198,9 @@ mod test {
             ProjectivePoint,
             Secp256K1Sha256,
             KeygenOutput,
+            Polynomial,
         },
         protocol::run_protocol,
-        crypto::polynomials::Polynomial,
     };
     use std::collections::BTreeMap;
     use rand_core::OsRng;
@@ -219,7 +219,7 @@ mod test {
             Participant::from(3u32),
         ];
         let original_threshold = 2;
-        let f =  Polynomial::<C>::generate_polynomial(None, original_threshold-1, &mut OsRng);
+        let f =  Polynomial::generate_polynomial(None, original_threshold-1, &mut OsRng);
         let big_x = ProjectivePoint::GENERATOR * f.eval_on_zero().0;
 
         let threshold = 2;

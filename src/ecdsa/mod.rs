@@ -29,6 +29,8 @@ pub struct KeygenOutput {
 
 pub type Scalar = <Secp256K1ScalarField as Field>::Scalar;
 pub type CoefficientCommitment = frost_core::keys::CoefficientCommitment::<Secp256K1Sha256>;
+pub type Polynomial = crate::crypto::polynomials::Polynomial<Secp256K1Sha256>;
+pub type PolynomialCommitment = crate::crypto::polynomials::PolynomialCommitment<Secp256K1Sha256>;
 
 /// This is the trait that any curve usable in this library must implement.
 /// This library does provide a few feature-gated implementations for curves

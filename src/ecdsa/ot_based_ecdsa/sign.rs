@@ -123,19 +123,17 @@ mod test {
     use super::{
         PresignOutput,
         FullSignature,
-        Secp256K1Sha256,
         sign,
         x_coordinate,
     };
     use crate::{
         protocol::{run_protocol, Participant,Protocol},
-        crypto::polynomials::Polynomial,
+        ecdsa::Polynomial,
     };
     use crate::compat::{
         scalar_hash,
     };
 
-    type C = Secp256K1Sha256;
     #[test]
     fn test_sign() -> Result<(), Box<dyn Error>> {
         let threshold = 2;
@@ -143,18 +141,18 @@ mod test {
 
         // Run 4 times for flakiness reasons
         for _ in 0..4 {
-            let f = Polynomial::<C>::generate_polynomial(None, threshold-1, &mut OsRng);
+            let f = Polynomial::generate_polynomial(None, threshold-1, &mut OsRng);
             let x = f.eval_on_zero().0;
             let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
 
-            let g = Polynomial::<C>::generate_polynomial(None, threshold-1, &mut OsRng);
+            let g = Polynomial::generate_polynomial(None, threshold-1, &mut OsRng);
 
             let k = g.eval_on_zero().0;
             let big_k = (ProjectivePoint::GENERATOR * k.invert().unwrap()).to_affine();
 
             let sigma = k * x;
 
-            let h = Polynomial::<C>::generate_polynomial(Some(sigma), threshold-1,&mut OsRng);
+            let h = Polynomial::generate_polynomial(Some(sigma), threshold-1,&mut OsRng);
 
             let participants = vec![Participant::from(0u32), Participant::from(1u32)];
             #[allow(clippy::type_complexity)]

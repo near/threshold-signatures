@@ -8,9 +8,9 @@ use crate::{
         Secp256K1Sha256,
         Secp256K1ScalarField,
         Field,
+        Polynomial,
     },
     protocol::Participant,
-    crypto::polynomials::Polynomial,
 };
 use super::{TriplePub, TripleShare};
 type C = Secp256K1Sha256;
@@ -30,9 +30,9 @@ pub fn deal(
     let b = Secp256K1ScalarField::random(&mut *rng);
     let c = a * b;
 
-    let f_a = Polynomial::<C>::generate_polynomial(Some(a), threshold-1, rng);
-    let f_b = Polynomial::<C>::generate_polynomial(Some(b), threshold-1, rng);
-    let f_c = Polynomial::<C>::generate_polynomial(Some(c), threshold-1, rng);
+    let f_a = Polynomial::generate_polynomial(Some(a), threshold-1, rng);
+    let f_b = Polynomial::generate_polynomial(Some(b), threshold-1, rng);
+    let f_c = Polynomial::generate_polynomial(Some(c), threshold-1, rng);
 
     let mut shares = Vec::with_capacity(participants.len());
     let mut participants_owned = Vec::with_capacity(participants.len());

@@ -6,7 +6,6 @@ use elliptic_curve::{
 use frost_secp256k1::{Secp256K1Group,Group};
 
 use crate::{
-    crypto::polynomials::{Polynomial, PolynomialCommitment},
     ecdsa::{
         SigningShare,
         Secp256K1Sha256,
@@ -14,6 +13,8 @@ use crate::{
         Field,
         CoefficientCommitment,
         Scalar,
+        Polynomial,
+        PolynomialCommitment,
     },
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     protocol::{
@@ -32,17 +33,17 @@ type C = Secp256K1Sha256;
 fn zero_secret_polynomial(
     degree: usize,
     rng: &mut OsRng,
-)-> Polynomial<C> {
+)-> Polynomial {
     let secret = Secp256K1ScalarField::zero();
-    Polynomial::<C>::generate_polynomial(Some(secret), degree, rng)
+    Polynomial::generate_polynomial(Some(secret), degree, rng)
 }
 
 /// Evaluate five polynomials at once
 fn eval_five_polynomials(
-    polynomials: [&Polynomial<C>; 5],
+    polynomials: [&Polynomial; 5],
     participant: Participant,
 )-> [SigningShare; 5] {
-    let package = Polynomial::<C>::multi_eval_on_participant::<5>(polynomials, participant);
+    let package = Polynomial::multi_eval_on_participant::<5>(polynomials, participant);
     let package:[SigningShare; 5] = package.iter()
             .map(|eval| SigningShare::new(eval.0))
             .collect::<Vec<_>>()
@@ -63,8 +64,8 @@ async fn do_presign(
     // Round 0
     let mut rng = OsRng;
     // degree t random secret shares where t is the max number of malicious parties
-    let my_fk = Polynomial::<C>::generate_polynomial(None, threshold, &mut rng);
-    let my_fa = Polynomial::<C>::generate_polynomial(None, threshold, &mut rng);
+    let my_fk = Polynomial::generate_polynomial(None, threshold, &mut rng);
+    let my_fa = Polynomial::generate_polynomial(None, threshold, &mut rng);
 
     // degree 2t zero secret shares where t is the max number of malicious parties
     let my_fb = zero_secret_polynomial(2*threshold, &mut rng);
@@ -137,7 +138,7 @@ async fn do_presign(
     }
 
     // polynomial interpolation of w
-    let w = Polynomial::<C>::eval_interpolation(&signingshares_map, None)?;
+    let w = Polynomial::eval_interpolation(&signingshares_map, None)?;
 
     // exponent interpolation of big R
     let identifiers: Vec<Scalar> =  verifyingshares_map
@@ -153,7 +154,7 @@ async fn do_presign(
     let first_tplus1_id = identifiers[..threshold+1].to_vec();
     let first_tplus1_vfyshares = verifying_shares[..threshold+1].to_vec();
     // evaluate the exponent interpolation on zero
-    let big_r = PolynomialCommitment::<C>::eval_exponent_interpolation(&first_tplus1_id, &first_tplus1_vfyshares, None)?;
+    let big_r = PolynomialCommitment::eval_exponent_interpolation(&first_tplus1_id, &first_tplus1_vfyshares, None)?;
 
     // check w is non-zero and that R is not the identity
     if w.0.is_zero().into(){
@@ -266,7 +267,7 @@ mod test {
         ];
         let max_malicious = 2;
 
-        let f = Polynomial::<C>::generate_polynomial(None, max_malicious, &mut OsRng);
+        let f = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng);
         let big_x = ProjectivePoint::GENERATOR * f.eval_on_zero().0;
 
 

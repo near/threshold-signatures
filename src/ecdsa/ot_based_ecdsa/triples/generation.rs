@@ -8,7 +8,6 @@ use crate::{
         commit::{Commitment,commit},
         hash::{hash, HashOutput},
         random::Randomizer,
-        polynomials::{Polynomial, PolynomialCommitment},
     },
     // ecdsa::math::{PolynomialCommitment, Polynomial},
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
@@ -27,6 +26,8 @@ use crate::{
         Scalar,
         ProjectivePoint,
         CoefficientCommitment,
+        Polynomial,
+        PolynomialCommitment,
     }
 };
 
@@ -72,10 +73,10 @@ async fn do_generation(
     );
 
     // Spec 1.2
-    let e = Polynomial::<C>::generate_polynomial(None, threshold-1, &mut rng);
-    let f = Polynomial::<C>::generate_polynomial(None, threshold-1, &mut rng);
+    let e = Polynomial::generate_polynomial(None, threshold-1, &mut rng);
+    let f = Polynomial::generate_polynomial(None, threshold-1, &mut rng);
     // Spec 1.3
-    let l = Polynomial::<C>::generate_polynomial(Some(Secp256K1ScalarField::zero()), threshold-1, &mut rng);
+    let l = Polynomial::generate_polynomial(Some(Secp256K1ScalarField::zero()), threshold-1, &mut rng);
 
     // Spec 1.4
     let big_e_i = e.commit_polynomial();
@@ -119,9 +120,9 @@ async fn do_generation(
 
     struct ParallelToMultiplicationTaskOutput<'a> {
         seen: ParticipantCounter<'a>,
-        big_e: PolynomialCommitment<C>,
-        big_f: PolynomialCommitment<C>,
-        big_l: PolynomialCommitment<C>,
+        big_e: PolynomialCommitment,
+        big_f: PolynomialCommitment,
+        big_l: PolynomialCommitment,
         big_c: ProjectivePoint,
         a_i: Scalar,
         b_i: Scalar,
@@ -219,9 +220,9 @@ async fn do_generation(
             ): (
                 _,
                 (
-                    PolynomialCommitment<C>,
-                    PolynomialCommitment<C>,
-                    PolynomialCommitment<C>,
+                    PolynomialCommitment,
+                    PolynomialCommitment,
+                    PolynomialCommitment,
                     _,
                     _,
                     _,
@@ -427,7 +428,7 @@ async fn do_generation(
         let c_i_j = l.eval_on_participant(p);
         chan.send_private(wait6, p, &c_i_j);
     }
-    let mut c_i = l.eval_on_participant(me);
+    let mut c_i = l.eval_on_participant(me).0;
 
     // Spec 5.1 + 5.2 + 5.3
     seen.clear();
@@ -470,23 +471,23 @@ async fn do_generation(
     seen.clear();
     seen.put(me);
     while !seen.full() {
-        let (from, c_j_i): (_, Scalar) = chan.recv(wait6).await?;
+        let (from, c_j_i): (_, SerializableScalar<C>) = chan.recv(wait6).await?;
         if !seen.put(from) {
             continue;
         }
-        c_i += Scalar::from(c_j_i);
+        c_i += c_j_i.0;
     }
 
     // Spec 5.7
-    if big_l.eval_on_participant(me) != ProjectivePoint::GENERATOR * c_i {
+    if big_l.eval_on_participant(me).value() != ProjectivePoint::GENERATOR * c_i {
         return Err(ProtocolError::AssertionFailed(
             "received bad private share of c".to_string(),
         ));
     }
 
-    let big_a = big_e.eval_on_zero().into();
-    let big_b = big_f.eval_on_zero().into();
-    let big_c = big_c.into();
+    let big_a = big_e.eval_on_zero().value().to_affine();
+    let big_b = big_f.eval_on_zero().value().to_affine();
+    let big_c = big_c.to_affine();
 
     Ok((
         TripleShare {
@@ -509,7 +510,7 @@ async fn do_generation_many<const N: usize>(
     participants: ParticipantList,
     me: Participant,
     threshold: usize,
-) -> Result<TripleGenerationOutputMany<C>, ProtocolError> {
+) -> Result<TripleGenerationOutputMany, ProtocolError> {
     assert!(N > 0);
 
     let mut rng = OsRng;
@@ -536,9 +537,9 @@ async fn do_generation_many<const N: usize>(
 
     for _ in 0..N {
         // Spec 1.2
-        let e: Polynomial<C> = Polynomial::random(&mut rng, threshold);
-        let f: Polynomial<C> = Polynomial::random(&mut rng, threshold);
-        let mut l: Polynomial<C> = Polynomial::random(&mut rng, threshold);
+        let e = Polynomial::generate_polynomial(None, threshold-1, &mut rng);
+        let f = Polynomial::generate_polynomial(None, threshold-1, &mut rng);
+        let mut l = Polynomial::generate_polynomial(None, threshold-1, &mut rng);
 
         // Spec 1.3
         l.set_zero(Scalar::ZERO);
@@ -610,9 +611,9 @@ async fn do_generation_many<const N: usize>(
 
     struct ParallelToMultiplicationTaskOutput<'a> {
         seen: ParticipantCounter<'a>,
-        big_e_v: Vec<PolynomialCommitment<C>>,
-        big_f_v: Vec<PolynomialCommitment<C>>,
-        big_l_v: Vec<PolynomialCommitment<C>>,
+        big_e_v: Vec<PolynomialCommitment>,
+        big_f_v: Vec<PolynomialCommitment>,
+        big_l_v: Vec<PolynomialCommitment>,
         big_c_v: Vec<ProjectivePoint>,
         a_i_v: Vec<Scalar>,
         b_i_v: Vec<Scalar>,
@@ -743,9 +744,9 @@ async fn do_generation_many<const N: usize>(
             ): (
                 _,
                 (
-                    Vec<PolynomialCommitment<C>>,
-                    Vec<PolynomialCommitment<C>>,
-                    Vec<PolynomialCommitment<C>>,
+                    Vec<PolynomialCommitment>,
+                    Vec<PolynomialCommitment>,
+                    Vec<PolynomialCommitment>,
                     Vec<Randomizer>,
                     Vec<dlog::Proof<C>>,
                     Vec<dlog::Proof<C>>,
