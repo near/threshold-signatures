@@ -1,10 +1,13 @@
-use elliptic_curve::{bigint::Bounded, Field, Curve};
+use elliptic_curve::{bigint::Bounded, Curve};
 use rand_core::{OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::slice::Iter;
 use subtle::{Choice, ConditionallySelectable};
-use frost_core::serialization::SerializableScalar;
-
+use frost_core::{
+    Group,
+    Field,
+    serialization::SerializableScalar,
+};
 use k256::Secp256k1;
 
 use crate::protocol::internal::Comms;
@@ -20,11 +23,12 @@ use crate::{
     ecdsa::{
         Secp256K1Sha256,
         Scalar,
-    }
+    },
 };
 
 type C = Secp256K1Sha256;
 
+#[derive(Serialize, Deserialize)]
 struct MTAScalars(Vec<(SerializableScalar<C>, SerializableScalar<C>)>);
 
 impl MTAScalars {
@@ -39,34 +43,34 @@ impl MTAScalars {
     }
 }
 
-impl Serialize for MTAScalars {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        let mut out = Vec::with_capacity(self.len() * Self::SCALAR_LEN * 2);
-        for (s0, s1) in self.iter() {
-            out.extend_from_slice(s0.to_bytes().as_ref());
-            out.extend_from_slice(s1.to_bytes().as_ref());
-        }
-        out.serialize(s)
-    }
-}
+// impl Serialize for MTAScalars {
+//     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+//         let mut out = Vec::with_capacity(self.len() * Self::SCALAR_LEN * 2);
+//         for (s0, s1) in self.iter() {
+//             out.extend_from_slice(s0.serialize().as_ref());
+//             out.extend_from_slice(s1.serialize().as_ref());
+//         }
+//         out.serialize(s)
+//     }
+// }
 
-impl<'de> Deserialize<'de> for MTAScalars {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let bytes = Vec::<u8>::deserialize(d)?;
-        if bytes.len() % (Self::SCALAR_LEN * 2) != 0 {
-            return Err(serde::de::Error::custom("invalid length"));
-        }
-        let mut out = Vec::with_capacity(bytes.len() / (Self::SCALAR_LEN * 2));
-        for chunk in bytes.chunks_exact(Self::SCALAR_LEN * 2) {
-            let s0 = SerializableScalar::from_slice(&chunk[..Self::SCALAR_LEN])
-                .map_err(serde::de::Error::custom)?;
-            let s1 = SerializableScalar::from_slice(&chunk[Self::SCALAR_LEN..])
-                .map_err(serde::de::Error::custom)?;
-            out.push((s0, s1));
-        }
-        Ok(Self(out))
-    }
-}
+// impl<'de> Deserialize<'de> for MTAScalars {
+//     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+//         let bytes = Vec::<u8>::deserialize(d)?;
+//         if bytes.len() % (Self::SCALAR_LEN * 2) != 0 {
+//             return Err(serde::de::Error::custom("invalid length"));
+//         }
+//         let mut out = Vec::with_capacity(bytes.len() / (Self::SCALAR_LEN * 2));
+//         for chunk in bytes.chunks_exact(Self::SCALAR_LEN * 2) {
+//             let s0 = SerializableScalar::from_slice(&chunk[..Self::SCALAR_LEN])
+//                 .map_err(serde::de::Error::custom)?;
+//             let s1 = SerializableScalar::from_slice(&chunk[Self::SCALAR_LEN..])
+//                 .map_err(serde::de::Error::custom)?;
+//             out.push((s0, s1));
+//         }
+//         Ok(Self(out))
+//     }
+// }
 
 /// The sender for multiplicative to additive conversion.
 pub async fn mta_sender(
@@ -77,15 +81,16 @@ pub async fn mta_sender(
     let size = v.len();
 
     // Step 1
-    let delta: Vec<_> = (0..size).map(|_| Scalar::random(&mut OsRng)).collect();
+    let delta: Vec<_> = (0..size).map(|_|
+        <<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut OsRng))
+        .collect();
 
     // Step 2
     let c: MTAScalars = MTAScalars(
-        delta
-            .iter()
+        delta.iter()
             .zip(v.iter())
             .map(|(delta_i, (v0_i, v1_i))| {
-                ((*v0_i + delta_i + a).into(), (*v1_i + delta_i - a).into())
+                (SerializableScalar(*v0_i + delta_i + a), SerializableScalar(*v1_i + delta_i - a))
             })
             .collect(),
     );
@@ -96,11 +101,11 @@ pub async fn mta_sender(
     let wait1 = chan.next_waitpoint();
     let (chi1, seed): (SerializableScalar<C>, [u8; 32]) = chan.recv(wait1).await?;
 
-    let mut alpha = delta[0] * Scalar::from(chi1);
+    let mut alpha = delta[0] *chi1.0;
 
     let mut prng = TranscriptRng::new(&seed);
     for &delta_i in &delta[1..] {
-        let chi_i = Scalar::random(&mut prng);
+        let chi_i = <<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut prng);
         alpha += delta_i * chi_i;
     }
 
@@ -124,14 +129,16 @@ pub async fn mta_receiver(
         ));
     }
     let mut m = tv.iter().zip(c.iter()).map(|((t_i, v_i), (c0_i, c1_i))| {
-        Scalar::conditional_select(&(*c0_i).into(), &(*c1_i).into(), *t_i) - v_i
+        Scalar::conditional_select(&(*c0_i).0, &(*c1_i).0, *t_i) - v_i
     });
 
     // Step 4
     let mut seed = [0u8; 32];
     OsRng.fill_bytes(&mut seed);
     let mut prng = TranscriptRng::new(&seed);
-    let chi: Vec<Scalar> = (1..size).map(|_| Scalar::random(&mut prng)).collect();
+    let chi: Vec<Scalar> = (1..size).map(|_|
+        <<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut prng))
+        .collect();
 
     let mut chi1 = Scalar::ZERO;
     for ((t_i, _), &chi_i) in tv.iter().skip(1).zip(chi.iter()) {
@@ -139,7 +146,6 @@ pub async fn mta_receiver(
     }
     chi1 = b - chi1;
     chi1.conditional_assign(&(-chi1), tv[0].0);
-    //chi1.conditional_negate(tv[0].0);
 
     // Step 5
     let mut beta = chi1 * m.next().unwrap();
@@ -149,7 +155,7 @@ pub async fn mta_receiver(
 
     // Step 6
     let wait1 = chan.next_waitpoint();
-    let chi1: SerializableScalar<C> = chi1.into();
+    let chi1 = SerializableScalar::<C>(chi1);
     chan.send(wait1, &(chi1, seed));
 
     Ok(beta)

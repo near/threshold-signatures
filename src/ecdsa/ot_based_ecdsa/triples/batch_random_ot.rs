@@ -8,7 +8,6 @@ use crate::{
         Field,
         ProjectivePoint,
         Secp256K1ScalarField,
-        VerifyingKey,
     },
     protocol::{
         internal::{make_protocol, Comms, PrivateChannel},
@@ -30,9 +29,9 @@ fn hash(
     let mut hasher = Sha256::new();
     hasher.update(BATCH_RANDOM_OT_HASH);
     hasher.update(&(i as u64).to_le_bytes());
-    hasher.update(&big_x_i.serialize()?);
-    hasher.update(&big_y.serialize()?);
-    hasher.update(&p.serialize()?);
+    hasher.update(&big_x_i.serialize().map_err(|_| ProtocolError::PointSerialization)?);
+    hasher.update(&big_y.serialize().map_err(|_| ProtocolError::PointSerialization)?);
+    hasher.update(&p.serialize().map_err(|_| ProtocolError::PointSerialization)?);
 
     let bytes: [u8; 32] = hasher.finalize().into();
     // the hash output is 256 bits

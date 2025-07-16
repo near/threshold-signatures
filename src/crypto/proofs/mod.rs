@@ -2,10 +2,7 @@
 use crate::{crypto::ciphersuite::{
     Ciphersuite, Element
 }};
-use serde::Serialize;
-use frost_core::{
-    Group,
-};
+use frost_core::Group;
 
 
 /// Encodes an EC point into a vec including the identity point.

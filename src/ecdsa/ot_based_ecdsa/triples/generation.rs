@@ -2,7 +2,6 @@ use elliptic_curve::Group;
 use rand_core::OsRng;
 use serde::Serialize;
 use frost_core::serialization::SerializableScalar;
-use frost_core::keys::CoefficientCommitment;
 
 use crate::{
     crypto::{
@@ -27,6 +26,7 @@ use crate::{
         Field,
         Scalar,
         ProjectivePoint,
+        CoefficientCommitment,
     }
 };
 
@@ -112,8 +112,8 @@ async fn do_generation(
             my_confirmation,
             participants.clone(),
             me,
-            e0,
-            f0,
+            e0.0,
+            f0.0,
         )
     };
 
@@ -335,7 +335,7 @@ async fn do_generation(
         chan.send_many(
             wait4,
             &(
-                CoefficientCommitment::<C>::new(big_c_i),
+                CoefficientCommitment::new(big_c_i),
                 my_phi_proof,
             ),
         );
@@ -345,7 +345,7 @@ async fn do_generation(
         seen.put(me);
         let mut big_c = big_c_i;
         while !seen.full() {
-            let (from, (big_c_j, their_phi_proof)): (_, (CoefficientCommitment<C>, _)) =
+            let (from, (big_c_j, their_phi_proof)): (_, (CoefficientCommitment, _)) =
                 chan.recv(wait4).await?;
             if !seen.put(from) {
                 continue;
@@ -415,7 +415,7 @@ async fn do_generation(
     chan.send_many(
         wait5,
         &(
-            CoefficientCommitment::<C>::new(&hat_big_c_i),
+            CoefficientCommitment::new(&hat_big_c_i),
             my_phi_proof,
         ),
     );
@@ -434,7 +434,7 @@ async fn do_generation(
     seen.put(me);
     let mut hat_big_c = hat_big_c_i;
     while !seen.full() {
-        let (from, (their_hat_big_c, their_phi_proof)): (_, (SerializablePoint<C>, _)) =
+        let (from, (their_hat_big_c, their_phi_proof)): (_, (CoefficientCommitment, _)) =
             chan.recv(wait5).await?;
         if !seen.put(from) {
             continue;
@@ -460,7 +460,7 @@ async fn do_generation(
     big_l.set_zero(hat_big_c);
 
     // Spec 5.4
-    if big_l.eval_on_zero() != big_c {
+    if big_l.eval_on_zero().value() != big_c {
         return Err(ProtocolError::AssertionFailed(
             "final polynomial doesn't match C value".to_owned(),
         ));

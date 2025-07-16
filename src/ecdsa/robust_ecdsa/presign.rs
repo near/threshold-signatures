@@ -12,7 +12,7 @@ use crate::{
         Secp256K1Sha256,
         Secp256K1ScalarField,
         Field,
-        Commitment,
+        CoefficientCommitment,
         Scalar,
     },
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
@@ -106,7 +106,7 @@ async fn do_presign(
 
     // Compute R_me = g^{k_me}
     let big_r_me = Secp256K1Group::generator() * shares[0];
-    let big_r_me = Commitment::new(big_r_me);
+    let big_r_me = CoefficientCommitment::new(big_r_me);
 
     // Compute w_me = a_me * k_me + b_me
     let w_me = shares[1] * shares[0] + shares[2];
@@ -125,7 +125,7 @@ async fn do_presign(
     seen.clear();
     seen.put(me);
     while !seen.full() {
-        let (from, (big_r_p, w_p)): (_ , (Commitment, SigningShare)) = chan.recv(wait_round_1).await?;
+        let (from, (big_r_p, w_p)): (_ , (CoefficientCommitment, SigningShare)) = chan.recv(wait_round_1).await?;
         if !seen.put(from) {
             continue;
         }
