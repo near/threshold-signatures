@@ -2,12 +2,12 @@ use crate::{
     crypto::ciphersuite::{
         Ciphersuite,
         Element,
-        Scalar,
     },
 };
 use frost_core::{
     Group,
     Field,
+    serialization::SerializableScalar,
 };
 
 use super::{
@@ -33,8 +33,8 @@ pub struct Statement<'a, C: Ciphersuite> {
 
 impl<'a, C: Ciphersuite> Statement<'a, C> {
     /// Calculate the homomorphism we want to prove things about.
-    fn phi(&self, x: &Scalar<C>) -> Element<C> {
-        C::Group::generator() * *x
+    fn phi(&self, x: &SerializableScalar<C>) -> Element<C> {
+        C::Group::generator() * x.0
     }
 
     /// Encode into Vec<u8>: some sort of serialization
@@ -55,16 +55,17 @@ impl<'a, C: Ciphersuite> Statement<'a, C> {
 
 /// The private witness for this proof.
 /// This holds the scalar the prover needs to know.
-#[derive(Clone, Copy)]
-pub struct Witness<'a, C: Ciphersuite> {
-    pub x: &'a Scalar<C>,
+#[derive(Clone, Copy,  serde::Serialize, serde::Deserialize)]
+pub struct Witness<C: Ciphersuite> {
+    pub x: SerializableScalar<C>,
 }
 
 /// Represents a proof of the statement.
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[serde(bound = "C: Ciphersuite")]
 pub struct Proof<C:Ciphersuite> {
-    e: Scalar<C>,
-    s: Scalar<C>,
+    e: SerializableScalar<C>,
+    s: SerializableScalar<C>,
 }
 
 /// Prove that a witness satisfies a given statement.
@@ -75,12 +76,12 @@ pub fn prove<'a, C: Ciphersuite>(
     rng: &mut impl CryptoRngCore,
     transcript: &mut Transcript,
     statement: Statement<'a, C>,
-    witness: Witness<'a, C>,
+    witness: Witness<C>,
 ) -> Proof<C> {
     transcript.message(STATEMENT_LABEL, &statement.encode());
 
     let k = <C::Group as Group>::Field::random(rng);
-    let big_k = statement.phi(&k);
+    let big_k = statement.phi(&SerializableScalar(k));
 
     transcript.message(
         COMMITMENT_LABEL,
@@ -89,8 +90,11 @@ pub fn prove<'a, C: Ciphersuite>(
     let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
     let e = <C::Group as Group>::Field::random(&mut rng);
 
-    let s = k + e * *witness.x;
-    Proof { e, s }
+    let s = k + e * witness.x.0;
+    Proof {
+        e: SerializableScalar(e),
+        s: SerializableScalar(s),
+    }
 }
 
 /// Verify that a proof attesting to the validity of some statement.
@@ -104,7 +108,7 @@ pub fn verify<C: Ciphersuite>(
 ) -> bool {
     transcript.message(STATEMENT_LABEL, &statement.encode());
 
-    let big_k: Element<C> = statement.phi(&proof.s) - *statement.public * proof.e;
+    let big_k: Element<C> = statement.phi(&proof.s) - *statement.public * proof.e.0;
 
     transcript.message(
         COMMITMENT_LABEL,
@@ -113,7 +117,7 @@ pub fn verify<C: Ciphersuite>(
     let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
     let e = <C::Group as Group>::Field::random(&mut rng);
 
-    e == proof.e
+    e == proof.e.0
 }
 
 #[cfg(test)]
@@ -131,7 +135,7 @@ mod test {
         let statement = Statement::<Secp256K1Sha256> {
             public: &(ProjectivePoint::GENERATOR * x),
         };
-        let witness = Witness { x: &x };
+        let witness = Witness { x: SerializableScalar::<Secp256K1Sha256>(x) };
 
         let transcript = Transcript::new(b"protocol");
 

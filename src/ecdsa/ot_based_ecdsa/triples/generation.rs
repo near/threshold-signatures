@@ -137,7 +137,7 @@ async fn do_generation(
             public: &big_e_i.eval_on_zero().value(),
         };
         let witness0 = dlog::Witness::<C> {
-            x: &e.eval_on_zero().0,
+            x: e.eval_on_zero(),
         };
         let my_phi_proof0 = dlog::prove(
             &mut rng,
@@ -149,7 +149,7 @@ async fn do_generation(
             public: &big_f_i.eval_on_zero().value(),
         };
         let witness1 = dlog::Witness::<C> {
-            x: &f.eval_on_zero().0,
+            x: f.eval_on_zero(),
         };
         let my_phi_proof1 = dlog::prove(
             &mut rng,
@@ -322,7 +322,7 @@ async fn do_generation(
             public1: &big_c_i,
         };
         let witness = dlogeq::Witness {
-            x: &e.eval_on_zero().0,
+            x: e.eval_on_zero(),
         };
         let my_phi_proof = dlogeq::prove(
             &mut rng,
@@ -403,7 +403,7 @@ async fn do_generation(
     let statement = dlog::Statement::<C> {
         public: &hat_big_c_i,
     };
-    let witness = dlog::Witness::<C> { x: &l0 };
+    let witness = dlog::Witness::<C> { x: SerializableScalar::<C>(l0) };
     let my_phi_proof = dlog::prove(
         &mut rng,
         &mut transcript.fork(b"dlog2", &me.bytes()),
@@ -636,7 +636,7 @@ async fn do_generation_many<const N: usize>(
                 public: &big_e_i.eval_on_zero().value(),
             };
             let witness0 = dlog::Witness::<C> {
-                x: &e.eval_on_zero().0,
+                x: e.eval_on_zero(),
             };
             let my_phi_proof0 = dlog::prove(
                 &mut rng,
@@ -648,7 +648,7 @@ async fn do_generation_many<const N: usize>(
                 public: &big_f_i.eval_on_zero().value(),
             };
             let witness1 = dlog::Witness::<C> {
-                x: &f.eval_on_zero().0,
+                x: f.eval_on_zero(),
             };
             let my_phi_proof1 = dlog::prove(
                 &mut rng,
@@ -856,7 +856,7 @@ async fn do_generation_many<const N: usize>(
                 ));
             }
             // Spec 3.8
-            let big_c_i = big_f.eval_on_zero().value() * e.eval_on_zero().value();
+            let big_c_i = big_f.eval_on_zero().value() * e.eval_on_zero().0;
             let big_e_i = &big_e_i_v[i];
             // Spec 3.9
             let statement = dlogeq::Statement::<C> {
@@ -865,7 +865,7 @@ async fn do_generation_many<const N: usize>(
                 public1: &big_c_i,
             };
             let witness = dlogeq::Witness {
-                x: &e.eval_on_zero().0,
+                x: e.eval_on_zero(),
             };
             let my_phi_proof = dlogeq::prove(
                 &mut rng,
@@ -959,14 +959,14 @@ async fn do_generation_many<const N: usize>(
         let statement = dlog::Statement::<C> {
             public: &hat_big_c_i,
         };
-        let witness = dlog::Witness::<C> { x: &l0 };
+        let witness = dlog::Witness::<C> { x: SerializableScalar::<C>(l0) };
         let my_phi_proof = dlog::prove(
             &mut rng,
             &mut transcript.fork(b"dlog2", &me.bytes()),
             statement,
             witness,
         );
-        hat_big_c_i_points.push(CoefficientCommitment::new(&hat_big_c_i));
+        hat_big_c_i_points.push(CoefficientCommitment::new(hat_big_c_i));
         hat_big_c_i_v.push(hat_big_c_i);
         my_phi_proofs.push(my_phi_proof);
     }
@@ -995,7 +995,7 @@ async fn do_generation_many<const N: usize>(
     for i in 0..N {
         let l = &mut l_v[i];
         let c_i = l.eval_on_participant(me);
-        c_i_v.push(c_i);
+        c_i_v.push(c_i.0);
     }
 
     // Spec 5.1 + 5.2 + 5.3
@@ -1075,7 +1075,7 @@ async fn do_generation_many<const N: usize>(
         let big_f = &big_f_v[i];
         let big_c = &big_c_v[i];
 
-        if big_l.eval_on_participant(me).value() != ProjectivePoint::GENERATOR * c_i.0 {
+        if big_l.eval_on_participant(me).value() != ProjectivePoint::GENERATOR * c_i {
             return Err(ProtocolError::AssertionFailed(
                 "received bad private share of c".to_string(),
             ));
@@ -1088,7 +1088,7 @@ async fn do_generation_many<const N: usize>(
             TripleShare {
                 a: *a_i,
                 b: *b_i,
-                c: c_i.0,
+                c: *c_i,
             },
             TriplePub {
                 big_a,
