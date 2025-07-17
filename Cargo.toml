@@ -13,9 +13,9 @@ digest = "0.10.7"
 ecdsa = { version = "0.16.8", features = ["digest", "hazmat"] }
 elliptic-curve = { version = "0.13.5", features = ["serde"] }
 event-listener = "2.5.3"
-frost-core = { version = "2.1.0", default-features = false, features = ["serialization", "std", "internals", "serde"] }
+frost-core = { version = "2.1.0", default-features = false, features = ["serialization", "std", "internals"] }
 frost-ed25519 = { version = "2.1.0", default-features = false, features = ["serialization", "std"] }
-frost-secp256k1 = { version = "2.1.0", default-features = false, features = ["serde", "serialization", "std"] }
+frost-secp256k1 = { version = "2.1.0", default-features = false, features = ["serialization", "std"] }
 futures = "0.3.31"
 itertools = "0.14.0"
 k256 = { version = "0.13.1", features = ["sha256", "ecdsa", "serde"]}
@@ -36,14 +36,6 @@ easy-parallel = "3.2.0"
 haisou-chan = { git = "https://github.com/cronokirby/haisou-chan", rev = "d28c46e51acfcb818236caae293f6e56dff41ad2" }
 structopt = "0.3.26"
 k256 = { version = "0.13.1", features = ["sha256", "ecdsa", "serde"], optional = false }
-
-[features]
-default = []
-serde = [
-    "frost-core/serde",
-    "frost-secp256k1/serde"
-]
-
 
 [[example]]
 name = "network-benches"

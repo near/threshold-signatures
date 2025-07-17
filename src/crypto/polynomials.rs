@@ -163,7 +163,7 @@ impl <C: Ciphersuite> Polynomial<C>{
 /******************* Polynomial Commitment *******************/
 /// Contains the commited coefficients of a polynomial i.e. coeff * G
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
-#[serde(bound = "C: serde::Serialize")]
+#[serde(bound = "C: Ciphersuite")]
 pub struct PolynomialCommitment<C:Ciphersuite>(Vec<CoefficientCommitment<C>>);
 
 impl <C: Ciphersuite> PolynomialCommitment<C>{
