@@ -2,7 +2,7 @@ use k256::{AffinePoint, Scalar};
 use std::error::Error;
 use frost_secp256k1::VerifyingKey;
 
-use crate::compat::scalar_hash;
+use crate::crypto::hash::scalar_hash;
 use crate::ecdsa::{
     KeygenOutput,
     FullSignature,

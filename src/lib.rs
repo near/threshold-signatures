@@ -1,4 +1,3 @@
-mod compat;
 mod crypto;
 
 mod echo_broadcast;

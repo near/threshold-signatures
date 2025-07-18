@@ -130,9 +130,7 @@ mod test {
         protocol::{run_protocol, Participant,Protocol},
         ecdsa::Polynomial,
     };
-    use crate::compat::{
-        scalar_hash,
-    };
+    use crate::crypto::hash::scalar_hash;
 
     #[test]
     fn test_sign() -> Result<(), Box<dyn Error>> {

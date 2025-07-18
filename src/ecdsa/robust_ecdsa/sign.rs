@@ -125,7 +125,7 @@ mod test {
     use super::*;
 
     use crate::{
-        compat::{scalar_hash},
+        crypto::hash::{scalar_hash},
         protocol::run_protocol,
     };
 
