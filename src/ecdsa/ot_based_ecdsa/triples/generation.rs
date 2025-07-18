@@ -1,4 +1,3 @@
-use elliptic_curve::Group;
 use rand_core::OsRng;
 use serde::Serialize;
 use frost_core::serialization::SerializableScalar;
@@ -21,8 +20,6 @@ use crate::{
     },
     ecdsa::{
         Secp256K1Sha256,
-        Secp256K1ScalarField,
-        Field,
         Scalar,
         ProjectivePoint,
         CoefficientCommitment,
@@ -76,7 +73,9 @@ async fn do_generation(
     let e = Polynomial::generate_polynomial(None, threshold-1, &mut rng);
     let f = Polynomial::generate_polynomial(None, threshold-1, &mut rng);
     // Spec 1.3
-    let l = Polynomial::generate_polynomial(Some(Secp256K1ScalarField::zero()), threshold-1, &mut rng);
+    // We will generate a poly of degree threshold - 2 then later extend it with identity.
+    // This is to prevent serialization from failing
+    let mut l = Polynomial::generate_polynomial(None, threshold-2, &mut rng);
 
     // Spec 1.4
     let big_e_i = e.commit_polynomial();
@@ -234,16 +233,11 @@ async fn do_generation(
 
             if their_big_e.degree() != threshold - 1
                 || their_big_f.degree() != threshold - 1
-                || their_big_l.degree() != threshold - 1
+                // testing threshold - 2 because the identity element is non-serializable
+                || their_big_l.degree() != threshold - 2
             {
                 return Err(ProtocolError::AssertionFailed(format!(
                     "polynomial from {from:?} has the wrong length"
-                )));
-            }
-
-            if !bool::from(their_big_l.eval_on_zero().is_identity()) {
-                return Err(ProtocolError::AssertionFailed(format!(
-                    "L(0) from {from:?} is not 0"
                 )));
             }
 
@@ -375,7 +369,8 @@ async fn do_generation(
             seen,
             big_e,
             big_f,
-            big_l,
+            // extend big_l of degree threshold - 2
+            big_l: big_l.extend_with_identity(),
             big_c,
             a_i,
             b_i,
@@ -411,7 +406,7 @@ async fn do_generation(
         witness,
     );
 
-    // Spec 4.8
+    // Spec 4.7
     let wait5 = chan.next_waitpoint();
     chan.send_many(
         wait5,
@@ -421,8 +416,10 @@ async fn do_generation(
         ),
     );
 
-    // Spec 4.9
-    l.set_zero(l0);
+    // Spec 4.8
+    // extend to make the degree threshold - 1
+    l = l.extend_with_zero();
+    l.set_constant(l0);
     let wait6 = chan.next_waitpoint();
     for p in participants.others(me) {
         let c_i_j = l.eval_on_participant(p);
@@ -458,7 +455,7 @@ async fn do_generation(
     }
 
     // Spec 5.3
-    big_l.set_zero(hat_big_c);
+    big_l.set_constant(CoefficientCommitment::new(hat_big_c));
 
     // Spec 5.4
     if big_l.eval_on_zero().value() != big_c {
@@ -539,10 +536,7 @@ async fn do_generation_many<const N: usize>(
         // Spec 1.2
         let e = Polynomial::generate_polynomial(None, threshold-1, &mut rng);
         let f = Polynomial::generate_polynomial(None, threshold-1, &mut rng);
-        let mut l = Polynomial::generate_polynomial(None, threshold-1, &mut rng);
-
-        // Spec 1.3
-        l.set_zero(Scalar::ZERO);
+        let l = Polynomial::generate_polynomial(None, threshold-2, &mut rng);
 
         // Spec 1.4
         let big_e_i = e.commit_polynomial();
@@ -766,17 +760,14 @@ async fn do_generation_many<const N: usize>(
                 let their_phi_proof1 = &their_phi_proof1_v[i];
                 if their_big_e.degree() != threshold - 1
                     || their_big_f.degree() != threshold - 1
-                    || their_big_l.degree() != threshold - 1
+                    // degree is threshold - 2 because the constant element identity is not serializable
+                    || their_big_l.degree() != threshold - 2
                 {
                     return Err(ProtocolError::AssertionFailed(format!(
                         "polynomial from {from:?} has the wrong length"
                     )));
                 }
-                if !bool::from(their_big_l.eval_on_zero().is_identity()) {
-                    return Err(ProtocolError::AssertionFailed(format!(
-                        "L(0) from {from:?} is not 0"
-                    )));
-                }
+
                 if !all_commitments[from].check(
                     &(&their_big_e, &their_big_f, &their_big_l),
                     their_randomizer,
@@ -922,6 +913,7 @@ async fn do_generation_many<const N: usize>(
                 big_c_v[i] += big_c_j;
             }
         }
+        let big_l_v = big_l_v.iter().map(|big_l| big_l.extend_with_identity()).collect();
         Ok(ParallelToMultiplicationTaskOutput {
             seen,
             big_e_v,
@@ -979,7 +971,9 @@ async fn do_generation_many<const N: usize>(
     for i in 0..N {
         let l = &mut l_v[i];
         let l0 = &l0_v[i];
-        l.set_zero(*l0);
+        // extend to make the degree threshold - 1
+        *l = l.extend_with_zero();
+        l.set_constant(*l0);
     }
     let wait6 = chan.next_waitpoint();
     let mut c_i_v = vec![];
@@ -1040,7 +1034,7 @@ async fn do_generation_many<const N: usize>(
         let big_c = &big_c_v[i];
 
         // Spec 5.3
-        big_l.set_zero(*hat_big_c);
+        big_l.set_constant(CoefficientCommitment::new(*hat_big_c));
 
         // Spec 5.4
         if big_l.eval_on_zero().value() != *big_c {

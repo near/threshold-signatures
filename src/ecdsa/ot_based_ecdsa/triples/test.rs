@@ -5,7 +5,6 @@ use crate::protocol::ProtocolError;
 use crate::{
     ecdsa::{
         ProjectivePoint,
-        Secp256K1Sha256,
         Secp256K1ScalarField,
         Field,
         Polynomial,
@@ -13,7 +12,6 @@ use crate::{
     protocol::Participant,
 };
 use super::{TriplePub, TripleShare};
-type C = Secp256K1Sha256;
 
 /// Create a new triple from scratch.
 ///

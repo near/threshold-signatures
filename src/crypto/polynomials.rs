@@ -156,6 +156,25 @@ impl <C: Ciphersuite> Polynomial<C>{
         ).collect();
         PolynomialCommitment::new(coef_commitment)
     }
+
+    /// Set the constant value of this polynomial to a new scalar
+    pub fn set_constant(&mut self, v: Scalar<C>) {
+        if self.0.is_empty() {
+            self.0.push(v)
+        } else {
+            self.0[0] = v
+        }
+    }
+
+    /// Extends the Polynomial with an extra value as a constant
+    /// Used usually after sending a smaller polynomial to prevent serialization from
+    /// failing if the constant term is the identity
+    pub fn extend_with_zero(&self) -> Self{
+        let mut coeffcommitment = vec![<C::Group as Group>::Field::zero()];
+        coeffcommitment.extend(self.get_coefficients());
+        Polynomial::new(coeffcommitment)
+    }
+
 }
 
 
@@ -235,6 +254,25 @@ impl <C: Ciphersuite> PolynomialCommitment<C>{
         }
 
         Ok(CoefficientCommitment::new(interpolation))
+    }
+
+    /// Extends the Commited Polynomial with an extra value as a constant
+    /// Used usually after sending a smaller polynomial to prevent serialization from
+    /// failing if the constant term is the identity
+    pub fn extend_with_identity(&self) -> Self{
+        let mut coeffcommitment = vec![CoefficientCommitment::<C>::new(C::Group::identity())];
+        coeffcommitment.extend(self.get_coefficients());
+        PolynomialCommitment::new(coeffcommitment)
+    }
+
+
+    /// Set the constant value of this polynomial to a new scalar
+    pub fn set_constant(&mut self, v: CoefficientCommitment<C>) {
+        if self.0.is_empty() {
+            self.0.push(v)
+        } else {
+            self.0[0] = v
+        }
     }
 
 }

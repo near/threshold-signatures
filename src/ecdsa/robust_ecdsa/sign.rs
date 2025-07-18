@@ -118,7 +118,6 @@ mod test {
 
     use crate::ecdsa::{
         ProjectivePoint,
-        Secp256K1Sha256,
         Secp256K1ScalarField,
         Field,
         x_coordinate,
@@ -130,7 +129,6 @@ mod test {
         protocol::run_protocol,
     };
 
-    type C = Secp256K1Sha256;
     #[test]
     fn test_sign() -> Result<(), Box<dyn Error>> {
         let max_malicious = 2;

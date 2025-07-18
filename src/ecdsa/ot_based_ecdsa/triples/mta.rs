@@ -1,4 +1,3 @@
-use elliptic_curve::{bigint::Bounded, Curve};
 use rand_core::{OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::slice::Iter;
@@ -8,7 +7,6 @@ use frost_core::{
     Field,
     serialization::SerializableScalar,
 };
-use k256::Secp256k1;
 
 use crate::protocol::internal::Comms;
 use crate::{
@@ -32,8 +30,6 @@ type C = Secp256K1Sha256;
 struct MTAScalars(Vec<(SerializableScalar<C>, SerializableScalar<C>)>);
 
 impl MTAScalars {
-    const SCALAR_LEN: usize = (<<Secp256k1 as Curve>::Uint as Bounded>::BITS + 7) >> 3;
-
     fn len(&self) -> usize {
         self.0.len()
     }

@@ -1,8 +1,5 @@
 // Generic Ciphersuite Trait
-use frost_core::{
-    Group,
-    Field,
-};
+use frost_core::Group;
 
 pub enum BytesOrder {
     BigEndian,
@@ -14,5 +11,4 @@ pub trait ScalarSerializationFormat {
 }
 pub trait Ciphersuite: frost_core::Ciphersuite + ScalarSerializationFormat {}
 
-pub(crate) type Scalar<C> = <<<C as frost_core::Ciphersuite>::Group as Group>::Field as Field>::Scalar;
 pub(crate) type Element<C> = <<C as frost_core::Ciphersuite>::Group as Group>::Element;
