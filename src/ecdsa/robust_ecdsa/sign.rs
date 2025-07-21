@@ -136,7 +136,7 @@ mod test {
             );
 
             let k = fk.eval_on_zero().0;
-            let big_r = ProjectivePoint::GENERATOR * k.clone();
+            let big_r = ProjectivePoint::GENERATOR * k;
             let big_r_x_coordinate = x_coordinate(&big_r.to_affine());
 
             let w = fa.eval_on_zero().0 * k;

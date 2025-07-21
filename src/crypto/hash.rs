@@ -32,6 +32,9 @@ pub fn domain_separate_hash<T: Serialize>(domain_separator: u32, data: &T) -> Ha
 }
 
 #[cfg(test)]
+pub(crate) use test_scalar_hash::scalar_hash;
+
+#[cfg(test)]
 mod test_scalar_hash {
     use elliptic_curve::{ops::Reduce, Curve, CurveArithmetic};
 
@@ -46,6 +49,3 @@ mod test_scalar_hash {
         <Scalar as Reduce<<Secp256k1 as Curve>::Uint>>::reduce_bytes(&m_bytes)
     }
 }
-
-#[cfg(test)]
-pub(crate) use test_scalar_hash::scalar_hash;

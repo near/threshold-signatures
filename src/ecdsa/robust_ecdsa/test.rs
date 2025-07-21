@@ -66,7 +66,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
     let result0 = run_keygen(&participants, threshold)?;
     assert_public_key_invariant(&result0)?;
 
-    let pub_key = result0[2].1.public_key.clone();
+    let pub_key = result0[2].1.public_key;
 
     // Run heavy reshare
     let max_malicious = 4;
@@ -87,7 +87,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
     assert_public_key_invariant(&key_packages)?;
     key_packages.sort_by_key(|(p, _)| *p);
 
-    let public_key = key_packages[0].1.public_key.clone();
+    let public_key = key_packages[0].1.public_key;
 
     // Presign
     let mut presign_result = run_presign(key_packages, max_malicious);
@@ -118,7 +118,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     let result0 = run_keygen(&participants, threshold)?;
     assert_public_key_invariant(&result0)?;
 
-    let pub_key = result0[2].1.public_key.clone();
+    let pub_key = result0[2].1.public_key;
 
     // Run heavy reshare
     let max_malicious = 1;
@@ -136,7 +136,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     assert_public_key_invariant(&key_packages)?;
     key_packages.sort_by_key(|(p, _)| *p);
 
-    let public_key = key_packages[0].1.public_key.clone();
+    let public_key = key_packages[0].1.public_key;
 
     // Presign
     let mut presign_result = run_presign(key_packages, max_malicious);
@@ -170,7 +170,7 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
     let mut keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;
     keygen_result.sort_by_key(|(p, _)| *p);
 
-    let public_key = keygen_result[0].1.public_key.clone();
+    let public_key = keygen_result[0].1.public_key;
     assert_eq!(keygen_result[0].1.public_key, keygen_result[1].1.public_key);
     assert_eq!(keygen_result[1].1.public_key, keygen_result[2].1.public_key);
 
@@ -200,7 +200,7 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     let mut keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;
     keygen_result.sort_by_key(|(p, _)| *p);
 
-    let public_key = keygen_result[0].1.public_key.clone();
+    let public_key = keygen_result[0].1.public_key;
     assert_eq!(keygen_result[0].1.public_key, keygen_result[1].1.public_key);
     assert_eq!(keygen_result[1].1.public_key, keygen_result[2].1.public_key);
 

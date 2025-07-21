@@ -132,20 +132,20 @@ pub async fn batch_random_ot_sender_many<const N: usize>(
             let big_x_i_verkey_v: Vec<CoefficientCommitment> = chan.recv(wait0).await?;
 
             let mut ret = vec![];
-            for j in 0..N {
+            for (j, big_x_i_verkey_v_j) in big_x_i_verkey_v.iter().enumerate().take(N) {
                 let y = &yv_arc.as_slice()[j];
                 let big_y_verkey = &big_y_verkey_v_arc.as_slice()[j];
                 let big_z = &big_z_v_arc.as_slice()[j];
-                let y_big_x_i = big_x_i_verkey_v[j].value() * *y;
+                let y_big_x_i = big_x_i_verkey_v_j.value() * *y;
                 let big_k0 = hash(
                     i,
-                    &big_x_i_verkey_v[j],
+                    big_x_i_verkey_v_j,
                     big_y_verkey,
                     &CoefficientCommitment::new(y_big_x_i),
                 )?;
                 let big_k1 = hash(
                     i,
-                    &big_x_i_verkey_v[j],
+                    big_x_i_verkey_v_j,
                     big_y_verkey,
                     &CoefficientCommitment::new(y_big_x_i - big_z),
                 )?;
