@@ -12,18 +12,14 @@ pub(crate) fn encode_point<C: Ciphersuite>(point: &Element<C>) -> Vec<u8> {
         .len();
     // Serializing the identity might fail!
     // this is a workaround to be able to serialize even this infinity point.
-    let ser =
-        match <<C as frost_core::Ciphersuite>::Group as Group>::Serialization::try_from(vec![
+    let ser = match <<C as frost_core::Ciphersuite>::Group as Group>::Serialization::try_from(vec![
             0u8;
             size
         ]) {
-            Ok(ser) => ser,
-            _ => panic!("Should not raise error"),
-        };
-    C::Group::serialize(point)
-        .unwrap_or_else(|_| ser)
-        .as_ref()
-        .to_vec()
+        Ok(ser) => ser,
+        _ => panic!("Should not raise error"),
+    };
+    C::Group::serialize(point).unwrap_or(ser).as_ref().to_vec()
 }
 
 /// Encodes two EC points into a vec including the identity point.
@@ -40,31 +36,29 @@ pub(crate) fn encode_two_points<C: Ciphersuite>(
         .len();
     // Serializing the identity might fail!
     // this is a workaround to be able to serialize even this infinity point.
-    let ser =
-        match <<C as frost_core::Ciphersuite>::Group as Group>::Serialization::try_from(vec![
+    let ser = match <<C as frost_core::Ciphersuite>::Group as Group>::Serialization::try_from(vec![
             0u8;
             size
         ]) {
-            Ok(ser) => ser,
-            _ => panic!("Should not raise error"),
-        };
+        Ok(ser) => ser,
+        _ => panic!("Should not raise error"),
+    };
 
     let ser_1 = C::Group::serialize(point_1)
-        .unwrap_or_else(|_| ser)
+        .unwrap_or(ser)
         .as_ref()
         .to_vec();
 
     // Clone is not derived in Serialization type so I had to compute it again :(
-    let ser =
-        match <<C as frost_core::Ciphersuite>::Group as Group>::Serialization::try_from(vec![
+    let ser = match <<C as frost_core::Ciphersuite>::Group as Group>::Serialization::try_from(vec![
             0u8;
             size
         ]) {
-            Ok(ser) => ser,
-            _ => panic!("Should not raise error"),
-        };
+        Ok(ser) => ser,
+        _ => panic!("Should not raise error"),
+    };
     let ser_2 = C::Group::serialize(point_2)
-        .unwrap_or_else(|_| ser)
+        .unwrap_or(ser)
         .as_ref()
         .to_vec();
     rmp_serde::encode::to_vec(&(ser_1, ser_2)).expect("failed to encode value")

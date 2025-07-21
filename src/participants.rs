@@ -183,7 +183,7 @@ impl<'a, T> ParticipantMap<'a, T> {
 
     // Does not consume the map returning only the vector of the unwrapped data
     // If one of the data is still none, then return None
-    pub fn into_refs_or_none(&self) -> Option<Vec<&T>> {
+    pub fn to_refs_or_none(&self) -> Option<Vec<&T>> {
         self.data.iter().map(|opt| opt.as_ref()).collect()
     }
 
@@ -193,7 +193,7 @@ impl<'a, T> ParticipantMap<'a, T> {
     }
 }
 
-impl<'a, T> Index<Participant> for ParticipantMap<'a, T> {
+impl<T> Index<Participant> for ParticipantMap<'_, T> {
     type Output = T;
 
     fn index(&self, index: Participant) -> &Self::Output {

@@ -468,7 +468,7 @@ async fn do_keyshare<C: Ciphersuite>(
 
     // Verify vk asap
     // cannot fail as all_commitments at least contains my commitment
-    let all_commitments_refs = all_full_commitments.into_refs_or_none().unwrap();
+    let all_commitments_refs = all_full_commitments.to_refs_or_none().unwrap();
     let verifying_key = public_key_from_commitments(all_commitments_refs)?;
 
     // In the case of Resharing, check if the old public key is the same as the new one

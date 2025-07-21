@@ -164,12 +164,7 @@ async fn do_presign(
     // Some extra computation is pushed in this offline phase
     let alpha_me = h_me + shares[3];
 
-    let big_r_x_coordinate: [u8; 32] = big_r
-        .value()
-        .to_affine()
-        .x()
-        .try_into()
-        .expect("Slice is not 32 bytes long");
+    let big_r_x_coordinate: [u8; 32] = big_r.value().to_affine().x().into();
     let big_r_x_coordinate = <Secp256K1ScalarField as Field>::deserialize(&big_r_x_coordinate)
         .map_err(|_| ProtocolError::ErrorReducingBytesToScalar)?;
     let x_me = args.keygen_out.private_share.to_scalar();

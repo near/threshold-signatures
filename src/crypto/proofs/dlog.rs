@@ -19,7 +19,7 @@ pub struct Statement<'a, C: Ciphersuite> {
     pub public: &'a Element<C>,
 }
 
-impl<'a, C: Ciphersuite> Statement<'a, C> {
+impl<C: Ciphersuite> Statement<'_, C> {
     /// Calculate the homomorphism we want to prove things about.
     fn phi(&self, x: &SerializableScalar<C>) -> Element<C> {
         C::Group::generator() * x.0
@@ -33,7 +33,7 @@ impl<'a, C: Ciphersuite> Statement<'a, C> {
         match <C::Group as Group>::serialize(self.public) {
             Ok(ser) => {
                 enc.extend_from_slice(b"public:");
-                enc.extend_from_slice(ser.as_ref().into());
+                enc.extend_from_slice(ser.as_ref());
             }
             _ => panic!("Expected non-identity element"),
         };
@@ -60,10 +60,10 @@ pub struct Proof<C: Ciphersuite> {
 ///
 /// We need some randomness for the proof, and also a transcript, which is
 /// used for the Fiat-Shamir transform.
-pub fn prove<'a, C: Ciphersuite>(
+pub fn prove<C: Ciphersuite>(
     rng: &mut impl CryptoRngCore,
     transcript: &mut Transcript,
-    statement: Statement<'a, C>,
+    statement: Statement<'_, C>,
     witness: Witness<C>,
 ) -> Proof<C> {
     transcript.message(STATEMENT_LABEL, &statement.encode());

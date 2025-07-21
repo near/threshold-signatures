@@ -122,7 +122,7 @@ impl<C: Ciphersuite> Polynomial<C> {
             .map(|p| p.scalar::<C>())
             .collect();
         let shares = signingshares_map
-            .into_refs_or_none()
+            .to_refs_or_none()
             .ok_or(ProtocolError::InvalidInterpolationArguments)?;
 
         // Compute the Lagrange coefficients
@@ -222,8 +222,8 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
     /// Computes polynomial interpolation on the exponent on a spcoefcommitmentscoefcommitmentsecific point
     /// using a sequence of sorted elements
     pub fn eval_exponent_interpolation(
-        identifiers: &Vec<Scalar<C>>,
-        shares: &Vec<CoefficientCommitment<C>>,
+        identifiers: &[Scalar<C>],
+        shares: &[CoefficientCommitment<C>],
         point: Option<&Scalar<C>>,
     ) -> Result<CoefficientCommitment<C>, ProtocolError> {
         let mut interpolation = <C::Group as Group>::identity();
@@ -234,7 +234,7 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
         // Compute the Lagrange coefficients
         for (id, share) in identifiers.iter().zip(shares) {
             // would raise error if not enough shares or identifiers
-            let lagrange_coefficient = compute_lagrange_coefficient::<C>(&identifiers, id, point)?;
+            let lagrange_coefficient = compute_lagrange_coefficient::<C>(identifiers, id, point)?;
 
             // Compute y = g^f(point) via polynomial interpolation of these points of f
             interpolation = interpolation + (share.value() * lagrange_coefficient.0);
@@ -281,7 +281,7 @@ impl<C: Ciphersuite> Add for &PolynomialCommitment<C> {
 /// where j != i
 /// If x is None then consider it as 0
 pub fn compute_lagrange_coefficient<C: Ciphersuite>(
-    points_set: &Vec<Scalar<C>>,
+    points_set: &[Scalar<C>],
     i: &Scalar<C>,
     x: Option<&Scalar<C>>,
 ) -> Result<SerializableScalar<C>, ProtocolError> {

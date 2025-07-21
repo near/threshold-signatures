@@ -806,8 +806,8 @@ async fn do_generation_many<const N: usize>(
             for i in 0..N {
                 let a_j_i = &a_j_i_v[i];
                 let b_j_i = &b_j_i_v[i];
-                a_i_v[i] += &(*a_j_i).0;
-                b_i_v[i] += &(*b_j_i).0;
+                a_i_v[i] += &a_j_i.0;
+                b_i_v[i] += &b_j_i.0;
             }
         }
 
@@ -928,9 +928,8 @@ async fn do_generation_many<const N: usize>(
     let mut hat_big_c_i_points = vec![];
     let mut hat_big_c_i_v = vec![];
     let mut my_phi_proofs = vec![];
-    for i in 0..N {
+    for l0 in l0_v.iter() {
         // Spec 4.5
-        let l0 = l0_v[i];
         let hat_big_c_i = ProjectivePoint::GENERATOR * l0;
 
         // Spec 4.6
@@ -938,7 +937,7 @@ async fn do_generation_many<const N: usize>(
             public: &hat_big_c_i,
         };
         let witness = dlog::Witness::<C> {
-            x: SerializableScalar::<C>(l0),
+            x: SerializableScalar::<C>(*l0),
         };
         let my_phi_proof = dlog::prove(
             &mut rng,
@@ -967,15 +966,13 @@ async fn do_generation_many<const N: usize>(
     let mut c_i_v = vec![];
     for p in participants.others(me) {
         let mut c_i_j_v = Vec::new();
-        for i in 0..N {
-            let l = &mut l_v[i];
+        for l in l_v.iter_mut() {
             let c_i_j = l.eval_on_participant(p).0;
             c_i_j_v.push(c_i_j);
         }
         chan.send_private(wait6, p, &c_i_j_v);
     }
-    for i in 0..N {
-        let l = &mut l_v[i];
+    for l in l_v.iter_mut() {
         let c_i = l.eval_on_participant(me);
         c_i_v.push(c_i.0);
     }

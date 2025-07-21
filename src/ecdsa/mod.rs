@@ -107,10 +107,8 @@ impl PointScalarFunctions for Secp256K1Sha256 {
             Ok(encoded) => encoded,
             Err(_) => return None,
         };
-        match Option::<AffinePoint>::from(AffinePoint::from_encoded_point(&encoded_point)) {
-            Some(point) => Some(ProjectivePoint::from(point)),
-            None => None,
-        }
+        Option::<AffinePoint>::from(AffinePoint::from_encoded_point(&encoded_point))
+            .map(ProjectivePoint::from)
     }
 }
 

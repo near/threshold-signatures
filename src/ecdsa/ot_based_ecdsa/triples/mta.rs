@@ -119,9 +119,10 @@ pub async fn mta_receiver(
             "length of c was incorrect".to_owned(),
         ));
     }
-    let mut m = tv.iter().zip(c.iter()).map(|((t_i, v_i), (c0_i, c1_i))| {
-        Scalar::conditional_select(&(*c0_i).0, &(*c1_i).0, *t_i) - v_i
-    });
+    let mut m = tv
+        .iter()
+        .zip(c.iter())
+        .map(|((t_i, v_i), (c0_i, c1_i))| Scalar::conditional_select(&c0_i.0, &c1_i.0, *t_i) - v_i);
 
     // Step 4
     let mut seed = [0u8; 32];
