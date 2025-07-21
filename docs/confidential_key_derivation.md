@@ -45,13 +45,13 @@ Liveness and correctness depend on this, while the secrecy of $`s`$ does not
   onchain that calls $`\texttt{gen\_app\_private\_key}`$ with parameters
   $`\texttt{app\_id},\texttt{attestation},A`$.
 - $`\texttt{gen\_app\_private\_key}`$ verifies *app* is correctly being executed
-  inside a TEE using $`\texttt{app\_id}$ and $\texttt{attestation}`$.
+  inside a TEE using $`\texttt{app\_id}`$ and $`\texttt{attestation}`$.
 - $`\texttt{gen\_app\_private\_key}`$ creates a transaction onchain with a key
-  generation request that contains $`\texttt{app\_id}$ and $A`$
+  generation request that contains $`\texttt{app\_id}`$ and $`A`$
 - The *MPC network* reads the request, computes $`s`$ implicitly, and creates a
   transaction with the response $`\texttt{es} = \texttt{ThrEnc}(s, A)`$ onchain
-- The *app* obtains $`\texttt{es}$ from the blockchain, decrypts $\texttt{es}`$
-  using its key $`a$ and obtains $s`$
+- The *app* obtains $`\texttt{es}`$ from the blockchain, decrypts $`\texttt{es}`$
+  using its key $`a`$ and obtains $`s`$
 
 ## $`\texttt{app\_id}`$ computation and verification (WIP)
 
@@ -69,8 +69,8 @@ safe. $`\texttt{gen\_app\_private\_key}`$ executes the following:
 - verify the *event_log* contains the *app* docker image hash
   $`\texttt{app\_image\_hash}`$
 - verify $`A`$ and *opk* are part of REPORTDATA
-- $\texttt{app\_id} \gets \texttt{SHA256}(\texttt{npk} ||
-  \texttt{app\_image\_hash})$
+- $`\texttt{app\_id} \gets \texttt{SHA256}(\texttt{npk} ||
+  \texttt{app\_image\_hash})`$
 
 ## Computation of $`s`$ by *MPC Network*
 
