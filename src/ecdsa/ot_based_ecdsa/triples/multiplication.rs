@@ -177,10 +177,10 @@ pub async fn multiplication_many<const N: usize>(
         .into_iter()
         .collect::<VecDeque<_>>();
 
-    for i in 0..N {
+    for oi in outs.iter_mut().take(N) {
         for _ in participants.others(me) {
             let result = results.pop_front().unwrap();
-            outs[i] += result;
+            *oi += result;
         }
     }
 
@@ -291,10 +291,11 @@ mod test {
                     .collect()
             });
 
+        #[allow(clippy::type_complexity)]
         let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = Vec<Scalar>>>)> =
             Vec::with_capacity(prep.len());
 
-        let sids: Vec<_> = (0..N).map(|i| hash(&format!("sid{}", i))).collect();
+        let sids: Vec<_> = (0..N).map(|i| hash(&format!("sid{i}"))).collect();
 
         for (p, a_iv, b_iv) in prep {
             let ctx = Comms::new();

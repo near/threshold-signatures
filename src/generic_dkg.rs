@@ -176,7 +176,7 @@ fn internal_verify_proof_of_knowledge<C: Ciphersuite>(
 
     let big_r = proof_of_knowledge.R();
     let z = proof_of_knowledge.z();
-    let c = challenge::<C>(session_id, domain_separator, id, &vk_share, &big_r)?;
+    let c = challenge::<C>(session_id, domain_separator, id, vk_share, big_r)?;
     if *big_r != <C::Group>::generator() * *z - vk_share.value() * c.to_scalar() {
         return Err(ProtocolError::InvalidProofOfKnowledge(participant));
     }
@@ -329,7 +329,7 @@ async fn broadcast_success(
     let vote_list = vote_list.into_vec_or_none().unwrap();
     // go through all the list of votes and check if any is fail or some does not contain the session id
 
-    if !vote_list.iter().all(|&(_, ref sid)| sid == &session_id) {
+    if !vote_list.iter().all(|(_, ref sid)| sid == &session_id) {
         return Err(ProtocolError::AssertionFailed(
             "A participant
                 broadcast the wrong session id. Aborting Protocol!"
@@ -337,7 +337,7 @@ async fn broadcast_success(
         ));
     };
 
-    if !vote_list.iter().all(|&(boolean, _)| boolean == true) {
+    if !vote_list.iter().all(|&(boolean, _)| boolean) {
         return Err(ProtocolError::AssertionFailed(
             "A participant
                 seems to have failed its checks. Aborting Protocol!"

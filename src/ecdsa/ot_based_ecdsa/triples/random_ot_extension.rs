@@ -27,8 +27,8 @@ fn hash_to_scalar(i: usize, v: &BitVector) -> Scalar {
     let i64 = u64::try_from(i).expect("failed to convert usize to u64");
 
     hasher.update(CTX);
-    hasher.update(&i64.to_le_bytes());
-    hasher.update(&v.bytes());
+    hasher.update(i64.to_le_bytes());
+    hasher.update(v.bytes());
     let seed = hasher.finalize().into();
 
     let mut data = [0u8; 64];

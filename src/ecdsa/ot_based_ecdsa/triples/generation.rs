@@ -543,9 +543,9 @@ async fn do_generation_many<const N: usize>(
 
     // Spec 2.1
     let mut all_commitments_vec: Vec<ParticipantMap<Commitment>> = vec![];
-    for i in 0..N {
+    for comi in my_commitments.iter().take(N) {
         let mut m = ParticipantMap::new(&participants);
-        m.put(me, my_commitments[i]);
+        m.put(me, *comi);
         all_commitments_vec.push(m);
     }
 
@@ -561,9 +561,8 @@ async fn do_generation_many<const N: usize>(
 
     // Spec 2.2
     let mut my_confirmations = vec![];
-    for i in 0..N {
-        let all_commitments = &all_commitments_vec[i];
-        let my_confirmation = hash(all_commitments);
+    for comi in all_commitments_vec.iter().take(N) {
+        let my_confirmation = hash(comi);
         my_confirmations.push(my_confirmation);
     }
 
@@ -706,6 +705,7 @@ async fn do_generation_many<const N: usize>(
         seen.clear();
         seen.put(me);
         while !seen.full() {
+            #[allow(clippy::type_complexity)]
             let (
                 from,
                 (
@@ -795,6 +795,7 @@ async fn do_generation_many<const N: usize>(
         seen.clear();
         seen.put(me);
         while !seen.full() {
+            #[allow(clippy::type_complexity)]
             let (from, (a_j_i_v, b_j_i_v)): (
                 _,
                 (Vec<SerializableScalar<C>>, Vec<SerializableScalar<C>>),
@@ -858,10 +859,11 @@ async fn do_generation_many<const N: usize>(
         seen.clear();
         seen.put(me);
         let mut big_c_v = vec![];
-        for i in 0..N {
-            big_c_v.push(big_c_i_v[i]);
+        for big_c_i_v_i in big_c_i_v.iter().take(N) {
+            big_c_v.push(*big_c_i_v_i);
         }
         while !seen.full() {
+            #[allow(clippy::type_complexity)]
             let (from, (big_c_j_v, their_phi_proofs)): (
                 _,
                 (Vec<CoefficientCommitment>, Vec<dlogeq::Proof<C>>),
@@ -982,11 +984,12 @@ async fn do_generation_many<const N: usize>(
     seen.clear();
     seen.put(me);
     let mut hat_big_c_v = vec![];
-    for i in 0..N {
-        hat_big_c_v.push(hat_big_c_i_v[i]);
+    for hat_big_c_i_v_i in hat_big_c_i_v.iter().take(N) {
+        hat_big_c_v.push(*hat_big_c_i_v_i);
     }
 
     while !seen.full() {
+        #[allow(clippy::type_complexity)]
         let (from, (their_hat_big_c_i_points, their_phi_proofs)): (
             _,
             (Vec<CoefficientCommitment>, Vec<dlog::Proof<C>>),

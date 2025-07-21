@@ -133,7 +133,7 @@ pub async fn batch_random_ot_sender_many<const N: usize>(
             let big_x_i_verkey_v: Vec<CoefficientCommitment> = chan.recv(wait0).await?;
 
             let mut ret = vec![];
-            for j in 0..N {
+             for j in 0..N {
                 let y = &yv_arc.as_slice()[j];
                 let big_y_verkey = &big_y_verkey_v_arc.as_slice()[j];
                 let big_z = &big_z_v_arc.as_slice()[j];
@@ -162,15 +162,14 @@ pub async fn batch_random_ot_sender_many<const N: usize>(
     for _ in 0..N {
         reshaped_outs.push(Vec::new());
     }
-    for i in 0..outs.len() {
+    for outsi in outs {
         for j in 0..N {
-            reshaped_outs[j].push(outs[i][j])
+            reshaped_outs[j].push(outsi[j])
         }
     }
     let outs = reshaped_outs;
     let mut ret = vec![];
-    for i in 0..N {
-        let out = &outs[i];
+    for out in outs.iter().take(N) {
         let big_k0: BitMatrix = out.iter().map(|r| r.0).collect();
         let big_k1: BitMatrix = out.iter().map(|r| r.1).collect();
         ret.push((big_k0.try_into().unwrap(), big_k1.try_into().unwrap()));
@@ -246,19 +245,19 @@ pub async fn batch_random_ot_receiver_many<const N: usize>(
     for _ in deltav[0].bits() {
         choices.push(Vec::new());
     }
-    for j in 0..N {
-        for (i, d_i) in deltav[j].bits().enumerate() {
+    for deltavj in deltav.iter().take(N) {
+        for (i, d_i) in deltavj.bits().enumerate() {
             choices[i].push(d_i);
         }
     }
     // wrap in arc
     let choices: Vec<_> = choices.into_iter().map(Arc::new).collect();
 
-    let mut outs = Vec::new();
-    for i in 0..choices.len() {
+    let mut outs: Vec<Vec<BitVector>> = Vec::new();
+    for (i, choicesi) in choices.iter().enumerate() {
         let mut chan = chan.child(i as u64);
         // clone arcs
-        let d_i_v = choices[i].clone();
+        let d_i_v = choicesi.clone();
         let big_y_v_arc = big_y_v_arc.clone();
         let big_y_verkey_v_arc = big_y_verkey_v_arc.clone();
         let hashv = {
@@ -307,9 +306,9 @@ pub async fn batch_random_ot_receiver_many<const N: usize>(
     for _ in 0..N {
         reshaped_outs.push(Vec::new());
     }
-    for i in 0..outs.len() {
+    for outsi in outs.iter() {
         for j in 0..N {
-            reshaped_outs[j].push(outs[i][j]);
+            reshaped_outs[j].push(outsi[j]);
         }
     }
     let outs = reshaped_outs;
