@@ -175,8 +175,10 @@ pub fn sign<C: CSCurve>(
         InitializationError::BadParameters("participant list cannot contain duplicates".to_string())
     })?;
 
-    if !participants.contains(me){
-        return Err(InitializationError::BadParameters("participant list does not contain me".to_string()))
+    if !participants.contains(me) {
+        return Err(InitializationError::BadParameters(
+            "participant list does not contain me".to_string(),
+        ));
     };
 
     let ctx = Comms::new();

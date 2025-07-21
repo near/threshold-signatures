@@ -235,8 +235,10 @@ pub fn presign<C: CSCurve>(
         )
     })?;
 
-    if !participants.contains(me){
-        return Err(InitializationError::BadParameters("participant list does not contain me".to_string()))
+    if !participants.contains(me) {
+        return Err(InitializationError::BadParameters(
+            "participant list does not contain me".to_string(),
+        ));
     };
 
     let ctx = Comms::new();

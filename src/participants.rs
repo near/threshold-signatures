@@ -212,7 +212,6 @@ impl<'a, T> ParticipantMap<'a, T> {
     pub fn into_refs_or_none(&self) -> Option<Vec<&T>> {
         self.data.iter().map(|opt| opt.as_ref()).collect()
     }
-
 }
 
 impl<'a, T> Index<Participant> for ParticipantMap<'a, T> {

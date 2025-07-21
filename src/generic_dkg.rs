@@ -500,14 +500,12 @@ async fn do_keyshare<C: Ciphersuite>(
             &all_hash_commitments,
         )?;
 
-
         // in case the participant was new and it sent a polynomial of length
         // threshold -1 (because the zero term is not serializable)
         let full_commitment_i = insert_identity_if_missing(threshold, commitment_i);
 
         // add received full commitment
         all_full_commitments.put(p, full_commitment_i);
-
     }
 
     // Verify vk asap
@@ -533,7 +531,6 @@ async fn do_keyshare<C: Ciphersuite>(
         chan.send_private(wait_round_3, p, &signing_share_to_p);
     }
 
-
     // Start Round 4
     // compute my secret evaluation of my private polynomial
     let mut my_signing_share = evaluate_polynomial::<C>(&secret_coefficients, me)?.to_scalar();
@@ -557,7 +554,6 @@ async fn do_keyshare<C: Ciphersuite>(
         // At the end of this loop, I will be owning a valid secret signing share
         my_signing_share = my_signing_share + signing_share_from.to_scalar();
     }
-
 
     // Start Round 5
     broadcast_success(&mut chan, &participants, &me, session_id).await?;
