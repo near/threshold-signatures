@@ -31,8 +31,6 @@ pub fn domain_separate_hash<T: Serialize>(domain_separator: u32, data: &T) -> Ha
     hash(&preimage)
 }
 
-
-
 #[cfg(test)]
 mod test_scalar_hash {
     use elliptic_curve::{ops::Reduce, Curve, CurveArithmetic};

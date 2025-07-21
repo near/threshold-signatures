@@ -5,12 +5,10 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 use crate::{
     crypto::proofs::strobe_transcript::TranscriptRng,
+    ecdsa::Scalar,
     protocol::{
         internal::{make_protocol, Comms, PrivateChannel},
         run_two_party_protocol, Participant, ProtocolError,
-    },
-    ecdsa::{
-        Scalar,
     },
 };
 
@@ -207,13 +205,7 @@ fn run_random_ot(
     (k0, k1): (SquareBitMatrix, SquareBitMatrix),
     sid: Vec<u8>,
     batch_size: usize,
-) -> Result<
-    (
-        RandomOTExtensionSenderOut,
-        RandomOTExtensionReceiverOut,
-    ),
-    ProtocolError,
-> {
+) -> Result<(RandomOTExtensionSenderOut, RandomOTExtensionReceiverOut), ProtocolError> {
     let s = Participant::from(0u32);
     let r = Participant::from(1u32);
     let comms_s = Comms::new();
@@ -248,7 +240,7 @@ mod test {
 
     use super::*;
 
-    use k256::{Scalar};
+    use k256::Scalar;
 
     #[test]
     fn test_random_ot() -> Result<(), ProtocolError> {

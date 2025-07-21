@@ -1,25 +1,12 @@
 use std::error::Error;
 
-use super::{
-    PresignOutput,
-    PresignArguments,
-    presign::presign,
-    sign::sign,
-};
+use super::{presign::presign, sign::sign, PresignArguments, PresignOutput};
 
-use crate::protocol::{run_protocol, Participant, Protocol, InitializationError};
 use crate::ecdsa::{
-    test::{
-        assert_public_key_invariant,
-        run_keygen,
-        run_reshare,
-        run_sign,
-    },
-    KeygenOutput,
-    FullSignature,
-    Scalar,
-    AffinePoint,
+    test::{assert_public_key_invariant, run_keygen, run_reshare, run_sign},
+    AffinePoint, FullSignature, KeygenOutput, Scalar,
 };
+use crate::protocol::{run_protocol, InitializationError, Participant, Protocol};
 
 fn sign_box(
     participants: &[Participant],
@@ -27,7 +14,7 @@ fn sign_box(
     public_key: AffinePoint,
     presignature: PresignOutput,
     msg_hash: Scalar,
-) -> Result<Box<dyn Protocol<Output = FullSignature>>, InitializationError>{
+) -> Result<Box<dyn Protocol<Output = FullSignature>>, InitializationError> {
     sign(participants, me, public_key, presignature, msg_hash)
         .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = FullSignature>>)
 }
@@ -36,12 +23,9 @@ pub fn run_presign(
     participants: Vec<(Participant, KeygenOutput)>,
     max_malicious: usize,
 ) -> Vec<(Participant, PresignOutput)> {
-
     #[allow(clippy::type_complexity)]
-    let mut protocols: Vec<(
-        Participant,
-        Box<dyn Protocol<Output = PresignOutput>>,
-    )> = Vec::with_capacity(participants.len());
+    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)> =
+        Vec::with_capacity(participants.len());
 
     let participant_list: Vec<Participant> = participants.iter().map(|(p, _)| *p).collect();
 
@@ -78,7 +62,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
         Participant::from(10u32),
     ];
     let max_malicious = 3;
-    let threshold = max_malicious+1;
+    let threshold = max_malicious + 1;
     let result0 = run_keygen(&participants, threshold)?;
     assert_public_key_invariant(&result0)?;
 
@@ -86,7 +70,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
 
     // Run heavy reshare
     let max_malicious = 4;
-    let new_threshold = max_malicious+1;
+    let new_threshold = max_malicious + 1;
 
     let mut new_participant = participants.clone();
     new_participant.push(Participant::from(31u32));
@@ -106,13 +90,17 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
     let public_key = key_packages[0].1.public_key.clone();
 
     // Presign
-    let mut presign_result =
-        run_presign(key_packages, max_malicious);
+    let mut presign_result = run_presign(key_packages, max_malicious);
     presign_result.sort_by_key(|(p, _)| *p);
 
     let msg = b"hello world";
 
-    run_sign(presign_result, public_key.to_element().to_affine(), msg, sign_box);
+    run_sign(
+        presign_result,
+        public_key.to_element().to_affine(),
+        msg,
+        sign_box,
+    );
     Ok(())
 }
 
@@ -126,7 +114,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
         Participant::from(4u32),
     ];
     let max_malicious = 2;
-    let threshold = max_malicious+1;
+    let threshold = max_malicious + 1;
     let result0 = run_keygen(&participants, threshold)?;
     assert_public_key_invariant(&result0)?;
 
@@ -134,7 +122,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
 
     // Run heavy reshare
     let max_malicious = 1;
-    let new_threshold = max_malicious+1;
+    let new_threshold = max_malicious + 1;
     let mut new_participant = participants.clone();
     new_participant.pop();
     let mut key_packages = run_reshare(
@@ -151,16 +139,19 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     let public_key = key_packages[0].1.public_key.clone();
 
     // Presign
-    let mut presign_result =
-        run_presign(key_packages, max_malicious);
+    let mut presign_result = run_presign(key_packages, max_malicious);
     presign_result.sort_by_key(|(p, _)| *p);
 
     let msg = b"hello world";
 
-    run_sign(presign_result, public_key.to_element().to_affine(), msg, sign_box);
+    run_sign(
+        presign_result,
+        public_key.to_element().to_affine(),
+        msg,
+        sign_box,
+    );
     Ok(())
 }
-
 
 #[test]
 fn test_e2e() -> Result<(), Box<dyn Error>> {
@@ -176,7 +167,7 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
     ];
     let max_malicious = 3;
 
-    let mut keygen_result = run_keygen(&participants.clone(), max_malicious+1)?;
+    let mut keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;
     keygen_result.sort_by_key(|(p, _)| *p);
 
     let public_key = keygen_result[0].1.public_key.clone();
@@ -188,7 +179,12 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
 
     let msg = b"hello world";
 
-    run_sign(presign_result, public_key.to_element().to_affine(), msg, sign_box);
+    run_sign(
+        presign_result,
+        public_key.to_element().to_affine(),
+        msg,
+        sign_box,
+    );
     Ok(())
 }
 
@@ -201,7 +197,7 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     participants.sort();
     let max_malicious = 3;
 
-    let mut keygen_result = run_keygen(&participants.clone(), max_malicious+1)?;
+    let mut keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;
     keygen_result.sort_by_key(|(p, _)| *p);
 
     let public_key = keygen_result[0].1.public_key.clone();
@@ -213,6 +209,11 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
 
     let msg = b"hello world";
 
-    run_sign(presign_result, public_key.to_element().to_affine(), msg, sign_box);
+    run_sign(
+        presign_result,
+        public_key.to_element().to_affine(),
+        msg,
+        sign_box,
+    );
     Ok(())
 }

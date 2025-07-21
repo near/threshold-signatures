@@ -1,12 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    ecdsa::{
-        Scalar,
-        AffinePoint,
-        KeygenOutput,
-    },
-};
+use crate::ecdsa::{AffinePoint, KeygenOutput, Scalar};
 
 /// The arguments needed to create a presignature.
 #[derive(Debug, Clone)]

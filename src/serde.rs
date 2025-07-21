@@ -3,8 +3,6 @@ use std::io::Write;
 use serde::{de::DeserializeOwned, Serialize};
 // use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize, Serializer};
 
-
-
 /// Encode an arbitrary serializable value into a writer.
 pub fn encode_writer<T: Serialize, W: Write>(w: &mut W, val: &T) {
     rmp_serde::encode::write(w, val).expect("failed to encode value");

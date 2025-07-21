@@ -1,11 +1,6 @@
-
+use crate::ecdsa::{AffinePoint, KeygenOutput, Scalar};
 use serde::{Deserialize, Serialize};
 use triples::{TriplePub, TripleShare};
-use crate::ecdsa::{
-    KeygenOutput,
-    AffinePoint,
-    Scalar,
-};
 
 /// The output of the presigning protocol.
 ///
@@ -35,10 +30,9 @@ pub struct PresignArguments {
     pub threshold: usize,
 }
 
-
-pub mod triples;
 pub mod presign;
 pub mod sign;
+pub mod triples;
 
 #[cfg(test)]
 mod test;

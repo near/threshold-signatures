@@ -1,17 +1,17 @@
 use crate::{
-    crypto::hash::{HashOutput, hash},
+    crypto::hash::{hash, HashOutput},
+    ecdsa::Scalar,
     participants::ParticipantList,
     protocol::{
         internal::{Comms, PrivateChannel},
-        Participant, ProtocolError
+        Participant, ProtocolError,
     },
-    ecdsa::Scalar,
 };
 use std::sync::Arc;
 
 use super::{
     batch_random_ot::{batch_random_ot_receiver, batch_random_ot_sender},
-    constants::{SECURITY_PARAMETER, BITS},
+    constants::{BITS, SECURITY_PARAMETER},
     mta::{mta_receiver, mta_sender},
     random_ot_extension::{
         random_ot_extension_receiver, random_ot_extension_sender, RandomOtExtensionParams,

@@ -3,16 +3,10 @@ use subtle::ConditionallySelectable;
 
 use super::PresignOutput;
 use crate::{
-    ecdsa::{
-        FullSignature,
-        Scalar,
-        AffinePoint,
-        x_coordinate,
-        Secp256K1Sha256,
-    },
+    ecdsa::{x_coordinate, AffinePoint, FullSignature, Scalar, Secp256K1Sha256},
     participants::{ParticipantCounter, ParticipantList},
     protocol::{
-        internal::{Comms, make_protocol, SharedChannel},
+        internal::{make_protocol, Comms, SharedChannel},
         InitializationError, Participant, Protocol, ProtocolError,
     },
 };
@@ -93,8 +87,10 @@ pub fn sign(
         InitializationError::BadParameters("participant list cannot contain duplicates".to_string())
     })?;
 
-    if !participants.contains(me){
-        return Err(InitializationError::BadParameters("participant list does not contain me".to_string()))
+    if !participants.contains(me) {
+        return Err(InitializationError::BadParameters(
+            "participant list does not contain me".to_string(),
+        ));
     };
 
     let ctx = Comms::new();
@@ -111,26 +107,16 @@ pub fn sign(
 
 #[cfg(test)]
 mod test {
-    use std::error::Error;
-    use ecdsa::Signature;
-    use k256::{
-        ecdsa::signature::Verifier,
-        ecdsa::VerifyingKey,
-        ProjectivePoint,
-        PublicKey,
-    };
-    use rand_core::OsRng;
-    use super::{
-        PresignOutput,
-        FullSignature,
-        sign,
-        x_coordinate,
-    };
-    use crate::{
-        protocol::{run_protocol, Participant,Protocol},
-        ecdsa::Polynomial,
-    };
+    use super::{sign, x_coordinate, FullSignature, PresignOutput};
     use crate::crypto::hash::scalar_hash;
+    use crate::{
+        ecdsa::Polynomial,
+        protocol::{run_protocol, Participant, Protocol},
+    };
+    use ecdsa::Signature;
+    use k256::{ecdsa::signature::Verifier, ecdsa::VerifyingKey, ProjectivePoint, PublicKey};
+    use rand_core::OsRng;
+    use std::error::Error;
 
     #[test]
     fn test_sign() -> Result<(), Box<dyn Error>> {
@@ -139,18 +125,18 @@ mod test {
 
         // Run 4 times for flakiness reasons
         for _ in 0..4 {
-            let f = Polynomial::generate_polynomial(None, threshold-1, &mut OsRng);
+            let f = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng);
             let x = f.eval_on_zero().0;
             let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
 
-            let g = Polynomial::generate_polynomial(None, threshold-1, &mut OsRng);
+            let g = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng);
 
             let k = g.eval_on_zero().0;
             let big_k = (ProjectivePoint::GENERATOR * k.invert().unwrap()).to_affine();
 
             let sigma = k * x;
 
-            let h = Polynomial::generate_polynomial(Some(sigma), threshold-1,&mut OsRng);
+            let h = Polynomial::generate_polynomial(Some(sigma), threshold - 1, &mut OsRng);
 
             let participants = vec![Participant::from(0u32), Participant::from(1u32)];
             #[allow(clippy::type_complexity)]
@@ -176,8 +162,7 @@ mod test {
 
             let result = run_protocol(protocols)?;
             let sig = result[0].1.clone();
-            let sig =
-                Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
+            let sig = Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
             VerifyingKey::from(&PublicKey::from_affine(public_key).unwrap())
                 .verify(&msg[..], &sig)?;
         }

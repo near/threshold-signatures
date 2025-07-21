@@ -64,25 +64,24 @@ impl fmt::Display for ProtocolError {
                 f,
                 "the given bytes are not mappable to a scalar without modular reduction."
             ),
-            ProtocolError::IdentityElement => write!(
-                f,
-                "encoutered the identity element (identity point)."
-            ),
+            ProtocolError::IdentityElement => {
+                write!(f, "encoutered the identity element (identity point).")
+            }
             ProtocolError::InvalidCommitmentHash => {
                 write!(
                     f,
                     "the sent commitment_hash does not equals the hash of the commitment"
                 )
-            },
+            }
             ProtocolError::InvalidInterpolationArguments => {
                 write!(
                     f,
                     "the provided elements are invalid for polynomial interpolation"
                 )
-            },
+            }
             ProtocolError::IncorrectNumberOfCommitments => {
                 write!(f, "incorrect number of commitments")
-            },
+            }
             ProtocolError::InvalidProofOfKnowledge(p) => write!(
                 f,
                 "the proof of knowledge of participant {p:?} is not valid."

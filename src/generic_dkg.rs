@@ -60,8 +60,8 @@ fn generate_coefficient_commitment<C: Ciphersuite>(
     let mut secret_coefficients = secret_coefficients.get_coefficients();
     // we skip the zero share as neither zero scalar
     // nor identity group element are serializable
-    if secret_coefficients.first() == Some(&<C::Group as Group>::Field::zero()){
-            secret_coefficients.remove(0);
+    if secret_coefficients.first() == Some(&<C::Group as Group>::Field::zero()) {
+        secret_coefficients.remove(0);
     };
     Polynomial::new(secret_coefficients).commit_polynomial()
 }
@@ -377,7 +377,8 @@ async fn do_keyshare<C: Ciphersuite>(
     let session_id = domain_separate_hash(domain_separator, &session_ids);
     domain_separator += 1;
     // the degree of the polynomial is threshold - 1
-    let secret_coefficients = Polynomial::<C>::generate_polynomial(Some(secret), threshold-1, &mut rng);
+    let secret_coefficients =
+        Polynomial::<C>::generate_polynomial(Some(secret), threshold - 1, &mut rng);
 
     // Compute the multiplication of every coefficient of p with the generator G
     let coefficient_commitment = generate_coefficient_commitment::<C>(&secret_coefficients);
@@ -395,7 +396,8 @@ async fn do_keyshare<C: Ciphersuite>(
     domain_separator += 1;
 
     // Create the public polynomial = secret coefficients times G
-    let commitment = VerifiableSecretSharingCommitment::new(coefficient_commitment.get_coefficients());
+    let commitment =
+        VerifiableSecretSharingCommitment::new(coefficient_commitment.get_coefficients());
 
     // hash commitment and send it
     let commit_domain_separator = domain_separator;
@@ -456,14 +458,12 @@ async fn do_keyshare<C: Ciphersuite>(
             &all_hash_commitments,
         )?;
 
-
         // in case the participant was new and it sent a polynomial of length
         // threshold -1 (because the zero term is not serializable)
         let full_commitment_i = insert_identity_if_missing(threshold, commitment_i);
 
         // add received full commitment
         all_full_commitments.put(p, full_commitment_i);
-
     }
 
     // Verify vk asap
@@ -489,7 +489,6 @@ async fn do_keyshare<C: Ciphersuite>(
         chan.send_private(wait_round_3, p, &signing_share_to_p);
     }
 
-
     // Start Round 4
     // compute my secret evaluation of my private polynomial
     let mut my_signing_share = secret_coefficients.eval_on_participant(me).0;
@@ -513,7 +512,6 @@ async fn do_keyshare<C: Ciphersuite>(
         // At the end of this loop, I will be owning a valid secret signing share
         my_signing_share = my_signing_share + signing_share_from.to_scalar();
     }
-
 
     broadcast_success(&mut chan, &participants, &me, session_id).await?;
 

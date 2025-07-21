@@ -1,22 +1,19 @@
-use rand_core::CryptoRngCore;
 use frost_core::{
-    Scalar,
-    Group, Field,
-    keys::CoefficientCommitment,
-    serialization::SerializableScalar,
+    keys::CoefficientCommitment, serialization::SerializableScalar, Field, Group, Scalar,
 };
+use rand_core::CryptoRngCore;
 
 use super::ciphersuite::Ciphersuite;
 use crate::{
-    protocol::{Participant, ProtocolError},
     participants::ParticipantMap,
+    protocol::{Participant, ProtocolError},
 };
 
 use std::ops::Add;
 
-pub struct Polynomial<C:Ciphersuite>(Vec<Scalar<C>>);
+pub struct Polynomial<C: Ciphersuite>(Vec<Scalar<C>>);
 
-impl <C: Ciphersuite> Polynomial<C>{
+impl<C: Ciphersuite> Polynomial<C> {
     /// Constructs the polynomial out of scalars
     /// The first scalar (coefficients[0]) is the constant term
     pub fn new(coefficients: Vec<Scalar<C>>) -> Self {
@@ -28,7 +25,7 @@ impl <C: Ciphersuite> Polynomial<C>{
     }
 
     /// Outputs the degree of the polynomial
-    pub fn degree(&self) -> usize{
+    pub fn degree(&self) -> usize {
         let mut degree = self.0.len();
         // loop as long as the higher terms are zero
         while degree > 0 && self.0[degree - 1] == <C::Group as Group>::Field::zero() {
@@ -49,7 +46,7 @@ impl <C: Ciphersuite> Polynomial<C>{
         degree: usize,
         rng: &mut impl CryptoRngCore,
     ) -> Self {
-        let poly_size = degree+1;
+        let poly_size = degree + 1;
         let mut coefficients = Vec::with_capacity(poly_size);
         // insert the secret share if exists
         let secret = secret.unwrap_or_else(|| <C::Group as Group>::Field::random(rng));
@@ -71,11 +68,8 @@ impl <C: Ciphersuite> Polynomial<C>{
     /// at the point using Horner's method.
     /// Implements [`polynomial_evaluate`] from the spec:
     /// https://datatracker.ietf.org/doc/html/rfc9591#name-additional-polynomial-opera
-    pub fn eval_on_point(
-        &self,
-        point: Scalar<C>,
-    ) -> SerializableScalar<C> {
-        if point == <C::Group as Group>::Field::zero(){
+    pub fn eval_on_point(&self, point: Scalar<C>) -> SerializableScalar<C> {
+        if point == <C::Group as Group>::Field::zero() {
             self.eval_on_zero()
         } else {
             let mut value = <<C::Group as Group>::Field>::zero();
@@ -84,7 +78,8 @@ impl <C: Ciphersuite> Polynomial<C>{
                 value = value * point;
             }
             value = value
-                + *self.0
+                + *self
+                    .0
                     .first()
                     .expect("coefficients must have at least one element");
             SerializableScalar(value)
@@ -92,10 +87,7 @@ impl <C: Ciphersuite> Polynomial<C>{
     }
 
     /// Evaluates a polynomial on the identifier of a participant
-    pub fn eval_on_participant(
-        &self,
-        participant: Participant,
-    ) -> SerializableScalar<C> {
+    pub fn eval_on_participant(&self, participant: Participant) -> SerializableScalar<C> {
         let id = participant.scalar::<C>();
         self.eval_on_point(id)
     }
@@ -111,7 +103,7 @@ impl <C: Ciphersuite> Polynomial<C>{
             let eval = poly.eval_on_participant(participant);
             result_vec.push(eval);
         }
-        match result_vec.try_into(){
+        match result_vec.try_into() {
             Ok(arr) => arr,
             Err(_) => panic!("Internal error: Vec did not match expected array size"),
         }
@@ -122,21 +114,21 @@ impl <C: Ciphersuite> Polynomial<C>{
     pub fn eval_interpolation(
         signingshares_map: &ParticipantMap<'_, SerializableScalar<C>>,
         point: Option<&Scalar<C>>,
-    )-> Result<SerializableScalar<C>, ProtocolError>{
+    ) -> Result<SerializableScalar<C>, ProtocolError> {
         let mut interpolation = <<C::Group as Group>::Field>::zero();
-        let identifiers: Vec<Scalar<C>> =  signingshares_map
-                        .participants()
-                        .iter()
-                        .map(|p| p.scalar::<C>())
-                        .collect();
-        let shares = signingshares_map.into_refs_or_none()
-                .ok_or(ProtocolError::InvalidInterpolationArguments)?;
+        let identifiers: Vec<Scalar<C>> = signingshares_map
+            .participants()
+            .iter()
+            .map(|p| p.scalar::<C>())
+            .collect();
+        let shares = signingshares_map
+            .into_refs_or_none()
+            .ok_or(ProtocolError::InvalidInterpolationArguments)?;
 
         // Compute the Lagrange coefficients
         for (id, share) in identifiers.iter().zip(shares) {
             // would raise error if not enough shares or identifiers
-            let lagrange_coefficient =
-                compute_lagrange_coefficient::<C>(&identifiers, id, point)?;
+            let lagrange_coefficient = compute_lagrange_coefficient::<C>(&identifiers, id, point)?;
 
             // Compute y = f(point) via polynomial interpolation of these points of f
             interpolation = interpolation + (lagrange_coefficient.0 * share.0);
@@ -147,13 +139,13 @@ impl <C: Ciphersuite> Polynomial<C>{
 
     /// Commits to a polynomial returning a sequence of group coefficients
     /// Creates a commitment vector of coefficients * G
-    pub fn commit_polynomial(
-        &self,
-    ) -> PolynomialCommitment<C> {
+    pub fn commit_polynomial(&self) -> PolynomialCommitment<C> {
         // Computes the multiplication of every coefficient of p with the generator G
-        let coef_commitment = self.0.iter().map(
-            |c| CoefficientCommitment::new(<C::Group as Group>::generator() * *c)
-        ).collect();
+        let coef_commitment = self
+            .0
+            .iter()
+            .map(|c| CoefficientCommitment::new(<C::Group as Group>::generator() * *c))
+            .collect();
         PolynomialCommitment::new(coef_commitment)
     }
 
@@ -169,24 +161,21 @@ impl <C: Ciphersuite> Polynomial<C>{
     /// Extends the Polynomial with an extra value as a constant
     /// Used usually after sending a smaller polynomial to prevent serialization from
     /// failing if the constant term is the identity
-    pub fn extend_with_zero(&self) -> Self{
+    pub fn extend_with_zero(&self) -> Self {
         let mut coeffcommitment = vec![<C::Group as Group>::Field::zero()];
         coeffcommitment.extend(self.get_coefficients());
         Polynomial::new(coeffcommitment)
     }
-
 }
-
-
 
 /******************* Polynomial Commitment *******************/
 /// Contains the commited coefficients of a polynomial i.e. coeff * G
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[serde(bound = "C: Ciphersuite")]
-pub struct PolynomialCommitment<C:Ciphersuite>(Vec<CoefficientCommitment<C>>);
+pub struct PolynomialCommitment<C: Ciphersuite>(Vec<CoefficientCommitment<C>>);
 
-impl <C: Ciphersuite> PolynomialCommitment<C>{
-    pub fn new(coefcommitments: Vec<CoefficientCommitment<C>>)-> Self{
+impl<C: Ciphersuite> PolynomialCommitment<C> {
+    pub fn new(coefcommitments: Vec<CoefficientCommitment<C>>) -> Self {
         PolynomialCommitment(coefcommitments)
     }
 
@@ -196,7 +185,7 @@ impl <C: Ciphersuite> PolynomialCommitment<C>{
     }
 
     /// Outputs the degree of the commited polynomial
-    pub fn degree(&self) -> usize{
+    pub fn degree(&self) -> usize {
         let mut degree = self.0.len();
         // loop as long as the higher terms are zero
         while degree > 0 && self.0[degree - 1].value() == <C::Group as Group>::identity() {
@@ -211,10 +200,9 @@ impl <C: Ciphersuite> PolynomialCommitment<C>{
 
     /// Evaluates the commited polynomial on zero
     /// In other words, outputs the constant term
-    pub fn eval_on_zero(&self) -> CoefficientCommitment<C>{
+    pub fn eval_on_zero(&self) -> CoefficientCommitment<C> {
         self.0[0]
     }
-
 
     /// Evaluates the commited polynomial at a specific value
     pub fn eval_on_point(&self, point: Scalar<C>) -> CoefficientCommitment<C> {
@@ -237,17 +225,16 @@ impl <C: Ciphersuite> PolynomialCommitment<C>{
         identifiers: &Vec<Scalar<C>>,
         shares: &Vec<CoefficientCommitment<C>>,
         point: Option<&Scalar<C>>,
-    ) -> Result<CoefficientCommitment<C>, ProtocolError>{
+    ) -> Result<CoefficientCommitment<C>, ProtocolError> {
         let mut interpolation = <C::Group as Group>::identity();
-        if identifiers.len() != shares.len(){
-            return Err(ProtocolError::InvalidInterpolationArguments)
+        if identifiers.len() != shares.len() {
+            return Err(ProtocolError::InvalidInterpolationArguments);
         };
 
         // Compute the Lagrange coefficients
         for (id, share) in identifiers.iter().zip(shares) {
             // would raise error if not enough shares or identifiers
-            let lagrange_coefficient =
-                compute_lagrange_coefficient::<C>(&identifiers, id, point)?;
+            let lagrange_coefficient = compute_lagrange_coefficient::<C>(&identifiers, id, point)?;
 
             // Compute y = g^f(point) via polynomial interpolation of these points of f
             interpolation = interpolation + (share.value() * lagrange_coefficient.0);
@@ -259,12 +246,11 @@ impl <C: Ciphersuite> PolynomialCommitment<C>{
     /// Extends the Commited Polynomial with an extra value as a constant
     /// Used usually after sending a smaller polynomial to prevent serialization from
     /// failing if the constant term is the identity
-    pub fn extend_with_identity(&self) -> Self{
+    pub fn extend_with_identity(&self) -> Self {
         let mut coeffcommitment = vec![CoefficientCommitment::<C>::new(C::Group::identity())];
         coeffcommitment.extend(self.get_coefficients());
         PolynomialCommitment::new(coeffcommitment)
     }
-
 
     /// Set the constant value of this polynomial to a new scalar
     pub fn set_constant(&mut self, v: CoefficientCommitment<C>) {
@@ -274,7 +260,6 @@ impl <C: Ciphersuite> PolynomialCommitment<C>{
             self.0[0] = v
         }
     }
-
 }
 
 impl<C: Ciphersuite> Add for &PolynomialCommitment<C> {
@@ -303,15 +288,14 @@ pub fn compute_lagrange_coefficient<C: Ciphersuite>(
     let mut num = <<C::Group as Group>::Field>::one();
     let mut den = <<C::Group as Group>::Field>::one();
 
-    if points_set.len() <= 1  || !points_set.contains(i){
+    if points_set.len() <= 1 || !points_set.contains(i) {
         // returns error if there is not enough points to interpolate
         // or if i is not in the set of points
-        return Err(ProtocolError::InvalidInterpolationArguments)
+        return Err(ProtocolError::InvalidInterpolationArguments);
     }
     if let Some(x) = x {
         for j in points_set.iter() {
             if *i == *j {
-
                 continue;
             }
             num = num * (*x - *j);
@@ -330,6 +314,6 @@ pub fn compute_lagrange_coefficient<C: Ciphersuite>(
 
     // raises error if the denominator is null, i.e., the set contains duplicates
     let den = <<C::Group as Group>::Field>::invert(&den)
-            .map_err(|_| ProtocolError::InvalidInterpolationArguments)?;
+        .map_err(|_| ProtocolError::InvalidInterpolationArguments)?;
     Ok(SerializableScalar(num * den))
 }

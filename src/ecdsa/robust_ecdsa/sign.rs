@@ -3,24 +3,15 @@ use elliptic_curve::scalar::IsHigh;
 use frost_core::serialization::SerializableScalar;
 use subtle::ConditionallySelectable;
 
+use super::PresignOutput;
 use crate::{
+    ecdsa::{AffinePoint, FullSignature, Polynomial, Scalar, Secp256K1Sha256},
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     protocol::{
         internal::{make_protocol, Comms, SharedChannel},
-        Participant,
-        ProtocolError,
-        InitializationError,
-        Protocol
-    },
-    ecdsa::{
-        FullSignature,
-        Scalar,
-        AffinePoint,
-        Secp256K1Sha256,
-        Polynomial,
+        InitializationError, Participant, Protocol, ProtocolError,
     },
 };
-use super::PresignOutput;
 type C = Secp256K1Sha256;
 
 async fn do_sign(
@@ -56,10 +47,7 @@ async fn do_sign(
     // Normalize s
     s.conditional_assign(&(-s), s.is_high());
 
-    let sig = FullSignature {
-        big_r,
-        s,
-    };
+    let sig = FullSignature { big_r, s };
 
     if !sig.verify(&public_key, &msg_hash) {
         return Err(ProtocolError::AssertionFailed(
@@ -77,7 +65,6 @@ pub fn sign(
     presignature: PresignOutput,
     msg_hash: Scalar,
 ) -> Result<impl Protocol<Output = FullSignature>, InitializationError> {
-
     if participants.len() < 2 {
         return Err(InitializationError::BadParameters(format!(
             "participant count cannot be < 2, found: {}",
@@ -89,8 +76,10 @@ pub fn sign(
         InitializationError::BadParameters("participant list cannot contain duplicates".to_string())
     })?;
 
-    if !participants.contains(me){
-        return Err(InitializationError::BadParameters("participant list does not contain me".to_string()))
+    if !participants.contains(me) {
+        return Err(InitializationError::BadParameters(
+            "participant list does not contain me".to_string(),
+        ));
     };
 
     let ctx = Comms::new();
@@ -105,29 +94,18 @@ pub fn sign(
     Ok(make_protocol(ctx, fut))
 }
 
-
 #[cfg(test)]
 mod test {
     use std::error::Error;
 
     use ecdsa::Signature;
-    use k256::{
-        ecdsa::signature::Verifier, ecdsa::VerifyingKey, PublicKey,
-    };
+    use k256::{ecdsa::signature::Verifier, ecdsa::VerifyingKey, PublicKey};
     use rand_core::OsRng;
 
-    use crate::ecdsa::{
-        ProjectivePoint,
-        Secp256K1ScalarField,
-        Field,
-        x_coordinate,
-    };
     use super::*;
+    use crate::ecdsa::{x_coordinate, Field, ProjectivePoint, Secp256K1ScalarField};
 
-    use crate::{
-        crypto::hash::{scalar_hash},
-        protocol::run_protocol,
-    };
+    use crate::{crypto::hash::scalar_hash, protocol::run_protocol};
 
     #[test]
     fn test_sign() -> Result<(), Box<dyn Error>> {
@@ -137,33 +115,40 @@ mod test {
 
         // Run 4 times to test randomness
         for _ in 0..4 {
-            let fx = Polynomial::generate_polynomial(None, threshold-1, &mut OsRng);
+            let fx = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng);
             // master secret key
             let x = fx.eval_on_zero().0;
             // master public key
             let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
 
-            let fa = Polynomial::generate_polynomial(None, threshold-1, &mut OsRng);
-            let fk = Polynomial::generate_polynomial(None, threshold-1, &mut OsRng);
+            let fa = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng);
+            let fk = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng);
 
-            let fd = Polynomial::generate_polynomial(Some(Secp256K1ScalarField::zero()), 2*max_malicious, &mut OsRng);
-            let fe = Polynomial::generate_polynomial(Some(Secp256K1ScalarField::zero()), 2*max_malicious, &mut OsRng);
+            let fd = Polynomial::generate_polynomial(
+                Some(Secp256K1ScalarField::zero()),
+                2 * max_malicious,
+                &mut OsRng,
+            );
+            let fe = Polynomial::generate_polynomial(
+                Some(Secp256K1ScalarField::zero()),
+                2 * max_malicious,
+                &mut OsRng,
+            );
 
             let k = fk.eval_on_zero().0;
             let big_r = ProjectivePoint::GENERATOR * k.clone();
             let big_r_x_coordinate = x_coordinate(&big_r.to_affine());
 
-
             let w = fa.eval_on_zero().0 * k;
             let w_invert = w.invert().unwrap();
 
             let participants = vec![
-                                    Participant::from(0u32),
-                                    Participant::from(1u32),
-                                    Participant::from(2u32),
-                                    Participant::from(3u32),
-                                    Participant::from(4u32),
-                                ];
+                Participant::from(0u32),
+                Participant::from(1u32),
+                Participant::from(2u32),
+                Participant::from(3u32),
+                Participant::from(4u32),
+            ];
 
             #[allow(clippy::type_complexity)]
             let mut protocols: Vec<(
@@ -171,18 +156,15 @@ mod test {
                 Box<dyn Protocol<Output = FullSignature>>,
             )> = Vec::with_capacity(participants.len());
             for p in &participants {
-                let h_i = w_invert
-                        * fa.eval_on_participant(*p).0;
-                let alpha_i = h_i
-                        + fd.eval_on_participant(*p).0;
-                let beta_i = h_i * big_r_x_coordinate
-                        * fx.eval_on_participant(*p).0
-                        + fe.eval_on_participant(*p).0;
+                let h_i = w_invert * fa.eval_on_participant(*p).0;
+                let alpha_i = h_i + fd.eval_on_participant(*p).0;
+                let beta_i = h_i * big_r_x_coordinate * fx.eval_on_participant(*p).0
+                    + fe.eval_on_participant(*p).0;
 
                 let presignature = PresignOutput {
                     big_r: big_r.to_affine(),
                     alpha_i,
-                    beta_i
+                    beta_i,
                 };
 
                 let protocol = sign(
@@ -197,8 +179,7 @@ mod test {
 
             let result = run_protocol(protocols)?;
             let sig = result[0].1.clone();
-            let sig =
-                Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
+            let sig = Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
             VerifyingKey::from(&PublicKey::from_affine(public_key).unwrap())
                 .verify(&msg[..], &sig)?;
         }

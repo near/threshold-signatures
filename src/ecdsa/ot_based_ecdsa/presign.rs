@@ -1,16 +1,10 @@
-
-use crate::ecdsa::{
-    Scalar,
-    ProjectivePoint,
-    Secp256K1Sha256,
-};
-use crate::protocol::{
-    Participant,
-    InitializationError, Protocol, ProtocolError,
-    internal::{make_protocol, Comms, SharedChannel}
-};
-use crate::participants::{ParticipantList, ParticipantCounter};
 use super::{PresignArguments, PresignOutput};
+use crate::ecdsa::{ProjectivePoint, Scalar, Secp256K1Sha256};
+use crate::participants::{ParticipantCounter, ParticipantList};
+use crate::protocol::{
+    internal::{make_protocol, Comms, SharedChannel},
+    InitializationError, Participant, Protocol, ProtocolError,
+};
 
 async fn do_presign(
     mut chan: SharedChannel,
@@ -90,8 +84,7 @@ async fn do_presign(
     seen.clear();
     seen.put(me);
     while !seen.full() {
-        let (from, (ka_j, xb_j)): (_, (Scalar, Scalar)) =
-            chan.recv(wait1).await?;
+        let (from, (ka_j, xb_j)): (_, (Scalar, Scalar)) = chan.recv(wait1).await?;
         if !seen.put(from) {
             continue;
         }
@@ -173,8 +166,10 @@ pub fn presign(
         )
     })?;
 
-    if !participants.contains(me){
-        return Err(InitializationError::BadParameters("participant list does not contain me".to_string()))
+    if !participants.contains(me) {
+        return Err(InitializationError::BadParameters(
+            "participant list does not contain me".to_string(),
+        ));
     };
 
     let ctx = Comms::new();
@@ -194,20 +189,17 @@ mod test {
     use super::*;
     use crate::{
         ecdsa::{
-            ot_based_ecdsa::triples::test::deal,
-            ProjectivePoint,
+            ot_based_ecdsa::triples::test::deal, KeygenOutput, Polynomial, ProjectivePoint,
             Secp256K1Sha256,
-            KeygenOutput,
-            Polynomial,
         },
         protocol::run_protocol,
     };
-    use std::collections::BTreeMap;
-    use rand_core::OsRng;
     use frost_secp256k1::{
+        keys::{PublicKeyPackage, SigningShare},
         VerifyingKey,
-        keys::{SigningShare, PublicKeyPackage}
     };
+    use rand_core::OsRng;
+    use std::collections::BTreeMap;
 
     type C = Secp256K1Sha256;
     #[test]
@@ -219,7 +211,7 @@ mod test {
             Participant::from(3u32),
         ];
         let original_threshold = 2;
-        let f =  Polynomial::generate_polynomial(None, original_threshold-1, &mut OsRng);
+        let f = Polynomial::generate_polynomial(None, original_threshold - 1, &mut OsRng);
         let big_x = ProjectivePoint::GENERATOR * f.eval_on_zero().0;
 
         let threshold = 2;
@@ -230,10 +222,8 @@ mod test {
             deal(&mut OsRng, &participants, original_threshold).unwrap();
 
         #[allow(clippy::type_complexity)]
-        let mut protocols: Vec<(
-            Participant,
-            Box<dyn Protocol<Output = PresignOutput>>,
-        )> = Vec::with_capacity(participants.len());
+        let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)> =
+            Vec::with_capacity(participants.len());
 
         for ((p, triple0), triple1) in participants
             .iter()

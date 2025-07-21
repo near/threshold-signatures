@@ -1,12 +1,8 @@
+use frost_core::{serialization::SerializableScalar, Field, Group};
 use rand_core::{OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::slice::Iter;
 use subtle::{Choice, ConditionallySelectable};
-use frost_core::{
-    Group,
-    Field,
-    serialization::SerializableScalar,
-};
 
 use crate::protocol::internal::Comms;
 use crate::{
@@ -17,12 +13,7 @@ use crate::{
     },
 };
 
-use crate::{
-    ecdsa::{
-        Secp256K1Sha256,
-        Scalar,
-    },
-};
+use crate::ecdsa::{Scalar, Secp256K1Sha256};
 
 type C = Secp256K1Sha256;
 
@@ -77,16 +68,20 @@ pub async fn mta_sender(
     let size = v.len();
 
     // Step 1
-    let delta: Vec<_> = (0..size).map(|_|
-        <<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut OsRng))
+    let delta: Vec<_> = (0..size)
+        .map(|_| <<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut OsRng))
         .collect();
 
     // Step 2
     let c: MTAScalars = MTAScalars(
-        delta.iter()
+        delta
+            .iter()
             .zip(v.iter())
             .map(|(delta_i, (v0_i, v1_i))| {
-                (SerializableScalar(*v0_i + delta_i + a), SerializableScalar(*v1_i + delta_i - a))
+                (
+                    SerializableScalar(*v0_i + delta_i + a),
+                    SerializableScalar(*v1_i + delta_i - a),
+                )
             })
             .collect(),
     );
@@ -97,7 +92,7 @@ pub async fn mta_sender(
     let wait1 = chan.next_waitpoint();
     let (chi1, seed): (SerializableScalar<C>, [u8; 32]) = chan.recv(wait1).await?;
 
-    let mut alpha = delta[0] *chi1.0;
+    let mut alpha = delta[0] * chi1.0;
 
     let mut prng = TranscriptRng::new(&seed);
     for &delta_i in &delta[1..] {
@@ -132,8 +127,8 @@ pub async fn mta_receiver(
     let mut seed = [0u8; 32];
     OsRng.fill_bytes(&mut seed);
     let mut prng = TranscriptRng::new(&seed);
-    let chi: Vec<Scalar> = (1..size).map(|_|
-        <<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut prng))
+    let chi: Vec<Scalar> = (1..size)
+        .map(|_| <<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut prng))
         .collect();
 
     let mut chi1 = Scalar::ZERO;
@@ -171,10 +166,7 @@ fn run_mta(
     run_two_party_protocol(
         s,
         r,
-        &mut make_protocol(
-            ctx_s.clone(),
-            mta_sender(ctx_s.private_channel(s, r), v, a),
-        ),
+        &mut make_protocol(ctx_s.clone(), mta_sender(ctx_s.private_channel(s, r), v, a)),
         &mut make_protocol(
             ctx_r.clone(),
             mta_receiver(ctx_r.private_channel(r, s), tv, b),
@@ -184,10 +176,10 @@ fn run_mta(
 
 #[cfg(test)]
 mod test {
+    use super::*;
+    use crate::ecdsa::ot_based_ecdsa::triples::constants::{BITS, SECURITY_PARAMETER};
     use k256::Scalar;
     use rand_core::RngCore;
-    use crate::ecdsa::ot_based_ecdsa::triples::constants::{BITS, SECURITY_PARAMETER};
-    use super::*;
 
     #[test]
     fn test_mta() -> Result<(), ProtocolError> {

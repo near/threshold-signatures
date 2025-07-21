@@ -1,23 +1,19 @@
 //! This module serves as a wrapper for ECDSA scheme.
 use elliptic_curve::{
     bigint::{ArrayEncoding, U256, U512},
-    sec1::FromEncodedPoint,
-    PrimeField,
     ops::{Invert, Reduce},
     point::AffineCoordinates,
+    sec1::FromEncodedPoint,
+    PrimeField,
 };
 
 use rand_core::CryptoRngCore;
 
 use frost_secp256k1::{
-    keys::SigningShare,
-    Secp256K1Sha256,
-    Secp256K1ScalarField,
-    VerifyingKey,
-    Field,
+    keys::SigningShare, Field, Secp256K1ScalarField, Secp256K1Sha256, VerifyingKey,
 };
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use k256::{AffinePoint, ProjectivePoint};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat};
 
@@ -28,7 +24,7 @@ pub struct KeygenOutput {
 }
 
 pub type Scalar = <Secp256K1ScalarField as Field>::Scalar;
-pub type CoefficientCommitment = frost_core::keys::CoefficientCommitment::<Secp256K1Sha256>;
+pub type CoefficientCommitment = frost_core::keys::CoefficientCommitment<Secp256K1Sha256>;
 pub type Polynomial = crate::crypto::polynomials::Polynomial<Secp256K1Sha256>;
 pub type PolynomialCommitment = crate::crypto::polynomials::PolynomialCommitment<Secp256K1Sha256>;
 
@@ -81,7 +77,7 @@ impl ScalarSerializationFormat for Secp256K1Sha256 {
 }
 
 impl Ciphersuite for Secp256K1Sha256 {}
-impl PointScalarFunctions for Secp256K1Sha256{
+impl PointScalarFunctions for Secp256K1Sha256 {
     fn serialize_point<S: Serializer>(
         point: &AffinePoint,
         serializer: S,
@@ -111,9 +107,7 @@ impl PointScalarFunctions for Secp256K1Sha256{
             Ok(encoded) => encoded,
             Err(_) => return None,
         };
-        match Option::<AffinePoint>::from(AffinePoint::from_encoded_point(
-            &encoded_point,
-        )) {
+        match Option::<AffinePoint>::from(AffinePoint::from_encoded_point(&encoded_point)) {
             Some(point) => Some(ProjectivePoint::from(point)),
             None => None,
         }
@@ -135,14 +129,14 @@ pub(crate) fn x_coordinate(point: &AffinePoint) -> Scalar {
 ///
 /// This signature supports all variants by containing big_r entirely
 #[derive(Clone)]
-pub struct FullSignature{
+pub struct FullSignature {
     /// This is the entire first point.
     pub big_r: AffinePoint,
     /// This is the second scalar, normalized to be in the lower range.
     pub s: Scalar,
 }
 
-impl FullSignature{
+impl FullSignature {
     #[must_use]
     // This verification tests the signature including whether s has been normalized
     pub fn verify(&self, public_key: &AffinePoint, msg_hash: &Scalar) -> bool {
@@ -157,9 +151,8 @@ impl FullSignature{
     }
 }
 
-
 pub mod dkg_ecdsa;
-pub mod robust_ecdsa;
 pub mod ot_based_ecdsa;
+pub mod robust_ecdsa;
 #[cfg(test)]
 mod test;

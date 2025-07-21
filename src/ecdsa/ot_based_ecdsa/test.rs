@@ -1,31 +1,16 @@
-use std::error::Error;
-use rand_core::OsRng;
 use super::{
-    PresignOutput,
-    PresignArguments,
-    triples::{TriplePub, TripleShare, test::deal},
     presign::presign,
     sign::sign,
-};
-use crate::protocol::{
-    run_protocol,
-    Participant,
-    Protocol,
-    InitializationError,
+    triples::{test::deal, TriplePub, TripleShare},
+    PresignArguments, PresignOutput,
 };
 use crate::ecdsa::{
-    test::{
-        run_keygen,
-        run_reshare,
-        run_sign,
-        assert_public_key_invariant,
-    },
-    KeygenOutput,
-    FullSignature,
-    Scalar,
-    AffinePoint,
+    test::{assert_public_key_invariant, run_keygen, run_reshare, run_sign},
+    AffinePoint, FullSignature, KeygenOutput, Scalar,
 };
-
+use crate::protocol::{run_protocol, InitializationError, Participant, Protocol};
+use rand_core::OsRng;
+use std::error::Error;
 
 fn sign_box(
     participants: &[Participant],
@@ -33,7 +18,7 @@ fn sign_box(
     public_key: AffinePoint,
     presignature: PresignOutput,
     msg_hash: Scalar,
-) -> Result<Box<dyn Protocol<Output = FullSignature>>, InitializationError>{
+) -> Result<Box<dyn Protocol<Output = FullSignature>>, InitializationError> {
     sign(participants, me, public_key, presignature, msg_hash)
         .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = FullSignature>>)
 }
@@ -50,10 +35,8 @@ pub fn run_presign(
     assert!(participants.len() == shares1.len());
 
     #[allow(clippy::type_complexity)]
-    let mut protocols: Vec<(
-        Participant,
-        Box<dyn Protocol<Output = PresignOutput>>,
-    )> = Vec::with_capacity(participants.len());
+    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)> =
+        Vec::with_capacity(participants.len());
 
     let participant_list: Vec<Participant> = participants.iter().map(|(p, _)| *p).collect();
 
@@ -81,7 +64,6 @@ pub fn run_presign(
 
     run_protocol(protocols).unwrap()
 }
-
 
 #[test]
 fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
@@ -127,7 +109,12 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
 
     let msg = b"hello world";
 
-    run_sign(presign_result, public_key.to_element().to_affine(), msg, sign_box);
+    run_sign(
+        presign_result,
+        public_key.to_element().to_affine(),
+        msg,
+        sign_box,
+    );
     Ok(())
 }
 
@@ -173,7 +160,12 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
 
     let msg = b"hello world";
 
-    run_sign(presign_result, public_key.to_element().to_affine(), msg, sign_box);
+    run_sign(
+        presign_result,
+        public_key.to_element().to_affine(),
+        msg,
+        sign_box,
+    );
     Ok(())
 }
 
@@ -201,7 +193,12 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
 
     let msg = b"hello world";
 
-    run_sign(presign_result, public_key.to_element().to_affine(), msg, sign_box);
+    run_sign(
+        presign_result,
+        public_key.to_element().to_affine(),
+        msg,
+        sign_box,
+    );
     Ok(())
 }
 
@@ -229,6 +226,11 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
 
     let msg = b"hello world";
 
-    run_sign(presign_result, public_key.to_element().to_affine(), msg, sign_box);
+    run_sign(
+        presign_result,
+        public_key.to_element().to_affine(),
+        msg,
+        sign_box,
+    );
     Ok(())
 }

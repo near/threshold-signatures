@@ -1,6 +1,6 @@
-pub mod commit;
 pub mod ciphersuite;
+pub mod commit;
 pub mod hash;
 pub mod polynomials;
-pub mod random;
 pub mod proofs;
+pub mod random;

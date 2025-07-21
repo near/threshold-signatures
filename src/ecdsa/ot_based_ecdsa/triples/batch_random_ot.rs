@@ -4,20 +4,15 @@ use std::sync::Arc;
 use subtle::ConditionallySelectable;
 
 use crate::{
-    ecdsa::{
-        Field,
-        ProjectivePoint,
-        Secp256K1ScalarField,
-        CoefficientCommitment,
-    },
+    ecdsa::{CoefficientCommitment, Field, ProjectivePoint, Secp256K1ScalarField},
     protocol::{
         internal::{make_protocol, Comms, PrivateChannel},
         run_two_party_protocol, Participant, ProtocolError,
     },
 };
 
-use super::constants::SECURITY_PARAMETER;
 use super::bits::{BitMatrix, BitVector, SquareBitMatrix, SEC_PARAM_8};
+use super::constants::SECURITY_PARAMETER;
 
 const BATCH_RANDOM_OT_HASH: &[u8] = b"Near threshold signatures batch ROT";
 
@@ -30,9 +25,20 @@ fn hash(
     let mut hasher = Sha256::new();
     hasher.update(BATCH_RANDOM_OT_HASH);
     hasher.update(&(i as u64).to_le_bytes());
-    hasher.update(&big_x_i.serialize().map_err(|_| ProtocolError::PointSerialization)?);
-    hasher.update(&big_y.serialize().map_err(|_| ProtocolError::PointSerialization)?);
-    hasher.update(&p.serialize().map_err(|_| ProtocolError::PointSerialization)?);
+    hasher.update(
+        &big_x_i
+            .serialize()
+            .map_err(|_| ProtocolError::PointSerialization)?,
+    );
+    hasher.update(
+        &big_y
+            .serialize()
+            .map_err(|_| ProtocolError::PointSerialization)?,
+    );
+    hasher.update(
+        &p.serialize()
+            .map_err(|_| ProtocolError::PointSerialization)?,
+    );
 
     let bytes: [u8; 32] = hasher.finalize().into();
     // the hash output is 256 bits
@@ -66,8 +72,18 @@ pub async fn batch_random_ot_sender(
 
             let y_big_x_i = ser_big_x_i.value() * y;
 
-            let big_k0 = hash(i, &ser_big_x_i, &ser_big_y, &CoefficientCommitment::new(y_big_x_i))?;
-            let big_k1 = hash(i, &ser_big_x_i, &ser_big_y, &CoefficientCommitment::new(y_big_x_i - big_z))?;
+            let big_k0 = hash(
+                i,
+                &ser_big_x_i,
+                &ser_big_y,
+                &CoefficientCommitment::new(y_big_x_i),
+            )?;
+            let big_k1 = hash(
+                i,
+                &ser_big_x_i,
+                &ser_big_y,
+                &CoefficientCommitment::new(y_big_x_i - big_z),
+            )?;
 
             Ok::<_, ProtocolError>((big_k0, big_k1))
         }
@@ -122,8 +138,18 @@ pub async fn batch_random_ot_sender_many<const N: usize>(
                 let big_y_verkey = &big_y_verkey_v_arc.as_slice()[j];
                 let big_z = &big_z_v_arc.as_slice()[j];
                 let y_big_x_i = big_x_i_verkey_v[j].value() * *y;
-                let big_k0 = hash(i, &big_x_i_verkey_v[j], big_y_verkey, &CoefficientCommitment::new(y_big_x_i))?;
-                let big_k1 = hash(i, &big_x_i_verkey_v[j], big_y_verkey, &CoefficientCommitment::new(y_big_x_i - big_z))?;
+                let big_k0 = hash(
+                    i,
+                    &big_x_i_verkey_v[j],
+                    big_y_verkey,
+                    &CoefficientCommitment::new(y_big_x_i),
+                )?;
+                let big_k1 = hash(
+                    i,
+                    &big_x_i_verkey_v[j],
+                    big_y_verkey,
+                    &CoefficientCommitment::new(y_big_x_i - big_z),
+                )?;
                 ret.push((big_k0, big_k1));
             }
 
@@ -181,7 +207,12 @@ pub async fn batch_random_ot_receiver(
             chan.send(wait0, &big_x_i_verkey);
 
             // Step 5
-            hash(i, &big_x_i_verkey, &big_y_verkey, &CoefficientCommitment::new(big_y * x_i))
+            hash(
+                i,
+                &big_x_i_verkey,
+                &big_y_verkey,
+                &CoefficientCommitment::new(big_y * x_i),
+            )
         })
         .collect::<Result<Vec<_>, _>>()?;
     let big_k: BitMatrix = out.into_iter().collect();
@@ -259,7 +290,12 @@ pub async fn batch_random_ot_receiver_many<const N: usize>(
                 let big_y_verkey = big_y_verkey_v_arc[j];
                 let big_y = big_y_v_arc[j];
                 let x_i = x_i_v[j];
-                hashv.push(hash(i, &big_x_i_verkey, &big_y_verkey, &CoefficientCommitment::new(big_y * x_i))?);
+                hashv.push(hash(
+                    i,
+                    &big_x_i_verkey,
+                    &big_y_verkey,
+                    &CoefficientCommitment::new(big_y * x_i),
+                )?);
             }
             hashv
         };

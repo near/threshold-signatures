@@ -1,23 +1,10 @@
 use rand_core::CryptoRngCore;
 
-use crate::{
-    crypto::ciphersuite::{
-        Ciphersuite,
-        Element,
-    },
-};
+use crate::crypto::ciphersuite::{Ciphersuite, Element};
 
-use frost_core::{
-    Group,
-    Field,
-    serialization::SerializableScalar,
-};
+use frost_core::{serialization::SerializableScalar, Field, Group};
 
-use super::{
-    encode_two_points,
-    strobe_transcript::Transcript,
-};
-
+use super::{encode_two_points, strobe_transcript::Transcript};
 
 /// The label we use for hashing the statement.
 const STATEMENT_LABEL: &[u8] = b"dlogeq proof statement";
@@ -37,14 +24,14 @@ pub struct Statement<'a, C: Ciphersuite> {
     pub public1: &'a Element<C>,
 }
 
-fn element_into_or_panic<C: Ciphersuite>(point: &Element<C>, label: &[u8]) -> Vec<u8>{
-    let mut enc =  Vec::new();
-    match <C::Group as Group>::serialize(point){
+fn element_into_or_panic<C: Ciphersuite>(point: &Element<C>, label: &[u8]) -> Vec<u8> {
+    let mut enc = Vec::new();
+    match <C::Group as Group>::serialize(point) {
         Ok(ser) => {
             enc.extend_from_slice(label);
             enc.extend_from_slice(ser.as_ref().into());
-        },
-        _=> panic!("Expected non-identity element"),
+        }
+        _ => panic!("Expected non-identity element"),
     };
     enc
 }
@@ -56,8 +43,8 @@ impl<'a, C: Ciphersuite> Statement<'a, C> {
     }
 
     /// Encode into Vec<u8>: some sort of serialization
-    fn encode(&self) -> Vec<u8>{
-        let mut enc =  Vec::new();
+    fn encode(&self) -> Vec<u8> {
+        let mut enc = Vec::new();
         enc.extend_from_slice(b"statement:");
         // None of the following calls should panic as neither public and generator are identity
         let ser0 = element_into_or_panic::<C>(self.public0, b"public 0:");
@@ -103,7 +90,7 @@ pub fn prove<'a, C: Ciphersuite>(
 
     transcript.message(
         COMMITMENT_LABEL,
-        &encode_two_points::<C>(&big_k.0,&big_k.1),
+        &encode_two_points::<C>(&big_k.0, &big_k.1),
     );
     let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
     let e = <C::Group as Group>::Field::random(&mut rng);
@@ -130,10 +117,7 @@ pub fn verify<C: Ciphersuite>(
     let big_k0 = phi0 - *statement.public0 * proof.e.0;
     let big_k1 = phi1 - *statement.public1 * proof.e.0;
 
-    transcript.message(
-        COMMITMENT_LABEL,
-        &encode_two_points::<C>(&big_k0,&big_k1)
-    );
+    transcript.message(COMMITMENT_LABEL, &encode_two_points::<C>(&big_k0, &big_k1));
     let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
     let e = <C::Group as Group>::Field::random(&mut rng);
 
@@ -158,7 +142,9 @@ mod test {
             generator1: &big_h,
             public1: &(big_h * x),
         };
-        let witness = Witness { x: SerializableScalar::<Secp256K1Sha256>(x) };
+        let witness = Witness {
+            x: SerializableScalar::<Secp256K1Sha256>(x),
+        };
 
         let transcript = Transcript::new(b"protocol");
 

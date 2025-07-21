@@ -1,19 +1,13 @@
+use frost_secp256k1::VerifyingKey;
 use k256::{AffinePoint, Scalar};
 use std::error::Error;
-use frost_secp256k1::VerifyingKey;
 
 use crate::crypto::hash::scalar_hash;
 use crate::ecdsa::{
-    KeygenOutput,
-    FullSignature,
     dkg_ecdsa::{keygen, refresh, reshare},
+    FullSignature, KeygenOutput,
 };
-use crate::protocol::{
-    InitializationError,
-    Participant,
-    Protocol,
-    run_protocol,
-};
+use crate::protocol::{run_protocol, InitializationError, Participant, Protocol};
 
 /// runs distributed keygen
 pub(crate) fn run_keygen(
@@ -125,25 +119,23 @@ pub(crate) fn assert_public_key_invariant(
 }
 
 #[allow(clippy::type_complexity)]
-pub fn run_sign <PresignOutput, F>(
+pub fn run_sign<PresignOutput, F>(
     participants_outs: Vec<(Participant, PresignOutput)>,
     public_key: AffinePoint,
     msg: &[u8],
     sign_box: F,
 ) -> Vec<(Participant, FullSignature)>
 where
-F: Fn(
-    &[Participant],
-    Participant,
-    AffinePoint,
-    PresignOutput,
-    Scalar,
-) -> Result<Box<dyn Protocol<Output = FullSignature>>, InitializationError>
-{
-    let mut protocols: Vec<(
+    F: Fn(
+        &[Participant],
         Participant,
-        Box<dyn Protocol<Output = FullSignature>>,
-    )> = Vec::with_capacity(participants_outs.len());
+        AffinePoint,
+        PresignOutput,
+        Scalar,
+    ) -> Result<Box<dyn Protocol<Output = FullSignature>>, InitializationError>,
+{
+    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = FullSignature>>)> =
+        Vec::with_capacity(participants_outs.len());
 
     let participant_list: Vec<Participant> = participants_outs.iter().map(|(p, _)| *p).collect();
     let participant_list = participant_list.as_slice();

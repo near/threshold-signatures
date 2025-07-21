@@ -1,17 +1,12 @@
 use rand_core::CryptoRngCore;
 
+use super::{TriplePub, TripleShare};
 #[cfg(test)]
 use crate::protocol::ProtocolError;
 use crate::{
-    ecdsa::{
-        ProjectivePoint,
-        Secp256K1ScalarField,
-        Field,
-        Polynomial,
-    },
+    ecdsa::{Field, Polynomial, ProjectivePoint, Secp256K1ScalarField},
     protocol::Participant,
 };
-use super::{TriplePub, TripleShare};
 
 /// Create a new triple from scratch.
 ///
@@ -28,9 +23,9 @@ pub fn deal(
     let b = Secp256K1ScalarField::random(&mut *rng);
     let c = a * b;
 
-    let f_a = Polynomial::generate_polynomial(Some(a), threshold-1, rng);
-    let f_b = Polynomial::generate_polynomial(Some(b), threshold-1, rng);
-    let f_c = Polynomial::generate_polynomial(Some(c), threshold-1, rng);
+    let f_a = Polynomial::generate_polynomial(Some(a), threshold - 1, rng);
+    let f_b = Polynomial::generate_polynomial(Some(b), threshold - 1, rng);
+    let f_c = Polynomial::generate_polynomial(Some(c), threshold - 1, rng);
 
     let mut shares = Vec::with_capacity(participants.len());
     let mut participants_owned = Vec::with_capacity(participants.len());

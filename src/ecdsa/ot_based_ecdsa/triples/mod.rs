@@ -28,10 +28,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    ecdsa::{
-        AffinePoint,
-        Scalar,
-    },
+    ecdsa::{AffinePoint, Scalar},
     protocol::Participant,
 };
 
@@ -63,15 +60,14 @@ pub struct TripleShare {
     pub c: Scalar,
 }
 
-
 mod batch_random_ot;
 mod bits;
+mod constants;
 mod correlated_ot_extension;
 mod generation;
 mod mta;
 mod multiplication;
 mod random_ot_extension;
-mod constants;
 
 pub use generation::{generate_triple, generate_triple_many, TripleGenerationOutput};
 

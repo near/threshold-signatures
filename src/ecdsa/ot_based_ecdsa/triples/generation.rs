@@ -1,52 +1,41 @@
+use frost_core::serialization::SerializableScalar;
 use rand_core::OsRng;
 use serde::Serialize;
-use frost_core::serialization::SerializableScalar;
 
 use crate::{
+    crypto::proofs::{dlog, dlogeq, strobe_transcript::Transcript},
     crypto::{
-        commit::{Commitment,commit},
+        commit::{commit, Commitment},
         hash::{hash, HashOutput},
         random::Randomizer,
     },
+    ecdsa::{
+        CoefficientCommitment, Polynomial, PolynomialCommitment, ProjectivePoint, Scalar,
+        Secp256K1Sha256,
+    },
     // ecdsa::math::{PolynomialCommitment, Polynomial},
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
-    crypto::proofs::{dlog, dlogeq, strobe_transcript::Transcript},
     protocol::{
         internal::{make_protocol, Comms},
-        InitializationError,
-        Participant,
-        Protocol,
-        ProtocolError,
+        InitializationError, Participant, Protocol, ProtocolError,
     },
-    ecdsa::{
-        Secp256K1Sha256,
-        Scalar,
-        ProjectivePoint,
-        CoefficientCommitment,
-        Polynomial,
-        PolynomialCommitment,
-    }
 };
 
 use super::{
     multiplication::{multiplication, multiplication_many},
-    TriplePub,
-    TripleShare
+    TriplePub, TripleShare,
 };
-
 
 /// Encode an arbitrary serializable value into a vec.
 fn encode<T: Serialize>(val: &T) -> Vec<u8> {
     rmp_serde::encode::to_vec(val).expect("failed to encode value")
 }
 
-
 /// The output of running the triple generation protocol.
 pub type TripleGenerationOutput = (TripleShare, TriplePub);
 
 pub type TripleGenerationOutputMany = Vec<(TripleShare, TriplePub)>;
 type C = Secp256K1Sha256;
-
 
 const LABEL: &[u8] = b"Near threshold signatures triple generation";
 const NAME: &[u8] = b"Secp256K1Sha256";
@@ -70,12 +59,12 @@ async fn do_generation(
     );
 
     // Spec 1.2
-    let e = Polynomial::generate_polynomial(None, threshold-1, &mut rng);
-    let f = Polynomial::generate_polynomial(None, threshold-1, &mut rng);
+    let e = Polynomial::generate_polynomial(None, threshold - 1, &mut rng);
+    let f = Polynomial::generate_polynomial(None, threshold - 1, &mut rng);
     // Spec 1.3
     // We will generate a poly of degree threshold - 2 then later extend it with identity.
     // This is to prevent serialization from failing
-    let mut l = Polynomial::generate_polynomial(None, threshold-2, &mut rng);
+    let mut l = Polynomial::generate_polynomial(None, threshold - 2, &mut rng);
 
     // Spec 1.4
     let big_e_i = e.commit_polynomial();
@@ -287,9 +276,8 @@ async fn do_generation(
         seen.clear();
         seen.put(me);
         while !seen.full() {
-            let (from, (a_j_i, b_j_i))
-                : (_, (SerializableScalar<C>, SerializableScalar<C>))
-                = chan.recv(wait3).await?;
+            let (from, (a_j_i, b_j_i)): (_, (SerializableScalar<C>, SerializableScalar<C>)) =
+                chan.recv(wait3).await?;
             if !seen.put(from) {
                 continue;
             }
@@ -327,13 +315,7 @@ async fn do_generation(
 
         // Spec 3.10
         let wait4 = chan.next_waitpoint();
-        chan.send_many(
-            wait4,
-            &(
-                CoefficientCommitment::new(big_c_i),
-                my_phi_proof,
-            ),
-        );
+        chan.send_many(wait4, &(CoefficientCommitment::new(big_c_i), my_phi_proof));
 
         // Spec 4.1 + 4.2 + 4.3
         seen.clear();
@@ -398,7 +380,9 @@ async fn do_generation(
     let statement = dlog::Statement::<C> {
         public: &hat_big_c_i,
     };
-    let witness = dlog::Witness::<C> { x: SerializableScalar::<C>(l0) };
+    let witness = dlog::Witness::<C> {
+        x: SerializableScalar::<C>(l0),
+    };
     let my_phi_proof = dlog::prove(
         &mut rng,
         &mut transcript.fork(b"dlog2", &me.bytes()),
@@ -410,10 +394,7 @@ async fn do_generation(
     let wait5 = chan.next_waitpoint();
     chan.send_many(
         wait5,
-        &(
-            CoefficientCommitment::new(hat_big_c_i),
-            my_phi_proof,
-        ),
+        &(CoefficientCommitment::new(hat_big_c_i), my_phi_proof),
     );
 
     // Spec 4.8
@@ -534,9 +515,9 @@ async fn do_generation_many<const N: usize>(
 
     for _ in 0..N {
         // Spec 1.2
-        let e = Polynomial::generate_polynomial(None, threshold-1, &mut rng);
-        let f = Polynomial::generate_polynomial(None, threshold-1, &mut rng);
-        let l = Polynomial::generate_polynomial(None, threshold-2, &mut rng);
+        let e = Polynomial::generate_polynomial(None, threshold - 1, &mut rng);
+        let f = Polynomial::generate_polynomial(None, threshold - 1, &mut rng);
+        let l = Polynomial::generate_polynomial(None, threshold - 2, &mut rng);
 
         // Spec 1.4
         let big_e_i = e.commit_polynomial();
@@ -913,7 +894,10 @@ async fn do_generation_many<const N: usize>(
                 big_c_v[i] += big_c_j;
             }
         }
-        let big_l_v = big_l_v.iter().map(|big_l| big_l.extend_with_identity()).collect();
+        let big_l_v = big_l_v
+            .iter()
+            .map(|big_l| big_l.extend_with_identity())
+            .collect();
         Ok(ParallelToMultiplicationTaskOutput {
             seen,
             big_e_v,
@@ -951,7 +935,9 @@ async fn do_generation_many<const N: usize>(
         let statement = dlog::Statement::<C> {
             public: &hat_big_c_i,
         };
-        let witness = dlog::Witness::<C> { x: SerializableScalar::<C>(l0) };
+        let witness = dlog::Witness::<C> {
+            x: SerializableScalar::<C>(l0),
+        };
         let my_phi_proof = dlog::prove(
             &mut rng,
             &mut transcript.fork(b"dlog2", &me.bytes()),
@@ -1162,11 +1148,7 @@ pub fn generate_triple_many<const N: usize>(
 #[cfg(test)]
 mod test {
     use crate::{
-        ecdsa::{
-            ot_based_ecdsa::triples::generate_triple,
-            ProjectivePoint,
-            Secp256K1Sha256
-        },
+        ecdsa::{ot_based_ecdsa::triples::generate_triple, ProjectivePoint, Secp256K1Sha256},
         participants::ParticipantList,
         protocol::{run_protocol, Participant, Protocol, ProtocolError},
     };
