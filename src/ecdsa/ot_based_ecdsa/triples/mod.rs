@@ -22,8 +22,8 @@
 //! triple, which needs to be kept secret. This method is supported by the [generate_triple]
 //! protocol.
 //!
-//! This protocol requires a setup protocol to be one once beforehand.
-//! After this setup protocol has been run, an arbitarary number of triples can
+//! This protocol requires a setup protocol to be done once beforehand.
+//! After this setup protocol has been run, an arbitrary number of triples can
 //! be generated.
 use serde::{Deserialize, Serialize};
 

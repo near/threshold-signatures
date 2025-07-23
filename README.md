@@ -10,8 +10,8 @@ The latter implementation is mainly a wrapper of the [Frost](https://github.com/
 
 The repository provides implementations for both ECDSA and EdDSA.
 Each signature scheme has its own repository that implements it, namely, `src/ecdsa` and `src/eddsa`.\
-Additionally `src/compat` implements a curve trait used only for ecdsa,  `src/proofs` implements \[[Mau09](https://crypto.ethz.ch/publications/files/Maurer09.pdf)\] proofs for discrete logarithms, and `src/protocol` allows defining participants and asynchronous functions that run and test the protocol.\
-Some additional files are found in `src`. `src/serde.rs` provides functions to serialize messages, participants and elliptic curve points, `src/participants.rs` provides more complex structures related to participants mainly based on hash maps and `src/crypto.rs` implements a wrapper for Sha256 hash function.
+Additionally `src/crypto` implements generic mathematical and cryptographic tools used for both schemes such as polynomial manipulations, randomness generation, commitment schemes, etc...  `src/crypto/proofs` implements \[[Mau09](https://crypto.ethz.ch/publications/files/Maurer09.pdf)\] proofs for discrete logarithms, and `src/protocol` allows defining participants, communication channels, asynchronous functions that run and test the protocol and reliable broadcast channel.\
+Some additional files are found in `src`. `src/participants.rs` provides complex structures related to participants mainly based on hash maps and `src/generic_dkg.rs` implements a distributed key generation (DKG) that is agnostic of the curve.
 
 # Important Technical Details
 ### Threshold ECDSA Functionalities
@@ -47,11 +47,9 @@ The following functionalities are provided:
 
 # Build and Test
 Building the crate is fairly simple using
-``cargo build --features k256``.
+``cargo build``.
 
-Run ``cargo test`` to run all the built-in test cases. Some the tests might take some time to run as they require running multiple participants at once.
-
-The repository contains no mock implementation of the whole running protocol in a ``main.rs`` file but we believe that the main functions are fairly simple to call.
+Run ``cargo test`` to run all the built-in test cases. Some the tests might take some time to run as they require running complex protocols with multiple participants at once.
 
 # Benchmarks
 * Benchmarks with 8 nodes -- TODO
@@ -59,9 +57,11 @@ The repository contains no mock implementation of the whole running protocol in 
 # Acknowledgements
 This implementation relies on
 [Cait-Sith](https://github.com/cronokirby/cait-sith) and
-[Frost](https://github.com/ZcashFoundation/frost) and was possible thanks to contributors that actively put this togethers:
+[Frost](https://github.com/ZcashFoundation/frost) and was possible thanks to contributors that actively put this together:
 <center>
+  Mårten Blankfors<br>
   Robin Cheng<br>
+  Reynaldo Gil Pons<br>
   Chelsea Komlo<br>
   George Kuska<br>
   Matej Pavlovic<br>
