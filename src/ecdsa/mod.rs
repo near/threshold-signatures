@@ -28,39 +28,6 @@ pub type CoefficientCommitment = frost_core::keys::CoefficientCommitment<Secp256
 pub type Polynomial = crate::crypto::polynomials::Polynomial<Secp256K1Sha256>;
 pub type PolynomialCommitment = crate::crypto::polynomials::PolynomialCommitment<Secp256K1Sha256>;
 
-/// This is the trait that any curve usable in this library must implement.
-/// This library does provide a few feature-gated implementations for curves
-/// itself, beyond that you'll need to implement this trait yourself.
-///
-/// The bulk of the trait are the bounds requiring a curve according
-/// to RustCrypto's traits.
-///
-/// Beyond that, we also require that curves have a name, for domain separation,
-/// and a way to serialize points with serde.
-pub trait PointScalarFunctions {
-    /// Serialize a point with serde.
-    fn serialize_point<S: Serializer>(
-        point: &AffinePoint,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error>;
-
-    /// Deserialize a point with serde.
-    fn deserialize_point<'de, D: Deserializer<'de>>(
-        deserializer: D,
-    ) -> Result<AffinePoint, D::Error>;
-
-    /// transform bytes into scalar
-    fn from_bytes_to_scalar(bytes: [u8; 32]) -> Option<Scalar>;
-
-    /// transform bytes into affine point
-    fn from_bytes_to_affine(bytes: [u8; 33]) -> Option<ProjectivePoint>;
-
-    /// A function to sample a random scalar, guaranteed to be constant-time.
-    /// By this, it's meant that we will make pull a fixed amount of
-    /// data from the rng.
-    fn sample_scalar_constant_time<R: CryptoRngCore>(r: &mut R) -> Scalar;
-}
-
 impl From<crate::generic_dkg::KeygenOutput<Secp256K1Sha256>> for KeygenOutput {
     fn from(value: crate::generic_dkg::KeygenOutput<Secp256K1Sha256>) -> Self {
         Self {
@@ -77,40 +44,6 @@ impl ScalarSerializationFormat for Secp256K1Sha256 {
 }
 
 impl Ciphersuite for Secp256K1Sha256 {}
-impl PointScalarFunctions for Secp256K1Sha256 {
-    fn serialize_point<S: Serializer>(
-        point: &AffinePoint,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        point.serialize(serializer)
-    }
-
-    fn deserialize_point<'de, D: Deserializer<'de>>(
-        deserializer: D,
-    ) -> Result<AffinePoint, D::Error> {
-        AffinePoint::deserialize(deserializer)
-    }
-
-    fn sample_scalar_constant_time<R: CryptoRngCore>(r: &mut R) -> Scalar {
-        let mut data = [0u8; 64];
-        r.fill_bytes(&mut data);
-        <Scalar as Reduce<U512>>::reduce_bytes(&data.into())
-    }
-
-    fn from_bytes_to_scalar(bytes: [u8; 32]) -> Option<Scalar> {
-        let bytes = U256::from_be_slice(bytes.as_slice());
-        Scalar::from_repr(bytes.to_be_byte_array()).into_option()
-    }
-
-    fn from_bytes_to_affine(bytes: [u8; 33]) -> Option<ProjectivePoint> {
-        let encoded_point = match k256::EncodedPoint::from_bytes(bytes) {
-            Ok(encoded) => encoded,
-            Err(_) => return None,
-        };
-        Option::<AffinePoint>::from(AffinePoint::from_encoded_point(&encoded_point))
-            .map(ProjectivePoint::from)
-    }
-}
 
 /// Get the x coordinate of a point, as a scalar
 pub(crate) fn x_coordinate(point: &AffinePoint) -> Scalar {
