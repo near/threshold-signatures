@@ -1148,14 +1148,13 @@ pub fn generate_triple_many<const N: usize>(
 #[cfg(test)]
 mod test {
     use crate::{
-        ecdsa::{ot_based_ecdsa::triples::generate_triple, ProjectivePoint, Secp256K1Sha256},
+        ecdsa::{ot_based_ecdsa::triples::generate_triple, ProjectivePoint},
         participants::ParticipantList,
         protocol::{run_protocol, Participant, Protocol, ProtocolError},
     };
 
-    use super::{generate_triple_many, TripleGenerationOutput, TripleGenerationOutputMany};
+    use super::{generate_triple_many, TripleGenerationOutput, TripleGenerationOutputMany, C};
 
-    type C = Secp256K1Sha256;
     #[test]
     fn test_triple_generation() -> Result<(), ProtocolError> {
         let participants = vec![

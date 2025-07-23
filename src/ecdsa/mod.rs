@@ -1,19 +1,16 @@
 //! This module serves as a wrapper for ECDSA scheme.
 use elliptic_curve::{
-    bigint::{ArrayEncoding, U256, U512},
+    bigint::U256,
     ops::{Invert, Reduce},
     point::AffineCoordinates,
-    sec1::FromEncodedPoint,
-    PrimeField,
 };
 
-use rand_core::CryptoRngCore;
 
 use frost_secp256k1::{
     keys::SigningShare, Field, Secp256K1ScalarField, Secp256K1Sha256, VerifyingKey,
 };
 use k256::{AffinePoint, ProjectivePoint};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
 use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat};
 
