@@ -89,8 +89,8 @@ generation process follow:
   - Node $`i`$ sends $`(Y_i, C_i)`$ to the *MPC network* coordinator
   - The coordinator computes:
     - $`R \gets λ_1 \cdot Y_1 + \ldots + λ_n \cdot Y_n`$
-    - $`S \gets λ_1 \cdot C_1 + \ldots + λ_n \cdot C_n = λ_1 \cdot S_1 + \ldots
-    + λ_n \cdot S_n + ({y_1 \cdot λ_1 + \ldots + y_n \cdot λ_n }) \cdot A =
+    - $`S \gets λ_1 \cdot C_1 + \ldots + λ_n \cdot C_n = λ_1 \cdot S_1 + \ldots +
+    λ_n \cdot S_n + ({y_1 \cdot λ_1 + \ldots + y_n \cdot λ_n }) \cdot A =
     \texttt{msk} \cdot H(\texttt{app\_id}) + a \cdot R`$
     - $`\texttt{es} \gets (R, S) `$
   - Coordinator sends $`\texttt{es}`$ to *app* on-chain
