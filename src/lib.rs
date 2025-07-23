@@ -1,7 +1,5 @@
 mod crypto;
 
-mod echo_broadcast;
-
 mod generic_dkg;
 mod participants;
 

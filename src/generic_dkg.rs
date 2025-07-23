@@ -3,10 +3,14 @@ use crate::crypto::{
     hash::{domain_separate_hash, HashOutput},
     polynomials::{Polynomial, PolynomialCommitment},
 };
-use crate::echo_broadcast::do_broadcast;
 use crate::participants::{ParticipantCounter, ParticipantList, ParticipantMap};
-use crate::protocol::internal::SharedChannel;
-use crate::protocol::{InitializationError, Participant, ProtocolError};
+use crate::protocol::{
+    InitializationError,
+    Participant,
+    ProtocolError,
+    internal::SharedChannel,
+    echo_broadcast::do_broadcast,
+};
 
 use frost_core::keys::{
     CoefficientCommitment, SecretShare, SigningShare, VerifiableSecretSharingCommitment,
