@@ -6,6 +6,8 @@ use crate::protocol::{
     InitializationError, Participant, Protocol, ProtocolError,
 };
 
+type C = Secp256K1Sha256;
+
 async fn do_presign(
     mut chan: SharedChannel,
     participants: ParticipantList,
@@ -23,8 +25,8 @@ async fn do_presign(
     let big_a: ProjectivePoint = args.triple1.1.big_a.into();
     let big_b: ProjectivePoint = args.triple1.1.big_b.into();
 
-    let sk_lambda = participants.lagrange::<Secp256K1Sha256>(me);
-    let bt_lambda = bt_participants.lagrange::<Secp256K1Sha256>(bt_id);
+    let sk_lambda = participants.lagrange::<C>(me);
+    let bt_lambda = bt_participants.lagrange::<C>(bt_id);
 
     let k_i = args.triple0.0.a;
     let k_prime_i = bt_lambda * k_i;
@@ -188,10 +190,7 @@ pub fn presign(
 mod test {
     use super::*;
     use crate::{
-        ecdsa::{
-            ot_based_ecdsa::triples::test::deal, KeygenOutput, Polynomial, ProjectivePoint,
-            Secp256K1Sha256,
-        },
+        ecdsa::{ot_based_ecdsa::triples::test::deal, KeygenOutput, Polynomial, ProjectivePoint},
         protocol::run_protocol,
     };
     use frost_secp256k1::{
@@ -201,7 +200,6 @@ mod test {
     use rand_core::OsRng;
     use std::collections::BTreeMap;
 
-    type C = Secp256K1Sha256;
     #[test]
     fn test_presign() {
         let participants = vec![
