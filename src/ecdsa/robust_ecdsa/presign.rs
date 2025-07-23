@@ -126,8 +126,18 @@ async fn do_presign(
         verifyingshares_map.put(from, big_r_p);
     }
 
+    let identifiers: Vec<Scalar> = signingshares_map
+        .participants()
+        .iter()
+        .map(|p| p.scalar::<C>())
+        .collect();
+
+    let signingshares = signingshares_map
+        .into_vec_or_none()
+        .ok_or(ProtocolError::InvalidInterpolationArguments)?;
+
     // polynomial interpolation of w
-    let w = Polynomial::eval_interpolation(&signingshares_map, None)?;
+    let w = Polynomial::eval_interpolation(&identifiers, &signingshares, None)?;
 
     // exponent interpolation of big R
     let identifiers: Vec<Scalar> = verifyingshares_map
@@ -141,12 +151,10 @@ async fn do_presign(
 
     // get only the first t+1 elements to interpolate
     // we know that identifiers.len()>threshold+1
-    let first_tplus1_id = identifiers[..threshold + 1].to_vec();
-    let first_tplus1_vfyshares = verifying_shares[..threshold + 1].to_vec();
     // evaluate the exponent interpolation on zero
     let big_r = PolynomialCommitment::eval_exponent_interpolation(
-        &first_tplus1_id,
-        &first_tplus1_vfyshares,
+        &identifiers[..threshold + 1],
+        &verifying_shares[..threshold + 1],
         None,
     )?;
 

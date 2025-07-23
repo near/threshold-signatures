@@ -4,10 +4,7 @@ use frost_core::{
 use rand_core::CryptoRngCore;
 
 use super::ciphersuite::Ciphersuite;
-use crate::{
-    participants::ParticipantMap,
-    protocol::{Participant, ProtocolError},
-};
+use crate::protocol::{Participant, ProtocolError};
 
 use std::ops::Add;
 
@@ -38,7 +35,7 @@ impl<C: Ciphersuite> Polynomial<C> {
         }
     }
 
-    /// Creates a polynomial p of degree threshold - 1
+    /// Creates a random polynomial p of the given degree
     /// and sets p(0) = secret
     /// if the secret is not given then it is picked at random
     pub fn generate_polynomial(
@@ -112,23 +109,15 @@ impl<C: Ciphersuite> Polynomial<C> {
     /// Computes polynomial interpolation on a specific point
     /// using a sequence of sorted elements
     pub fn eval_interpolation(
-        signingshares_map: &ParticipantMap<'_, SerializableScalar<C>>,
+        identifiers: &[Scalar<C>],
+        shares: &[SerializableScalar<C>],
         point: Option<&Scalar<C>>,
     ) -> Result<SerializableScalar<C>, ProtocolError> {
         let mut interpolation = <<C::Group as Group>::Field>::zero();
-        let identifiers: Vec<Scalar<C>> = signingshares_map
-            .participants()
-            .iter()
-            .map(|p| p.scalar::<C>())
-            .collect();
-        let shares = signingshares_map
-            .to_refs_or_none()
-            .ok_or(ProtocolError::InvalidInterpolationArguments)?;
-
         // Compute the Lagrange coefficients
         for (id, share) in identifiers.iter().zip(shares) {
             // would raise error if not enough shares or identifiers
-            let lagrange_coefficient = compute_lagrange_coefficient::<C>(&identifiers, id, point)?;
+            let lagrange_coefficient = compute_lagrange_coefficient::<C>(identifiers, id, point)?;
 
             // Compute y = f(point) via polynomial interpolation of these points of f
             interpolation = interpolation + (lagrange_coefficient.0 * share.0);
@@ -219,8 +208,8 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
         self.eval_on_point(id)
     }
 
-    /// Computes polynomial interpolation on the exponent on a spcoefcommitmentscoefcommitmentsecific point
-    /// using a sequence of sorted elements
+    /// Computes polynomial interpolation on the exponent on a specific point
+    /// using a sequence of sorted coefficient commitments
     pub fn eval_exponent_interpolation(
         identifiers: &[Scalar<C>],
         shares: &[CoefficientCommitment<C>],

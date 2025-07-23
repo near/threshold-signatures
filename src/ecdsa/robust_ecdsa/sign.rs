@@ -41,7 +41,18 @@ async fn do_sign(
         s_map.put(from, s_i);
     }
 
-    let mut s = Polynomial::eval_interpolation(&s_map, None)?.0;
+    let identifiers: Vec<Scalar> = s_map
+        .participants()
+        .iter()
+        .map(|p| p.scalar::<C>())
+        .collect();
+
+    let sshares = s_map
+        .into_vec_or_none()
+        .ok_or(ProtocolError::InvalidInterpolationArguments)?;
+
+
+    let mut s = Polynomial::eval_interpolation(&identifiers, &sshares, None)?.0;
     let big_r = presignature.big_r;
 
     // Normalize s
