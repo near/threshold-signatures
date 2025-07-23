@@ -1,7 +1,7 @@
 use crate::crypto::ciphersuite::{Ciphersuite, Element};
 use frost_core::{serialization::SerializableScalar, Field, Group};
 
-use super::{encode_point, strobe_transcript::Transcript};
+use super::strobe_transcript::Transcript;
 use rand_core::CryptoRngCore;
 
 /// The label we use for hashing the statement.
@@ -54,6 +54,27 @@ pub struct Witness<C: Ciphersuite> {
 pub struct Proof<C: Ciphersuite> {
     e: SerializableScalar<C>,
     s: SerializableScalar<C>,
+}
+
+/// Encodes an EC point into a vec including the identity point.
+/// Should be used with HIGH precaution as it allows serializing the identity point
+/// deviating from the standard
+fn encode_point<C: Ciphersuite>(point: &Element<C>) -> Vec<u8> {
+    // Need to create a serialization containing the all zero strings
+    let size = C::Group::serialize(&C::Group::generator())
+        .unwrap()
+        .as_ref()
+        .len();
+    // Serializing the identity might fail!
+    // this is a workaround to be able to serialize even this infinity point.
+    let ser = match <<C as frost_core::Ciphersuite>::Group as Group>::Serialization::try_from(vec![
+            0u8;
+            size
+        ]) {
+        Ok(ser) => ser,
+        _ => panic!("Should not raise error"),
+    };
+    C::Group::serialize(point).unwrap_or(ser).as_ref().to_vec()
 }
 
 /// Prove that a witness satisfies a given statement.
