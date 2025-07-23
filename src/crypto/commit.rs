@@ -2,8 +2,6 @@ use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use crate::serde::encode_writer;
-
 use super::random::Randomizer;
 
 const COMMIT_LABEL: &[u8] = b"Near threshold signature commitment";
@@ -23,7 +21,7 @@ impl Commitment {
         hasher.update(COMMIT_LABEL);
         hasher.update(r.as_ref());
         hasher.update(b"start data");
-        encode_writer(&mut hasher, val);
+        rmp_serde::encode::write(&mut hasher, val).expect("failed to encode value");
         Commitment(hasher.finalize().into())
     }
 

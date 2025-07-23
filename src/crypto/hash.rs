@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use crate::serde::encode_writer;
-
 const HASH_LABEL: &[u8] = b"Near threshold signature generic hash";
 const HASH_LEN: usize = 32;
 
@@ -20,7 +18,7 @@ impl AsRef<[u8]> for HashOutput {
 pub fn hash<T: Serialize>(val: &T) -> HashOutput {
     let mut hasher = Sha256::new();
     hasher.update(HASH_LABEL);
-    encode_writer(&mut hasher, val);
+    rmp_serde::encode::write(&mut hasher, val).expect("failed to encode value");
     HashOutput(hasher.finalize().into())
 }
 
