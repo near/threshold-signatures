@@ -12,6 +12,7 @@ use crate::protocol::{run_protocol, InitializationError, Participant, Protocol};
 use rand_core::OsRng;
 use std::error::Error;
 
+#[cfg(test)]
 fn sign_box(
     participants: &[Participant],
     me: Participant,
@@ -23,6 +24,7 @@ fn sign_box(
         .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = FullSignature>>)
 }
 
+#[cfg(test)]
 pub fn run_presign(
     participants: Vec<(Participant, KeygenOutput)>,
     shares0: Vec<TripleShare>,

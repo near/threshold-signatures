@@ -30,35 +30,6 @@ impl MTAScalars {
     }
 }
 
-// impl Serialize for MTAScalars {
-//     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-//         let mut out = Vec::with_capacity(self.len() * Self::SCALAR_LEN * 2);
-//         for (s0, s1) in self.iter() {
-//             out.extend_from_slice(s0.serialize().as_ref());
-//             out.extend_from_slice(s1.serialize().as_ref());
-//         }
-//         out.serialize(s)
-//     }
-// }
-
-// impl<'de> Deserialize<'de> for MTAScalars {
-//     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-//         let bytes = Vec::<u8>::deserialize(d)?;
-//         if bytes.len() % (Self::SCALAR_LEN * 2) != 0 {
-//             return Err(serde::de::Error::custom("invalid length"));
-//         }
-//         let mut out = Vec::with_capacity(bytes.len() / (Self::SCALAR_LEN * 2));
-//         for chunk in bytes.chunks_exact(Self::SCALAR_LEN * 2) {
-//             let s0 = SerializableScalar::from_slice(&chunk[..Self::SCALAR_LEN])
-//                 .map_err(serde::de::Error::custom)?;
-//             let s1 = SerializableScalar::from_slice(&chunk[Self::SCALAR_LEN..])
-//                 .map_err(serde::de::Error::custom)?;
-//             out.push((s0, s1));
-//         }
-//         Ok(Self(out))
-//     }
-// }
-
 /// The sender for multiplicative to additive conversion.
 pub async fn mta_sender(
     mut chan: PrivateChannel,
