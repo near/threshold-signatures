@@ -330,5 +330,5 @@ pub(crate) fn run_two_party_protocol<T0: fmt::Debug, T1: fmt::Debug>(
     Ok((out0.unwrap(), out1.unwrap()))
 }
 
-pub(crate) mod internal;
 pub mod echo_broadcast;
+pub(crate) mod internal;
