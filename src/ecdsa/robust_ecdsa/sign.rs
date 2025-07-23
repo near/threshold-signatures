@@ -123,8 +123,7 @@ mod test {
         let threshold = max_malicious + 1;
         let msg = b"hello?";
 
-        // Run 4 times to test randomness
-        for _ in 0..4 {
+        for _ in 0..100 {
             let fx = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng);
             // master secret key
             let x = fx.eval_on_zero().0;

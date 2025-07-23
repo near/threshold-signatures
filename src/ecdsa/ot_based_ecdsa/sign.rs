@@ -123,8 +123,7 @@ mod test {
         let threshold = 2;
         let msg = b"hello?";
 
-        // Run 4 times for flakiness reasons
-        for _ in 0..4 {
+        for _ in 0..100 {
             let f = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng);
             let x = f.eval_on_zero().0;
             let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
