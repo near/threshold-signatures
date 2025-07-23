@@ -110,8 +110,8 @@ impl ParticipantList {
     }
 
     // Returns all the participants in the list
-    pub fn participants(&self) -> &Vec<Participant> {
-        &self.participants
+    pub fn participants(&self) -> &[Participant] {
+        self.participants.as_slice()
     }
 }
 
@@ -188,7 +188,7 @@ impl<'a, T> ParticipantMap<'a, T> {
     }
 
     // Returns the set of included participants
-    pub fn participants(&self) -> &Vec<Participant> {
+    pub fn participants(&self) -> &[Participant] {
         self.participants.participants()
     }
 }
