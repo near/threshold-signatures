@@ -13,7 +13,6 @@ use crate::{
         CoefficientCommitment, Polynomial, PolynomialCommitment, ProjectivePoint, Scalar,
         Secp256K1Sha256,
     },
-    // ecdsa::math::{PolynomialCommitment, Polynomial},
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     protocol::{
         internal::{make_protocol, Comms},

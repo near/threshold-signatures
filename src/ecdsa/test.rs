@@ -9,7 +9,6 @@ use crate::ecdsa::{
 };
 use crate::protocol::{run_protocol, InitializationError, Participant, Protocol};
 
-#[cfg(test)]
 /// runs distributed keygen
 pub(crate) fn run_keygen(
     participants: &[Participant],
@@ -27,7 +26,6 @@ pub(crate) fn run_keygen(
     Ok(result)
 }
 
-#[cfg(test)]
 /// runs distributed refresh
 pub(crate) fn run_refresh(
     participants: &[Participant],
@@ -52,7 +50,6 @@ pub(crate) fn run_refresh(
     Ok(result)
 }
 
-#[cfg(test)]
 /// runs distributed reshare
 pub(crate) fn run_reshare(
     participants: &[Participant],
@@ -99,7 +96,6 @@ pub(crate) fn run_reshare(
     Ok(result)
 }
 
-#[cfg(test)]
 /// Assert that each participant has the same view of the public key
 pub(crate) fn assert_public_key_invariant(
     participants: &[(Participant, KeygenOutput)],
