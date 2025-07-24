@@ -8,22 +8,82 @@ use crate::protocol::{Participant, ProtocolError};
 
 use std::ops::Add;
 
-pub struct Polynomial<C: Ciphersuite>(Vec<Scalar<C>>);
+use serde::{Deserialize, Deserializer, Serialize};
+use std::ops::{Deref, DerefMut};
+
+/// Serializable structure if a non-empty vector to prevent security
+/// issues when sending and receiving polynomials or committed polynomials
+#[derive(Clone)]
+struct NonEmptyVec<T>(Vec<T>);
+
+impl<T> NonEmptyVec<T> {
+    // Fails if the provided vector is empty
+    fn new(vec: Vec<T>) -> Result<Self, ProtocolError> {
+        if vec.is_empty() {
+            Err(ProtocolError::EmptyCoefficients)
+        } else {
+            Ok(Self(vec))
+        }
+    }
+}
+
+// Dereferences a Vec<T>
+impl<T> Deref for NonEmptyVec<T> {
+    type Target = Vec<T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> DerefMut for NonEmptyVec<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+// Custom deserialization to enforce non-empty on deserialization
+impl<'de, T: Deserialize<'de>> Deserialize<'de> for NonEmptyVec<T> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let vec = Vec::<T>::deserialize(deserializer)?;
+        if vec.is_empty() {
+            Err(serde::de::Error::custom("Vector must not be empty"))
+        } else {
+            Ok(NonEmptyVec(vec))
+        }
+    }
+}
+
+impl<T: Serialize> Serialize for NonEmptyVec<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
+/// Polynomial structure of non-empty coefficiants
+pub struct Polynomial<C: Ciphersuite>(NonEmptyVec<Scalar<C>>);
 
 impl<C: Ciphersuite> Polynomial<C> {
     /// Constructs the polynomial out of scalars
     /// The first scalar (coefficients[0]) is the constant term
-    pub fn new(coefficients: Vec<Scalar<C>>) -> Self {
-        Polynomial(coefficients)
+    pub fn new(coefficients: Vec<Scalar<C>>) -> Result<Self, ProtocolError> {
+        Ok(Polynomial(NonEmptyVec::new(coefficients)?))
     }
 
+    /// Returns the coeficients of the polynomial
     pub fn get_coefficients(&self) -> Vec<Scalar<C>> {
-        self.0.to_vec()
+        self.to_vec()
     }
 
     /// Outputs the degree of the polynomial
     pub fn degree(&self) -> usize {
-        let mut degree = self.0.len();
+        let mut degree = self.len();
         // loop as long as the higher terms are zero
         while degree > 0 && self.0[degree - 1] == <C::Group as Group>::Field::zero() {
             degree -= 1;
@@ -52,12 +112,13 @@ impl<C: Ciphersuite> Polynomial<C> {
         for _ in 1..poly_size {
             coefficients.push(<C::Group as Group>::Field::random(rng));
         }
-        Self::new(coefficients)
+        // cannot fail as poly_size is positive
+        Self::new(coefficients).expect("expects poly_size to be positive")
     }
 
     /// Returns the constant term
     pub fn eval_on_zero(&self) -> SerializableScalar<C> {
-        SerializableScalar(self.0[0])
+        SerializableScalar(self[0])
     }
 
     /// Evaluates a polynomial on a certain scalar
@@ -70,13 +131,12 @@ impl<C: Ciphersuite> Polynomial<C> {
             self.eval_on_zero()
         } else {
             let mut value = <<C::Group as Group>::Field>::zero();
-            for coeff in self.0.iter().skip(1).rev() {
+            for coeff in self.iter().skip(1).rev() {
                 value = value + *coeff;
                 value = value * point;
             }
             value = value
                 + *self
-                    .0
                     .first()
                     .expect("coefficients must have at least one element");
             SerializableScalar(value)
@@ -114,9 +174,14 @@ impl<C: Ciphersuite> Polynomial<C> {
         point: Option<&Scalar<C>>,
     ) -> Result<SerializableScalar<C>, ProtocolError> {
         let mut interpolation = <<C::Group as Group>::Field>::zero();
+        // raise Error if the lengths are not the same
+        if identifiers.len() != shares.len() {
+            return Err(ProtocolError::InvalidInterpolationArguments);
+        }
+
         // Compute the Lagrange coefficients
         for (id, share) in identifiers.iter().zip(shares) {
-            // would raise error if not enough shares or identifiers
+            // would raise error if identifiers are not enough (<= 1)
             let lagrange_coefficient = compute_lagrange_coefficient::<C>(identifiers, id, point)?;
 
             // Compute y = f(point) via polynomial interpolation of these points of f
@@ -131,20 +196,16 @@ impl<C: Ciphersuite> Polynomial<C> {
     pub fn commit_polynomial(&self) -> PolynomialCommitment<C> {
         // Computes the multiplication of every coefficient of p with the generator G
         let coef_commitment = self
-            .0
             .iter()
             .map(|c| CoefficientCommitment::new(<C::Group as Group>::generator() * *c))
             .collect();
         PolynomialCommitment::new(coef_commitment)
+            .expect("coefficients must have at least one element")
     }
 
     /// Set the constant value of this polynomial to a new scalar
     pub fn set_constant(&mut self, v: Scalar<C>) {
-        if self.0.is_empty() {
-            self.0.push(v)
-        } else {
-            self.0[0] = v
-        }
+        self[0] = v
     }
 
     /// Extends the Polynomial with an extra value as a constant
@@ -153,7 +214,23 @@ impl<C: Ciphersuite> Polynomial<C> {
     pub fn extend_with_zero(&self) -> Self {
         let mut coeffcommitment = vec![<C::Group as Group>::Field::zero()];
         coeffcommitment.extend(self.get_coefficients());
-        Polynomial::new(coeffcommitment)
+        Polynomial::new(coeffcommitment).expect("coefficients must have at least one element")
+    }
+}
+
+// Dereferences a Polynomial
+impl<C: Ciphersuite> Deref for Polynomial<C> {
+    type Target = Vec<Scalar<C>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+// Dereferences a Polynomial in a non <T>
+impl<C: Ciphersuite> DerefMut for Polynomial<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
@@ -161,21 +238,21 @@ impl<C: Ciphersuite> Polynomial<C> {
 /// Contains the commited coefficients of a polynomial i.e. coeff * G
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[serde(bound = "C: Ciphersuite")]
-pub struct PolynomialCommitment<C: Ciphersuite>(Vec<CoefficientCommitment<C>>);
+pub struct PolynomialCommitment<C: Ciphersuite>(NonEmptyVec<CoefficientCommitment<C>>);
 
 impl<C: Ciphersuite> PolynomialCommitment<C> {
-    pub fn new(coefcommitments: Vec<CoefficientCommitment<C>>) -> Self {
-        PolynomialCommitment(coefcommitments)
+    pub fn new(coefcommitments: Vec<CoefficientCommitment<C>>) -> Result<Self, ProtocolError> {
+        Ok(PolynomialCommitment(NonEmptyVec::new(coefcommitments)?))
     }
 
     /// Returns the coefficients of the
     pub fn get_coefficients(&self) -> Vec<CoefficientCommitment<C>> {
-        self.0.to_vec()
+        self.to_vec()
     }
 
     /// Outputs the degree of the commited polynomial
     pub fn degree(&self) -> usize {
-        let mut degree = self.0.len();
+        let mut degree = self.len();
         // loop as long as the higher terms are zero
         while degree > 0 && self.0[degree - 1].value() == <C::Group as Group>::identity() {
             degree -= 1;
@@ -190,7 +267,7 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
     /// Evaluates the commited polynomial on zero
     /// In other words, outputs the constant term
     pub fn eval_on_zero(&self) -> CoefficientCommitment<C> {
-        self.0[0]
+        self[0]
     }
 
     /// Evaluates the commited polynomial at a specific value
@@ -216,13 +293,14 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
         point: Option<&Scalar<C>>,
     ) -> Result<CoefficientCommitment<C>, ProtocolError> {
         let mut interpolation = <C::Group as Group>::identity();
+        // raise Error if the lengths are not the same
         if identifiers.len() != shares.len() {
             return Err(ProtocolError::InvalidInterpolationArguments);
         };
 
         // Compute the Lagrange coefficients
         for (id, share) in identifiers.iter().zip(shares) {
-            // would raise error if not enough shares or identifiers
+            // would raises error if insufficient number of identifiers (<= 1)
             let lagrange_coefficient = compute_lagrange_coefficient::<C>(identifiers, id, point)?;
 
             // Compute y = g^f(point) via polynomial interpolation of these points of f
@@ -239,15 +317,28 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
         let mut coeffcommitment = vec![CoefficientCommitment::<C>::new(C::Group::identity())];
         coeffcommitment.extend(self.get_coefficients());
         PolynomialCommitment::new(coeffcommitment)
+            .expect("coefficients must have at least one element")
     }
 
     /// Set the constant value of this polynomial to a new scalar
     pub fn set_constant(&mut self, v: CoefficientCommitment<C>) {
-        if self.0.is_empty() {
-            self.0.push(v)
-        } else {
-            self.0[0] = v
-        }
+        self[0] = v
+    }
+}
+
+// Dereferences a Polynomial
+impl<C: Ciphersuite> Deref for PolynomialCommitment<C> {
+    type Target = Vec<CoefficientCommitment<C>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+// Dereferences a Polynomial in a non <T>
+impl<C: Ciphersuite> DerefMut for PolynomialCommitment<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
@@ -255,13 +346,25 @@ impl<C: Ciphersuite> Add for &PolynomialCommitment<C> {
     type Output = PolynomialCommitment<C>;
 
     fn add(self, rhs: Self) -> Self::Output {
-        let coefficients = self
-            .0
+        // zip iterates over the smaller vec
+        let mut coefficients: Vec<CoefficientCommitment<C>> = self
             .iter()
-            .zip(rhs.0.iter())
+            .zip(rhs.iter())
             .map(|(a, b)| CoefficientCommitment::new(a.value() + b.value()))
             .collect();
+
+
+        // Append remaining coefficients from the larger polynomial
+        match self.len().cmp(&rhs.len()) {
+            std::cmp::Ordering::Less =>
+                coefficients.extend_from_slice(&rhs[self.len()..]),
+            std::cmp::Ordering::Greater =>
+                coefficients.extend_from_slice(&self[rhs.len()..]),
+            _ => (),
+        }
+
         PolynomialCommitment::new(coefficients)
+            .expect("coefficients must have at least one element")
     }
 }
 

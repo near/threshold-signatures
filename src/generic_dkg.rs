@@ -57,14 +57,14 @@ fn assert_keyshare_inputs<C: Ciphersuite>(
 /// If the first coefficient is set to zero then skip it
 fn generate_coefficient_commitment<C: Ciphersuite>(
     secret_coefficients: &Polynomial<C>,
-) -> PolynomialCommitment<C> {
+) -> Result<PolynomialCommitment<C>, ProtocolError> {
     let mut secret_coefficients = secret_coefficients.get_coefficients();
     // we skip the zero share as neither zero scalar
     // nor identity group element are serializable
     if secret_coefficients.first() == Some(&<C::Group as Group>::Field::zero()) {
         secret_coefficients.remove(0);
     };
-    Polynomial::new(secret_coefficients).commit_polynomial()
+    Ok(Polynomial::new(secret_coefficients)?.commit_polynomial())
 }
 
 /// Generates the challenge for the proof of knowledge
@@ -382,7 +382,8 @@ async fn do_keyshare<C: Ciphersuite>(
         Polynomial::<C>::generate_polynomial(Some(secret), threshold - 1, &mut rng);
 
     // Compute the multiplication of every coefficient of p with the generator G
-    let coefficient_commitment = generate_coefficient_commitment::<C>(&secret_coefficients);
+    let coefficient_commitment = generate_coefficient_commitment::<C>(&secret_coefficients)
+        .expect("expects non constant polynomial (i.e. threshold strictly larger than 1)");
     // generate a proof of knowledge if the participant me is not holding a secret that is zero
     let proof_domain_separator = domain_separator;
     let proof_of_knowledge = compute_proof_of_knowledge(
@@ -483,8 +484,9 @@ async fn do_keyshare<C: Ciphersuite>(
     };
 
     for p in participants.others(me) {
-        // Securely send to each other participant a secret share
+        // securely send to each other participant a secret share
         // using the evaluation secret polynomial on the identifier of the recipient
+        // should not panic as secret_coefficients are created internally
         let signing_share_to_p = secret_coefficients.eval_on_participant(p);
         // send the evaluation privately to participant p
         chan.send_private(wait_round_3, p, &signing_share_to_p);
@@ -492,6 +494,7 @@ async fn do_keyshare<C: Ciphersuite>(
 
     // Start Round 4
     // compute my secret evaluation of my private polynomial
+    // should not panic as secret_coefficients are created internally
     let mut my_signing_share = secret_coefficients.eval_on_participant(me).0;
     // receive evaluations from all participants
     seen.clear();

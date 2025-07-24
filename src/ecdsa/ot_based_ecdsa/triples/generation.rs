@@ -94,6 +94,7 @@ async fn do_generation(
 
     // Spec 2.4
     let multiplication_task = {
+        // cannot fail as both polynomials are non-empty (generated locally)
         let e0 = e.eval_on_zero();
         let f0 = f.eval_on_zero();
         multiplication(

@@ -24,19 +24,20 @@ fn zero_secret_polynomial(degree: usize, rng: &mut OsRng) -> Polynomial {
     Polynomial::generate_polynomial(Some(secret), degree, rng)
 }
 
-/// Evaluate five polynomials at once
+/// Evaluate five, non-empty, polynomials at once
+/// Raises error if any of the polynomials are empty
 fn eval_five_polynomials(
     polynomials: [&Polynomial; 5],
     participant: Participant,
-) -> [SigningShare; 5] {
+) -> Result<[SigningShare; 5], ProtocolError> {
     let package = Polynomial::multi_eval_on_participant::<5>(polynomials, participant);
     let package: [SigningShare; 5] = package
         .iter()
         .map(|eval| SigningShare::new(eval.0))
         .collect::<Vec<_>>()
         .try_into()
-        .expect("Expected exactly 5 elements");
-    package
+        .expect("Expected exactly 5 signing shares");
+    Ok(package)
 }
 
 /// /!\ Warning: the threshold in this scheme is the exactly the
@@ -64,13 +65,13 @@ async fn do_presign(
 
     for p in participants.others(me) {
         // Securely send to each other participant a secret share
-        let package = eval_five_polynomials([&my_fk, &my_fa, &my_fb, &my_fd, &my_fe], p);
+        let package = eval_five_polynomials([&my_fk, &my_fa, &my_fb, &my_fd, &my_fe], p)?;
         // send the evaluation privately to participant p
         chan.send_private(wait_round_0, p, &package);
     }
 
     // Evaluate my secret shares for my polynomials
-    let shares = eval_five_polynomials([&my_fk, &my_fa, &my_fb, &my_fd, &my_fe], me);
+    let shares = eval_five_polynomials([&my_fk, &my_fa, &my_fb, &my_fd, &my_fe], me)?;
     // Extract the shares into a vec of scalars
     let mut shares: Vec<Scalar> = shares
         .iter()
