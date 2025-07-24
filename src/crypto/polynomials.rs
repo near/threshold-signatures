@@ -353,13 +353,10 @@ impl<C: Ciphersuite> Add for &PolynomialCommitment<C> {
             .map(|(a, b)| CoefficientCommitment::new(a.value() + b.value()))
             .collect();
 
-
         // Append remaining coefficients from the larger polynomial
         match self.len().cmp(&rhs.len()) {
-            std::cmp::Ordering::Less =>
-                coefficients.extend_from_slice(&rhs[self.len()..]),
-            std::cmp::Ordering::Greater =>
-                coefficients.extend_from_slice(&self[rhs.len()..]),
+            std::cmp::Ordering::Less => coefficients.extend_from_slice(&rhs[self.len()..]),
+            std::cmp::Ordering::Greater => coefficients.extend_from_slice(&self[rhs.len()..]),
             _ => (),
         }
 
