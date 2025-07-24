@@ -6,7 +6,7 @@ The former implementation is imported from the [Cait-Sith](https://github.com/cr
 
 The latter implementation is mainly a wrapper of the [Frost](https://github.com/ZcashFoundation/frost) signing functions instantiated with Curve25519.
 
-# Hierarchical File System
+# Code organization
 
 The repository provides implementations for both ECDSA and EdDSA.
 Each signature scheme has its own repository that implements it, namely, `src/ecdsa` and `src/eddsa`.\
@@ -52,7 +52,7 @@ Building the crate is fairly simple using
 Run ``cargo test`` to run all the built-in test cases. Some the tests might take some time to run as they require running complex protocols with multiple participants at once.
 
 # Benchmarks
-* Benchmarks with 8 nodes -- TODO
+* Benchmarks with 8 nodes -- TODO: https://github.com/near/threshold-signatures/issues/8
 
 # Acknowledgements
 This implementation relies on

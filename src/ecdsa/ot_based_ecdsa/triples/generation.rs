@@ -71,7 +71,8 @@ async fn do_generation(
     let big_l_i = l.commit_polynomial();
 
     // Spec 1.5
-    let (my_commitment, my_randomizer) = commit(&mut rng, &(&big_e_i, &big_f_i, &big_l_i));
+    let (my_commitment, my_randomizer) = commit(&mut rng, &(&big_e_i, &big_f_i, &big_l_i))
+        .map_err(|_| ProtocolError::PointSerialization)?;
 
     // Spec 1.6
     let wait0 = chan.next_waitpoint();
@@ -229,10 +230,13 @@ async fn do_generation(
                 )));
             }
 
-            if !all_commitments[from].check(
-                &(&their_big_e, &their_big_f, &their_big_l),
-                &their_randomizer,
-            ) {
+            if !all_commitments[from]
+                .check(
+                    &(&their_big_e, &their_big_f, &their_big_l),
+                    &their_randomizer,
+                )
+                .map_err(|_| ProtocolError::PointSerialization)?
+            {
                 return Err(ProtocolError::AssertionFailed(format!(
                     "commitment from {from:?} did not match revealed F"
                 )));
@@ -524,7 +528,8 @@ async fn do_generation_many<const N: usize>(
         let big_l_i = l.commit_polynomial();
 
         // Spec 1.5
-        let (my_commitment, my_randomizer) = commit(&mut rng, &(&big_e_i, &big_f_i, &big_l_i));
+        let (my_commitment, my_randomizer) = commit(&mut rng, &(&big_e_i, &big_f_i, &big_l_i))
+            .map_err(|_| ProtocolError::PointSerialization)?;
 
         my_commitments.push(my_commitment);
         my_randomizers.push(my_randomizer);
@@ -748,10 +753,13 @@ async fn do_generation_many<const N: usize>(
                     )));
                 }
 
-                if !all_commitments[from].check(
-                    &(&their_big_e, &their_big_f, &their_big_l),
-                    their_randomizer,
-                ) {
+                if !all_commitments[from]
+                    .check(
+                        &(&their_big_e, &their_big_f, &their_big_l),
+                        their_randomizer,
+                    )
+                    .map_err(|_| ProtocolError::PointSerialization)?
+                {
                     return Err(ProtocolError::AssertionFailed(format!(
                         "commitment from {from:?} did not match revealed F"
                     )));

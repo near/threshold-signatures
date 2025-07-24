@@ -1,4 +1,5 @@
 use rand_core::CryptoRngCore;
+use rmp_serde::encode::{write, Error};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -16,20 +17,19 @@ const COMMIT_LEN: usize = 32;
 pub struct Commitment([u8; COMMIT_LEN]);
 
 impl Commitment {
-    fn compute<T: Serialize>(val: &T, r: &Randomizer) -> Self {
+    fn compute<T: Serialize>(val: &T, r: &Randomizer) -> Result<Self, Error> {
         let mut hasher = Sha256::new();
         hasher.update(COMMIT_LABEL);
         hasher.update(r.as_ref());
         hasher.update(b"start data");
-        rmp_serde::encode::write(&mut hasher, val).expect("failed to encode value");
-        Commitment(hasher.finalize().into())
+        write(&mut hasher, val)?;
+        Ok(Commitment(hasher.finalize().into()))
     }
 
     /// Check that a value and a randomizer match this commitment.
-    #[must_use]
-    pub fn check<T: Serialize>(&self, val: &T, r: &Randomizer) -> bool {
-        let actual = Self::compute(val, r);
-        *self == actual
+    pub fn check<T: Serialize>(&self, val: &T, r: &Randomizer) -> Result<bool, Error> {
+        let actual = Self::compute(val, r)?;
+        Ok(*self == actual)
     }
 }
 
@@ -40,8 +40,11 @@ impl Commitment {
 ///
 /// This value will need to be sent when opening the commitment to allow
 /// others to check that the opening is valid.
-pub fn commit<T: Serialize, R: CryptoRngCore>(rng: &mut R, val: &T) -> (Commitment, Randomizer) {
+pub fn commit<T: Serialize, R: CryptoRngCore>(
+    rng: &mut R,
+    val: &T,
+) -> Result<(Commitment, Randomizer), Error> {
     let r = Randomizer::random(rng);
-    let c = Commitment::compute(val, &r);
-    (c, r)
+    let c = Commitment::compute(val, &r)?;
+    Ok((c, r))
 }
