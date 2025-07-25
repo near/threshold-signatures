@@ -68,7 +68,7 @@ impl<T: Serialize> Serialize for NonEmptyVec<T> {
 
 /// Polynomial structure of non-empty coefficiants
 /// Represents a polynomial with coefficients in the scalar field of the curve.
-pub struct Polynomial<C: Ciphersuite>{
+pub struct Polynomial<C: Ciphersuite> {
     /// The coefficients of our polynomial,
     /// The 0 term being the constant term of the polynomial
     coefficients: NonEmptyVec<Scalar<C>>,
@@ -78,8 +78,8 @@ impl<C: Ciphersuite> Polynomial<C> {
     /// Constructs the polynomial out of scalars
     /// The first scalar (coefficients[0]) is the constant term
     pub fn new(coefficients: Vec<Scalar<C>>) -> Result<Self, ProtocolError> {
-        Ok(Polynomial{
-            coefficients: NonEmptyVec::new(coefficients)?
+        Ok(Polynomial {
+            coefficients: NonEmptyVec::new(coefficients)?,
         })
     }
 
@@ -245,7 +245,7 @@ impl<C: Ciphersuite> DerefMut for Polynomial<C> {
 /// Contains the commited coefficients of a polynomial i.e. coeff * G
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[serde(bound = "C: Ciphersuite")]
-pub struct PolynomialCommitment<C: Ciphersuite>{
+pub struct PolynomialCommitment<C: Ciphersuite> {
     /// The committed coefficients which are group elements
     /// (elliptic curve points)
     coefficients: NonEmptyVec<CoefficientCommitment<C>>,
@@ -253,8 +253,8 @@ pub struct PolynomialCommitment<C: Ciphersuite>{
 
 impl<C: Ciphersuite> PolynomialCommitment<C> {
     pub fn new(coefcommitments: Vec<CoefficientCommitment<C>>) -> Result<Self, ProtocolError> {
-        Ok(PolynomialCommitment{
-            coefficients:NonEmptyVec::new(coefcommitments)?
+        Ok(PolynomialCommitment {
+            coefficients: NonEmptyVec::new(coefcommitments)?,
         })
     }
 
@@ -267,7 +267,8 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
     pub fn degree(&self) -> usize {
         let mut degree = self.len();
         // loop as long as the higher terms are zero
-        while degree > 0 && self.coefficients[degree - 1].value() == <C::Group as Group>::identity() {
+        while degree > 0 && self.coefficients[degree - 1].value() == <C::Group as Group>::identity()
+        {
             degree -= 1;
         }
         if degree == 0 {
