@@ -1,11 +1,50 @@
-# Confidential Key Derivation
+# Confidential Key Derivation - Feature Description and Algorithm Design
 
-It is a very powerful primitive to allow any app running inside a TEE (Intel
-TDX) to have a deterministically derived key that is unique to the app and not
-specific to the TEE. The app can derive the same key even if it runs on a
-different TEE. To obtain the key, the app can request a key to the MPC contract
-on-chain, by submitting proof that it is running inside a TEE.
+The purpose of this document is to explain the idea behind the confidential keys
+feature, and outline the details of the algorithm we're implementing to support
+this feature. The feature is a work in progress, and this document is to serve
+as a reference when we develop the different parts of it.
 
+## What is the confidential key derivation feature?
+
+The confidential key derivation feature is an extension of the current MPC
+system with a custom scheme that provides applications with
+deterministic secrets. Deterministic here means that the same
+application may request the same secret at different points in time. Private
+means that the secret itself is never revealed to any other entity than the
+application itself, not even to individual MPC nodes.
+
+## Background & Motivation
+
+Confidential Key Derivation is a very powerful primitive to allow any app
+running inside a TEE (Intel TDX) to have a deterministically derived key that is
+unique to the app and not specific to the TEE. The app can derive the same key
+even if it runs on a different TEE. To obtain the key, the app can request a key
+to the MPC contract on-chain, by submitting proof that it is running inside a
+TEE. Currently, we are not aware of other systems supporting this feature.
+
+## Overview
+
+We support deterministic secrets for applications running in Intel TDX servers.
+Although we mainly support applications running on
+[Dstack](https://github.com/Dstack-TEE/dstack), it should also be possible to
+run apps on other platforms as long as the requirements for remote attestation
+are fulfilled. An application can request a deterministic secret by calling
+$`\texttt{gen\_app\_private\_key}`$ on the MPC smart contract. This method takes
+the app identifier $`\texttt{app\_id}`$, the remote attestation report
+$`\texttt{attestation}`$, a fresh public key $A$ and the operator public key
+$\texttt{opk}$, and causes the MPC network to compute a secret as described in
+the "Algorithm Steps" [below](#algorithm-steps).
+
+
+```mermaid
+flowchart LR
+    A[TEE app] -->|call gen\_app\_private\_key| B(MPC contract)
+    B -->|verify app\_id and attestation| C{Correct?}
+    C -->|Yes| D(MPC Network)
+    C -->|No| E(( ))
+    D -->|encrypted secret| A
+```
 ## Naming conventions
 
 - *CKG*: confidential key generation
