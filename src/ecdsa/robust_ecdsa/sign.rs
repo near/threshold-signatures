@@ -124,25 +124,27 @@ mod test {
         let msg = b"hello?";
 
         for _ in 0..100 {
-            let fx = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng);
+            let fx = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng).unwrap();
             // master secret key
             let x = fx.eval_on_zero().0;
             // master public key
             let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
 
-            let fa = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng);
-            let fk = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng);
+            let fa = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng).unwrap();
+            let fk = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng).unwrap();
 
             let fd = Polynomial::generate_polynomial(
                 Some(Secp256K1ScalarField::zero()),
                 2 * max_malicious,
                 &mut OsRng,
-            );
+            )
+            .unwrap();
             let fe = Polynomial::generate_polynomial(
                 Some(Secp256K1ScalarField::zero()),
                 2 * max_malicious,
                 &mut OsRng,
-            );
+            )
+            .unwrap();
 
             let k = fk.eval_on_zero().0;
             let big_r = ProjectivePoint::GENERATOR * k;

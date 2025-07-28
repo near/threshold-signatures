@@ -379,7 +379,7 @@ async fn do_keyshare<C: Ciphersuite>(
     domain_separator += 1;
     // the degree of the polynomial is threshold - 1
     let secret_coefficients =
-        Polynomial::<C>::generate_polynomial(Some(secret), threshold - 1, &mut rng);
+        Polynomial::<C>::generate_polynomial(Some(secret), threshold - 1, &mut rng)?;
 
     // Compute the multiplication of every coefficient of p with the generator G
     let coefficient_commitment = generate_coefficient_commitment::<C>(&secret_coefficients)

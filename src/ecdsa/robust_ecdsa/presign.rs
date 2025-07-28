@@ -19,7 +19,7 @@ use crate::{
 type C = Secp256K1Sha256;
 
 /// Generates a secret polynomial where the constant term is zero
-fn zero_secret_polynomial(degree: usize, rng: &mut OsRng) -> Polynomial {
+fn zero_secret_polynomial(degree: usize, rng: &mut OsRng) -> Result<Polynomial, ProtocolError> {
     let secret = Secp256K1ScalarField::zero();
     Polynomial::generate_polynomial(Some(secret), degree, rng)
 }
@@ -52,13 +52,13 @@ async fn do_presign(
     // Round 0
     let mut rng = OsRng;
     // degree t random secret shares where t is the max number of malicious parties
-    let my_fk = Polynomial::generate_polynomial(None, threshold, &mut rng);
-    let my_fa = Polynomial::generate_polynomial(None, threshold, &mut rng);
+    let my_fk = Polynomial::generate_polynomial(None, threshold, &mut rng)?;
+    let my_fa = Polynomial::generate_polynomial(None, threshold, &mut rng)?;
 
     // degree 2t zero secret shares where t is the max number of malicious parties
-    let my_fb = zero_secret_polynomial(2 * threshold, &mut rng);
-    let my_fd = zero_secret_polynomial(2 * threshold, &mut rng);
-    let my_fe = zero_secret_polynomial(2 * threshold, &mut rng);
+    let my_fb = zero_secret_polynomial(2 * threshold, &mut rng)?;
+    let my_fd = zero_secret_polynomial(2 * threshold, &mut rng)?;
+    let my_fe = zero_secret_polynomial(2 * threshold, &mut rng)?;
 
     // send polynomial evaluations to participants
     let wait_round_0 = chan.next_waitpoint();
@@ -255,7 +255,7 @@ mod test {
         ];
         let max_malicious = 2;
 
-        let f = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng);
+        let f = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
         let big_x = ProjectivePoint::GENERATOR * f.eval_on_zero().0;
 
         #[allow(clippy::type_complexity)]

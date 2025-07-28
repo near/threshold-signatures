@@ -58,12 +58,12 @@ async fn do_generation(
     );
 
     // Spec 1.2
-    let e = Polynomial::generate_polynomial(None, threshold - 1, &mut rng);
-    let f = Polynomial::generate_polynomial(None, threshold - 1, &mut rng);
+    let e = Polynomial::generate_polynomial(None, threshold - 1, &mut rng)?;
+    let f = Polynomial::generate_polynomial(None, threshold - 1, &mut rng)?;
     // Spec 1.3
     // We will generate a poly of degree threshold - 2 then later extend it with identity.
     // This is to prevent serialization from failing
-    let mut l = Polynomial::generate_polynomial(None, threshold - 2, &mut rng);
+    let mut l = Polynomial::generate_polynomial(None, threshold - 2, &mut rng)?;
 
     // Spec 1.4
     let big_e_i = e.commit_polynomial();
@@ -404,7 +404,7 @@ async fn do_generation(
     // Spec 4.8
     // extend to make the degree threshold - 1
     l = l.extend_with_zero();
-    l.set_constant(l0);
+    l.set_constant(l0)?;
     let wait6 = chan.next_waitpoint();
     for p in participants.others(me) {
         let c_i_j = l.eval_on_participant(p);
@@ -440,7 +440,7 @@ async fn do_generation(
     }
 
     // Spec 5.3
-    big_l.set_constant(CoefficientCommitment::new(hat_big_c));
+    big_l.set_constant(CoefficientCommitment::new(hat_big_c))?;
 
     // Spec 5.4
     if big_l.eval_on_zero().value() != big_c {
@@ -519,9 +519,9 @@ async fn do_generation_many<const N: usize>(
 
     for _ in 0..N {
         // Spec 1.2
-        let e = Polynomial::generate_polynomial(None, threshold - 1, &mut rng);
-        let f = Polynomial::generate_polynomial(None, threshold - 1, &mut rng);
-        let l = Polynomial::generate_polynomial(None, threshold - 2, &mut rng);
+        let e = Polynomial::generate_polynomial(None, threshold - 1, &mut rng)?;
+        let f = Polynomial::generate_polynomial(None, threshold - 1, &mut rng)?;
+        let l = Polynomial::generate_polynomial(None, threshold - 2, &mut rng)?;
 
         // Spec 1.4
         let big_e_i = e.commit_polynomial();
@@ -968,7 +968,7 @@ async fn do_generation_many<const N: usize>(
         let l0 = &l0_v[i];
         // extend to make the degree threshold - 1
         *l = l.extend_with_zero();
-        l.set_constant(*l0);
+        l.set_constant(*l0)?;
     }
     let wait6 = chan.next_waitpoint();
     let mut c_i_v = vec![];
@@ -1028,7 +1028,7 @@ async fn do_generation_many<const N: usize>(
         let big_c = &big_c_v[i];
 
         // Spec 5.3
-        big_l.set_constant(CoefficientCommitment::new(*hat_big_c));
+        big_l.set_constant(CoefficientCommitment::new(*hat_big_c))?;
 
         // Spec 5.4
         if big_l.eval_on_zero().value() != *big_c {

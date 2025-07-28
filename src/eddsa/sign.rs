@@ -266,7 +266,7 @@ async fn fut_wrapper(
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use crate::crypto::hash::hash;
     use crate::participants::ParticipantList;
     use frost_core::{Field, Group};

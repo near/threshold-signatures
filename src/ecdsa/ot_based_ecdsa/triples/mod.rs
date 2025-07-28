@@ -72,4 +72,4 @@ mod random_ot_extension;
 pub use generation::{generate_triple, generate_triple_many, TripleGenerationOutput};
 
 #[cfg(test)]
-pub mod test;
+pub(crate) mod test;

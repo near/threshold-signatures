@@ -209,7 +209,7 @@ mod test {
             Participant::from(3u32),
         ];
         let original_threshold = 2;
-        let f = Polynomial::generate_polynomial(None, original_threshold - 1, &mut OsRng);
+        let f = Polynomial::generate_polynomial(None, original_threshold - 1, &mut OsRng).unwrap();
         let big_x = ProjectivePoint::GENERATOR * f.eval_on_zero().0;
 
         let threshold = 2;
