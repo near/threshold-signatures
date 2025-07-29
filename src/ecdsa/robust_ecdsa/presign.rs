@@ -24,22 +24,6 @@ fn zero_secret_polynomial(degree: usize, rng: &mut OsRng) -> Result<Polynomial, 
     Polynomial::generate_polynomial(Some(secret), degree, rng)
 }
 
-/// Evaluate five, non-empty, polynomials at once
-/// Raises error if any of the polynomials are empty
-fn eval_five_polynomials(
-    polynomials: [&Polynomial; 5],
-    participant: Participant,
-) -> Result<[SigningShare; 5], ProtocolError> {
-    let package = Polynomial::multi_eval_on_participant::<5>(polynomials, participant);
-    let package: [SigningShare; 5] = package
-        .iter()
-        .map(|eval| SigningShare::new(eval.0))
-        .collect::<Vec<_>>()
-        .try_into()
-        .expect("Expected exactly 5 signing shares");
-    Ok(package)
-}
-
 /// /!\ Warning: the threshold in this scheme is the exactly the
 ///              same as the max number of malicious parties.
 async fn do_presign(
@@ -51,46 +35,53 @@ async fn do_presign(
     let threshold = args.threshold;
     // Round 0
     let mut rng = OsRng;
-    // degree t random secret shares where t is the max number of malicious parties
-    let my_fk = Polynomial::generate_polynomial(None, threshold, &mut rng)?;
-    let my_fa = Polynomial::generate_polynomial(None, threshold, &mut rng)?;
 
-    // degree 2t zero secret shares where t is the max number of malicious parties
-    let my_fb = zero_secret_polynomial(2 * threshold, &mut rng)?;
-    let my_fd = zero_secret_polynomial(2 * threshold, &mut rng)?;
-    let my_fe = zero_secret_polynomial(2 * threshold, &mut rng)?;
+    let polynomials = [
+        // degree t random secret shares where t is the max number of malicious parties
+        Polynomial::generate_polynomial(None, threshold, &mut rng)?, // fk
+        Polynomial::generate_polynomial(None, threshold, &mut rng)?, // fa
+        // degree 2t zero secret shares where t is the max number of malicious parties
+        zero_secret_polynomial(2 * threshold, &mut rng)?, // fb
+        zero_secret_polynomial(2 * threshold, &mut rng)?, // fd
+        zero_secret_polynomial(2 * threshold, &mut rng)?, // fe
+    ];
 
     // send polynomial evaluations to participants
     let wait_round_0 = chan.next_waitpoint();
 
     for p in participants.others(me) {
         // Securely send to each other participant a secret share
-        let package = eval_five_polynomials([&my_fk, &my_fa, &my_fb, &my_fd, &my_fe], p)?;
+        let package = polynomials
+            .iter()
+            .map(|poly| poly.eval_on_participant(p))
+            .collect::<Vec<_>>();
+
         // send the evaluation privately to participant p
         chan.send_private(wait_round_0, p, &package);
     }
 
     // Evaluate my secret shares for my polynomials
-    let shares = eval_five_polynomials([&my_fk, &my_fa, &my_fb, &my_fd, &my_fe], me)?;
-    // Extract the shares into a vec of scalars
-    let mut shares: Vec<Scalar> = shares
+    let shares = polynomials
         .iter()
-        .map(|signing_share| signing_share.to_scalar())
-        .collect();
+        .map(|poly| poly.eval_on_participant(me))
+        .collect::<Vec<_>>();
+
+    // Extract the shares into a vec of scalars
+    let mut shares: Vec<Scalar> = shares.iter().map(|signing_share| signing_share.0).collect();
 
     // Round 1
     // Receive evaluations from all participants
     let mut seen = ParticipantCounter::new(&participants);
     seen.put(me);
     while !seen.full() {
-        let (from, package): (_, [SigningShare; 5]) = chan.recv(wait_round_0).await?;
+        let (from, package): (_, [SerializableScalar<C>; 5]) = chan.recv(wait_round_0).await?;
         if !seen.put(from) {
             continue;
         }
 
         // calculate the respective sum of the received different shares from each participant
         for i in 0..shares.len() {
-            shares[i] += package[i].to_scalar();
+            shares[i] += package[i].0;
         }
     }
 

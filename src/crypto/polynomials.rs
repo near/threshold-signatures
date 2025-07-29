@@ -97,12 +97,6 @@ impl<C: Ciphersuite> Polynomial<C> {
         self.coefficients.to_vec()
     }
 
-    /// Outputs the degree of the polynomial
-    pub fn degree(&self) -> usize {
-        //the higher terms cannot be zero
-        self.coefficients.len() - 1
-    }
-
     /// Creates a random polynomial p of the given degree
     /// and sets p(0) = secret
     /// if the secret is not given then it is picked at random
@@ -155,23 +149,6 @@ impl<C: Ciphersuite> Polynomial<C> {
     pub fn eval_on_participant(&self, participant: Participant) -> SerializableScalar<C> {
         let id = participant.scalar::<C>();
         self.eval_on_point(id)
-    }
-
-    /// Evaluates multiple polynomials of the same type on the same identifier
-    pub fn multi_eval_on_participant<const N: usize>(
-        polynomials: [&Self; N],
-        participant: Participant,
-    ) -> [SerializableScalar<C>; N] {
-        let mut result_vec = Vec::with_capacity(N);
-
-        for poly in polynomials.iter() {
-            let eval = poly.eval_on_participant(participant);
-            result_vec.push(eval);
-        }
-        match result_vec.try_into() {
-            Ok(arr) => arr,
-            Err(_) => panic!("Internal error: Vec did not match expected array size"),
-        }
     }
 
     /// Computes polynomial interpolation on a specific point
