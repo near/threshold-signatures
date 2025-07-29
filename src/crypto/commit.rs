@@ -1,5 +1,5 @@
 use rand_core::CryptoRngCore;
-use rmp_serde::encode::{write, Error};
+use rmp_serde::encode::Error;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -22,7 +22,7 @@ impl Commitment {
         hasher.update(COMMIT_LABEL);
         hasher.update(r.as_ref());
         hasher.update(b"start data");
-        write(&mut hasher, val)?;
+        rmp_serde::encode::write(&mut hasher, val)?;
         Ok(Commitment(hasher.finalize().into()))
     }
 

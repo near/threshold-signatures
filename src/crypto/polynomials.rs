@@ -146,11 +146,7 @@ impl<C: Ciphersuite> Polynomial<C> {
                 value = value + *coeff;
                 value = value * point;
             }
-            value = value
-                + *self
-                    .coefficients
-                    .first()
-                    .expect("coefficients must have at least one element");
+            value = value + self.coefficients[0];
             SerializableScalar(value)
         }
     }

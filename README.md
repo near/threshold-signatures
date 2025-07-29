@@ -1,10 +1,11 @@
 # Threshold Signing
-This repository offers a cryptographic implementation of **threshold ECDSA** and **threshold EdDSA**. The implementation has undergone professional <ins>audit</ins> and supports arbitrary numbers
-of signing parties and thresholds.
+This repository offers cryptographic implementations of **threshold ECDSA** and **threshold EdDSA**. Previous to [PR#15](https://github.com/near/threshold-signatures/pull/15) The implementation had undergone professional <ins>audit</ins>.
 
-The former implementation is imported from the [Cait-Sith](https://github.com/cronokirby/cait-sith) library and amended to meet our industrial needs. This includes modifying parts of the code to improve the performance, augment the security, and generalize functions' syntax.
+The ECDSA code implements an OT-based threshold protocol and a Secret-Sharing based one. The former
+is originally imported from the [Cait-Sith](https://github.com/cronokirby/cait-sith) library and amended to meet our industrial needs. This includes modifying parts of the code to improve the performance, augment the security, and generalize functions' syntax. The latter however is implemented from scratch and follows \[[DJNPØ](https://eprint.iacr.org/2020/501)\]
 
-The latter implementation is mainly a wrapper of the [Frost](https://github.com/ZcashFoundation/frost) signing functions instantiated with Curve25519.
+
+The EdDSA implementation is mainly a wrapper of the [Frost](https://github.com/ZcashFoundation/frost) signing functions instantiated with Curve25519.
 
 # Code organization
 

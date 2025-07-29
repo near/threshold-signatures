@@ -31,6 +31,9 @@ fn element_into_or_panic<C: Ciphersuite>(point: &Element<C>, label: &[u8]) -> Ve
             enc.extend_from_slice(label);
             enc.extend_from_slice(ser.as_ref());
         }
+        // unreachable as either the statement is locally created
+        // and thus the points are well defined, or it is received
+        // from someone and thus it is serializable.
         _ => panic!("Expected non-identity element"),
     };
     enc
