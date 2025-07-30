@@ -419,17 +419,146 @@ pub fn compute_lagrange_coefficient<C: Ciphersuite>(
 
 #[cfg(test)]
 mod test {
-    use crate::ecdsa::Polynomial;
+    use super::*;
     use frost_core::Field;
-    use frost_secp256k1::Secp256K1ScalarField;
-
+    use frost_secp256k1::{Secp256K1Group, Secp256K1ScalarField, Secp256K1Sha256};
+    use rand_core::OsRng;
+    type C = Secp256K1Sha256;
     #[test]
     fn abort_no_polynomial() {
-        let poly = Polynomial::new(vec![]);
+        let poly = Polynomial::<C>::new(vec![]);
         assert!(poly.is_err(), "Polynomial should be raising error");
 
         let vec = vec![Secp256K1ScalarField::zero(); 10];
-        let poly = Polynomial::new(vec);
-        assert!(poly.is_err(), "Polynomial should be raising error 2");
+        let poly = Polynomial::<C>::new(vec);
+        assert!(poly.is_err(), "Polynomial should be raising error");
+    }
+
+    #[test]
+    fn abort_no_polynomial_commitments() {
+        let poly = PolynomialCommitment::<C>::new(vec![]);
+        assert!(poly.is_err(), "Polynomial should be raising error");
+        let vec = vec![CoefficientCommitment::<C>::new(Secp256K1Group::identity()); 10];
+        let poly = PolynomialCommitment::new(vec);
+        assert!(poly.is_err(), "Polynomial should be raising error");
+    }
+
+    #[test]
+    fn poly_generate_evaluate_interpolate() {
+        let degree = 5;
+        // generate polynomial of degree 5
+        let poly = Polynomial::<C>::generate_polynomial(None, degree, &mut OsRng)
+            .expect("Generation must not fail with overwhealming probability");
+
+        // evaluate polynomial on 6 different points
+        let participants = (0..degree + 1)
+            .map(|i| Participant::from(i as u32))
+            .collect::<Vec<_>>();
+
+        let shares = participants
+            .iter()
+            .map(|p| poly.eval_on_participant(*p))
+            .collect::<Vec<_>>();
+
+        // interpolate the polynomial using the shares on arbitrary points
+        let scalars = participants
+            .iter()
+            .map(|p| p.scalar::<C>())
+            .collect::<Vec<_>>();
+        for _ in 0..100 {
+            // create arbitrary point
+            let point = Secp256K1ScalarField::random(&mut OsRng);
+            // interpolate on this point
+            let interpolation =
+                Polynomial::<C>::eval_interpolation(&scalars, &shares, Some(&point))
+                    .expect("Interpolation has the correct inputs");
+            // evaluate the polynomial on the point
+            let evaluation = poly.eval_on_point(point);
+
+            // verify that the interpolated points match the polynomial evaluation
+            assert_eq!(interpolation.0, evaluation.0);
+        }
+    }
+
+    #[test]
+    fn com_generate_evaluate_interpolate(){
+        let degree = 5;
+        // generate polynomial of degree 5
+        let poly = Polynomial::<C>::generate_polynomial(None, degree, &mut OsRng)
+            .expect("Generation must not fail with overwhealming probability");
+
+        let compoly = poly.commit_polynomial();
+        // evaluate polynomial on 6 different points
+        let participants = (0..degree + 1)
+            .map(|i| Participant::from(i as u32))
+            .collect::<Vec<_>>();
+
+        let shares = participants
+            .iter()
+            .map(|p| compoly.eval_on_participant(*p))
+            .collect::<Vec<_>>();
+
+        // interpolate the polynomial using the shares on arbitrary points
+        let scalars = participants
+            .iter()
+            .map(|p| p.scalar::<C>())
+            .collect::<Vec<_>>();
+        for _ in 0..100 {
+            // create arbitrary point
+            let point = Secp256K1ScalarField::random(&mut OsRng);
+            // interpolate on this point
+            let interpolation =
+                PolynomialCommitment::<C>::eval_exponent_interpolation(&scalars, &shares, Some(&point))
+                    .expect("Interpolation has the correct inputs");
+            // evaluate the polynomial on the point
+            let evaluation = compoly.eval_on_point(point);
+
+            // verify that the interpolated points match the polynomial evaluation
+            assert_eq!(interpolation.value(), evaluation.value());
+        }
+    }
+
+    #[test]
+    fn add_polynomial_commitments(){
+        let degree = 5;
+        // generate polynomial of degree 5
+        let poly = Polynomial::<C>::generate_polynomial(None, degree, &mut OsRng)
+            .expect("Generation must not fail with overwhealming probability");
+
+        let compoly = poly.commit_polynomial();
+        let sum = compoly.add(&compoly);
+
+        let coefpoly = compoly.get_coefficients();
+        let mut coefsum = sum.get_coefficients();
+
+        assert_eq!(coefpoly.len(), coefsum.len());
+
+        // I need the scalar 2
+        // the easiest way to do so is to create a participant with identity 1
+        // transforming the identity into scalar would add +1
+        let two = Participant::from(1u32).scalar::<C>();
+        for (c, two_c) in coefpoly.iter().zip(&coefsum){
+            assert_eq!(c.value() * two, two_c.value())
+        }
+
+        coefsum.extend(&coefsum.clone());
+        let extend_sum_compoly = PolynomialCommitment::new(coefsum).expect("We have proper coefficients");
+        let ext_sum_left = extend_sum_compoly.add(&compoly).get_coefficients();
+        let ext_sum_right = compoly.add(&extend_sum_compoly).get_coefficients();
+        for (c_left, c_right) in ext_sum_left.iter().zip(ext_sum_right){
+            assert_eq!(c_left.value(), c_right.value());
+        }
+
+
+        let three = Participant::from(2u32).scalar::<C>();
+        for i in 0..ext_sum_left.len(){
+            let c = ext_sum_left[i].value();
+            if i<ext_sum_left.len()/2 {
+                assert_eq!(c, coefpoly[i].value()*three);
+            } else {
+                let index = i - ext_sum_left.len()/2;
+                assert_eq!(c, coefpoly[index].value()*two);
+            }
+        }
     }
 }

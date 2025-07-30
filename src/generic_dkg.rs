@@ -367,7 +367,7 @@ async fn do_keyshare<C: Ciphersuite>(
 
     // Start Round 0
     let mut my_session_id = [0u8; 32]; // 256 bits
-    OsRng.fill_bytes(&mut my_session_id);
+    rng.fill_bytes(&mut my_session_id);
     let session_ids = do_broadcast(&mut chan, &participants, &me, my_session_id).await?;
 
     // Start Round 1
