@@ -21,7 +21,7 @@ pub enum ProtocolError {
     /// The ciphersuite does not support DKG.
     DKGNotSupported,
     /// When a Polynomial or PolynomialCommitment is Empty
-    EmptyCoefficients,
+    EmptyOrZeroCoefficients,
     /// Could not extract the verification Key from a commitment.
     ErrorExtractVerificationKey,
     /// Error in reducing bytes to scalar
@@ -58,7 +58,9 @@ impl fmt::Display for ProtocolError {
             ProtocolError::Other(e) => write!(f, "{e}"),
             ProtocolError::AssertionFailed(e) => write!(f, "assertion failed {e}"),
             ProtocolError::DKGNotSupported => write!(f, "the ciphersuite does not support DKG"),
-            ProtocolError::EmptyCoefficients => write!(f, "Cannot handle empty polynomials."),
+            ProtocolError::EmptyOrZeroCoefficients => {
+                write!(f, "Found empty polynomials or zero polynomial.")
+            }
             ProtocolError::ErrorExtractVerificationKey => write!(
                 f,
                 "could not extract the verification Key from the commitment."
