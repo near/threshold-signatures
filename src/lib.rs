@@ -7,3 +7,6 @@ pub mod protocol;
 
 pub mod ecdsa;
 pub mod eddsa;
+
+#[cfg(test)]
+mod test;

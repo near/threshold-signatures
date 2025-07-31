@@ -399,6 +399,7 @@ mod test {
     use frost_core::Field;
     use frost_secp256k1::{Secp256K1Group, Secp256K1ScalarField, Secp256K1Sha256};
     use rand_core::{OsRng, RngCore};
+    use crate::test::generate_participants;
     type C = Secp256K1Sha256;
     #[test]
     fn abort_no_polynomial() {
@@ -661,9 +662,7 @@ mod test {
             .expect("Generation must not fail with overwhealming probability");
 
         // evaluate polynomial on 6 different points
-        let participants = (0..degree + 1)
-            .map(|i| Participant::from(i as u32))
-            .collect::<Vec<_>>();
+        let participants = generate_participants(degree + 1);
 
         let shares = participants
             .iter()
@@ -749,9 +748,7 @@ mod test {
 
         let compoly = poly.commit_polynomial();
         // evaluate polynomial on 6 different points
-        let participants = (0..degree + 1)
-            .map(|i| Participant::from(i as u32))
-            .collect::<Vec<_>>();
+        let participants = generate_participants(degree + 1);
 
         let shares = participants
             .iter()
