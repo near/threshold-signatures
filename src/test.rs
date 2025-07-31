@@ -1,8 +1,13 @@
 // This module provides generic functions to be used
 // in the implemented schemes testing cases
 
-use crate::protocol::Participant;
 use rand_core::{OsRng, RngCore};
+
+use crate::KeygenOutput;
+use crate::protocol::Participant;
+use crate::Ciphersuite;
+
+// +++++++++++++++++ Participants Utilities +++++++++++++++++ //
 
 /// Generates a vector of participants
 /// enumerated from 0 to number

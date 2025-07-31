@@ -12,18 +12,13 @@ use elliptic_curve::{
 };
 
 use frost_secp256k1::{
-    keys::SigningShare, Field, Secp256K1ScalarField, Secp256K1Sha256, VerifyingKey,
+    keys::SigningShare, Field, Secp256K1ScalarField, Secp256K1Sha256,
 };
 use k256::{AffinePoint, ProjectivePoint};
-use serde::{Deserialize, Serialize};
 
 use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat};
 
-#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
-pub struct KeygenOutput {
-    pub private_share: SigningShare,
-    pub public_key: VerifyingKey,
-}
+pub type KeygenOutput = crate::KeygenOutput::<Secp256K1Sha256>;
 
 pub type Scalar = <Secp256K1ScalarField as Field>::Scalar;
 pub type CoefficientCommitment = frost_core::keys::CoefficientCommitment<Secp256K1Sha256>;
