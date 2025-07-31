@@ -4,15 +4,6 @@ use frost_ed25519::Ed25519Sha512;
 
 pub type KeygenOutput = crate::KeygenOutput::<Ed25519Sha512>;
 
-impl From<crate::generic_dkg::KeygenOutput<Ed25519Sha512>> for KeygenOutput {
-    fn from(value: crate::generic_dkg::KeygenOutput<Ed25519Sha512>) -> Self {
-        Self {
-            private_share: value.private_share,
-            public_key: value.public_key,
-        }
-    }
-}
-
 impl ScalarSerializationFormat for Ed25519Sha512 {
     fn bytes_order() -> BytesOrder {
         BytesOrder::LittleEndian
