@@ -649,3 +649,21 @@ pub(crate) fn reshare_assertions<C: Ciphersuite>(
     }
     Ok((participants, old_participants))
 }
+
+#[cfg(test)]
+mod test {
+    use super::domain_separate_hash;
+    use crate::test::generate_participants;
+
+    #[test]
+    fn test_domain_separate_hash() {
+        let cnt = 1;
+        let participants_1 = generate_participants(3);
+        let participants_2 = generate_participants(3);
+        let hash_1 = domain_separate_hash(cnt, &participants_1);
+        let hash_2 = domain_separate_hash(cnt, &participants_2);
+        assert!(hash_1 == hash_2);
+        let hash_2 = domain_separate_hash(cnt + 1, &participants_2);
+        assert!(hash_1 != hash_2);
+    }
+}
