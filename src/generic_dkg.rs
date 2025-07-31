@@ -3,6 +3,8 @@ use crate::crypto::{
     hash::{domain_separate_hash, HashOutput},
     polynomials::{Polynomial, PolynomialCommitment},
 };
+
+use crate::KeygenOutput;
 use crate::participants::{ParticipantCounter, ParticipantList, ParticipantMap};
 use crate::protocol::errors::{InitializationError, ProtocolError};
 use crate::protocol::{echo_broadcast::do_broadcast, internal::SharedChannel, Participant};
@@ -498,14 +500,6 @@ async fn do_keyshare<C: Ciphersuite>(
     })
 }
 
-/// Represents the output of the key generation protocol.
-///
-/// This contains our share of the private key, along with the public key.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct KeygenOutput<C: Ciphersuite> {
-    pub private_share: SigningShare<C>,
-    pub public_key: VerifyingKey<C>,
-}
 
 pub(crate) async fn do_keygen<C: Ciphersuite>(
     chan: SharedChannel,
