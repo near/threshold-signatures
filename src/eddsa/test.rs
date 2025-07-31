@@ -1,10 +1,10 @@
-use crate::eddsa::dkg_ed25519::{keygen, refresh, reshare};
 use crate::eddsa::sign::{sign, SignatureOutput};
 use crate::eddsa::KeygenOutput;
 use crate::participants::ParticipantList;
 use crate::protocol::{run_protocol, Participant, Protocol};
-
 use crate::crypto::hash::HashOutput;
+use crate::{keygen, reshare, refresh};
+
 use frost_ed25519::VerifyingKey;
 use rand_core::{OsRng, RngCore};
 use std::error::Error;

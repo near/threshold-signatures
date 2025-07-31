@@ -4,10 +4,10 @@ use std::error::Error;
 
 use crate::crypto::hash::scalar_hash;
 use crate::ecdsa::{
-    dkg_ecdsa::{keygen, refresh, reshare},
     FullSignature, KeygenOutput,
 };
 use crate::protocol::{run_protocol, InitializationError, Participant, Protocol};
+use crate::{keygen, refresh, reshare};
 
 /// runs distributed keygen
 pub(crate) fn run_keygen(
