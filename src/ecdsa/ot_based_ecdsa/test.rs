@@ -4,13 +4,11 @@ use super::{
     triples::{test::deal, TriplePub, TripleShare},
     PresignArguments, PresignOutput,
 };
-use crate::protocol::{run_protocol, Participant, Protocol};
-use crate::{
-    ecdsa::{
-        test::{assert_public_key_invariant, run_keygen, run_reshare, run_sign},
-        AffinePoint, FullSignature, KeygenOutput, Scalar,
-    },
-    protocol::errors::InitializationError,
+
+use crate::{protocol::{errors::InitializationError, run_protocol, Participant, Protocol}, test::{assert_public_key_invariant, run_keygen, run_refresh, run_reshare}};
+use crate::ecdsa::{
+    test::run_sign,
+    AffinePoint, FullSignature, KeygenOutput, Scalar,
 };
 use crate::test::{generate_participants, generate_random_participants};
 use rand_core::OsRng;
