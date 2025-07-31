@@ -268,6 +268,7 @@ async fn fut_wrapper(
 #[cfg(test)]
 mod test {
     use crate::crypto::hash::hash;
+    use crate::test::generate_participants;
     use crate::participants::ParticipantList;
     use frost_core::{Field, Group};
     use frost_ed25519::{Ed25519Group, Ed25519ScalarField, Ed25519Sha512, Signature};
@@ -431,13 +432,7 @@ mod test {
 
     #[test]
     fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
-        let participants = vec![
-            Participant::from(0u32),
-            Participant::from(1u32),
-            Participant::from(2u32),
-            Participant::from(3u32),
-            Participant::from(4u32),
-        ];
+        let participants = generate_participants(5);
         let threshold = 3;
         let result0 = run_keygen(&participants, threshold)?;
         assert_public_key_invariant(&result0)?;
@@ -504,13 +499,7 @@ mod test {
 
     #[test]
     fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
-        let participants = vec![
-            Participant::from(0u32),
-            Participant::from(1u32),
-            Participant::from(2u32),
-            Participant::from(3u32),
-            Participant::from(4u32),
-        ];
+        let participants = generate_participants(5);
         let threshold = 4;
         let result0 = run_keygen(&participants, threshold)?;
         assert_public_key_invariant(&result0)?;

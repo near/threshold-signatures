@@ -94,7 +94,7 @@ pub fn refresh(
 #[cfg(test)]
 mod test {
     use super::*;
-
+    use crate::test::generate_participants;
     use crate::eddsa::test::{assert_public_key_invariant, run_keygen, run_refresh, run_reshare};
     use crate::participants::ParticipantList;
     use crate::protocol::Participant;
@@ -167,11 +167,7 @@ mod test {
 
     #[test]
     fn test_reshare() -> Result<(), Box<dyn Error>> {
-        let participants = vec![
-            Participant::from(0u32),
-            Participant::from(1u32),
-            Participant::from(2u32),
-        ];
+        let participants = generate_participants(3);
         let threshold0 = 2;
         let threshold1 = 3;
 

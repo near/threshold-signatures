@@ -111,6 +111,7 @@ mod test {
     use crate::crypto::hash::scalar_hash;
     use crate::{
         ecdsa::Polynomial,
+        test::generate_participants,
         protocol::{run_protocol, Participant, Protocol},
     };
     use ecdsa::Signature;
@@ -137,7 +138,7 @@ mod test {
 
             let h = Polynomial::generate_polynomial(Some(sigma), threshold - 1, &mut OsRng)?;
 
-            let participants = vec![Participant::from(0u32), Participant::from(1u32)];
+            let participants = generate_participants(2);
             #[allow(clippy::type_complexity)]
             let mut protocols: Vec<(
                 Participant,

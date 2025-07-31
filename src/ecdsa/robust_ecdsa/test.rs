@@ -7,6 +7,7 @@ use crate::ecdsa::{
     AffinePoint, FullSignature, KeygenOutput, Scalar,
 };
 use crate::protocol::{run_protocol, InitializationError, Participant, Protocol};
+use crate::test::{generate_participants, generate_random_participants};
 
 #[cfg(test)]
 fn sign_box(
@@ -50,19 +51,8 @@ pub fn run_presign(
 
 #[test]
 fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
-    let participants = vec![
-        Participant::from(0u32),
-        Participant::from(1u32),
-        Participant::from(2u32),
-        Participant::from(3u32),
-        Participant::from(4u32),
-        Participant::from(5u32),
-        Participant::from(6u32),
-        Participant::from(7u32),
-        Participant::from(8u32),
-        Participant::from(9u32),
-        Participant::from(10u32),
-    ];
+    let participants = generate_participants(11);
+
     let max_malicious = 3;
     let threshold = max_malicious + 1;
     let result0 = run_keygen(&participants, threshold)?;
@@ -108,13 +98,8 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
-    let participants = vec![
-        Participant::from(0u32),
-        Participant::from(1u32),
-        Participant::from(2u32),
-        Participant::from(3u32),
-        Participant::from(4u32),
-    ];
+    let participants = generate_participants(5);
+
     let max_malicious = 2;
     let threshold = max_malicious + 1;
     let result0 = run_keygen(&participants, threshold)?;
@@ -157,16 +142,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_e2e() -> Result<(), Box<dyn Error>> {
-    let participants = vec![
-        Participant::from(0u32),
-        Participant::from(1u32),
-        Participant::from(2u32),
-        Participant::from(3u32),
-        Participant::from(4u32),
-        Participant::from(5u32),
-        Participant::from(6u32),
-        Participant::from(7u32),
-    ];
+    let participants = generate_participants(8);
     let max_malicious = 3;
 
     let mut keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;
@@ -193,10 +169,7 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
 #[test]
 fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     let participants_count = 7;
-    let mut participants: Vec<_> = (0..participants_count)
-        .map(|_| Participant::from(rand::random::<u32>()))
-        .collect();
-    participants.sort();
+    let participants = generate_random_participants(participants_count);
     let max_malicious = 3;
 
     let mut keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;
