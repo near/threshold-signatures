@@ -23,8 +23,8 @@ pub fn keygen<C:Ciphersuite>(
     me: Participant,
     threshold: usize,
 ) -> Result<impl Protocol<Output = KeygenOutput<C>>, InitializationError>
-where <<C::Group as frost_core::Group>::Field as frost_core::Field>::Scalar: Send,
-<C::Group as frost_core::Group>::Element: Send,
+where <C::Group as frost_core::Group>::Element: Send,
+<<C::Group as frost_core::Group>::Field as frost_core::Field>::Scalar: Send,
 {
     let comms = Comms::new();
     let participants = assert_keygen_invariants(participants, me, threshold)?;
@@ -43,8 +43,8 @@ pub fn reshare<C:Ciphersuite>(
     new_threshold: usize,
     me: Participant,
 ) -> Result<impl Protocol<Output = KeygenOutput<C>>, InitializationError>
-where <<C::Group as frost_core::Group>::Field as frost_core::Field>::Scalar: Send,
-<C::Group as frost_core::Group>::Element: Send,
+where <C::Group as frost_core::Group>::Element: Send,
+<<C::Group as frost_core::Group>::Field as frost_core::Field>::Scalar: Send,
 {
     let comms = Comms::new();
     let threshold = new_threshold;
@@ -77,8 +77,8 @@ pub fn refresh<C:Ciphersuite>(
     new_threshold: usize,
     me: Participant,
 ) -> Result<impl Protocol<Output = KeygenOutput<C>>, InitializationError>
-where <<C::Group as frost_core::Group>::Field as frost_core::Field>::Scalar: Send,
-<C::Group as frost_core::Group>::Element: Send,
+where <C::Group as frost_core::Group>::Element: Send,
+<<C::Group as frost_core::Group>::Field as frost_core::Field>::Scalar: Send,
 {
     if old_signing_key.is_none() {
         return Err(InitializationError::BadParameters(format!(
