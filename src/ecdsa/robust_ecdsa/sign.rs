@@ -114,6 +114,7 @@ mod test {
     use rand_core::OsRng;
 
     use super::*;
+    use crate::test::generate_participants;
     use crate::ecdsa::{x_coordinate, Field, ProjectivePoint, Secp256K1ScalarField};
 
     use crate::{crypto::hash::test::scalar_hash, protocol::run_protocol};
@@ -154,13 +155,7 @@ mod test {
             let w = fa.eval_at_zero()?.0 * k;
             let w_invert = w.invert().unwrap();
 
-            let participants = vec![
-                Participant::from(0u32),
-                Participant::from(1u32),
-                Participant::from(2u32),
-                Participant::from(3u32),
-                Participant::from(4u32),
-            ];
+            let participants = generate_participants(5);
 
             #[allow(clippy::type_complexity)]
             let mut protocols: Vec<(

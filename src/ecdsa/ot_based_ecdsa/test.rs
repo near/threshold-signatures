@@ -12,6 +12,7 @@ use crate::{
     },
     protocol::errors::InitializationError,
 };
+use crate::test::{generate_participants, generate_random_participants};
 use rand_core::OsRng;
 use std::error::Error;
 
@@ -70,13 +71,7 @@ pub fn run_presign(
 
 #[test]
 fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
-    let participants = vec![
-        Participant::from(0u32),
-        Participant::from(1u32),
-        Participant::from(2u32),
-        Participant::from(3u32),
-        Participant::from(4u32),
-    ];
+    let participants = generate_participants(5);
     let threshold = 3;
     let result0 = run_keygen(&participants, threshold)?;
     assert_public_key_invariant(&result0)?;
@@ -123,13 +118,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
-    let participants = vec![
-        Participant::from(0u32),
-        Participant::from(1u32),
-        Participant::from(2u32),
-        Participant::from(3u32),
-        Participant::from(4u32),
-    ];
+    let participants = generate_participants(5);
     let threshold = 4;
     let result0 = run_keygen(&participants, threshold)?;
     assert_public_key_invariant(&result0)?;
@@ -174,11 +163,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_e2e() -> Result<(), Box<dyn Error>> {
-    let participants = vec![
-        Participant::from(0u32),
-        Participant::from(1u32),
-        Participant::from(2u32),
-    ];
+    let participants = generate_participants(3);
     let threshold = 3;
 
     let mut keygen_result = run_keygen(&participants.clone(), threshold)?;
@@ -208,10 +193,7 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
 #[test]
 fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     let participants_count = 3;
-    let mut participants: Vec<_> = (0..participants_count)
-        .map(|_| Participant::from(rand::random::<u32>()))
-        .collect();
-    participants.sort();
+    let participants = generate_random_participants(participants_count);
     let threshold = 3;
 
     let mut keygen_result = run_keygen(&participants.clone(), threshold)?;
