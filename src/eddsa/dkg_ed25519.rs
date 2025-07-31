@@ -2,10 +2,11 @@
 mod test {
     use frost_ed25519::Ed25519Sha512;
     type E = Ed25519Sha512;
-    use crate::eddsa::test::{assert_public_key_invariant, run_keygen, run_refresh, run_reshare};
     use crate::participants::ParticipantList;
     use crate::protocol::Participant;
-    use crate::test::generate_participants;
+    use crate::test::{
+        assert_public_key_invariant, generate_participants, run_keygen, run_refresh, run_reshare,
+    };
     use frost_core::Group;
     use frost_ed25519::Ed25519Group;
     use std::error::Error;
@@ -19,7 +20,7 @@ mod test {
         ];
         let threshold = 3;
 
-        let result = run_keygen(&participants, threshold)?;
+        let result = run_keygen::<E>(&participants, threshold)?;
         assert_public_key_invariant(&result)?;
 
         assert!(result.len() == participants.len());
@@ -51,7 +52,7 @@ mod test {
         ];
         let threshold = 3;
 
-        let result0 = run_keygen(&participants, threshold)?;
+        let result0 = run_keygen::<E>(&participants, threshold)?;
         assert_public_key_invariant(&result0)?;
 
         let pub_key = result0[2].1.public_key.to_element();
@@ -79,7 +80,7 @@ mod test {
         let threshold0 = 2;
         let threshold1 = 3;
 
-        let result0 = run_keygen(&participants, threshold0)?;
+        let result0 = run_keygen::<E>(&participants, threshold0)?;
         assert_public_key_invariant(&result0)?;
 
         let pub_key = result0[2].1.public_key;

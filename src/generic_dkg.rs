@@ -4,10 +4,10 @@ use crate::crypto::{
     polynomials::{Polynomial, PolynomialCommitment},
 };
 
-use crate::KeygenOutput;
 use crate::participants::{ParticipantCounter, ParticipantList, ParticipantMap};
 use crate::protocol::errors::{InitializationError, ProtocolError};
 use crate::protocol::{echo_broadcast::do_broadcast, internal::SharedChannel, Participant};
+use crate::KeygenOutput;
 
 use frost_core::keys::{
     CoefficientCommitment, SecretShare, SigningShare, VerifiableSecretSharingCommitment,
@@ -499,7 +499,6 @@ async fn do_keyshare<C: Ciphersuite>(
         public_key: verifying_key,
     })
 }
-
 
 pub(crate) async fn do_keygen<C: Ciphersuite>(
     chan: SharedChannel,

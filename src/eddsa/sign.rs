@@ -274,11 +274,9 @@ mod test {
     use frost_core::{Field, Group};
     use frost_ed25519::{Ed25519Group, Ed25519ScalarField, Ed25519Sha512, Signature};
 
-    use crate::eddsa::test::{
-        assert_public_key_invariant, build_key_packages_with_dealer, run_keygen, run_refresh,
-        run_reshare, test_run_signature_protocols,
-    };
+    use crate::eddsa::test::{build_key_packages_with_dealer, test_run_signature_protocols};
     use crate::protocol::Participant;
+    use crate::test::{assert_public_key_invariant, run_keygen, run_refresh, run_reshare};
     use std::error::Error;
 
     use super::SignatureOutput;
