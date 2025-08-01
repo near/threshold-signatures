@@ -42,7 +42,6 @@
 //! This is why we have to take great care that the identifiers a protocol will produce
 //! are deterministic, even in the presence of concurrent tasks.
 use super::{Action, MessageData, Participant, Protocol, ProtocolError};
-use crate::serde::{decode, encode_with_tag};
 use futures::future::BoxFuture;
 use futures::task::noop_waker;
 use futures::{FutureExt, StreamExt};
@@ -55,6 +54,15 @@ use std::{collections::HashMap, error, future::Future, sync::Arc};
 
 /// The domain for our use of sha here.
 const DOMAIN: &[u8] = b"Near threshold signatures  channel tags";
+
+/// Encode an arbitrary serializable with a tag.
+fn encode_with_tag<T: Serialize>(tag: &[u8], val: &T) -> Vec<u8> {
+    // Matches rmp_serde's internal default.
+    let mut out = Vec::with_capacity(128);
+    out.extend_from_slice(tag);
+    rmp_serde::encode::write(&mut out, val).expect("failed to encode value");
+    out
+}
 
 /// Represents a unique tag for a channel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Hash)]
@@ -314,7 +322,7 @@ impl Comms {
     ) -> Result<(Participant, T), ProtocolError> {
         let (from, data) = self.incoming.pop(header).await;
         let decoded: Result<T, Box<dyn error::Error + Send + Sync>> =
-            decode(&data[MessageHeader::LEN..]).map_err(|e| e.into());
+            rmp_serde::decode::from_slice(&data[MessageHeader::LEN..]).map_err(|e| e.into());
         Ok((from, decoded?))
     }
 
