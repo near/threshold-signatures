@@ -59,10 +59,9 @@ pub fn correlated_ot_receiver(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::ecdsa::triples::batch_random_ot::run_batch_random_ot;
+    use crate::ecdsa::ot_based_ecdsa::triples::batch_random_ot::run_batch_random_ot;
     use crate::protocol::internal::{make_protocol, Comms};
     use crate::protocol::{run_two_party_protocol, Participant};
-    use k256::Secp256k1;
     use rand_core::OsRng;
 
     /// Run the correlated OT protocol between two parties.
@@ -107,7 +106,7 @@ mod test {
 
     #[test]
     fn test_correlated_ot() -> Result<(), ProtocolError> {
-        let ((k0, k1), (delta, k)) = run_batch_random_ot::<Secp256k1>()?;
+        let ((k0, k1), (delta, k)) = run_batch_random_ot()?;
         let batch_size = 256;
         let x = BitMatrix::random(&mut OsRng, batch_size);
         let (q, t) = run_correlated_ot(
