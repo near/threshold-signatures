@@ -1,0 +1,85 @@
+//! This module serves as a wrapper for ECDSA scheme.
+use elliptic_curve::{
+    bigint::U256,
+    ops::{Invert, Reduce},
+    point::AffineCoordinates,
+};
+
+use frost_secp256k1::{
+    keys::SigningShare, Field, Secp256K1ScalarField, Secp256K1Sha256, VerifyingKey,
+};
+use k256::{AffinePoint, ProjectivePoint};
+use serde::{Deserialize, Serialize};
+
+use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat};
+
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
+pub struct KeygenOutput {
+    pub private_share: SigningShare,
+    pub public_key: VerifyingKey,
+}
+
+pub type Scalar = <Secp256K1ScalarField as Field>::Scalar;
+pub type CoefficientCommitment = frost_core::keys::CoefficientCommitment<Secp256K1Sha256>;
+pub type Polynomial = crate::crypto::polynomials::Polynomial<Secp256K1Sha256>;
+pub type PolynomialCommitment = crate::crypto::polynomials::PolynomialCommitment<Secp256K1Sha256>;
+
+impl From<crate::generic_dkg::KeygenOutput<Secp256K1Sha256>> for KeygenOutput {
+    fn from(value: crate::generic_dkg::KeygenOutput<Secp256K1Sha256>) -> Self {
+        Self {
+            private_share: value.private_share,
+            public_key: value.public_key,
+        }
+    }
+}
+
+impl ScalarSerializationFormat for Secp256K1Sha256 {
+    fn bytes_order() -> BytesOrder {
+        BytesOrder::BigEndian
+    }
+}
+
+impl Ciphersuite for Secp256K1Sha256 {}
+
+/// Get the x coordinate of a point, as a scalar
+pub(crate) fn x_coordinate(point: &AffinePoint) -> Scalar {
+    <Scalar as Reduce<U256>>::reduce_bytes(&point.x())
+}
+
+/// Represents a signature that supports different variants of ECDSA.
+///
+/// An ECDSA signature is usually two scalars.
+/// The first is derived from using the x-coordinate of an elliptic curve point (big_r),
+/// and the second is computed using the typical ecdsa signing equation.
+/// Deriving the x-coordination implies losing information about big_r, some variants
+/// may thus include an extra information to recover this point.
+///
+/// This signature supports all variants by containing big_r entirely
+#[derive(Clone)]
+pub struct FullSignature {
+    /// This is the entire first point.
+    pub big_r: AffinePoint,
+    /// This is the second scalar, normalized to be in the lower range.
+    pub s: Scalar,
+}
+
+impl FullSignature {
+    #[must_use]
+    // This verification tests the signature including whether s has been normalized
+    pub fn verify(&self, public_key: &AffinePoint, msg_hash: &Scalar) -> bool {
+        let r: Scalar = x_coordinate(&self.big_r);
+        if r.is_zero().into() || self.s.is_zero().into() {
+            return false;
+        }
+        let s_inv = self.s.invert_vartime().unwrap();
+        let reproduced = (ProjectivePoint::GENERATOR * (*msg_hash * s_inv))
+            + (ProjectivePoint::from(*public_key) * (r * s_inv));
+        x_coordinate(&reproduced.into()) == r
+    }
+}
+
+pub mod dkg_ecdsa;
+pub mod ot_based_ecdsa;
+pub mod robust_ecdsa;
+#[cfg(test)]
+mod test;
