@@ -266,8 +266,8 @@ async fn fut_wrapper(
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::crypto::hash;
+mod test {
+    use crate::crypto::hash::hash;
     use crate::participants::ParticipantList;
     use frost_core::{Field, Group};
     use frost_ed25519::{Ed25519Group, Ed25519ScalarField, Ed25519Sha512, Signature};
@@ -475,7 +475,7 @@ mod tests {
         let p_list = ParticipantList::new(&participants).unwrap();
         let mut x = Ed25519ScalarField::zero();
         for (p, share) in participants.iter().zip(shares.iter()) {
-            x += p_list.generic_lagrange::<Ed25519Sha512>(*p) * share;
+            x += p_list.lagrange::<Ed25519Sha512>(*p) * share;
         }
         assert_eq!(<Ed25519Group>::generator() * x, pub_key.to_element());
 
@@ -547,7 +547,7 @@ mod tests {
         let p_list = ParticipantList::new(&participants).unwrap();
         let mut x = Ed25519ScalarField::zero();
         for (p, share) in participants.iter().zip(shares.iter()) {
-            x += p_list.generic_lagrange::<Ed25519Sha512>(*p) * share;
+            x += p_list.lagrange::<Ed25519Sha512>(*p) * share;
         }
         assert_eq!(<Ed25519Group>::generator() * x, pub_key.to_element());
 
