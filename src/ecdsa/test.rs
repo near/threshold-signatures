@@ -3,6 +3,7 @@ use k256::{AffinePoint, Scalar};
 use crate::crypto::hash::scalar_hash;
 use crate::ecdsa::Signature;
 use crate::protocol::{run_protocol, InitializationError, Participant, Protocol};
+use super::Secp256K1Sha256;
 
 #[allow(clippy::type_complexity)]
 pub fn run_sign<PresignOutput, F>(
@@ -31,7 +32,7 @@ where
             p,
             public_key,
             presign_out,
-            scalar_hash(msg),
+            scalar_hash::<Secp256K1Sha256>(msg),
         );
         assert!(protocol.is_ok());
         let protocol = protocol.unwrap();

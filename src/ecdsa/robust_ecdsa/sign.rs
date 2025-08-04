@@ -178,7 +178,7 @@ mod test {
                     *p,
                     public_key,
                     presignature,
-                    scalar_hash(msg),
+                    scalar_hash::<C>(msg),
                 )?;
                 protocols.push((*p, Box::new(protocol)));
             }
