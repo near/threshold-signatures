@@ -51,6 +51,31 @@ pub fn run_presign(
     run_protocol(protocols).unwrap()
 }
 
+
+#[test]
+fn test_refresh() -> Result<(), Box<dyn Error>>{
+    let participants = generate_participants(11);
+    let max_malicious = 5;
+    let threshold = max_malicious + 1;
+    let keys = run_keygen(&participants, threshold)?;
+    assert_public_key_invariant(&keys)?;
+    // run refresh on these
+    let key_packages = run_refresh(&participants, keys, threshold)?;
+    let public_key = key_packages[0].1.public_key;
+    assert_public_key_invariant(&key_packages)?;
+    let presign_result = run_presign(key_packages, max_malicious);
+
+    let msg = b"hello world";
+    run_sign(
+        presign_result,
+        public_key.to_element().to_affine(),
+        msg,
+        sign_box,
+    );
+
+    Ok(())
+}
+
 #[test]
 fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants(11);

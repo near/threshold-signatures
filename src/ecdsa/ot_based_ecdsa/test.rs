@@ -4,7 +4,7 @@ use super::{
     triples::{test::deal, TriplePub, TripleShare},
     PresignArguments, PresignOutput,
 };
-use crate::test::{run_keygen, run_reshare, run_refresh, assert_public_key_invariant};
+use crate::test::{assert_public_key_invariant, run_keygen, run_refresh, run_reshare};
 use crate::ecdsa::{
     test::run_sign,
     AffinePoint, FullSignature, KeygenOutput, Scalar,
@@ -65,6 +65,37 @@ pub fn run_presign(
     }
 
     run_protocol(protocols).unwrap()
+}
+
+#[test]
+fn test_refresh() -> Result<(), Box<dyn Error>>{
+    let participants = generate_participants(11);
+    let max_malicious = 5;
+    let threshold = max_malicious + 1;
+    let keys = run_keygen(&participants, threshold)?;
+    assert_public_key_invariant(&keys)?;
+    // run refresh on these
+    let mut key_packages = run_refresh(&participants, keys, threshold)?;
+    key_packages.sort_by_key(|(p, _)| *p);
+    let public_key = key_packages[0].1.public_key;
+    assert_public_key_invariant(&key_packages)?;
+    let (pub0, shares0) = deal(&mut OsRng, &participants, threshold).unwrap();
+    let (pub1, shares1) = deal(&mut OsRng, &participants, threshold).unwrap();
+
+    // Presign
+    let mut presign_result =
+        run_presign(key_packages, shares0, shares1, &pub0, &pub1, threshold);
+    presign_result.sort_by_key(|(p, _)| *p);
+
+    let msg = b"hello world";
+    run_sign(
+        presign_result,
+        public_key.to_element().to_affine(),
+        msg,
+        sign_box,
+    );
+
+    Ok(())
 }
 
 #[test]
