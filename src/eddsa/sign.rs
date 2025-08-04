@@ -1,6 +1,6 @@
 //! This module wraps a signature generation functionality from `Frost` library
 //!  into `cait-sith::Protocol` representation.
-use crate::eddsa::KeygenOutput;
+use super::{KeygenOutput, Signature};
 use crate::participants::{ParticipantCounter, ParticipantList};
 use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
 use crate::protocol::{InitializationError, Participant, Protocol, ProtocolError};
@@ -31,8 +31,6 @@ fn construct_key_package(
     )
 }
 
-pub type SignatureOutput = Option<Signature>; // None for participants and Some for coordinator
-
 /// Returns a future that executes signature protocol for *the Coordinator*.
 ///
 /// WARNING: Extracted from FROST documentation:
@@ -49,7 +47,7 @@ async fn do_sign_coordinator(
     me: Participant,
     keygen_output: KeygenOutput,
     message: Vec<u8>,
-) -> Result<SignatureOutput, ProtocolError> {
+) -> Result<Signature, ProtocolError> {
     let mut seen = ParticipantCounter::new(&participants);
     let mut rng = OsRng;
 
@@ -138,7 +136,7 @@ async fn do_sign_participant(
     coordinator: Participant,
     keygen_output: KeygenOutput,
     message: Vec<u8>,
-) -> Result<SignatureOutput, ProtocolError> {
+) -> Result<Signature, ProtocolError> {
     let mut rng = OsRng;
     if coordinator == me {
         return Err(ProtocolError::AssertionFailed(
@@ -209,7 +207,7 @@ pub fn sign(
     coordinator: Participant,
     keygen_output: KeygenOutput,
     message: Vec<u8>,
-) -> Result<impl Protocol<Output = SignatureOutput>, InitializationError> {
+) -> Result<impl Protocol<Output = Signature>, InitializationError> {
     if participants.len() < 2 {
         return Err(InitializationError::BadParameters(format!(
             "participant count cannot be < 2, found: {}",
@@ -257,7 +255,7 @@ async fn fut_wrapper(
     coordinator: Participant,
     keygen_output: KeygenOutput,
     message: Vec<u8>,
-) -> Result<SignatureOutput, ProtocolError> {
+) -> Result<Signature, ProtocolError> {
     if me == coordinator {
         do_sign_coordinator(chan, participants, threshold, me, keygen_output, message).await
     } else {
@@ -271,7 +269,7 @@ mod test {
     use crate::test::generate_participants;
     use crate::participants::ParticipantList;
     use frost_core::{Field, Group};
-    use frost_ed25519::{Ed25519Group, Ed25519ScalarField, Ed25519Sha512, Signature};
+    use frost_ed25519::{Ed25519Group, Ed25519ScalarField, Ed25519Sha512};
 
     use crate::eddsa::test::{
         build_key_packages_with_dealer, test_run_signature_protocols,
@@ -280,9 +278,8 @@ mod test {
     use crate::protocol::Participant;
     use std::error::Error;
 
-    use super::SignatureOutput;
 
-    fn assert_single_coordinator_result(data: Vec<(Participant, SignatureOutput)>) -> Signature {
+    fn assert_single_coordinator_result(data: Vec<(Participant, super::Signature)>) -> frost_ed25519::Signature {
         let mut signature = None;
         let count = data
             .iter()

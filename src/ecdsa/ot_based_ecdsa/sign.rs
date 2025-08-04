@@ -3,7 +3,7 @@ use subtle::ConditionallySelectable;
 
 use super::PresignOutput;
 use crate::{
-    ecdsa::{x_coordinate, AffinePoint, FullSignature, Scalar, Secp256K1Sha256},
+    ecdsa::{x_coordinate, AffinePoint, Signature, Scalar, Secp256K1Sha256},
     participants::{ParticipantCounter, ParticipantList},
     protocol::{
         internal::{make_protocol, Comms, SharedChannel},
@@ -18,7 +18,7 @@ async fn do_sign(
     public_key: AffinePoint,
     presignature: PresignOutput,
     msg_hash: Scalar,
-) -> Result<FullSignature, ProtocolError> {
+) -> Result<Signature, ProtocolError> {
     // Spec 1.1
     let lambda = participants.lagrange::<Secp256K1Sha256>(me);
     let k_i = lambda * presignature.k;
@@ -50,7 +50,7 @@ async fn do_sign(
     // Optionally, normalize s
     s.conditional_assign(&(-s), s.is_high());
 
-    let sig = FullSignature {
+    let sig = Signature {
         big_r: presignature.big_r,
         s,
     };
@@ -75,7 +75,7 @@ pub fn sign(
     public_key: AffinePoint,
     presignature: PresignOutput,
     msg_hash: Scalar,
-) -> Result<impl Protocol<Output = FullSignature>, InitializationError> {
+) -> Result<impl Protocol<Output = Signature>, InitializationError> {
     if participants.len() < 2 {
         return Err(InitializationError::BadParameters(format!(
             "participant count cannot be < 2, found: {}",
@@ -107,14 +107,13 @@ pub fn sign(
 
 #[cfg(test)]
 mod test {
-    use super::{sign, x_coordinate, FullSignature, PresignOutput};
+    use super::{sign, x_coordinate, PresignOutput};
     use crate::crypto::hash::scalar_hash;
     use crate::{
         ecdsa::Polynomial,
         test::generate_participants,
         protocol::{run_protocol, Participant, Protocol},
     };
-    use ecdsa::Signature;
     use k256::{ecdsa::signature::Verifier, ecdsa::VerifyingKey, ProjectivePoint, PublicKey};
     use rand_core::OsRng;
     use std::error::Error;
@@ -142,7 +141,7 @@ mod test {
             #[allow(clippy::type_complexity)]
             let mut protocols: Vec<(
                 Participant,
-                Box<dyn Protocol<Output = FullSignature>>,
+                Box<dyn Protocol<Output = super::Signature>>,
             )> = Vec::with_capacity(participants.len());
             for p in &participants {
                 let presignature = PresignOutput {
@@ -162,7 +161,7 @@ mod test {
 
             let result = run_protocol(protocols)?;
             let sig = result[0].1.clone();
-            let sig = Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
+            let sig = ecdsa::Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
             VerifyingKey::from(&PublicKey::from_affine(public_key).unwrap())
                 .verify(&msg[..], &sig)?;
         }

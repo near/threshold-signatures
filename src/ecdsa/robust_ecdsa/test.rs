@@ -6,7 +6,7 @@ use crate::test::{run_keygen, run_reshare, run_refresh, assert_public_key_invari
 
 use crate::ecdsa::{
     test::run_sign,
-    AffinePoint, FullSignature, KeygenOutput, Scalar,
+    AffinePoint, Signature, KeygenOutput, Scalar,
 };
 use crate::protocol::{run_protocol, InitializationError, Participant, Protocol};
 use crate::test::{generate_participants, generate_random_participants};
@@ -18,9 +18,9 @@ fn sign_box(
     public_key: AffinePoint,
     presignature: PresignOutput,
     msg_hash: Scalar,
-) -> Result<Box<dyn Protocol<Output = FullSignature>>, InitializationError> {
+) -> Result<Box<dyn Protocol<Output = Signature>>, InitializationError> {
     sign(participants, me, public_key, presignature, msg_hash)
-        .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = FullSignature>>)
+        .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = Signature>>)
 }
 
 #[cfg(test)]

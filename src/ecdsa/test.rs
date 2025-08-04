@@ -1,7 +1,7 @@
 use k256::{AffinePoint, Scalar};
 
 use crate::crypto::hash::scalar_hash;
-use crate::ecdsa::FullSignature;
+use crate::ecdsa::Signature;
 use crate::protocol::{run_protocol, InitializationError, Participant, Protocol};
 
 #[allow(clippy::type_complexity)]
@@ -10,7 +10,7 @@ pub fn run_sign<PresignOutput, F>(
     public_key: AffinePoint,
     msg: &[u8],
     sign_box: F,
-) -> Vec<(Participant, FullSignature)>
+) -> Vec<(Participant, Signature)>
 where
     F: Fn(
         &[Participant],
@@ -18,9 +18,9 @@ where
         AffinePoint,
         PresignOutput,
         Scalar,
-    ) -> Result<Box<dyn Protocol<Output = FullSignature>>, InitializationError>,
+    ) -> Result<Box<dyn Protocol<Output = Signature>>, InitializationError>,
 {
-    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = FullSignature>>)> =
+    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = Signature>>)> =
         Vec::with_capacity(participants_outs.len());
 
     let participant_list: Vec<Participant> = participants_outs.iter().map(|(p, _)| *p).collect();

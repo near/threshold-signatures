@@ -5,7 +5,7 @@ use subtle::ConditionallySelectable;
 
 use super::PresignOutput;
 use crate::{
-    ecdsa::{AffinePoint, FullSignature, Polynomial, Scalar, Secp256K1Sha256},
+    ecdsa::{AffinePoint, Signature, Polynomial, Scalar, Secp256K1Sha256},
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     protocol::{
         internal::{make_protocol, Comms, SharedChannel},
@@ -21,7 +21,7 @@ async fn do_sign(
     public_key: AffinePoint,
     presignature: PresignOutput,
     msg_hash: Scalar,
-) -> Result<FullSignature, ProtocolError> {
+) -> Result<Signature, ProtocolError> {
     let s_me = msg_hash * presignature.alpha_i + presignature.beta_i;
     let s_me = SerializableScalar(s_me);
 
@@ -57,7 +57,7 @@ async fn do_sign(
     // Normalize s
     s.conditional_assign(&(-s), s.is_high());
 
-    let sig = FullSignature { big_r, s };
+    let sig = Signature { big_r, s };
 
     if !sig.verify(&public_key, &msg_hash) {
         return Err(ProtocolError::AssertionFailed(
@@ -74,7 +74,7 @@ pub fn sign(
     public_key: AffinePoint,
     presignature: PresignOutput,
     msg_hash: Scalar,
-) -> Result<impl Protocol<Output = FullSignature>, InitializationError> {
+) -> Result<impl Protocol<Output = Signature>, InitializationError> {
     if participants.len() < 2 {
         return Err(InitializationError::BadParameters(format!(
             "participant count cannot be < 2, found: {}",
@@ -159,7 +159,7 @@ mod test {
             #[allow(clippy::type_complexity)]
             let mut protocols: Vec<(
                 Participant,
-                Box<dyn Protocol<Output = FullSignature>>,
+                Box<dyn Protocol<Output = super::Signature>>,
             )> = Vec::with_capacity(participants.len());
             for p in &participants {
                 let h_i = w_invert * fa.eval_on_participant(*p).0;
