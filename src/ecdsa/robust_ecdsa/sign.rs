@@ -119,10 +119,11 @@ mod test {
     use rand_core::OsRng;
 
     use super::*;
-    use crate::ecdsa::{x_coordinate, Field, ProjectivePoint, Secp256K1ScalarField, Signature};
     use crate::test::generate_participants;
-
-    use crate::{crypto::hash::test::scalar_hash, protocol::run_protocol};
+    use crate::ecdsa::{
+        robust_ecdsa::test::run_sign,
+        x_coordinate, Field, ProjectivePoint, Secp256K1ScalarField
+    };
 
     #[test]
     fn test_sign_given_presignature() -> Result<(), Box<dyn Error>> {
@@ -167,16 +168,13 @@ mod test {
 
         let participants = generate_participants(5);
 
-        #[allow(clippy::type_complexity)]
-        let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = Signature>>)> =
-            Vec::with_capacity(participants.len());
-
+        let mut participants_presign = Vec::new();
         // Simulate the each participant's presignature
         for p in &participants {
-            let h_i = w_invert * fa.eval_at_participant(*p).unwrap().0;
-            let alpha_i = h_i + fd.eval_at_participant(*p).unwrap().0;
+            let h_i = w_invert * fa.eval_at_participant(*p)?.0;
+            let alpha_i = h_i + fd.eval_at_participant(*p)?.0;
             let beta_i = h_i * big_r_x_coordinate * fx.eval_at_participant(*p)?.0
-                + fe.eval_at_participant(*p).unwrap().0;
+                + fe.eval_at_participant(*p)?.0;
 
             // build the presignature
             let presignature = PresignOutput {
@@ -184,19 +182,10 @@ mod test {
                 alpha_i,
                 beta_i,
             };
-
-            // run the signing algorithm using the build presignature
-            let protocol = sign(
-                &participants,
-                *p,
-                public_key,
-                presignature,
-                scalar_hash(msg),
-            )?;
-            protocols.push((*p, Box::new(protocol)));
+            participants_presign.push((*p, presignature));
         }
 
-        let result = run_protocol(protocols)?;
+        let result = run_sign(participants_presign, public_key, msg);
         let sig = result[0].1.clone();
         let sig = ecdsa::Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
 

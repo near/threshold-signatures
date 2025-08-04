@@ -2,11 +2,23 @@ use std::error::Error;
 
 use super::{presign::presign, sign::sign, PresignArguments, PresignOutput};
 
-use crate::ecdsa::{test::run_sign, AffinePoint, KeygenOutput, Scalar, Signature};
 
-use crate::protocol::{errors::InitializationError, run_protocol, Participant, Protocol};
-use crate::test::{assert_public_key_invariant, run_keygen, run_refresh, run_reshare};
-use crate::test::{generate_participants, generate_participants_with_random_ids};
+use crate::ecdsa::{
+    KeygenOutput,
+    AffinePoint,
+    Scalar,
+    Signature,
+};
+use crate::protocol::{run_protocol, errors::InitializationError, Participant, Protocol};
+
+use crate::test::{
+    assert_public_key_invariant,
+    generate_participants,
+    generate_participants_with_random_ids,
+    run_keygen,
+    run_refresh,
+    run_reshare,
+};
 
 fn sign_box(
     participants: &[Participant],
@@ -17,6 +29,15 @@ fn sign_box(
 ) -> Result<Box<dyn Protocol<Output = Signature>>, InitializationError> {
     sign(participants, me, public_key, presignature, msg_hash)
         .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = Signature>>)
+}
+
+pub fn run_sign<PresignOutput>(
+    participants_presign: Vec<(Participant, PresignOutput)>,
+    public_key: AffinePoint,
+    msg: &[u8],
+) -> Vec<(Participant, Signature)>{
+    crate::test::run_sign
+        (participants_presign, public_key, msg, sign_box).unwrap()
 }
 
 pub fn run_presign(
@@ -63,7 +84,6 @@ fn test_refresh() -> Result<(), Box<dyn Error>> {
         presign_result,
         public_key.to_element().to_affine(),
         msg,
-        sign_box,
     );
 
     Ok(())
@@ -112,7 +132,6 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
         presign_result,
         public_key.to_element().to_affine(),
         msg,
-        sign_box,
     );
     Ok(())
 }
@@ -157,7 +176,6 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
         presign_result,
         public_key.to_element().to_affine(),
         msg,
-        sign_box,
     );
     Ok(())
 }
@@ -183,7 +201,6 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
         presign_result,
         public_key.to_element().to_affine(),
         msg,
-        sign_box,
     );
     Ok(())
 }
@@ -210,7 +227,6 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
         presign_result,
         public_key.to_element().to_affine(),
         msg,
-        sign_box,
     );
     Ok(())
 }
