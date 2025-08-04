@@ -4,8 +4,9 @@
 use std::error::Error;
 use rand_core::{OsRng, RngCore};
 
-use crate::protocol::{run_protocol, Participant, Protocol};
+use crate::protocol::{run_protocol, Participant, Protocol, InitializationError};
 use crate::{Ciphersuite, VerifyingKey, KeygenOutput, keygen, refresh, reshare};
+use crate::crypto::hash::scalar_hash;
 
 // +++++++++++++++++ Participants Utilities +++++++++++++++++ //
 /// Generates a vector of participants
@@ -32,8 +33,8 @@ pub(crate) fn run_keygen<C:Ciphersuite>(
     participants: &[Participant],
     threshold: usize,
 ) -> Result<Vec<(Participant, KeygenOutput<C>)>, Box<dyn Error>>
-where <C::Group as frost_core::Group>::Element: Send,
-<<C::Group as frost_core::Group>::Field as frost_core::Field>::Scalar: Send,
+where frost_core::Element<C>: Send,
+frost_core::Scalar<C>: Send,
 {
     let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = KeygenOutput<C>>>)> =
         Vec::with_capacity(participants.len());
@@ -53,8 +54,8 @@ pub(crate) fn run_refresh<C:Ciphersuite>(
     keys: Vec<(Participant, KeygenOutput<C>)>,
     threshold: usize,
 ) -> Result<Vec<(Participant, KeygenOutput<C>)>, Box<dyn Error>>
-where <C::Group as frost_core::Group>::Element: Send,
-<<C::Group as frost_core::Group>::Field as frost_core::Field>::Scalar: Send,
+where frost_core::Element<C>: Send,
+frost_core::Scalar<C>: Send,
 {
     let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = KeygenOutput<C>>>)> =
         Vec::with_capacity(participants.len());
@@ -83,8 +84,8 @@ pub(crate) fn run_reshare<C:Ciphersuite>(
     new_threshold: usize,
     new_participants: Vec<Participant>,
 ) -> Result<Vec<(Participant, KeygenOutput<C>)>, Box<dyn Error>>
-where <C::Group as frost_core::Group>::Element: Send,
-<<C::Group as frost_core::Group>::Field as frost_core::Field>::Scalar: Send,
+where frost_core::Element<C>: Send,
+frost_core::Scalar<C>: Send,
 {
     assert!(!new_participants.is_empty());
     let mut setup: Vec<_> = vec![];
