@@ -2,16 +2,24 @@ use std::error::Error;
 
 use super::{presign::presign, sign::sign, PresignArguments, PresignOutput};
 
-use crate::test::{run_keygen, run_reshare, run_refresh, assert_public_key_invariant};
 
 use crate::ecdsa::{
-    test::run_sign,
-    AffinePoint, Signature, KeygenOutput, Scalar,
+    KeygenOutput,
+    AffinePoint,
+    Scalar,
+    Signature,
 };
 use crate::protocol::{run_protocol, InitializationError, Participant, Protocol};
-use crate::test::{generate_participants, generate_random_participants};
 
-#[cfg(test)]
+use crate::test::{
+    assert_public_key_invariant,
+    generate_participants,
+    generate_random_participants,
+    run_keygen,
+    run_refresh,
+    run_reshare,
+};
+
 fn sign_box(
     participants: &[Participant],
     me: Participant,
@@ -23,12 +31,20 @@ fn sign_box(
         .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = Signature>>)
 }
 
-#[cfg(test)]
+pub fn run_sign<PresignOutput>(
+    participants_presign: Vec<(Participant, PresignOutput)>,
+    public_key: AffinePoint,
+    msg: &[u8],
+) -> Vec<(Participant, Signature)>{
+    crate::test::run_sign
+        (participants_presign, public_key, msg, sign_box).unwrap()
+}
+
 pub fn run_presign(
     participants: Vec<(Participant, KeygenOutput)>,
     max_malicious: usize,
 ) -> Vec<(Participant, PresignOutput)> {
-    #[allow(clippy::type_complexity)]
+
     let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)> =
         Vec::with_capacity(participants.len());
 
@@ -70,7 +86,6 @@ fn test_refresh() -> Result<(), Box<dyn Error>>{
         presign_result,
         public_key.to_element().to_affine(),
         msg,
-        sign_box,
     );
 
     Ok(())
@@ -118,7 +133,6 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
         presign_result,
         public_key.to_element().to_affine(),
         msg,
-        sign_box,
     );
     Ok(())
 }
@@ -162,7 +176,6 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
         presign_result,
         public_key.to_element().to_affine(),
         msg,
-        sign_box,
     );
     Ok(())
 }
@@ -188,7 +201,6 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
         presign_result,
         public_key.to_element().to_affine(),
         msg,
-        sign_box,
     );
     Ok(())
 }
@@ -215,7 +227,6 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
         presign_result,
         public_key.to_element().to_affine(),
         msg,
-        sign_box,
     );
     Ok(())
 }
