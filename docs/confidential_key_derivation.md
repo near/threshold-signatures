@@ -133,7 +133,7 @@ generation process follow:
     - $`Y_i \gets y_i \cdot G`$
     - $`S_i = x_i \cdot H(\texttt{app\_id})`$
     - $`C_i =  S_i + y_i \cdot A`$
-  - Node $`i`$ sends $`(Y_i, C_i)`$ to the *MPC network* coordinator
+  - Node $`i`$ sends $`(λ_i \cdot Y_i, λ_i \cdot C_i)`$ to the *MPC network* coordinator
   - The coordinator computes:
     - $`R \gets λ_1 \cdot Y_1 + \ldots + λ_n \cdot Y_n`$
     - $`S \gets λ_1 \cdot C_1 + \ldots + λ_n \cdot C_n = λ_1 \cdot S_1 + \ldots +
