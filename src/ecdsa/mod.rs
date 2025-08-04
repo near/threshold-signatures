@@ -46,14 +46,14 @@ pub(crate) fn x_coordinate(point: &AffinePoint) -> Scalar {
 ///
 /// This signature supports all variants by containing big_r entirely
 #[derive(Clone)]
-pub struct FullSignature {
+pub struct Signature {
     /// This is the entire first point.
     pub big_r: AffinePoint,
     /// This is the second scalar, normalized to be in the lower range.
     pub s: Scalar,
 }
 
-impl FullSignature {
+impl Signature {
     #[must_use]
     // This verification tests the signature including whether s has been normalized
     pub fn verify(&self, public_key: &AffinePoint, msg_hash: &Scalar) -> bool {
@@ -71,7 +71,7 @@ impl FullSignature {
 
 #[cfg(test)]
 mod test_verify {
-    use super::FullSignature;
+    use super::Signature;
     use elliptic_curve::ops::{Invert, LinearCombination, Reduce};
     use k256::{
         ecdsa::{signature::Verifier, SigningKey, VerifyingKey},
@@ -104,7 +104,7 @@ mod test_verify {
             let big_r =
                 ProjectivePoint::lincomb(&ProjectivePoint::GENERATOR, &u1, &pk, &u2).to_affine();
 
-            let full_sig = FullSignature {
+            let full_sig = Signature {
                 big_r,
                 s: *s.as_ref(),
             };

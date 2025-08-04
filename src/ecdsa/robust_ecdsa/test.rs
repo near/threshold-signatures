@@ -2,7 +2,7 @@ use std::error::Error;
 
 use super::{presign::presign, sign::sign, PresignArguments, PresignOutput};
 
-use crate::ecdsa::{test::run_sign, AffinePoint, FullSignature, KeygenOutput, Scalar};
+use crate::ecdsa::{test::run_sign, AffinePoint, Signature, KeygenOutput, Scalar};
 
 use crate::protocol::{errors::InitializationError, run_protocol, Participant, Protocol};
 use crate::test::{assert_public_key_invariant, run_keygen, run_refresh, run_reshare};
@@ -14,9 +14,9 @@ fn sign_box(
     public_key: AffinePoint,
     presignature: PresignOutput,
     msg_hash: Scalar,
-) -> Result<Box<dyn Protocol<Output = FullSignature>>, InitializationError> {
+) -> Result<Box<dyn Protocol<Output = Signature>>, InitializationError> {
     sign(participants, me, public_key, presignature, msg_hash)
-        .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = FullSignature>>)
+        .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = Signature>>)
 }
 
 pub fn run_presign(
