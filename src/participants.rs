@@ -178,13 +178,13 @@ impl<'a, T> ParticipantMap<'a, T> {
     // Consumes the Map returning only the vector of the unwrapped data
     // If one of the data is still none, then return None
     pub fn into_vec_or_none(self) -> Option<Vec<T>> {
-        self.data.into_iter().collect()
+        self.data.into_iter().collect::<Option<Vec<_>>>()
     }
 
     // Does not consume the map returning only the vector of the unwrapped data
     // If one of the data is still none, then return None
     pub fn to_refs_or_none(&self) -> Option<Vec<&T>> {
-        self.data.iter().map(|opt| opt.as_ref()).collect()
+        self.data.iter().map(|opt| opt.as_ref()).collect::<Option<Vec<_>>>()
     }
 
     // Returns the set of included participants
