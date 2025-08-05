@@ -32,7 +32,7 @@ servers. Although we mainly support applications running on
 run apps on other platforms as long as the requirements for remote attestation
 are fulfilled. An application can request a deterministic secret by calling
 $`\texttt{gen\_app\_private\_key}`$ on the MPC smart contract. This method takes
-the a fresh public key $A$ and uses the account id of the caller (which we call
+a fresh public key $A$ and uses the account id of the caller (which we call
 $`\texttt{app\_id}`$), and causes the MPC network to compute a secret as
 described in the "Algorithm Steps" [below](#algorithm-steps).
 
@@ -43,7 +43,7 @@ flowchart LR
     DevC -->|"`gen\_app\_private\_key(A)`"| MPCC[MPC contract]
     end
     MPCC -->|"`gen\_key(app_id, A)`"| MPCN[MPC Network]
-    MPCN -->|"`es`"| TEEapp
+    MPCN -->|"`es`"| MPCC -->|"`es`"| DevC -->|"`es`"| TEEapp
 
 ```
 
