@@ -2,8 +2,6 @@
 pub mod dkg_ecdsa;
 pub mod ot_based_ecdsa;
 pub mod robust_ecdsa;
-#[cfg(test)]
-mod test;
 
 use elliptic_curve::{
     bigint::U256,

@@ -109,7 +109,7 @@ pub fn sign(
 #[cfg(test)]
 mod test {
     use super::{sign, x_coordinate, PresignOutput};
-    use crate::crypto::hash::test::scalar_hash;
+    use crate::crypto::hash::test::scalar_hash_secp256k1;
     use crate::{
         ecdsa::Polynomial,
         protocol::{run_protocol, Participant, Protocol},
@@ -155,7 +155,7 @@ mod test {
                     *p,
                     public_key,
                     presignature,
-                    scalar_hash(msg),
+                    scalar_hash_secp256k1(msg),
                 )?;
                 protocols.push((*p, Box::new(protocol)));
             }
