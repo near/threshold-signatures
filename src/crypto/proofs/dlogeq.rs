@@ -12,6 +12,14 @@ const STATEMENT_LABEL: &[u8] = b"dlogeq proof statement";
 const COMMITMENT_LABEL: &[u8] = b"dlogeq proof commitment";
 /// The label we use for generating the challenge.
 const CHALLENGE_LABEL: &[u8] = b"dlogeq proof challenge";
+/// A string used to extend an encoding
+const ENCODE_LABEL_STATEMENT: &[u8] = b"statement:";
+/// A string used to extend an encoding
+const ENCODE_LABEL_PUBLIC0: &[u8] = b"public 0:";
+/// A string used to extend an encoding
+const ENCODE_LABEL_PUBLIC1: &[u8] = b"public 1:";
+/// A string used to extend an encoding
+const ENCODE_LABEL_GENERATOR1: &[u8] = b"generator 1:";
 
 /// The public statement for this proof.
 ///
@@ -48,11 +56,11 @@ impl<C: Ciphersuite> Statement<'_, C> {
     /// Encode into Vec<u8>: some sort of serialization
     fn encode(&self) -> Vec<u8> {
         let mut enc = Vec::new();
-        enc.extend_from_slice(b"statement:");
+        enc.extend_from_slice(ENCODE_LABEL_STATEMENT);
         // None of the following calls should panic as neither public and generator are identity
-        let ser0 = element_into_or_panic::<C>(self.public0, b"public 0:");
-        let ser1 = element_into_or_panic::<C>(self.generator1, b"generator 1:");
-        let ser2 = element_into_or_panic::<C>(self.public1, b"public 1:");
+        let ser0 = element_into_or_panic::<C>(self.public0,ENCODE_LABEL_PUBLIC0);
+        let ser1 = element_into_or_panic::<C>(self.generator1, ENCODE_LABEL_GENERATOR1);
+        let ser2 = element_into_or_panic::<C>(self.public1, ENCODE_LABEL_PUBLIC1);
         enc.extend_from_slice(&ser0);
         enc.extend_from_slice(&ser1);
         enc.extend_from_slice(&ser2);

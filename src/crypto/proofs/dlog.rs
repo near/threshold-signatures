@@ -10,6 +10,11 @@ const STATEMENT_LABEL: &[u8] = b"dlog proof statement";
 const COMMITMENT_LABEL: &[u8] = b"dlog proof commitment";
 /// The label we use for generating the challenge.
 const CHALLENGE_LABEL: &[u8] = b"dlog proof challenge";
+/// A string used to extend an encoding
+const ENCODE_LABEL_STATEMENT: &[u8] = b"statement:";
+/// A string used to extend an encoding
+const ENCODE_LABEL_PUBLIC: &[u8] = b"public:";
+
 
 /// The public statement for this proof.
 ///
@@ -28,11 +33,11 @@ impl<C: Ciphersuite> Statement<'_, C> {
     /// Encode into Vec<u8>: some sort of serialization
     fn encode(&self) -> Vec<u8> {
         let mut enc = Vec::new();
-        enc.extend_from_slice(b"statement:");
+        enc.extend_from_slice(ENCODE_LABEL_STATEMENT);
 
         match <C::Group as Group>::serialize(self.public) {
             Ok(ser) => {
-                enc.extend_from_slice(b"public:");
+                enc.extend_from_slice(ENCODE_LABEL_PUBLIC);
                 enc.extend_from_slice(ser.as_ref());
             }
             _ => panic!("Expected non-identity element"),
