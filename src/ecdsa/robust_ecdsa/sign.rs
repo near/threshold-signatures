@@ -119,11 +119,10 @@ mod test {
     use rand_core::OsRng;
 
     use super::*;
-    use crate::test::generate_participants;
     use crate::ecdsa::{
-        robust_ecdsa::test::run_sign,
-        x_coordinate, Field, ProjectivePoint, Secp256K1ScalarField
+        robust_ecdsa::test::run_sign, x_coordinate, Field, ProjectivePoint, Secp256K1ScalarField,
     };
+    use crate::test::generate_participants;
 
     #[test]
     fn test_sign_given_presignature() -> Result<(), Box<dyn Error>> {
@@ -133,9 +132,9 @@ mod test {
         // Manually compute presignatures then deliver them to the signing function
         let fx = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
         // master secret key
-        let x = fx.eval_at_zero().unwrap().0;
+        let x = fx.eval_at_zero()?.0;
         // master public key
-        let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
+        let public_key = ProjectivePoint::GENERATOR * x;
 
         // the presignatures scheme requires the generation of 5 different polynomials
         // (fk, fa, fb, fd, fe)
@@ -185,12 +184,13 @@ mod test {
             participants_presign.push((*p, presignature));
         }
 
-        let result = run_sign(participants_presign, public_key, msg);
+        let result = run_sign(participants_presign, public_key, msg)?;
         let sig = result[0].1.clone();
         let sig = ecdsa::Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
 
         // verify the correctness of the generated signature
-        VerifyingKey::from(&PublicKey::from_affine(public_key).unwrap()).verify(&msg[..], &sig)?;
+        VerifyingKey::from(&PublicKey::from_affine(public_key.to_affine()).unwrap())
+            .verify(&msg[..], &sig)?;
         Ok(())
     }
 }

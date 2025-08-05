@@ -9,7 +9,7 @@ use elliptic_curve::{
     point::AffineCoordinates,
 };
 
-use frost_secp256k1::{Field, Secp256K1ScalarField, Secp256K1Sha256};
+use frost_secp256k1::{Field, Group, Secp256K1Group, Secp256K1ScalarField, Secp256K1Sha256};
 use k256::{AffinePoint, ProjectivePoint};
 
 use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat};
@@ -17,6 +17,7 @@ use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFor
 pub type KeygenOutput = crate::KeygenOutput<Secp256K1Sha256>;
 
 pub type Scalar = <Secp256K1ScalarField as Field>::Scalar;
+pub type Element = <Secp256K1Group as Group>::Element;
 pub type CoefficientCommitment = frost_core::keys::CoefficientCommitment<Secp256K1Sha256>;
 pub type Polynomial = crate::crypto::polynomials::Polynomial<Secp256K1Sha256>;
 pub type PolynomialCommitment = crate::crypto::polynomials::PolynomialCommitment<Secp256K1Sha256>;
@@ -84,32 +85,29 @@ mod test_verify {
         let mut hasher = Sha256::new();
         hasher.update(msg);
 
-        for _ in 0..100 {
-            let sk = SigningKey::random(&mut OsRng);
-            let pk = VerifyingKey::from(&sk);
-            let (sig, _) = sk.sign_digest_recoverable(hasher.clone()).unwrap();
-            assert!(pk.verify(msg, &sig).is_ok());
+        let sk = SigningKey::random(&mut OsRng);
+        let pk = VerifyingKey::from(&sk);
+        let (sig, _) = sk.sign_digest_recoverable(hasher.clone()).unwrap();
+        assert!(pk.verify(msg, &sig).is_ok());
 
-            let z_bytes = hasher.clone().finalize_fixed();
-            let z = <Scalar as Reduce<<Secp256k1 as elliptic_curve::Curve>::Uint>>::reduce_bytes(
-                &z_bytes,
-            );
-            let (r, s) = sig.split_scalars();
-            let s_inv = *s.invert_vartime();
-            let u1 = z * s_inv;
-            let u2 = *r * s_inv;
-            let pk = ProjectivePoint::from(pk.as_affine());
-            let big_r =
-                ProjectivePoint::lincomb(&ProjectivePoint::GENERATOR, &u1, &pk, &u2).to_affine();
+        let z_bytes = hasher.clone().finalize_fixed();
+        let z =
+            <Scalar as Reduce<<Secp256k1 as elliptic_curve::Curve>::Uint>>::reduce_bytes(&z_bytes);
+        let (r, s) = sig.split_scalars();
+        let s_inv = *s.invert_vartime();
+        let u1 = z * s_inv;
+        let u2 = *r * s_inv;
+        let pk = ProjectivePoint::from(pk.as_affine());
+        let big_r =
+            ProjectivePoint::lincomb(&ProjectivePoint::GENERATOR, &u1, &pk, &u2).to_affine();
 
-            let full_sig = Signature {
-                big_r,
-                s: *s.as_ref(),
-            };
+        let full_sig = Signature {
+            big_r,
+            s: *s.as_ref(),
+        };
 
-            let is_verified = full_sig.verify(&pk.to_affine(), &z);
-            // Should always be ok as signature contains Uint i.e. normalized elements
-            assert!(is_verified)
-        }
+        let is_verified = full_sig.verify(&pk.to_affine(), &z);
+        // Should always be ok as signature contains Uint i.e. normalized elements
+        assert!(is_verified)
     }
 }

@@ -4,7 +4,7 @@
 use rand_core::{OsRng, RngCore};
 use std::error::Error;
 
-use crate::protocol::{run_protocol, Participant, Protocol, errors::InitializationError};
+use crate::protocol::{errors::InitializationError, run_protocol, Participant, Protocol};
 use crate::{keygen, refresh, reshare, Ciphersuite, KeygenOutput, VerifyingKey};
 
 // +++++++++++++++++ Participants Utilities +++++++++++++++++ //
@@ -143,39 +143,31 @@ pub(crate) fn assert_public_key_invariant<C: Ciphersuite>(
     }
 }
 
-
 // +++++++++++++++++ Signing Functions +++++++++++++++++ //
 /// Runs the signing algorithm for ECDSA.
 /// Only used for unit tests.
-pub(crate) fn run_sign<C:Ciphersuite, PresignOutput, Point: Copy, Signature: Clone, F>(
+pub(crate) fn run_sign<C: Ciphersuite, PresignOutput, Signature: Clone, F>(
     participants_presign: Vec<(Participant, PresignOutput)>,
-    public_key: Point,
-    msg:&[u8],
+    public_key: frost_core::Element<C>,
+    msg_hash: frost_core::Scalar<C>,
     sign: F,
 ) -> Result<Vec<(Participant, Signature)>, Box<dyn Error>>
-where F: Fn(
+where
+    F: Fn(
         &[Participant],
         Participant,
-        Point,
+        frost_core::Element<C>,
         PresignOutput,
         frost_core::Scalar<C>,
-) -> Result<Box<dyn Protocol<Output = Signature>>, InitializationError>
+    ) -> Result<Box<dyn Protocol<Output = Signature>>, InitializationError>,
 {
-    let mut protocols: Vec<(
-        Participant,
-        Box<dyn Protocol<Output = Signature>>,
-    )> = Vec::with_capacity(participants_presign.len());
+    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = Signature>>)> =
+        Vec::with_capacity(participants_presign.len());
 
     let participants: Vec<Participant> = participants_presign.iter().map(|(p, _)| *p).collect();
     let participants = participants.as_slice();
     for (p, presignature) in participants_presign.into_iter() {
-        let protocol = sign(
-            participants,
-            p,
-            public_key,
-            presignature,
-            scalar_hash(msg),
-        )?;
+        let protocol = sign(participants, p, public_key, presignature, msg_hash)?;
 
         protocols.push((p, protocol));
     }

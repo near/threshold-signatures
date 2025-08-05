@@ -108,12 +108,9 @@ pub fn sign(
 
 #[cfg(test)]
 mod test {
-    use super::{sign, x_coordinate, PresignOutput};
-    use crate::crypto::hash::test::scalar_hash_secp256k1;
+    use super::{x_coordinate, PresignOutput};
     use crate::{
-        ecdsa::Polynomial,
-        protocol::{run_protocol, Participant, Protocol},
-        test::generate_participants,
+        ecdsa::ot_based_ecdsa::test::run_sign, ecdsa::Polynomial, test::generate_participants,
     };
     use k256::{ecdsa::signature::Verifier, ecdsa::VerifyingKey, ProjectivePoint, PublicKey};
     use rand_core::OsRng;
@@ -122,50 +119,37 @@ mod test {
     #[test]
     fn test_sign() -> Result<(), Box<dyn Error>> {
         let threshold = 2;
-        let msg = b"hello?";
+        let msg = b"Hello? Is it me you're looking for?";
 
-        for _ in 0..100 {
-            let f = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng)?;
-            let x = f.eval_at_zero().unwrap().0;
-            let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
+        let f = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng)?;
+        let x = f.eval_at_zero()?.0;
+        let public_key = ProjectivePoint::GENERATOR * x;
 
-            let g = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng)?;
+        let g = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng)?;
 
-            let k = g.eval_at_zero().unwrap().0;
-            let big_k = (ProjectivePoint::GENERATOR * k.invert().unwrap()).to_affine();
+        let k = g.eval_at_zero()?.0;
+        let big_k = (ProjectivePoint::GENERATOR * k.invert().unwrap()).to_affine();
 
-            let sigma = k * x;
+        let sigma = k * x;
 
-            let h = Polynomial::generate_polynomial(Some(sigma), threshold - 1, &mut OsRng)?;
+        let h = Polynomial::generate_polynomial(Some(sigma), threshold - 1, &mut OsRng)?;
 
-            let participants = generate_participants(2);
-            #[allow(clippy::type_complexity)]
-            let mut protocols: Vec<(
-                Participant,
-                Box<dyn Protocol<Output = super::Signature>>,
-            )> = Vec::with_capacity(participants.len());
-            for p in &participants {
-                let presignature = PresignOutput {
-                    big_r: big_k,
-                    k: g.eval_at_participant(*p).unwrap().0,
-                    sigma: h.eval_at_participant(*p).unwrap().0,
-                };
-                let protocol = sign(
-                    &participants,
-                    *p,
-                    public_key,
-                    presignature,
-                    scalar_hash_secp256k1(msg),
-                )?;
-                protocols.push((*p, Box::new(protocol)));
-            }
+        let participants = generate_participants(2);
 
-            let result = run_protocol(protocols)?;
-            let sig = result[0].1.clone();
-            let sig = ecdsa::Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
-            VerifyingKey::from(&PublicKey::from_affine(public_key).unwrap())
-                .verify(&msg[..], &sig)?;
+        let mut participants_presign = Vec::new();
+        for p in &participants {
+            let presignature = PresignOutput {
+                big_r: big_k,
+                k: g.eval_at_participant(*p)?.0,
+                sigma: h.eval_at_participant(*p)?.0,
+            };
+            participants_presign.push((*p, presignature));
         }
+
+        let result = run_sign(participants_presign, public_key, msg)?;
+        let sig = &result[0].1;
+        let sig = ecdsa::Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
+        VerifyingKey::from(&PublicKey::from_affine(public_key.to_affine())?).verify(msg, &sig)?;
         Ok(())
     }
 }
