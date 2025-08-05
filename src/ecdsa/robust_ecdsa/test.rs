@@ -6,10 +6,10 @@ use super::{presign::presign, sign::sign, PresignArguments, PresignOutput};
 use crate::ecdsa::{
     KeygenOutput,
     AffinePoint,
-    Scalar,
+    Secp256K1Sha256,
     Signature,
 };
-use crate::protocol::{run_protocol, InitializationError, Participant, Protocol};
+use crate::protocol::{run_protocol, Participant, Protocol};
 
 use crate::test::{
     assert_public_key_invariant,
@@ -20,24 +20,21 @@ use crate::test::{
     run_reshare,
 };
 
-fn sign_box(
-    participants: &[Participant],
-    me: Participant,
-    public_key: AffinePoint,
-    presignature: PresignOutput,
-    msg_hash: Scalar,
-) -> Result<Box<dyn Protocol<Output = Signature>>, InitializationError> {
-    sign(participants, me, public_key, presignature, msg_hash)
-        .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = Signature>>)
-}
-
-pub fn run_sign<PresignOutput>(
+/// Runs signing by calling the generic run_sign function from crate::test
+pub fn run_sign(
     participants_presign: Vec<(Participant, PresignOutput)>,
     public_key: AffinePoint,
     msg: &[u8],
 ) -> Vec<(Participant, Signature)>{
-    crate::test::run_sign
-        (participants_presign, public_key, msg, sign_box).unwrap()
+    crate::test::run_sign::<Secp256K1Sha256, _, _, _, _>
+        (participants_presign,
+        public_key,
+        msg,
+        |participants, me, pk, presignature, msg_hash| {
+            sign(participants, me, pk, presignature, msg_hash)
+            .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = Signature>>)
+        })
+        .unwrap()
 }
 
 pub fn run_presign(
