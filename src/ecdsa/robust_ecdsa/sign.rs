@@ -130,7 +130,7 @@ mod test {
             // master secret key
             let x = fx.eval_on_zero().0;
             // master public key
-            let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
+            let public_key = ProjectivePoint::GENERATOR * x;
 
             let fa = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng).unwrap();
             let fk = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng).unwrap();
@@ -168,14 +168,13 @@ mod test {
                     alpha_i,
                     beta_i,
                 };
-
                 participants_presign.push((*p, presignature));
             }
 
-            let result = run_sign(participants_presign, public_key, msg);
+            let result = run_sign(participants_presign, public_key, msg)?;
             let sig = result[0].1.clone();
             let sig = Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
-            VerifyingKey::from(&PublicKey::from_affine(public_key).unwrap())
+            VerifyingKey::from(&PublicKey::from_affine(public_key.to_affine()).unwrap())
                 .verify(&msg[..], &sig)?;
         }
         Ok(())

@@ -107,12 +107,11 @@ pub fn sign(
 
 #[cfg(test)]
 mod test {
-    use super::{sign, x_coordinate, PresignOutput, Secp256K1Sha256};
-    use crate::crypto::hash::scalar_hash;
+    use super::{x_coordinate, PresignOutput};
     use crate::{
         ecdsa::Polynomial,
+        ecdsa::ot_based_ecdsa::test::run_sign,
         test::generate_participants,
-        protocol::{run_protocol, Participant, Protocol},
     };
     use k256::{ecdsa::signature::Verifier, ecdsa::VerifyingKey, ProjectivePoint, PublicKey};
     use rand_core::OsRng;
@@ -126,7 +125,7 @@ mod test {
         for _ in 0..100 {
             let f = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng)?;
             let x = f.eval_on_zero().0;
-            let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
+            let public_key = ProjectivePoint::GENERATOR * x;
 
             let g = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng)?;
 
@@ -138,32 +137,22 @@ mod test {
             let h = Polynomial::generate_polynomial(Some(sigma), threshold - 1, &mut OsRng)?;
 
             let participants = generate_participants(2);
-            #[allow(clippy::type_complexity)]
-            let mut protocols: Vec<(
-                Participant,
-                Box<dyn Protocol<Output = super::Signature>>,
-            )> = Vec::with_capacity(participants.len());
+
+            let mut participants_presign = Vec::new();
             for p in &participants {
                 let presignature = PresignOutput {
                     big_r: big_k,
                     k: g.eval_on_participant(*p).0,
                     sigma: h.eval_on_participant(*p).0,
                 };
-                let protocol = sign(
-                    &participants,
-                    *p,
-                    public_key,
-                    presignature,
-                    scalar_hash::<Secp256K1Sha256>(msg),
-                )?;
-                protocols.push((*p, Box::new(protocol)));
+                participants_presign.push((*p, presignature));
             }
 
-            let result = run_protocol(protocols)?;
-            let sig = result[0].1.clone();
+            let result = run_sign(participants_presign, public_key, msg)?;
+            let sig = &result[0].1;
             let sig = ecdsa::Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
-            VerifyingKey::from(&PublicKey::from_affine(public_key).unwrap())
-                .verify(&msg[..], &sig)?;
+            VerifyingKey::from(&PublicKey::from_affine(public_key.to_affine()).unwrap())
+                .verify(msg, &sig)?;
         }
         Ok(())
     }

@@ -6,7 +6,10 @@ use elliptic_curve::{
 };
 
 use frost_secp256k1::{
-    keys::SigningShare, Field, Secp256K1ScalarField, Secp256K1Sha256,
+    keys::SigningShare, Field, Group,
+    Secp256K1ScalarField,
+    Secp256K1Sha256,
+    Secp256K1Group
 };
 use k256::{AffinePoint, ProjectivePoint};
 
@@ -15,6 +18,7 @@ use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFor
 pub type KeygenOutput = crate::KeygenOutput::<Secp256K1Sha256>;
 
 pub type Scalar = <Secp256K1ScalarField as Field>::Scalar;
+pub type Element = <Secp256K1Group as Group>::Element;
 pub type CoefficientCommitment = frost_core::keys::CoefficientCommitment<Secp256K1Sha256>;
 pub type Polynomial = crate::crypto::polynomials::Polynomial<Secp256K1Sha256>;
 pub type PolynomialCommitment = crate::crypto::polynomials::PolynomialCommitment<Secp256K1Sha256>;

@@ -4,7 +4,8 @@ use super::{
     triples::{test::deal, TriplePub, TripleShare},
     PresignArguments, PresignOutput,
 };
-use crate::ecdsa::{AffinePoint, Signature, KeygenOutput, Secp256K1Sha256};
+use crate::crypto::hash::scalar_hash_secp256k1;
+use crate::ecdsa::{Element, Signature, KeygenOutput, Secp256K1Sha256};
 use crate::test::{
     assert_public_key_invariant,
     generate_participants,
@@ -21,20 +22,22 @@ use std::error::Error;
 /// Runs signing by calling the generic run_sign function from crate::test
 pub fn run_sign(
     participants_presign: Vec<(Participant, PresignOutput)>,
-    public_key: AffinePoint,
+    public_key: Element,
     msg: &[u8],
-) -> Vec<(Participant, Signature)>{
-    crate::test::run_sign::<Secp256K1Sha256, _, _, _, _>
+) -> Result<Vec<(Participant, Signature)>, Box<dyn Error>>{
+    // hash the message into secp256k1 field
+    let msg_hash = scalar_hash_secp256k1(msg);
+    // run sign instanciation with the necessary arguments
+    crate::test::run_sign::<Secp256K1Sha256, _, _, _>
         (participants_presign,
         public_key,
-        msg,
+        msg_hash,
         |participants, me, pk, presignature, msg_hash| {
+            let pk = pk.to_affine();
             sign(participants, me, pk, presignature, msg_hash)
             .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = Signature>>)
         })
-        .unwrap()
 }
-
 
 pub fn run_presign(
     participants: Vec<(Participant, KeygenOutput)>,
@@ -100,9 +103,9 @@ fn test_refresh() -> Result<(), Box<dyn Error>>{
     let msg = b"hello world";
     run_sign(
         presign_result,
-        public_key.to_element().to_affine(),
+        public_key.to_element(),
         msg,
-    );
+    )?;
 
     Ok(())
 }
@@ -147,9 +150,9 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
 
     run_sign(
         presign_result,
-        public_key.to_element().to_affine(),
+        public_key.to_element(),
         msg,
-    );
+    )?;
     Ok(())
 }
 
@@ -191,9 +194,9 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
 
     run_sign(
         presign_result,
-        public_key.to_element().to_affine(),
+        public_key.to_element(),
         msg,
-    );
+    )?;
     Ok(())
 }
 
@@ -219,9 +222,9 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
 
     run_sign(
         presign_result,
-        public_key.to_element().to_affine(),
+        public_key.to_element(),
         msg,
-    );
+    )?;
     Ok(())
 }
 
@@ -248,8 +251,8 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
 
     run_sign(
         presign_result,
-        public_key.to_element().to_affine(),
+        public_key.to_element(),
         msg,
-    );
+    )?;
     Ok(())
 }
