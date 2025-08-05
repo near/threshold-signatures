@@ -15,7 +15,6 @@ const ENCODE_LABEL_STATEMENT: &[u8] = b"statement:";
 /// A string used to extend an encoding
 const ENCODE_LABEL_PUBLIC: &[u8] = b"public:";
 
-
 /// The public statement for this proof.
 ///
 /// This statement claims knowledge of the discrete logarithm of some point.

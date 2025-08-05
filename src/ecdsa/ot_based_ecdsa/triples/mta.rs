@@ -4,13 +4,9 @@ use serde::{Deserialize, Serialize};
 use std::slice::Iter;
 use subtle::{Choice, ConditionallySelectable};
 
-use crate::protocol::internal::Comms;
 use crate::{
     crypto::proofs::strobe_transcript::TranscriptRng,
-    protocol::{
-        internal::{make_protocol, PrivateChannel},
-        run_two_party_protocol, Participant, ProtocolError,
-    },
+    protocol::{internal::PrivateChannel, ProtocolError},
 };
 
 use crate::ecdsa::{Scalar, Secp256K1Sha256};
@@ -124,34 +120,38 @@ pub async fn mta_receiver(
     Ok(beta)
 }
 
-/// Run the multiplicative to additive protocol
-#[allow(dead_code, clippy::type_complexity)]
-fn run_mta(
-    (v, a): (Vec<(Scalar, Scalar)>, Scalar),
-    (tv, b): (Vec<(Choice, Scalar)>, Scalar),
-) -> Result<(Scalar, Scalar), ProtocolError> {
-    let s = Participant::from(0u32);
-    let r = Participant::from(1u32);
-    let ctx_s = Comms::new();
-    let ctx_r = Comms::new();
-
-    run_two_party_protocol(
-        s,
-        r,
-        &mut make_protocol(ctx_s.clone(), mta_sender(ctx_s.private_channel(s, r), v, a)),
-        &mut make_protocol(
-            ctx_r.clone(),
-            mta_receiver(ctx_r.private_channel(r, s), tv, b),
-        ),
-    )
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::ecdsa::ot_based_ecdsa::triples::constants::{BITS, SECURITY_PARAMETER};
+    use crate::protocol::internal::Comms;
     use k256::Scalar;
     use rand_core::RngCore;
+
+    use crate::protocol::{
+        internal::make_protocol, run_two_party_protocol, Participant, ProtocolError,
+    };
+
+    /// Run the multiplicative to additive protocol
+    fn run_mta(
+        (v, a): (Vec<(Scalar, Scalar)>, Scalar),
+        (tv, b): (Vec<(Choice, Scalar)>, Scalar),
+    ) -> Result<(Scalar, Scalar), ProtocolError> {
+        let s = Participant::from(0u32);
+        let r = Participant::from(1u32);
+        let ctx_s = Comms::new();
+        let ctx_r = Comms::new();
+
+        run_two_party_protocol(
+            s,
+            r,
+            &mut make_protocol(ctx_s.clone(), mta_sender(ctx_s.private_channel(s, r), v, a)),
+            &mut make_protocol(
+                ctx_r.clone(),
+                mta_receiver(ctx_r.private_channel(r, s), tv, b),
+            ),
+        )
+    }
 
     #[test]
     fn test_mta() -> Result<(), ProtocolError> {
