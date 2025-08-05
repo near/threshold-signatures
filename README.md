@@ -1,5 +1,5 @@
 # Threshold Signing
-This repository offers cryptographic implementations of **threshold ECDSA** and **threshold EdDSA**. Previous to [PR#15](https://github.com/near/threshold-signatures/pull/15) The implementation had undergone professional <ins>audit</ins>.
+This repository offers cryptographic implementations of **threshold ECDSA** and **threshold EdDSA**. Prior to [PR#15](https://github.com/near/threshold-signatures/pull/15), the implementation had undergone professional <ins>audit</ins>.
 
 The ECDSA code implements an OT-based threshold protocol and a Secret-Sharing based one. The former
 is originally imported from the [Cait-Sith](https://github.com/cronokirby/cait-sith) library and amended to meet our industrial needs. This includes modifying parts of the code to improve the performance, augment the security, and generalize functions' syntax. The latter however is implemented from scratch and follows \[[DJNPØ](https://eprint.iacr.org/2020/501)\]
@@ -31,7 +31,7 @@ Curve25519. We refer to such scheme as Ed25519.
 The following functionalities are provided:
 1) **Distributed Key Generation (DKG)**: Same as in ECDSA.
 2) **Key Resharing**: Same as in ECDSA.
-3) **Signing (online)**: Threshold EdDSA is generally more efficient than threshold ECDSA due to the mathematical formula behind the signature computation.Our Ed25519 implementation does not necessitate an offline phase of computation.
+3) **Signing (online)**: Threshold EdDSA is generally more efficient than threshold ECDSA due to the mathematical formula behind the signature computation. Our Ed25519 implementation does not necessitate an offline phase of computation.
 
 ### General Notifications
 
@@ -39,10 +39,10 @@ The following functionalities are provided:
 
 * Both implemented ECDSA and Ed25519 schemes do not currently provide **Robustness** i.e. recovery in case a participants drops out during presigning/signing.
 
-* Our ECDSA signing scheme outsources the message hash to the function caller (i.e. expects a hashed message as input and does not internally hash the input). However, our EdDSA implementation does not outsource the message hashing instead internally perfoms the message hash. This distinction is an artifact of the multiple different verifiers implemented in the wild where some might perform a "double hashing" and others not.
+* Our ECDSA signing scheme outsources the message hash to the function caller (i.e. expects a hashed message as input and does not internally hash the input). However, our EdDSA implementation does not outsource the message hashing instead internally performs the message hash. This distinction is an artifact of the multiple different verifiers implemented in the wild where some might perform a "double hashing" and others not.
 (See \[[PoeRas24](https://link.springer.com/chapter/10.1007/978-3-031-57718-5_10)\] for an in-depth security study of ECDSA with outsourced hashing).
 
-* This implementation allows abitrary number of parties and thresholds as long as the latter verifies some basic requirements (see the documentation). However, it is worth mentioning that the ECDSA scheme scales non-efficiently with the number of participants (See benchmarks).
+* This implementation allows arbitrary number of parties and thresholds as long as the latter verifies some basic requirements (see the documentation). However, it is worth mentioning that the ECDSA scheme scales non-efficiently with the number of participants (See benchmarks).
 
 * **🚨 Important 🚨:** Our DKG/Resharing protocol is the same for both ECDSA and EdDSA except the underlying elliptic curve instantiation. Internally, this DKG makes use of a reliable broadcast channel implemented for asynchronous peer-to-peer communication. Due to a fundamental impossibility theorem for asynchronous broadcast channel, our DKG/Resharing protocol can only tolerate $n/3$ malicious parties where $n$ is the total number of parties.
 
@@ -50,7 +50,7 @@ The following functionalities are provided:
 Building the crate is fairly simple using
 ``cargo build``.
 
-Run ``cargo test`` to run all the built-in test cases. Some the tests might take some time to run as they require running complex protocols with multiple participants at once.
+Run ``cargo test`` to run all the built-in test cases. Some of the tests might take some time to run as they require running complex protocols with multiple participants at once.
 
 # Benchmarks
 * Benchmarks with 8 nodes -- TODO: https://github.com/near/threshold-signatures/issues/8
