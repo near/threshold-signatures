@@ -9,23 +9,23 @@ as a reference when we develop the different parts of it.
 
 The confidential key derivation feature is an extension of the current MPC
 system with a custom scheme that provides applications with
-deterministic secrets. Deterministic here means that the same
+deterministic secrets. Deterministic means that the same
 application may request the same secret at different points in time. Private
-means that the secret itself is never revealed to any other entity than the
+means that the secret itself is never revealed to any entity other than the
 application itself, not even to individual MPC nodes.
 
 ## Background & Motivation
 
-Confidential Key Derivation is a very powerful primitive to allow any app
+Confidential Key Derivation (CKG) is a primitive that allows any app
 running inside a TEE (Intel TDX) to have a deterministically derived key that is
-unique to the app and not specific to the TEE. The app can derive the same key
-even if it runs on a different TEE. To obtain the key, the app can request a key
+unique to the app and not specific to the TEE. The app can derive the same key multiple times
+even if it runs on a different TEE. To obtain the key, the app can send a request
 to the MPC contract on-chain, by submitting proof that it is running inside a
 TEE. Currently, we are not aware of other systems supporting this feature.
 
 ## Overview
 
-We support deterministic secrets for applications running in Intel TDX servers.
+We support deterministic secret extraction for applications running in Intel TDX servers.
 Although we mainly support applications running on
 [Dstack](https://github.com/Dstack-TEE/dstack), it should also be possible to
 run apps on other platforms as long as the requirements for remote attestation
@@ -54,12 +54,11 @@ required.
 
 ## Naming conventions
 
-- *CKG*: confidential key generation
-- *app*: TEE app calling the *CKG* functionality
+- *app*: TEE app calling the CKG functionality
 - *operator*: entity owning the TEE-enabled hardware executing *app*
 - *developer*: the developer of the *app*
 - *Developer contract*: a contract controled by the *developer*, who uses it to
-  call the *CKG* functionality
+  call the CKG functionality
 - $`\texttt{app\_id}`$: unique and verifiable identifier for the *app*. It coincides with the account id of the *Developer contract*
 - $`\texttt{attestation}`$: the remote attestation report, which is a
 cryptographic proof that *app* is running inside a genuine TEE. It includes
@@ -119,9 +118,9 @@ To help in adoption we will provide an example TEE app and its contract.
 ### On the MPC side
 
 - $`\texttt{gen\_app\_private\_key}`$ sets $`\texttt{app\_id}`$ equal to the
-  account id of the caller and creates a transaction on-chain with a *CKG*
+  account id of the caller and creates a transaction on-chain with a CKG
   request with parameters $`(\texttt{app\_id},A)`$
-- When the *MPC Network* receives a new *CKG* request with parameters
+- When the *MPC Network* receives a new CKG request with parameters
 $`\texttt{app\_id}`$ and $`A`$, this request is sent to all nodes and the key
 generation process starts. Let $`x_i`$ be the private secret shares of the MPC
 nodes, $`λ_i`$ the Lagrange coefficients and $`H`$ is a cryptographically secure
@@ -136,7 +135,7 @@ generation process follow:
     - $`S_i = x_i \cdot H(\texttt{app\_id})`$
     - $`C_i =  S_i + y_i \cdot A`$
   - Node $`i`$ sends $`(λ_i \cdot Y_i, λ_i \cdot C_i)`$ to the *MPC network* coordinator
-  - The coordinator computes:
+  - The coordinator adds the receives pairs together:
     - $`R \gets λ_1 \cdot Y_1 + \ldots + λ_n \cdot Y_n`$
     - $`S \gets λ_1 \cdot C_1 + \ldots + λ_n \cdot C_n = λ_1 \cdot S_1 + \ldots +
     λ_n \cdot S_n + ({y_1 \cdot λ_1 + \ldots + y_n \cdot λ_n }) \cdot A =
