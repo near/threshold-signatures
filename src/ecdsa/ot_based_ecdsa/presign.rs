@@ -6,7 +6,7 @@ use crate::protocol::{
     InitializationError, Participant, Protocol, ProtocolError,
 };
 
-type C = Secp256K1Sha256;
+type Secp256 = Secp256K1Sha256;
 
 async fn do_presign(
     mut chan: SharedChannel,
@@ -25,8 +25,8 @@ async fn do_presign(
     let big_a: ProjectivePoint = args.triple1.1.big_a.into();
     let big_b: ProjectivePoint = args.triple1.1.big_b.into();
 
-    let sk_lambda = participants.lagrange::<C>(me);
-    let bt_lambda = bt_participants.lagrange::<C>(bt_id);
+    let sk_lambda = participants.lagrange::<Secp256>(me);
+    let bt_lambda = bt_participants.lagrange::<Secp256>(bt_id);
 
     let k_i = args.triple0.0.a;
     let k_prime_i = bt_lambda * k_i;
@@ -268,11 +268,11 @@ mod test {
         let k_shares = [result[0].1.k, result[1].1.k];
         let sigma_shares = [result[0].1.sigma, result[1].1.sigma];
         let p_list = ParticipantList::new(&participants).unwrap();
-        let k = p_list.lagrange::<C>(participants[0]) * k_shares[0]
-            + p_list.lagrange::<C>(participants[1]) * k_shares[1];
+        let k = p_list.lagrange::<Secp256>(participants[0]) * k_shares[0]
+            + p_list.lagrange::<Secp256>(participants[1]) * k_shares[1];
         assert_eq!(ProjectivePoint::GENERATOR * k.invert().unwrap(), big_k);
-        let sigma = p_list.lagrange::<C>(participants[0]) * sigma_shares[0]
-            + p_list.lagrange::<C>(participants[1]) * sigma_shares[1];
+        let sigma = p_list.lagrange::<Secp256>(participants[0]) * sigma_shares[0]
+            + p_list.lagrange::<Secp256>(participants[1]) * sigma_shares[1];
         assert_eq!(sigma, k * f.eval_on_zero().0);
     }
 }

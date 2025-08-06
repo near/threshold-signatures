@@ -11,17 +11,17 @@ use crate::{
 
 use crate::ecdsa::{Scalar, Secp256K1Sha256};
 
-type C = Secp256K1Sha256;
+type Secp256 = Secp256K1Sha256;
 
 #[derive(Serialize, Deserialize)]
-struct MTAScalars(Vec<(SerializableScalar<C>, SerializableScalar<C>)>);
+struct MTAScalars(Vec<(SerializableScalar<Secp256>, SerializableScalar<Secp256>)>);
 
 impl MTAScalars {
     fn len(&self) -> usize {
         self.0.len()
     }
 
-    fn iter(&self) -> Iter<'_, (SerializableScalar<C>, SerializableScalar<C>)> {
+    fn iter(&self) -> Iter<'_, (SerializableScalar<Secp256>, SerializableScalar<Secp256>)> {
         self.0.iter()
     }
 }
@@ -36,7 +36,7 @@ pub async fn mta_sender(
 
     // Step 1
     let delta: Vec<_> = (0..size)
-        .map(|_| <<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut OsRng))
+        .map(|_| <<Secp256 as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut OsRng))
         .collect();
 
     // Step 2
@@ -57,13 +57,13 @@ pub async fn mta_sender(
 
     // Step 7
     let wait1 = chan.next_waitpoint();
-    let (chi1, seed): (SerializableScalar<C>, [u8; 32]) = chan.recv(wait1).await?;
+    let (chi1, seed): (SerializableScalar<Secp256>, [u8; 32]) = chan.recv(wait1).await?;
 
     let mut alpha = delta[0] * chi1.0;
 
     let mut prng = TranscriptRng::new(&seed);
     for &delta_i in &delta[1..] {
-        let chi_i = <<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut prng);
+        let chi_i = <<Secp256 as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut prng);
         alpha += delta_i * chi_i;
     }
 
@@ -96,7 +96,7 @@ pub async fn mta_receiver(
     OsRng.fill_bytes(&mut seed);
     let mut prng = TranscriptRng::new(&seed);
     let chi: Vec<Scalar> = (1..size)
-        .map(|_| <<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut prng))
+        .map(|_| <<Secp256 as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut prng))
         .collect();
 
     let mut chi1 = Scalar::ZERO;
@@ -114,7 +114,7 @@ pub async fn mta_receiver(
 
     // Step 6
     let wait1 = chan.next_waitpoint();
-    let chi1 = SerializableScalar::<C>(chi1);
+    let chi1 = SerializableScalar::<Secp256>(chi1);
     chan.send(wait1, &(chi1, seed));
 
     Ok(beta)
