@@ -5,10 +5,7 @@ use subtle::ConditionallySelectable;
 
 use crate::{
     ecdsa::{CoefficientCommitment, Field, ProjectivePoint, Secp256K1ScalarField},
-    protocol::{
-        internal::PrivateChannel,
-        ProtocolError,
-    },
+    protocol::{internal::PrivateChannel, ProtocolError},
 };
 
 use super::bits::{BitMatrix, BitVector, SquareBitMatrix, SEC_PARAM_8};
@@ -95,6 +92,7 @@ pub async fn batch_random_ot_sender(
     Ok((big_k0.try_into().unwrap(), big_k1.try_into().unwrap()))
 }
 
+#[allow(dead_code)]
 pub async fn batch_random_ot_sender_many<const N: usize>(
     mut chan: PrivateChannel,
 ) -> Result<Vec<BatchRandomOTOutputSender>, ProtocolError> {
@@ -217,6 +215,7 @@ pub async fn batch_random_ot_receiver(
     Ok((delta, big_k.try_into().unwrap()))
 }
 
+#[allow(dead_code)]
 pub async fn batch_random_ot_receiver_many<const N: usize>(
     mut chan: PrivateChannel,
 ) -> Result<Vec<BatchRandomOTOutputReceiver>, ProtocolError> {
@@ -320,17 +319,13 @@ pub async fn batch_random_ot_receiver_many<const N: usize>(
     Ok(ret)
 }
 
-
-
-
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::ecdsa::ot_based_ecdsa::triples::test::run_batch_random_ot;
     use crate::protocol::{
-        Participant,
-        run_two_party_protocol,
-        internal::{Comms, make_protocol}
+        internal::{make_protocol, Comms},
+        run_two_party_protocol, Participant,
     };
 
     #[test]

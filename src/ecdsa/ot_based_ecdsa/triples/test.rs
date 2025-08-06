@@ -1,22 +1,15 @@
 use rand_core::CryptoRngCore;
 
 use super::{
+    batch_random_ot::{BatchRandomOTOutputReceiver, BatchRandomOTOutputSender},
     TriplePub, TripleShare,
-    batch_random_ot::{
-        BatchRandomOTOutputSender,
-        BatchRandomOTOutputReceiver,
-    }
 };
 
 use crate::ecdsa::{Field, Polynomial, ProjectivePoint, Secp256K1ScalarField};
 
-use crate::{
-    protocol::{
-        internal::{make_protocol, Comms},
-        run_two_party_protocol,
-        ProtocolError,
-        Participant,
-    },
+use crate::protocol::{
+    internal::{make_protocol, Comms},
+    run_two_party_protocol, Participant, ProtocolError,
 };
 
 /// Create a new triple from scratch.
@@ -58,7 +51,6 @@ pub fn deal(
     };
     Ok((triple_pub, shares))
 }
-
 
 /// Run the batch random OT protocol between two parties.
 pub(crate) fn run_batch_random_ot(
