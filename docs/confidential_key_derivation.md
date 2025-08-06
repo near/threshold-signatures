@@ -72,10 +72,16 @@ $\texttt{RTMR2}$, $\texttt{RTMR3}$, *event_log* and *report_data*
   generate a deterministic secret to be used by an application running inside a
   TEE
 - *MPC network*: the set of MPC nodes currently running
+- $n$: the number of nodes in the *MPC network*
 - *MPC contract*: a contract used to interact with *MPC network*
+- $`(x_1, x_2, \ldots, x_n)`$: private secret key shares of the MPC nodes, which
+  are generated during the Distributed Key Generation (DKG)
 - $`\texttt{msk}`$: master secret key of the *MPC network*, which does not
-  change over time, and is generated during the Distributed Key Generation
-- $`s`$: the key obtained by *app*
+  change over time, and is generated during the DKG. As a result, $`\texttt{msk} = x_1 \cdot λ_1 + \ldots + x_n
+  \cdot λ_n`$, where $λ_i$ are
+  the coefficients of the
+  [Lagrange polynomial](https://en.wikipedia.org/wiki/Lagrange_polynomial).
+- $`s`$: the key obtained by *app* as a result of the CKG
 
 ## Requirements
 
@@ -86,6 +92,8 @@ avoids key leakage in the case a single TEE is compromised
 - $`\texttt{app\_id}`$ must be a unique deterministic value tied to *app* and
 the attestation runtime measurements. It should not be forgeable by any other
 app
+- The DKG has been executed, and each node is in possesion of a secret key share
+  $x_i$
 
 ## Security Assumptions
 
@@ -127,12 +135,9 @@ contract.
   request with parameters $`(\texttt{app\_id},A)`$
 - When the *MPC Network* receives a new CKG request with parameters
   $`\texttt{app\_id}`$ and $`A`$, this request is sent to all nodes and the key
-  generation process starts. Let $`x_i`$ be the private secret shares of the MPC
-  nodes, $`λ_i`$ the Lagrange coefficients and $`H`$ is a cryptographically
+  generation process starts. Let $`H`$ be a suitable cryptographically
   secure hash to curve function from
-  [rfc9380](https://datatracker.ietf.org/doc/rfc9380/). Notice that $`msk = x_1
-  \cdot λ_1 + \ldots + x_n \cdot λ_n`$ as a result of the Distributed Key
-  Generation. The steps of the generation process follow:
+  [rfc9380](https://datatracker.ietf.org/doc/rfc9380/). The steps of the generation process follow:
   - Node $`i\in \{1, \ldots n\}`$ receives $`(\texttt{app\_id}, A)`$ and
     computes:
     - $`y_i  \gets^{\$} \mathbb{Z}_q`$
@@ -141,7 +146,7 @@ contract.
     - $`C_i =  S_i + y_i \cdot A`$
   - Node $`i`$ sends $`(λ_i \cdot Y_i, λ_i \cdot C_i)`$ to the *MPC network*
     coordinator
-  - The coordinator adds the receives pairs together:
+  - The coordinator adds the received pairs together:
     - $`R \gets λ_1 \cdot Y_1 + \ldots + λ_n \cdot Y_n`$
     - $`S \gets λ_1 \cdot C_1 + \ldots + λ_n \cdot C_n = λ_1 \cdot S_1 + \ldots +
     λ_n \cdot S_n + ({y_1 \cdot λ_1 + \ldots + y_n \cdot λ_n }) \cdot A =
