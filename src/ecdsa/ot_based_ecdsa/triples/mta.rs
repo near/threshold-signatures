@@ -63,7 +63,8 @@ pub async fn mta_sender(
 
     let mut prng = TranscriptRng::new(&seed);
     for &delta_i in &delta[1..] {
-        let chi_i = <<Secp256 as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut prng);
+        let chi_i =
+            <<Secp256 as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut prng);
         alpha += delta_i * chi_i;
     }
 
