@@ -236,7 +236,7 @@ fn run_random_ot(
 
 #[cfg(test)]
 mod test {
-    use crate::ecdsa::ot_based_ecdsa::triples::batch_random_ot::run_batch_random_ot;
+    use crate::ecdsa::ot_based_ecdsa::triples::test::run_batch_random_ot;
 
     use super::*;
 

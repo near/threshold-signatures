@@ -53,7 +53,7 @@ use std::task::Context;
 use std::{collections::HashMap, error, future::Future, sync::Arc};
 
 /// The domain for our use of sha here.
-const DOMAIN: &[u8] = b"Near threshold signatures  channel tags";
+const DOMAIN: &[u8] = b"Near threshold signatures channel tags";
 
 /// Encode an arbitrary serializable with a tag.
 fn encode_with_tag<T: Serialize>(tag: &[u8], val: &T) -> Vec<u8> {

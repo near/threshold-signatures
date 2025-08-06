@@ -1,11 +1,22 @@
 use rand_core::CryptoRngCore;
 
-use super::{TriplePub, TripleShare};
-#[cfg(test)]
-use crate::protocol::ProtocolError;
+use super::{
+    TriplePub, TripleShare,
+    batch_random_ot::{
+        BatchRandomOTOutputSender,
+        BatchRandomOTOutputReceiver,
+    }
+};
+
+use crate::ecdsa::{Field, Polynomial, ProjectivePoint, Secp256K1ScalarField};
+
 use crate::{
-    ecdsa::{Field, Polynomial, ProjectivePoint, Secp256K1ScalarField},
-    protocol::Participant,
+    protocol::{
+        internal::{make_protocol, Comms},
+        run_two_party_protocol,
+        ProtocolError,
+        Participant,
+    },
 };
 
 /// Create a new triple from scratch.
@@ -13,7 +24,6 @@ use crate::{
 /// This can be used to generate a triple if you then trust the person running
 /// this code to forget about the values they generated.
 /// We prevent users from using it in non-testing env and attribute it to #[cfg(test)]
-#[cfg(test)]
 pub fn deal(
     rng: &mut impl CryptoRngCore,
     participants: &[Participant],
@@ -47,4 +57,27 @@ pub fn deal(
         threshold,
     };
     Ok((triple_pub, shares))
+}
+
+
+/// Run the batch random OT protocol between two parties.
+pub(crate) fn run_batch_random_ot(
+) -> Result<(BatchRandomOTOutputSender, BatchRandomOTOutputReceiver), ProtocolError> {
+    let s = Participant::from(0u32);
+    let r = Participant::from(1u32);
+    let comms_s = Comms::new();
+    let comms_r = Comms::new();
+
+    run_two_party_protocol(
+        s,
+        r,
+        &mut make_protocol(
+            comms_s.clone(),
+            super::batch_random_ot::batch_random_ot_sender(comms_s.private_channel(s, r)),
+        ),
+        &mut make_protocol(
+            comms_r.clone(),
+            super::batch_random_ot::batch_random_ot_receiver(comms_r.private_channel(r, s)),
+        ),
+    )
 }

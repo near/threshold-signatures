@@ -6,8 +6,8 @@ use subtle::ConditionallySelectable;
 use crate::{
     ecdsa::{CoefficientCommitment, Field, ProjectivePoint, Secp256K1ScalarField},
     protocol::{
-        internal::{make_protocol, Comms, PrivateChannel},
-        run_two_party_protocol, Participant, ProtocolError,
+        internal::PrivateChannel,
+        ProtocolError,
     },
 };
 
@@ -48,7 +48,7 @@ fn hash(
     Ok(BitVector::from_bytes(&bytes))
 }
 
-type BatchRandomOTOutputSender = (SquareBitMatrix, SquareBitMatrix);
+pub(crate) type BatchRandomOTOutputSender = (SquareBitMatrix, SquareBitMatrix);
 
 pub async fn batch_random_ot_sender(
     mut chan: PrivateChannel,
@@ -177,7 +177,7 @@ pub async fn batch_random_ot_sender_many<const N: usize>(
     Ok(ret)
 }
 
-type BatchRandomOTOutputReceiver = (BitVector, SquareBitMatrix);
+pub(crate) type BatchRandomOTOutputReceiver = (BitVector, SquareBitMatrix);
 
 pub async fn batch_random_ot_receiver(
     mut chan: PrivateChannel,
@@ -320,60 +320,18 @@ pub async fn batch_random_ot_receiver_many<const N: usize>(
     Ok(ret)
 }
 
-/// Run the batch random OT protocol between two parties.
-#[allow(dead_code)]
-pub(crate) fn run_batch_random_ot(
-) -> Result<(BatchRandomOTOutputSender, BatchRandomOTOutputReceiver), ProtocolError> {
-    let s = Participant::from(0u32);
-    let r = Participant::from(1u32);
-    let comms_s = Comms::new();
-    let comms_r = Comms::new();
 
-    run_two_party_protocol(
-        s,
-        r,
-        &mut make_protocol(
-            comms_s.clone(),
-            batch_random_ot_sender(comms_s.private_channel(s, r)),
-        ),
-        &mut make_protocol(
-            comms_r.clone(),
-            batch_random_ot_receiver(comms_r.private_channel(r, s)),
-        ),
-    )
-}
 
-/// Run the batch random OT many protocol between two parties.
-#[allow(dead_code)]
-pub(crate) fn run_batch_random_ot_many<const N: usize>() -> Result<
-    (
-        Vec<BatchRandomOTOutputSender>,
-        Vec<BatchRandomOTOutputReceiver>,
-    ),
-    ProtocolError,
-> {
-    let s = Participant::from(0u32);
-    let r = Participant::from(1u32);
-    let comms_s = Comms::new();
-    let comms_r = Comms::new();
-
-    run_two_party_protocol(
-        s,
-        r,
-        &mut make_protocol(
-            comms_s.clone(),
-            batch_random_ot_sender_many::<N>(comms_s.private_channel(s, r)),
-        ),
-        &mut make_protocol(
-            comms_r.clone(),
-            batch_random_ot_receiver_many::<N>(comms_r.private_channel(r, s)),
-        ),
-    )
-}
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::ecdsa::ot_based_ecdsa::triples::test::run_batch_random_ot;
+    use crate::protocol::{
+        Participant,
+        run_two_party_protocol,
+        internal::{Comms, make_protocol}
+    };
 
     #[test]
     fn test_batch_random_ot() {
@@ -394,6 +352,33 @@ mod test {
                 *row_delta
             );
         }
+    }
+
+    /// Run the batch random OT many protocol between two parties.
+    fn run_batch_random_ot_many<const N: usize>() -> Result<
+        (
+            Vec<BatchRandomOTOutputSender>,
+            Vec<BatchRandomOTOutputReceiver>,
+        ),
+        ProtocolError,
+    > {
+        let s = Participant::from(0u32);
+        let r = Participant::from(1u32);
+        let comms_s = Comms::new();
+        let comms_r = Comms::new();
+
+        run_two_party_protocol(
+            s,
+            r,
+            &mut make_protocol(
+                comms_s.clone(),
+                batch_random_ot_sender_many::<N>(comms_s.private_channel(s, r)),
+            ),
+            &mut make_protocol(
+                comms_r.clone(),
+                batch_random_ot_receiver_many::<N>(comms_r.private_channel(r, s)),
+            ),
+        )
     }
 
     #[test]
