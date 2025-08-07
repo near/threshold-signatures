@@ -1,5 +1,5 @@
 pub mod ciphersuite;
-pub mod commit;
+pub mod commitment;
 pub mod hash;
 pub mod polynomials;
 pub mod proofs;

@@ -5,7 +5,7 @@ use serde::Serialize;
 use crate::{
     crypto::proofs::{dlog, dlogeq, strobe_transcript::Transcript},
     crypto::{
-        commit::{commit, Commitment},
+        commitment::{commit, Commitment},
         hash::{hash, HashOutput},
         random::Randomizer,
     },
