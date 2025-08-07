@@ -309,23 +309,22 @@ impl<C: Ciphersuite> Add for &PolynomialCommitment<C> {
     type Output = PolynomialCommitment<C>;
 
     fn add(self, rhs: Self) -> Self::Output {
-        // zip iterates over the smaller vec
-        let mut coefficients: Vec<CoefficientCommitment<C>> = self
-            .coefficients
-            .iter()
-            .zip(rhs.coefficients.iter())
-            .map(|(a, b)| CoefficientCommitment::new(a.value() + b.value()))
-            .collect();
+        let max_len = self.coefficients.len().max(rhs.coefficients.len());
+        let mut coefficients: Vec<CoefficientCommitment<C>> = Vec::with_capacity(max_len);
 
-        // Append remaining coefficients from the larger polynomial
-        match self.coefficients.len().cmp(&rhs.coefficients.len()) {
-            std::cmp::Ordering::Less => {
-                coefficients.extend_from_slice(&rhs.coefficients[self.coefficients.len()..])
-            }
-            std::cmp::Ordering::Greater => {
-                coefficients.extend_from_slice(&self.coefficients[rhs.coefficients.len()..])
-            }
-            _ => (),
+        // add polynomials even if they have different lengths
+        for i in 0..max_len {
+            let a = self.coefficients.get(i);
+            let b = rhs.coefficients.get(i);
+
+            let sum = match (a, b) {
+                (Some(a), Some(b)) => CoefficientCommitment::new(a.value() + b.value()),
+                (Some(a), None) => *a,
+                (None, Some(b)) => *b,
+                (None, None) => unreachable!(),
+            };
+
+            coefficients.push(sum);
         }
 
         PolynomialCommitment::new(coefficients)
