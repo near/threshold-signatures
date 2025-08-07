@@ -1,4 +1,4 @@
-use super::{CoefficientCommitment, KeygenOutput, CKDOutput};
+use super::{CoefficientCommitment, KeygenOutput, CKDOutput, CKDCommitments};
 use crate::participants::{ParticipantCounter, ParticipantList};
 use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
 use crate::protocol::{InitializationError, Participant, Protocol, ProtocolError};
@@ -25,13 +25,13 @@ fn random_oracle_to_element(app_id: &[u8]) -> Result<ProjectivePoint,ProtocolErr
 
 async fn do_ckd_participant(
     mut chan: SharedChannel,
+    participants: ParticipantList,
     me: Participant,
     coordinator: Participant,
-    participants: ParticipantList,
     my_keygen: KeygenOutput,
     app_id: &[u8],
     app_pk: CoefficientCommitment,
-) -> Result<(),ProtocolError>{
+) -> Result<CKDOutput,ProtocolError>{
     // y <- ZZq* , Y <- y * G
     let (y, big_y) = Secp256K1Sha256::generate_nonce(&mut OsRng);
     // H(app_id) when H is a random oracle
@@ -49,17 +49,17 @@ async fn do_ckd_participant(
     let waitpoint = chan.next_waitpoint();
     chan.send_private(waitpoint, coordinator, &(norm_big_y, norm_big_c));
 
-    Ok(())
+    Ok(None)
 }
 
 async fn do_ckd_coordinator(
     mut chan: SharedChannel,
-    me: Participant,
     participants: ParticipantList,
+    me: Participant,
     my_keygen: KeygenOutput,
     app_id: &[u8],
     app_pk: CoefficientCommitment,
-) -> Result<CKDOutput,ProtocolError> {
+) -> Result<CKDOutput, ProtocolError> {
     // y <- ZZq* , Y <- y * G
     let (y, big_y) = Secp256K1Sha256::generate_nonce(&mut OsRng);
     // H(app_id) when H is a random oracle
@@ -89,14 +89,85 @@ async fn do_ckd_coordinator(
         norm_big_y = norm_big_y + big_y.value();
         norm_big_c = norm_big_c + big_c.value();
     };
-    Ok(CKDOutput::new(norm_big_y, norm_big_c))
-}
-
-pub fn ckd(){
-
+    let ckdcommitments = CKDCommitments::new(norm_big_y, norm_big_c);
+    Ok(Some(ckdcommitments))
 }
 
 
+/// Runs the confidential key derivation protocol
+/// This exact same function is called for both
+/// a coordinator and a normal participant.
+/// Depending on whether the current participant is a coordinator or not,
+/// runs the signature protocol as either a participant or a coordinator.
+pub fn ckd(
+    participants: &[Participant],
+    me: Participant,
+    coordinator: Participant,
+    my_keygen: KeygenOutput,
+    app_id:  Vec<u8>,
+    app_pk: CoefficientCommitment,
+) -> Result<impl Protocol<Output = CKDOutput>, InitializationError> {
+    // not enough participants
+    if participants.len() < 2 {
+        return Err(InitializationError::BadParameters(format!(
+            "participant count cannot be < 2, found: {}",
+            participants.len()
+        )));
+    };
+
+    // kick out duplicates
+    let Some(participants) = ParticipantList::new(participants) else {
+        return Err(InitializationError::BadParameters(
+            "Participants list contains duplicates".to_string(),
+        ));
+    };
+
+    // ensure my presence in the participant list
+    if !participants.contains(me) {
+        return Err(InitializationError::BadParameters(format!(
+            "participant list must contain {me:?}"
+        )));
+    };
+    // ensure the coordinator is a participant
+    if !participants.contains(coordinator) {
+        return Err(InitializationError::BadParameters(format!(
+            "participant list must contain coordinator {coordinator:?}"
+        )));
+    };
+
+    let comms = Comms::new();
+    let chan = comms.shared_channel();
+
+    let fut = fut_wrapper(
+                chan,
+                me,
+                coordinator,
+                participants,
+                my_keygen,
+                app_id,
+                app_pk
+            );
+    Ok(make_protocol(comms, fut))
+}
+
+
+/// Depending on whether the current participant is a coordinator or not,
+/// runs the ckd protocol as either a participant or a coordinator.
+async fn fut_wrapper(
+    chan: SharedChannel,
+    me: Participant,
+    coordinator: Participant,
+    participants: ParticipantList,
+    my_keygen: KeygenOutput,
+    app_id: Vec<u8>,
+    app_pk: CoefficientCommitment,
+) -> Result<CKDOutput, ProtocolError> {
+    if me == coordinator {
+        do_ckd_coordinator(chan, participants, me, my_keygen, &app_id, app_pk).await
+    } else {
+        do_ckd_participant(chan, participants, me, coordinator, my_keygen, &app_id, app_pk).await
+    }
+}
 
 
 #[cfg(test)]
