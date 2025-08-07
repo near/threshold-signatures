@@ -3,7 +3,7 @@ use rmp_serde::encode::Error;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use super::random::Randomizer;
+use super::random::Randomness;
 
 const COMMIT_LABEL: &[u8] = b"Near threshold signature commitment";
 const COMMIT_LEN: usize = 32;
@@ -19,8 +19,8 @@ pub struct Commitment([u8; COMMIT_LEN]);
 
 impl Commitment {
     /// Computes the commitment using a randomizer as follows
-    /// SHA256(COMMIT_LABEL || randomizer || START_LABEL || encoded_value)
-    fn compute<T: Serialize>(val: &T, r: &Randomizer) -> Result<Self, Error> {
+    /// SHA256(COMMIT_LABEL || randomness || START_LABEL || encoded_value)
+    fn compute<T: Serialize>(val: &T, r: &Randomness) -> Result<Self, Error> {
         let mut hasher = Sha256::new();
         hasher.update(COMMIT_LABEL);
         hasher.update(r.as_ref());
@@ -30,7 +30,7 @@ impl Commitment {
     }
 
     /// Check that a value and a randomizer match this commitment.
-    pub fn check<T: Serialize>(&self, val: &T, r: &Randomizer) -> Result<bool, Error> {
+    pub fn check<T: Serialize>(&self, val: &T, r: &Randomness) -> Result<bool, Error> {
         let actual = Self::compute(val, r)?;
         Ok(*self == actual)
     }
@@ -46,8 +46,8 @@ impl Commitment {
 pub fn commit<T: Serialize, R: CryptoRngCore>(
     rng: &mut R,
     val: &T,
-) -> Result<(Commitment, Randomizer), Error> {
-    let r = Randomizer::random(rng);
+) -> Result<(Commitment, Randomness), Error> {
+    let r = Randomness::random(rng);
     let c = Commitment::compute(val, &r)?;
     Ok((c, r))
 }

@@ -7,7 +7,7 @@ use crate::{
     crypto::{
         commitment::{commit, Commitment},
         hash::{hash, HashOutput},
-        random::Randomizer,
+        random::Randomness,
     },
     ecdsa::{
         CoefficientCommitment, Polynomial, PolynomialCommitment, ProjectivePoint, Scalar,
@@ -727,7 +727,7 @@ async fn do_generation_many<const N: usize>(
                     Vec<PolynomialCommitment>,
                     Vec<PolynomialCommitment>,
                     Vec<PolynomialCommitment>,
-                    Vec<Randomizer>,
+                    Vec<Randomness>,
                     Vec<dlog::Proof<C>>,
                     Vec<dlog::Proof<C>>,
                 ),
