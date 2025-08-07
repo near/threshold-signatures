@@ -16,7 +16,7 @@ application itself, not even to individual MPC nodes.
 
 ## Background & Motivation
 
-Confidential Key Derivation (CKG) is a primitive that allows any app running
+Confidential Key Derivation (CKD) is a primitive that allows any app running
 inside a TEE (Intel TDX) to have a deterministically derived key that is unique
 to the app and not specific to the TEE. The app can derive the same key multiple
 times even if it runs on a different TEE. To obtain the key, the app can send a
@@ -49,14 +49,14 @@ flowchart LR
 
 Notice the MPC contract does not verify remote attestation, nor does it impose
 how the authentication of the TEE app is enforced. The developer must control
-the contract which calls the CKG functionality, and make the required
+the contract which calls the CKD functionality, and make the required
 verifications within that contract. In this document, for completeness we
 provide an example workflow for the developer. This workflow can be modified if
 required.
 
 ## Naming conventions
 
-- *app*: TEE app calling the CKG functionality
+- *app*: TEE app calling the CKD functionality
 - $`\texttt{app\_id}`$: unique and verifiable identifier for the *app*. It
   coincides with the account id of the *Developer contract*
 - $`\texttt{attestation}`$: the remote attestation report, which is a
@@ -67,7 +67,7 @@ $\texttt{RTMR2}$, $\texttt{RTMR3}$, *event_log* and *report_data*
 - *operator*: entity owning the TEE-enabled hardware executing *app*
 - *developer*: the developer of the *app*
 - *Developer contract*: a contract controled by the *developer*, who uses it to
-  call the CKG functionality
+  call the CKD functionality
 - $`\texttt{gen\_app\_private\_key}(A)`$: function inside MPC smart contract to
   generate a deterministic secret to be used by an application running inside a
   TEE
@@ -81,7 +81,7 @@ $\texttt{RTMR2}$, $\texttt{RTMR3}$, *event_log* and *report_data*
   \cdot λ_n`$, where $λ_i$ are
   the coefficients of the
   [Lagrange polynomial](https://en.wikipedia.org/wiki/Lagrange_polynomial).
-- $`s`$: the key obtained by *app* as a result of the CKG
+- $`s`$: the key obtained by *app* as a result of the CKD
 
 ## Requirements
 
@@ -131,9 +131,9 @@ contract.
 ### On the MPC side
 
 - $`\texttt{gen\_app\_private\_key}`$ sets $`\texttt{app\_id}`$ equal to the
-  account id of the caller and creates a transaction on-chain with a CKG
+  account id of the caller and creates a transaction on-chain with a CKD
   request with parameters $`(\texttt{app\_id},A)`$
-- When the *MPC Network* receives a new CKG request with parameters
+- When the *MPC Network* receives a new CKD request with parameters
   $`\texttt{app\_id}`$ and $`A`$, this request is sent to all nodes and the key
   generation process starts. Let $`H`$ be a suitable cryptographically
   secure hash to curve function from
@@ -147,11 +147,11 @@ contract.
   - Node $`i`$ sends $`(λ_i \cdot Y_i, λ_i \cdot C_i)`$ to the *MPC network*
     coordinator
   - The coordinator adds the received pairs together:
-    - $`R \gets λ_1 \cdot Y_1 + \ldots + λ_n \cdot Y_n`$
-    - $`S \gets λ_1 \cdot C_1 + \ldots + λ_n \cdot C_n = λ_1 \cdot S_1 + \ldots +
+    - $`Y \gets λ_1 \cdot Y_1 + \ldots + λ_n \cdot Y_n`$
+    - $`C \gets λ_1 \cdot C_1 + \ldots + λ_n \cdot C_n = λ_1 \cdot S_1 + \ldots +
     λ_n \cdot S_n + ({y_1 \cdot λ_1 + \ldots + y_n \cdot λ_n }) \cdot A =
-    \texttt{msk} \cdot H(\texttt{app\_id}) + a \cdot R`$
-    - $`\texttt{es} \gets (R, S) `$
+    \texttt{msk} \cdot H(\texttt{app\_id}) + a \cdot Y`$
+    - $`\texttt{es} \gets (Y, C) `$
   - Coordinator sends $`\texttt{es}`$ to *app* on-chain
-- *app* obtains $`\texttt{es} = (R, S)`$ and computes $`s \gets S + (- a) \cdot
-    R = \texttt{msk} \cdot H(\texttt{app\_id})`$
+- *app* obtains $`\texttt{es} = (Y, C)`$ and computes $`s \gets C + (- a) \cdot
+    Y = \texttt{msk} \cdot H(\texttt{app\_id})`$
