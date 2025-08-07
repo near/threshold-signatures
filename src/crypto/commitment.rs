@@ -7,6 +7,7 @@ use super::random::Randomizer;
 
 const COMMIT_LABEL: &[u8] = b"Near threshold signature commitment";
 const COMMIT_LEN: usize = 32;
+const START_LABEL: &[u8] = b"start data";
 
 /// Represents a commitment to some value.
 ///
@@ -17,11 +18,13 @@ const COMMIT_LEN: usize = 32;
 pub struct Commitment([u8; COMMIT_LEN]);
 
 impl Commitment {
+    /// Computes the commitment using a randomizer as follows
+    /// SHA256(COMMIT_LABEL || randomizer || START_LABEL || encoded_value)
     fn compute<T: Serialize>(val: &T, r: &Randomizer) -> Result<Self, Error> {
         let mut hasher = Sha256::new();
         hasher.update(COMMIT_LABEL);
         hasher.update(r.as_ref());
-        hasher.update(b"start data");
+        hasher.update(START_LABEL);
         rmp_serde::encode::write(&mut hasher, val)?;
         Ok(Commitment(hasher.finalize().into()))
     }
