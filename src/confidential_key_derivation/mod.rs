@@ -1,9 +1,7 @@
 pub mod ckd;
 pub mod test;
 
-use frost_secp256k1::{
-    keys::SigningShare, Secp256K1Sha256, VerifyingKey,
-};
+use frost_secp256k1::{keys::SigningShare, Secp256K1Sha256, VerifyingKey};
 use serde::{Deserialize, Serialize};
 
 /// Key Pairs containing secret share of the participant along with the master verification key
@@ -17,16 +15,14 @@ pub(crate) type CoefficientCommitment = frost_core::keys::CoefficientCommitment<
 pub(crate) type Element = frost_core::Element<Secp256K1Sha256>;
 pub(crate) type Scalar = frost_core::Scalar<Secp256K1Sha256>;
 
-
-
 /// The output of the confidential key derivation protocol when run by the coordinator
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct  CKDCommitments{
+pub struct CKDCommitments {
     big_y: CoefficientCommitment,
     big_c: CoefficientCommitment,
 }
 
-impl CKDCommitments{
+impl CKDCommitments {
     pub fn new(big_y: Element, big_c: Element) -> Self {
         CKDCommitments {
             big_y: CoefficientCommitment::new(big_y),
@@ -46,8 +42,8 @@ impl CKDCommitments{
 
     /// Takes a secret scalar and returns
     /// s <- C  − a  ⋅ Y = msk ⋅ H ( app_id )
-    pub fn unmask(&self, secret_scalar: Scalar) -> CoefficientCommitment{
-        CoefficientCommitment::new(self.big_c.value() -  self.big_y.value() * secret_scalar)
+    pub fn unmask(&self, secret_scalar: Scalar) -> CoefficientCommitment {
+        CoefficientCommitment::new(self.big_c.value() - self.big_y.value() * secret_scalar)
     }
 }
 
