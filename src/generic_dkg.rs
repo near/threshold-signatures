@@ -118,14 +118,13 @@ fn proof_of_knowledge<C: Ciphersuite>(
     me: Participant,
     coefficients: &Polynomial<C>,
     coefficient_commitment: &PolynomialCommitment<C>,
-    rng: &mut OsRng,
 ) -> Result<Signature<C>, ProtocolError> {
     // creates an identifier for the participant
     let id = me.scalar::<C>();
     let vk_share = coefficient_commitment.eval_on_zero();
 
     // pick a random k_i and compute R_id = g^{k_id},
-    let (k, big_r) = <C>::generate_nonce(rng);
+    let (k, big_r) = <C>::generate_nonce(&mut OsRng);
 
     // compute H(id, context_string, g^{a_0} , R_id) as a scalar
     let hash = challenge::<C>(session_id, domain_separator, id, &vk_share, &big_r)?;
@@ -144,7 +143,6 @@ fn compute_proof_of_knowledge<C: Ciphersuite>(
     old_participants: Option<ParticipantList>,
     coefficients: &Polynomial<C>,
     coefficient_commitment: &PolynomialCommitment<C>,
-    rng: &mut OsRng,
 ) -> Result<Option<Signature<C>>, ProtocolError> {
     // I am allowed to send none only if I am a new participant
     if old_participants.is_some() && !old_participants.unwrap().contains(me) {
@@ -157,7 +155,6 @@ fn compute_proof_of_knowledge<C: Ciphersuite>(
         me,
         coefficients,
         coefficient_commitment,
-        rng,
     )?;
     Ok(Some(proof))
 }
@@ -357,7 +354,6 @@ async fn do_keyshare<C: Ciphersuite>(
     threshold: usize,
     secret: Scalar<C>,
     old_reshare_package: Option<(VerifyingKey<C>, ParticipantList)>,
-    mut rng: OsRng,
 ) -> Result<KeygenOutput<C>, ProtocolError> {
     let mut all_full_commitments = ParticipantMap::new(&participants);
     let mut domain_separator = 0;
@@ -367,7 +363,7 @@ async fn do_keyshare<C: Ciphersuite>(
 
     // Start Round 0
     let mut my_session_id = [0u8; 32]; // 256 bits
-    rng.fill_bytes(&mut my_session_id);
+    OsRng.fill_bytes(&mut my_session_id);
     let session_ids = do_broadcast(&mut chan, &participants, &me, my_session_id).await?;
 
     // Start Round 1
@@ -379,7 +375,7 @@ async fn do_keyshare<C: Ciphersuite>(
     domain_separator += 1;
     // the degree of the polynomial is threshold - 1
     let secret_coefficients =
-        Polynomial::<C>::generate_polynomial(Some(secret), threshold - 1, &mut rng)?;
+        Polynomial::<C>::generate_polynomial(Some(secret), threshold - 1, &mut OsRng)?;
 
     // Compute the multiplication of every coefficient of p with the generator G
     let coefficient_commitment = generate_coefficient_commitment::<C>(&secret_coefficients)
@@ -393,7 +389,6 @@ async fn do_keyshare<C: Ciphersuite>(
         old_participants.clone(),
         &secret_coefficients,
         &coefficient_commitment,
-        &mut rng,
     )?;
     domain_separator += 1;
 
@@ -542,11 +537,9 @@ pub(crate) async fn do_keygen<C: Ciphersuite>(
     threshold: usize,
 ) -> Result<KeygenOutput<C>, ProtocolError> {
     // pick share at random
-    let mut rng = OsRng;
-    let secret = SigningKey::<C>::new(&mut rng).to_scalar();
+    let secret = SigningKey::<C>::new(&mut OsRng).to_scalar();
     // call keyshare
-    let keygen_output =
-        do_keyshare::<C>(chan, participants, me, threshold, secret, None, rng).await?;
+    let keygen_output = do_keyshare::<C>(chan, participants, me, threshold, secret, None).await?;
     Ok(keygen_output)
 }
 
@@ -596,9 +589,6 @@ pub(crate) async fn do_reshare<C: Ciphersuite>(
     old_public_key: VerifyingKey<C>,
     old_participants: ParticipantList,
 ) -> Result<KeygenOutput<C>, ProtocolError> {
-    // prepare the random number generator
-    let rng = OsRng;
-
     let intersection = old_participants.intersection(&participants);
     // either extract the share and linearize it or set it to zero
     let secret = old_signing_key
@@ -613,7 +603,6 @@ pub(crate) async fn do_reshare<C: Ciphersuite>(
         threshold,
         secret,
         old_reshare_package,
-        rng,
     )
     .await?;
 
