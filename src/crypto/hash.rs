@@ -38,10 +38,10 @@ pub(crate) use test::scalar_hash;
 mod test {
     use elliptic_curve::{ops::Reduce, Curve, CurveArithmetic};
 
+    use super::{domain_separate_hash, hash};
     use digest::{Digest, FixedOutput};
     use ecdsa::hazmat::DigestPrimitive;
     use k256::{FieldBytes, Scalar, Secp256k1};
-    use super::{hash, domain_separate_hash};
 
     #[test]
     fn test_same_inputs_hash() {
@@ -70,7 +70,6 @@ mod test {
         let hash2 = domain_separate_hash(41, &val2);
         assert_ne!(hash1.0, hash2.0);
     }
-
 
     #[cfg(test)]
     /// Hashes a message string into an arbitrary scalar

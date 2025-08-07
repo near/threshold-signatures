@@ -51,3 +51,31 @@ pub fn commit<T: Serialize, R: CryptoRngCore>(
     let c = Commitment::compute(val, &r)?;
     Ok((c, r))
 }
+
+#[cfg(test)]
+mod test {
+    use rand_core::OsRng;
+
+    use super::commit;
+
+    #[test]
+    fn test_commitment_is_valid() {
+        let val = "Committed value";
+        let (c, r) = commit(&mut OsRng, &val).unwrap();
+        assert!(c.check(&val, &r).unwrap());
+    }
+
+    #[test]
+    fn test_commitment_is_invalid() {
+        let val1 = "Committed value";
+        let (c1, r1) = commit(&mut OsRng, &val1).unwrap();
+
+        let val2 = "Another committed value";
+        let (c2, r2) = commit(&mut OsRng, &val2).unwrap();
+
+        assert!(!c1.check(&val1, &r2).unwrap());
+        assert!(!c1.check(&val2, &r1).unwrap());
+        assert!(!c2.check(&val1, &r2).unwrap());
+        assert!(!c2.check(&val2, &r1).unwrap());
+    }
+}

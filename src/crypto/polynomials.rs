@@ -116,7 +116,7 @@ impl<C: Ciphersuite> Polynomial<C> {
         let mut interpolation = <C::Group as Group>::Field::zero();
         // raise Error if the lengths are not the same
         // or the number of identifiers (<= 1)
-        if identifiers.len() != shares.len()  || identifiers.len() <= 1 {
+        if identifiers.len() != shares.len() || identifiers.len() <= 1 {
             return Err(ProtocolError::InvalidInterpolationArguments);
         }
 
@@ -241,7 +241,7 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
         let mut interpolation = C::Group::identity();
         // raise Error if the lengths are not the same
         // or the number of identifiers (<= 1)
-        if identifiers.len() != shares.len() || identifiers.len() <= 1{
+        if identifiers.len() != shares.len() || identifiers.len() <= 1 {
             return Err(ProtocolError::InvalidInterpolationArguments);
         };
 
