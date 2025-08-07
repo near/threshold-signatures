@@ -1,4 +1,4 @@
-use super::{CoefficientCommitment, KeygenOutput, CKDOutput, CKDCommitments};
+use super::{CoefficientCommitment, SigningShare, CKDOutput, CKDCommitments};
 use crate::participants::{ParticipantCounter, ParticipantList};
 use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
 use crate::protocol::{InitializationError, Participant, Protocol, ProtocolError};
@@ -26,9 +26,9 @@ fn random_oracle_to_element(app_id: &[u8]) -> Result<ProjectivePoint,ProtocolErr
 async fn do_ckd_participant(
     mut chan: SharedChannel,
     participants: ParticipantList,
-    me: Participant,
     coordinator: Participant,
-    my_keygen: KeygenOutput,
+    me: Participant,
+    private_share: SigningShare,
     app_id: &[u8],
     app_pk: CoefficientCommitment,
 ) -> Result<CKDOutput,ProtocolError>{
@@ -37,7 +37,7 @@ async fn do_ckd_participant(
     // H(app_id) when H is a random oracle
     let hash_point = random_oracle_to_element(app_id)?;
     // S <- x . H(app_id)
-    let big_s =  hash_point * my_keygen.private_share.to_scalar();
+    let big_s =  hash_point * private_share.to_scalar();
     // C <- S + y . A
     let big_c = big_s + app_pk.value()* y;
     // Compute  λi := λi(0)
@@ -56,7 +56,7 @@ async fn do_ckd_coordinator(
     mut chan: SharedChannel,
     participants: ParticipantList,
     me: Participant,
-    my_keygen: KeygenOutput,
+    private_share: SigningShare,
     app_id: &[u8],
     app_pk: CoefficientCommitment,
 ) -> Result<CKDOutput, ProtocolError> {
@@ -65,7 +65,7 @@ async fn do_ckd_coordinator(
     // H(app_id) when H is a random oracle
     let hash_point = random_oracle_to_element(app_id)?;
     // S <- x . H(app_id)
-    let big_s =  hash_point * my_keygen.private_share.to_scalar();
+    let big_s =  hash_point * private_share.to_scalar();
     // C <- S + y . A
     let big_c = big_s + app_pk.value()* y;
     // Compute  λi := λi(0)
@@ -101,9 +101,9 @@ async fn do_ckd_coordinator(
 /// runs the signature protocol as either a participant or a coordinator.
 pub fn ckd(
     participants: &[Participant],
-    me: Participant,
     coordinator: Participant,
-    my_keygen: KeygenOutput,
+    me: Participant,
+    private_share: SigningShare,
     app_id:  Vec<u8>,
     app_pk: CoefficientCommitment,
 ) -> Result<impl Protocol<Output = CKDOutput>, InitializationError> {
@@ -140,39 +140,47 @@ pub fn ckd(
 
     let fut = fut_wrapper(
                 chan,
-                me,
                 coordinator,
+                me,
                 participants,
-                my_keygen,
+                private_share,
                 app_id,
                 app_pk
             );
     Ok(make_protocol(comms, fut))
 }
 
-
 /// Depending on whether the current participant is a coordinator or not,
 /// runs the ckd protocol as either a participant or a coordinator.
 async fn fut_wrapper(
     chan: SharedChannel,
-    me: Participant,
     coordinator: Participant,
+    me: Participant,
     participants: ParticipantList,
-    my_keygen: KeygenOutput,
+    private_share: SigningShare,
     app_id: Vec<u8>,
     app_pk: CoefficientCommitment,
 ) -> Result<CKDOutput, ProtocolError> {
     if me == coordinator {
-        do_ckd_coordinator(chan, participants, me, my_keygen, &app_id, app_pk).await
+        do_ckd_coordinator(chan, participants, me, private_share, &app_id, app_pk).await
     } else {
-        do_ckd_participant(chan, participants, me, coordinator, my_keygen, &app_id, app_pk).await
+        do_ckd_participant(chan, participants, coordinator, me, private_share, &app_id, app_pk).await
     }
 }
 
 
 #[cfg(test)]
 mod test {
+    use frost_core::keys::{CoefficientCommitment, SigningShare};
+    use std::error::Error;
     use super::*;
+    use crate::crypto::polynomials::Polynomial;
+    use crate::{
+        protocol::run_protocol,
+    };
+
+    use rand_core::RngCore;
+
 
     #[test]
     fn test_random_oracle() {
@@ -185,5 +193,72 @@ mod test {
         let app_id = b"Hello Near!";
         let pt2 = random_oracle_to_element(app_id).unwrap();
         assert!(pt1 != pt2);
+    }
+
+    #[test]
+    fn test_ckd() -> Result<(), Box<dyn Error>>{
+        let threshold = 3;
+
+        for i in 0..100 {
+            let f = Polynomial::<Secp256K1Sha256>::generate_polynomial(None, threshold - 1, &mut OsRng)?;
+
+            // Create the threshold signer's master secret key
+            let msk = f.eval_on_zero().0;
+
+            // Create the app necessary items
+            let app_id = [b"App ".as_ref(), i.to_string().as_bytes()].concat();
+            let (app_sk, app_pk) = Secp256K1Sha256::generate_nonce(&mut OsRng);
+            let app_pk = CoefficientCommitment::new(app_pk);
+
+            let expected_confidential_key = random_oracle_to_element(&app_id).unwrap() * msk;
+
+            let participants = vec![
+                Participant::from(0u32),
+                Participant::from(1u32),
+                Participant::from(2u32),
+            ];
+
+            // choose a coordinator at random
+            let index = OsRng.next_u32() % participants.len() as u32 ;
+            let coordinator = participants[index as usize];
+
+            let mut protocols: Vec<(
+                Participant,
+                Box<dyn Protocol<Output = CKDOutput>>,
+            )> = Vec::with_capacity(participants.len());
+
+            for p in &participants {
+                let share = f.eval_on_participant(*p);
+                let private_share = SigningShare::new(share.0);
+
+                let protocol = ckd(
+                    &participants,
+                    coordinator,
+                    *p,
+                    private_share,
+                    app_id.clone(),
+                    app_pk,
+                )?;
+
+                protocols.push((*p, Box::new(protocol)));
+            }
+
+            let result = run_protocol(protocols)?;
+
+            // test one single some for the coordinator
+            let mut some_iter = result.into_iter().filter(|(_, ckd)| ckd.is_some());
+
+            let ckd = some_iter
+                    .next()
+                    .map(|(_, c)| c.unwrap())
+                    .expect("Expected exactly one Some(CKDCommitments)");
+            assert!(some_iter.next().is_none(), "More than one Some(CKDCommitments)");
+
+            // compute msk . H(app_id)
+            let confidential_key = ckd.unmask(app_sk);
+
+            assert_eq!(confidential_key.value(), expected_confidential_key, "Keys should be similar");
+        }
+        Ok(())
     }
 }
