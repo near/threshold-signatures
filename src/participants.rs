@@ -83,7 +83,7 @@ impl ParticipantList {
     }
 
     /// Get the lagrange coefficient for a participant, relative to this list.
-    /// The lagrange coefficient are evaluated to zero
+    /// The lagrange coefficient is evaluated at zero
     /// Use generic frost library types
     pub fn lagrange<C: Ciphersuite>(&self, p: Participant) -> Scalar<C> {
         let p = p.scalar::<C>();

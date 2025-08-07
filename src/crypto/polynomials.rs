@@ -339,34 +339,42 @@ impl<C: Ciphersuite> Add for &PolynomialCommitment<C> {
 /// If x is None then consider it as 0
 pub fn compute_lagrange_coefficient<C: Ciphersuite>(
     points_set: &[Scalar<C>],
-    i: &Scalar<C>,
+    x_i: &Scalar<C>,
     x: Option<&Scalar<C>>,
 ) -> Result<SerializableScalar<C>, ProtocolError> {
     let mut num = <C::Group as Group>::Field::one();
     let mut den = <C::Group as Group>::Field::one();
 
-    if points_set.len() <= 1 || !points_set.contains(i) {
+    if points_set.len() <= 1{
         // returns error if there is not enough points to interpolate
-        // or if i is not in the set of points
         return Err(ProtocolError::InvalidInterpolationArguments);
     }
+
+    let mut contains_i = false;
     if let Some(x) = x {
-        for j in points_set.iter() {
-            if *i == *j {
+        for x_j in points_set.iter() {
+            if *x_i == *x_j {
+                contains_i = true;
                 continue;
             }
-            num = num * (*x - *j);
-            den = den * (*i - *j);
+            num = num * (*x - *x_j);
+            den = den * (*x_i - *x_j);
         }
     } else {
-        for j in points_set.iter() {
-            if *i == *j {
+        for x_j in points_set.iter() {
+            if *x_i == *x_j {
+                contains_i = true;
                 continue;
             }
             // Both signs inverted just to avoid requiring an extra negation
-            num = num * *j;
-            den = den * (*j - *i);
+            num = num * *x_j;
+            den = den * (*x_j - *x_i);
         }
+    }
+
+    // if i is not in the set of points
+    if !contains_i {
+        return Err(ProtocolError::InvalidInterpolationArguments);
     }
 
     // raises error if the denominator is null, i.e., the set contains duplicates
