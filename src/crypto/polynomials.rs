@@ -333,10 +333,13 @@ impl<C: Ciphersuite> Add for &PolynomialCommitment<C> {
     }
 }
 
-/// Computes the lagrange coefficient using a set of given points
-/// lamda_i(x) = \prod_j (x - x_j)/(x_i - x_j)
-/// where j != i
-/// If x is None then consider it as 0
+/// Computes the Lagrange coefficient (a.k.a. Lagrange basis polynomial)
+/// evaluated at point x.
+/// lamda_i(x) = \prod_j (x - x_j)/(x_i - x_j)  where j != i
+/// Note: if `x` is None then consider it as 0.
+/// Note: `x_j` are elements in `point_set`
+/// Note: if `x_i` is not in `point_set` then return an error
+/// Note: `point_set` must not have repeating values.
 pub fn compute_lagrange_coefficient<C: Ciphersuite>(
     points_set: &[Scalar<C>],
     x_i: &Scalar<C>,
