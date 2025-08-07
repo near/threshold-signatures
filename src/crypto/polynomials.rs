@@ -142,7 +142,7 @@ impl<C: Ciphersuite> Polynomial<C> {
 
     /// Set the constant value of this polynomial to a new scalar
     /// Abort if the output polynomial is zero
-    pub fn set_constant(&mut self, v: Scalar<C>) -> Result<(), ProtocolError> {
+    pub fn set_nonzero_constant(&mut self, v: Scalar<C>) -> Result<(), ProtocolError> {
         if self.coefficients.len() == 1 && v == <C::Group as Group>::Field::zero() {
             return Err(ProtocolError::EmptyOrZeroCoefficients);
         }
@@ -260,7 +260,10 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
 
     /// Set the constant value of this polynomial to a new group element
     /// Aborts if the output polynomial is the identity
-    pub fn set_constant(&mut self, v: CoefficientCommitment<C>) -> Result<(), ProtocolError> {
+    pub fn set_non_identity_constant(
+        &mut self,
+        v: CoefficientCommitment<C>,
+    ) -> Result<(), ProtocolError> {
         if self.coefficients.len() == 1 && v.value() == C::Group::identity() {
             return Err(ProtocolError::EmptyOrZeroCoefficients);
         }
@@ -347,7 +350,7 @@ pub fn compute_lagrange_coefficient<C: Ciphersuite>(
     let mut num = <C::Group as Group>::Field::one();
     let mut den = <C::Group as Group>::Field::one();
 
-    if points_set.len() <= 1{
+    if points_set.len() <= 1 {
         // returns error if there is not enough points to interpolate
         return Err(ProtocolError::InvalidInterpolationArguments);
     }

@@ -404,7 +404,7 @@ async fn do_generation(
     // Spec 4.8
     // extend to make the degree threshold - 1
     l = l.extend_with_zero();
-    l.set_constant(l0)?;
+    l.set_nonzero_constant(l0)?;
     let wait6 = chan.next_waitpoint();
     for p in participants.others(me) {
         let c_i_j = l.eval_on_participant(p);
@@ -440,7 +440,7 @@ async fn do_generation(
     }
 
     // Spec 5.3
-    big_l.set_constant(CoefficientCommitment::new(hat_big_c))?;
+    big_l.set_non_identity_constant(CoefficientCommitment::new(hat_big_c))?;
 
     // Spec 5.4
     if big_l.eval_on_zero().value() != big_c {
@@ -968,7 +968,7 @@ async fn do_generation_many<const N: usize>(
         let l0 = &l0_v[i];
         // extend to make the degree threshold - 1
         *l = l.extend_with_zero();
-        l.set_constant(*l0)?;
+        l.set_nonzero_constant(*l0)?;
     }
     let wait6 = chan.next_waitpoint();
     let mut c_i_v = vec![];
@@ -1028,7 +1028,7 @@ async fn do_generation_many<const N: usize>(
         let big_c = &big_c_v[i];
 
         // Spec 5.3
-        big_l.set_constant(CoefficientCommitment::new(*hat_big_c))?;
+        big_l.set_non_identity_constant(CoefficientCommitment::new(*hat_big_c))?;
 
         // Spec 5.4
         if big_l.eval_on_zero().value() != *big_c {

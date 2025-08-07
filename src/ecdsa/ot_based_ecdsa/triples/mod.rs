@@ -39,8 +39,6 @@ pub use generation::{generate_triple, generate_triple_many, TripleGenerationOutp
 #[cfg(test)]
 pub(crate) mod test;
 
-
-
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -75,4 +73,3 @@ pub struct TripleShare {
     pub b: Scalar,
     pub c: Scalar,
 }
-
