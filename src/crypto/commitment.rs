@@ -19,7 +19,7 @@ pub struct Commitment([u8; COMMIT_LEN]);
 
 impl Commitment {
     /// Computes the commitment using a randomizer as follows
-    /// SHA256(COMMIT_LABEL || randomness || START_LABEL || encoded_value)
+    /// SHA256(COMMIT_LABEL || randomness || START_LABEL || msgpack(value))
     fn compute<T: Serialize>(val: &T, r: &Randomness) -> Result<Self, Error> {
         let mut hasher = Sha256::new();
         hasher.update(COMMIT_LABEL);

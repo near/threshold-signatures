@@ -14,7 +14,8 @@ impl AsRef<[u8]> for HashOutput {
     }
 }
 
-/// Hash some value to produce a short digest.
+/// Hash some value to produce a short digest as follows
+/// SHA256(HASH_LABEL || msgpack(value))
 pub fn hash<T: Serialize>(val: &T) -> HashOutput {
     let mut hasher = Sha256::new();
     hasher.update(HASH_LABEL);
@@ -22,7 +23,8 @@ pub fn hash<T: Serialize>(val: &T) -> HashOutput {
     HashOutput(hasher.finalize().into())
 }
 
-/// Hashes using a domain separator
+/// Hashes using a domain separator as follows:
+/// SHA256(HASH_LABEL || msgpack([domain_separator, data])
 /// The domain separator has to be manually incremented after the use of this function
 pub fn domain_separate_hash<T: Serialize>(domain_separator: u32, data: &T) -> HashOutput {
     let preimage = (domain_separator, data);
@@ -39,6 +41,36 @@ mod test {
     use digest::{Digest, FixedOutput};
     use ecdsa::hazmat::DigestPrimitive;
     use k256::{FieldBytes, Scalar, Secp256k1};
+    use super::{hash, domain_separate_hash};
+
+    #[test]
+    fn test_same_inputs_hash() {
+        let val = ("abc", 123);
+        let hash1 = hash(&val);
+        let hash2 = hash(&val);
+        assert_eq!(hash1.0, hash2.0);
+
+        let hash1 = domain_separate_hash(42, &val);
+        let hash2 = domain_separate_hash(42, &val);
+        assert_eq!(hash1.0, hash2.0);
+    }
+
+    #[test]
+    fn test_different_inputs_hash() {
+        let val1 = ("abc", 123);
+        let val2 = ("abc", 124);
+        let hash1 = hash(&val1);
+        let hash2 = hash(&val2);
+        assert_ne!(hash1.0, hash2.0);
+
+        let hash1 = domain_separate_hash(41, &val1);
+        let hash2 = domain_separate_hash(42, &val1);
+        assert_ne!(hash1.0, hash2.0);
+
+        let hash2 = domain_separate_hash(41, &val2);
+        assert_ne!(hash1.0, hash2.0);
+    }
+
 
     #[cfg(test)]
     /// Hashes a message string into an arbitrary scalar
