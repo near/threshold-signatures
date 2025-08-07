@@ -104,6 +104,10 @@ impl<C: Ciphersuite> Polynomial<C> {
 
     /// Computes polynomial interpolation on a specific point
     /// using a sequence of sorted elements
+    /// Input requirements:
+    ///     * identifiers MUST be pairwise distinct and of length greater than 1
+    ///     * shares and identifiers must be of same length
+    // Returns error if shares' and identifiers' lengths are distinct or less than or equals to 1
     pub fn eval_interpolation(
         identifiers: &[Scalar<C>],
         shares: &[SerializableScalar<C>],
@@ -111,13 +115,13 @@ impl<C: Ciphersuite> Polynomial<C> {
     ) -> Result<SerializableScalar<C>, ProtocolError> {
         let mut interpolation = <C::Group as Group>::Field::zero();
         // raise Error if the lengths are not the same
-        if identifiers.len() != shares.len() {
+        // or the number of identifiers (<= 1)
+        if identifiers.len() != shares.len()  || identifiers.len() <= 1 {
             return Err(ProtocolError::InvalidInterpolationArguments);
         }
 
         // Compute the Lagrange coefficients
         for (id, share) in identifiers.iter().zip(shares) {
-            // would raise error if identifiers are not enough (<= 1)
             let lagrange_coefficient = compute_lagrange_coefficient::<C>(identifiers, id, point)?;
 
             // Compute y = f(point) via polynomial interpolation of these points of f
@@ -225,6 +229,10 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
 
     /// Computes polynomial interpolation on the exponent on a specific point
     /// using a sequence of sorted coefficient commitments
+    /// Input requirements:
+    ///     * identifiers MUST be pairwise distinct and of length greater than 1
+    ///     * shares and identifiers must be of same length
+    // Returns error if shares' and identifiers' lengths are distinct or less than or equals to 1
     pub fn eval_exponent_interpolation(
         identifiers: &[Scalar<C>],
         shares: &[CoefficientCommitment<C>],
@@ -232,13 +240,13 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
     ) -> Result<CoefficientCommitment<C>, ProtocolError> {
         let mut interpolation = C::Group::identity();
         // raise Error if the lengths are not the same
-        if identifiers.len() != shares.len() {
+        // or the number of identifiers (<= 1)
+        if identifiers.len() != shares.len() || identifiers.len() <= 1{
             return Err(ProtocolError::InvalidInterpolationArguments);
         };
 
         // Compute the Lagrange coefficients
         for (id, share) in identifiers.iter().zip(shares) {
-            // would raises error if insufficient number of identifiers (<= 1)
             let lagrange_coefficient = compute_lagrange_coefficient::<C>(identifiers, id, point)?;
 
             // Compute y = g^f(point) via polynomial interpolation of these points of f
