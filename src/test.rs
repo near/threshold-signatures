@@ -46,7 +46,8 @@ where
         protocols.push((*p, Box::new(protocol)));
     }
 
-    let result = run_protocol(protocols)?;
+    let mut result = run_protocol(protocols)?;
+    result.sort_by_key(|(p, _)| *p);
     Ok(result)
 }
 
@@ -73,7 +74,8 @@ where
         protocols.push((*p, Box::new(protocol)));
     }
 
-    let result = run_protocol(protocols)?;
+    let mut result = run_protocol(protocols)?;
+    result.sort_by_key(|(p, _)| *p);
     Ok(result)
 }
 
@@ -122,7 +124,8 @@ where
         protocols.push((*p, Box::new(protocol)));
     }
 
-    let result = run_protocol(protocols)?;
+    let mut result = run_protocol(protocols)?;
+    result.sort_by_key(|(p, _)| *p);
     Ok(result)
 }
 

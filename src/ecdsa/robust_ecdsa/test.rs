@@ -55,7 +55,9 @@ pub fn run_presign(
         protocols.push((p, Box::new(protocol)));
     }
 
-    run_protocol(protocols).unwrap()
+    let mut result = run_protocol(protocols).unwrap();
+    result.sort_by_key(|(p, _)| *p);
+    result
 }
 
 #[test]
@@ -96,7 +98,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
     new_participant.push(Participant::from(31u32));
     new_participant.push(Participant::from(32u32));
     new_participant.push(Participant::from(33u32));
-    let mut key_packages = run_reshare(
+    let key_packages = run_reshare(
         &participants,
         &pub_key,
         result0,
@@ -105,13 +107,11 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
         new_participant.clone(),
     )?;
     assert_public_key_invariant(&key_packages);
-    key_packages.sort_by_key(|(p, _)| *p);
 
     let public_key = key_packages[0].1.public_key;
 
     // Presign
-    let mut presign_result = run_presign(key_packages, max_malicious);
-    presign_result.sort_by_key(|(p, _)| *p);
+    let presign_result = run_presign(key_packages, max_malicious);
 
     let msg = b"hello world";
 
@@ -135,7 +135,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     let new_threshold = max_malicious + 1;
     let mut new_participant = participants.clone();
     new_participant.pop();
-    let mut key_packages = run_reshare(
+    let key_packages = run_reshare(
         &participants,
         &pub_key,
         result0,
@@ -144,13 +144,11 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
         new_participant.clone(),
     )?;
     assert_public_key_invariant(&key_packages);
-    key_packages.sort_by_key(|(p, _)| *p);
 
     let public_key = key_packages[0].1.public_key;
 
     // Presign
-    let mut presign_result = run_presign(key_packages, max_malicious);
-    presign_result.sort_by_key(|(p, _)| *p);
+    let presign_result = run_presign(key_packages, max_malicious);
 
     let msg = b"hello world";
 
@@ -163,15 +161,12 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants(8);
     let max_malicious = 3;
 
-    let mut keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;
-    keygen_result.sort_by_key(|(p, _)| *p);
+    let keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;
 
     let public_key = keygen_result[0].1.public_key;
-    assert_eq!(keygen_result[0].1.public_key, keygen_result[1].1.public_key);
-    assert_eq!(keygen_result[1].1.public_key, keygen_result[2].1.public_key);
+    assert_public_key_invariant(&keygen_result);
 
-    let mut presign_result = run_presign(keygen_result, max_malicious);
-    presign_result.sort_by_key(|(p, _)| *p);
+    let presign_result = run_presign(keygen_result, max_malicious);
 
     let msg = b"hello world";
 
@@ -185,15 +180,12 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     let participants = generate_random_participants(participants_count);
     let max_malicious = 3;
 
-    let mut keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;
-    keygen_result.sort_by_key(|(p, _)| *p);
+    let keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;
+    assert_public_key_invariant(&keygen_result);
 
     let public_key = keygen_result[0].1.public_key;
-    assert_eq!(keygen_result[0].1.public_key, keygen_result[1].1.public_key);
-    assert_eq!(keygen_result[1].1.public_key, keygen_result[2].1.public_key);
 
-    let mut presign_result = run_presign(keygen_result, max_malicious);
-    presign_result.sort_by_key(|(p, _)| *p);
+    let presign_result = run_presign(keygen_result, max_malicious);
 
     let msg = b"hello world";
     run_sign(presign_result, public_key.to_element(), msg)?;

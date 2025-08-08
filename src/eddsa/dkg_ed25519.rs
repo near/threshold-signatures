@@ -24,8 +24,6 @@ mod test {
         assert_public_key_invariant(&result);
 
         assert!(result.len() == participants.len());
-        assert_eq!(result[0].1.public_key, result[1].1.public_key);
-        assert_eq!(result[1].1.public_key, result[2].1.public_key);
 
         let pub_key = result[2].1.public_key.to_element();
 
