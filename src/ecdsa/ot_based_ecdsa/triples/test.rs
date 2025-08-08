@@ -33,9 +33,9 @@ pub fn deal(
     for p in participants {
         participants_owned.push(*p);
         shares.push(TripleShare {
-            a: f_a.eval_on_participant(*p).0,
-            b: f_b.eval_on_participant(*p).0,
-            c: f_c.eval_on_participant(*p).0,
+            a: f_a.eval_on_participant(p).0,
+            b: f_b.eval_on_participant(p).0,
+            c: f_c.eval_on_participant(p).0,
         });
     }
 

@@ -6,16 +6,13 @@ use elliptic_curve::{
 };
 
 use frost_secp256k1::{
-    keys::SigningShare, Field, Group,
-    Secp256K1ScalarField,
-    Secp256K1Sha256,
-    Secp256K1Group
+    keys::SigningShare, Field, Group, Secp256K1Group, Secp256K1ScalarField, Secp256K1Sha256,
 };
 use k256::{AffinePoint, ProjectivePoint};
 
 use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat};
 
-pub type KeygenOutput = crate::KeygenOutput::<Secp256K1Sha256>;
+pub type KeygenOutput = crate::KeygenOutput<Secp256K1Sha256>;
 
 pub type Scalar = <Secp256K1ScalarField as Field>::Scalar;
 pub type Element = <Secp256K1Group as Group>::Element;

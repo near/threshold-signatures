@@ -3,7 +3,7 @@ use subtle::ConditionallySelectable;
 
 use super::PresignOutput;
 use crate::{
-    ecdsa::{x_coordinate, AffinePoint, Signature, Scalar, Secp256K1Sha256},
+    ecdsa::{x_coordinate, AffinePoint, Scalar, Secp256K1Sha256, Signature},
     participants::{ParticipantCounter, ParticipantList},
     protocol::{
         internal::{make_protocol, Comms, SharedChannel},
@@ -107,12 +107,12 @@ pub fn sign(
 
 #[cfg(test)]
 mod test {
-    use super::{x_coordinate, PresignOutput};
+    use super::{x_coordinate, PresignOutput, Secp256K1Sha256};
     use crate::{
-        ecdsa::Polynomial,
-        ecdsa::ot_based_ecdsa::test::run_sign,
-        test::generate_participants,
+        ecdsa::ot_based_ecdsa::test::run_sign, ecdsa::Polynomial, test::generate_participants,
     };
+
+    use frost_core::Ciphersuite;
     use k256::{ecdsa::signature::Verifier, ecdsa::VerifyingKey, ProjectivePoint, PublicKey};
     use rand_core::OsRng;
     use std::error::Error;
@@ -122,36 +122,33 @@ mod test {
         let threshold = 2;
         let msg = b"hello?";
 
+        let participants = generate_participants(5);
+
         for _ in 0..100 {
-            let f = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng)?;
-            let x = f.eval_on_zero().0;
-            let public_key = ProjectivePoint::GENERATOR * x;
+            let (msk, mvk) = Secp256K1Sha256::generate_nonce(&mut OsRng);
 
             let g = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng)?;
-
             let k = g.eval_on_zero().0;
             let big_k = (ProjectivePoint::GENERATOR * k.invert().unwrap()).to_affine();
 
-            let sigma = k * x;
+            let sigma = k * msk;
 
             let h = Polynomial::generate_polynomial(Some(sigma), threshold - 1, &mut OsRng)?;
-
-            let participants = generate_participants(2);
 
             let mut participants_presign = Vec::new();
             for p in &participants {
                 let presignature = PresignOutput {
                     big_r: big_k,
-                    k: g.eval_on_participant(*p).0,
-                    sigma: h.eval_on_participant(*p).0,
+                    k: g.eval_on_participant(p).0,
+                    sigma: h.eval_on_participant(p).0,
                 };
                 participants_presign.push((*p, presignature));
             }
 
-            let result = run_sign(participants_presign, public_key, msg)?;
+            let result = run_sign(participants_presign, mvk, msg)?;
             let sig = &result[0].1;
             let sig = ecdsa::Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
-            VerifyingKey::from(&PublicKey::from_affine(public_key.to_affine()).unwrap())
+            VerifyingKey::from(&PublicKey::from_affine(mvk.to_affine()).unwrap())
                 .verify(msg, &sig)?;
         }
         Ok(())

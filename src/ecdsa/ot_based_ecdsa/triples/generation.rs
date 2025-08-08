@@ -166,12 +166,12 @@ async fn do_generation(
         // Spec 2.8
         let wait3 = chan.next_waitpoint();
         for p in participants.others(me) {
-            let a_i_j = e.eval_on_participant(p);
-            let b_i_j = f.eval_on_participant(p);
+            let a_i_j = e.eval_on_participant(&p);
+            let b_i_j = f.eval_on_participant(&p);
             chan.send_private(wait3, p, &(a_i_j, b_i_j));
         }
-        let mut a_i = e.eval_on_participant(me).0;
-        let mut b_i = f.eval_on_participant(me).0;
+        let mut a_i = e.eval_on_participant(&me).0;
+        let mut b_i = f.eval_on_participant(&me).0;
 
         // Spec 3.1 + 3.2
         let mut seen = ParticipantCounter::new(&participants);
@@ -290,8 +290,8 @@ async fn do_generation(
         }
 
         // Spec 3.7
-        if big_e.eval_on_participant(me).value() != ProjectivePoint::GENERATOR * a_i
-            || big_f.eval_on_participant(me).value() != ProjectivePoint::GENERATOR * b_i
+        if big_e.eval_on_participant(&me).value() != ProjectivePoint::GENERATOR * a_i
+            || big_f.eval_on_participant(&me).value() != ProjectivePoint::GENERATOR * b_i
         {
             return Err(ProtocolError::AssertionFailed(
                 "received bad private share".to_string(),
@@ -407,10 +407,10 @@ async fn do_generation(
     l.set_constant(l0)?;
     let wait6 = chan.next_waitpoint();
     for p in participants.others(me) {
-        let c_i_j = l.eval_on_participant(p);
+        let c_i_j = l.eval_on_participant(&p);
         chan.send_private(wait6, p, &c_i_j);
     }
-    let mut c_i = l.eval_on_participant(me).0;
+    let mut c_i = l.eval_on_participant(&me).0;
 
     // Spec 5.1 + 5.2 + 5.3
     seen.clear();
@@ -461,7 +461,7 @@ async fn do_generation(
     }
 
     // Spec 5.7
-    if big_l.eval_on_participant(me).value() != ProjectivePoint::GENERATOR * c_i {
+    if big_l.eval_on_participant(&me).value() != ProjectivePoint::GENERATOR * c_i {
         return Err(ProtocolError::AssertionFailed(
             "received bad private share of c".to_string(),
         ));
@@ -663,8 +663,8 @@ async fn do_generation_many<const N: usize>(
             for i in 0..N {
                 let e = &e_v[i];
                 let f = &f_v[i];
-                let a_i_j = e.eval_on_participant(p).0;
-                let b_i_j = f.eval_on_participant(p).0;
+                let a_i_j = e.eval_on_participant(&p).0;
+                let b_i_j = f.eval_on_participant(&p).0;
                 a_i_j_v.push(a_i_j);
                 b_i_j_v.push(b_i_j);
             }
@@ -675,8 +675,8 @@ async fn do_generation_many<const N: usize>(
         for i in 0..N {
             let e = &e_v[i];
             let f = &f_v[i];
-            let a_i = e.eval_on_participant(me);
-            let b_i = f.eval_on_participant(me);
+            let a_i = e.eval_on_participant(&me);
+            let b_i = f.eval_on_participant(&me);
             a_i_v.push(a_i.0);
             b_i_v.push(b_i.0);
         }
@@ -829,8 +829,8 @@ async fn do_generation_many<const N: usize>(
             let b_i = &b_i_v[i];
             let e = &e_v[i];
             // Spec 3.7
-            let check1 = big_e.eval_on_participant(me).value() != ProjectivePoint::GENERATOR * a_i;
-            let check2 = big_f.eval_on_participant(me).value() != ProjectivePoint::GENERATOR * b_i;
+            let check1 = big_e.eval_on_participant(&me).value() != ProjectivePoint::GENERATOR * a_i;
+            let check2 = big_f.eval_on_participant(&me).value() != ProjectivePoint::GENERATOR * b_i;
             if check1 || check2 {
                 return Err(ProtocolError::AssertionFailed(
                     "received bad private share".to_string(),
@@ -975,13 +975,13 @@ async fn do_generation_many<const N: usize>(
     for p in participants.others(me) {
         let mut c_i_j_v = Vec::new();
         for l in l_v.iter_mut() {
-            let c_i_j = l.eval_on_participant(p).0;
+            let c_i_j = l.eval_on_participant(&p).0;
             c_i_j_v.push(c_i_j);
         }
         chan.send_private(wait6, p, &c_i_j_v);
     }
     for l in l_v.iter_mut() {
-        let c_i = l.eval_on_participant(me);
+        let c_i = l.eval_on_participant(&me);
         c_i_v.push(c_i.0);
     }
 
@@ -1063,7 +1063,7 @@ async fn do_generation_many<const N: usize>(
         let big_f = &big_f_v[i];
         let big_c = &big_c_v[i];
 
-        if big_l.eval_on_participant(me).value() != ProjectivePoint::GENERATOR * c_i {
+        if big_l.eval_on_participant(&me).value() != ProjectivePoint::GENERATOR * c_i {
             return Err(ProtocolError::AssertionFailed(
                 "received bad private share of c".to_string(),
             ));

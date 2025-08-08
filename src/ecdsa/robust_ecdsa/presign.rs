@@ -53,7 +53,7 @@ async fn do_presign(
         // Securely send to each other participant a secret share
         let package = polynomials
             .iter()
-            .map(|poly| poly.eval_on_participant(p))
+            .map(|poly| poly.eval_on_participant(&p))
             .collect::<Vec<_>>();
 
         // send the evaluation privately to participant p
@@ -63,7 +63,7 @@ async fn do_presign(
     // Evaluate my secret shares for my polynomials
     let shares = polynomials
         .iter()
-        .map(|poly| poly.eval_on_participant(me))
+        .map(|poly| poly.eval_on_participant(&me))
         .collect::<Vec<_>>();
 
     // Extract the shares into a vec of scalars
@@ -228,11 +228,7 @@ mod test {
     use super::*;
     use rand_core::OsRng;
 
-    use crate::{
-        ecdsa::KeygenOutput,
-        protocol::run_protocol,
-        test::generate_participants,
-    };
+    use crate::{ecdsa::KeygenOutput, protocol::run_protocol, test::generate_participants};
     use frost_secp256k1::keys::PublicKeyPackage;
     use frost_secp256k1::VerifyingKey;
     use std::collections::BTreeMap;
@@ -254,7 +250,7 @@ mod test {
 
         for p in &participants {
             // simulating the key packages for each participant
-            let private_share = f.eval_on_participant(*p);
+            let private_share = f.eval_on_participant(p);
             let verifying_key = VerifyingKey::new(big_x);
             let public_key_package = PublicKeyPackage::new(BTreeMap::new(), verifying_key);
             let keygen_out = KeygenOutput {

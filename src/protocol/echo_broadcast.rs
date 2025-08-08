@@ -311,9 +311,9 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::test::generate_participants;
     use crate::protocol::internal::{make_protocol, Comms};
     use crate::protocol::{run_protocol, Protocol, ProtocolError};
+    use crate::test::generate_participants;
     use std::error::Error;
 
     /// This function is similar to do_broadcast except it is tailored to

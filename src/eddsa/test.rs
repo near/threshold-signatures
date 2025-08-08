@@ -1,11 +1,7 @@
-use super::{
-    sign::sign,
-    Signature,
-    KeygenOutput,
-};
+use super::{sign::sign, KeygenOutput, Signature};
+use crate::crypto::hash::HashOutput;
 use crate::participants::ParticipantList;
 use crate::protocol::{run_protocol, Participant, Protocol};
-use crate::crypto::hash::HashOutput;
 
 use rand_core::{OsRng, RngCore};
 use std::error::Error;

@@ -266,34 +266,18 @@ async fn fut_wrapper(
 #[cfg(test)]
 mod test {
     use crate::crypto::hash::hash;
-    use crate::test::generate_participants;
     use crate::participants::ParticipantList;
+    use crate::test::{generate_participants, generate_random_participants};
     use frost_core::{Field, Group};
     use frost_ed25519::{Ed25519Group, Ed25519ScalarField, Ed25519Sha512};
 
-    use crate::eddsa::test::{
-        build_key_packages_with_dealer, test_run_signature_protocols,
-    };
-    use crate::test::{run_keygen, run_refresh, run_reshare, assert_public_key_invariant};
+    use crate::eddsa::test::{build_key_packages_with_dealer, test_run_signature_protocols};
     use crate::protocol::Participant;
+    use crate::test::{
+        assert_only_coordinator_output, assert_public_key_invariant, run_keygen, run_refresh,
+        run_reshare,
+    };
     use std::error::Error;
-
-
-    fn assert_single_coordinator_result(data: Vec<(Participant, super::Signature)>) -> frost_ed25519::Signature {
-        let mut signature = None;
-        let count = data
-            .iter()
-            .filter(|(_, output)| match output {
-                Some(s) => {
-                    signature = Some(*s);
-                    true
-                }
-                None => false,
-            })
-            .count();
-        assert_eq!(count, 1);
-        signature.unwrap()
-    }
 
     #[test]
     fn basic_two_participants() {
@@ -313,7 +297,7 @@ mod test {
             msg_hash,
         )
         .unwrap();
-        assert_single_coordinator_result(data);
+        assert_only_coordinator_output(data);
     }
 
     #[test]
@@ -334,19 +318,14 @@ mod test {
                     msg_hash,
                 )
                 .unwrap();
-                assert_single_coordinator_result(data);
+                assert_only_coordinator_output(data);
             }
         }
     }
 
     #[test]
     fn dkg_sign_test() -> Result<(), Box<dyn Error>> {
-        let participants = vec![
-            Participant::from(0u32),
-            Participant::from(31u32),
-            Participant::from(1u32),
-            Participant::from(2u32),
-        ];
+        let participants = generate_random_participants(4);
         let actual_signers = participants.len();
         let threshold = 2;
         let msg = "hello_near";
@@ -364,7 +343,7 @@ mod test {
             msg_hash,
         )
         .unwrap();
-        let signature = assert_single_coordinator_result(data);
+        let signature = assert_only_coordinator_output(data);
 
         assert!(key_packages[0]
             .1
@@ -385,7 +364,7 @@ mod test {
             msg_hash,
         )
         .unwrap();
-        let signature = assert_single_coordinator_result(data);
+        let signature = assert_only_coordinator_output(data);
         let pub_key = key_packages1[2].1.public_key;
         assert!(key_packages1[0]
             .1
@@ -417,7 +396,7 @@ mod test {
             msg_hash,
         )
         .unwrap();
-        let signature = assert_single_coordinator_result(data);
+        let signature = assert_only_coordinator_output(data);
         assert!(key_packages2[0]
             .1
             .public_key
@@ -485,7 +464,7 @@ mod test {
             msg_hash,
         )
         .unwrap();
-        let signature = assert_single_coordinator_result(data);
+        let signature = assert_only_coordinator_output(data);
         assert!(key_packages[0]
             .1
             .public_key
@@ -549,7 +528,7 @@ mod test {
             msg_hash,
         )
         .unwrap();
-        let signature = assert_single_coordinator_result(data);
+        let signature = assert_only_coordinator_output(data);
         assert!(key_packages[0]
             .1
             .public_key

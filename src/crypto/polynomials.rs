@@ -97,7 +97,7 @@ impl<C: Ciphersuite> Polynomial<C> {
     }
 
     /// Evaluates a polynomial on the identifier of a participant
-    pub fn eval_on_participant(&self, participant: Participant) -> SerializableScalar<C> {
+    pub fn eval_on_participant(&self, participant: &Participant) -> SerializableScalar<C> {
         let id = participant.scalar::<C>();
         self.eval_on_point(id)
     }
@@ -218,7 +218,7 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
     }
 
     /// Evaluates the commited polynomial on a participant identifier.
-    pub fn eval_on_participant(&self, participant: Participant) -> CoefficientCommitment<C> {
+    pub fn eval_on_participant(&self, participant: &Participant) -> CoefficientCommitment<C> {
         let id = participant.scalar::<C>();
         self.eval_on_point(id)
     }
@@ -378,10 +378,10 @@ pub fn compute_lagrange_coefficient<C: Ciphersuite>(
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::test::generate_participants;
     use frost_core::Field;
     use frost_secp256k1::{Secp256K1Group, Secp256K1ScalarField, Secp256K1Sha256};
     use rand_core::OsRng;
-    use crate::test::generate_participants;
 
     type C = Secp256K1Sha256;
     #[test]
@@ -415,7 +415,7 @@ mod test {
 
         let shares = participants
             .iter()
-            .map(|p| poly.eval_on_participant(*p))
+            .map(|p| poly.eval_on_participant(p))
             .collect::<Vec<_>>();
 
         // interpolate the polynomial using the shares on arbitrary points
@@ -451,7 +451,7 @@ mod test {
 
         let shares = participants
             .iter()
-            .map(|p| compoly.eval_on_participant(*p))
+            .map(|p| compoly.eval_on_participant(p))
             .collect::<Vec<_>>();
 
         // interpolate the polynomial using the shares on arbitrary points

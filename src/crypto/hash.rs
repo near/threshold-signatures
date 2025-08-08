@@ -34,9 +34,9 @@ pub(crate) use test::scalar_hash_secp256k1;
 
 #[cfg(test)]
 mod test {
-    use elliptic_curve::{ops::Reduce, Curve, CurveArithmetic};
     use digest::{Digest, FixedOutput};
     use ecdsa::hazmat::DigestPrimitive;
+    use elliptic_curve::{ops::Reduce, Curve, CurveArithmetic};
     use k256::{FieldBytes, Scalar, Secp256k1};
 
     #[cfg(test)]

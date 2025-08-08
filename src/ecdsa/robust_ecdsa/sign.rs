@@ -5,7 +5,7 @@ use subtle::ConditionallySelectable;
 
 use super::PresignOutput;
 use crate::{
-    ecdsa::{AffinePoint, Signature, Polynomial, Scalar, Secp256K1Sha256},
+    ecdsa::{AffinePoint, Polynomial, Scalar, Secp256K1Sha256, Signature},
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     protocol::{
         internal::{make_protocol, Comms, SharedChannel},
@@ -113,11 +113,10 @@ mod test {
     use rand_core::OsRng;
 
     use super::*;
-    use crate::test::generate_participants;
     use crate::ecdsa::{
-        robust_ecdsa::test::run_sign,
-        x_coordinate, Field, ProjectivePoint, Secp256K1ScalarField
+        robust_ecdsa::test::run_sign, x_coordinate, Field, ProjectivePoint, Secp256K1ScalarField,
     };
+    use crate::test::generate_participants;
 
     #[test]
     fn test_sign() -> Result<(), Box<dyn Error>> {
@@ -139,13 +138,15 @@ mod test {
                 Some(Secp256K1ScalarField::zero()),
                 2 * max_malicious,
                 &mut OsRng,
-            ).unwrap();
+            )
+            .unwrap();
 
             let fe = Polynomial::generate_polynomial(
                 Some(Secp256K1ScalarField::zero()),
                 2 * max_malicious,
                 &mut OsRng,
-            ).unwrap();
+            )
+            .unwrap();
 
             let k = fk.eval_on_zero().0;
             let big_r = ProjectivePoint::GENERATOR * k;
@@ -158,10 +159,10 @@ mod test {
 
             let mut participants_presign = Vec::new();
             for p in &participants {
-                let h_i = w_invert * fa.eval_on_participant(*p).0;
-                let alpha_i = h_i + fd.eval_on_participant(*p).0;
-                let beta_i = h_i * big_r_x_coordinate * fx.eval_on_participant(*p).0
-                    + fe.eval_on_participant(*p).0;
+                let h_i = w_invert * fa.eval_on_participant(p).0;
+                let alpha_i = h_i + fd.eval_on_participant(p).0;
+                let beta_i = h_i * big_r_x_coordinate * fx.eval_on_participant(p).0
+                    + fe.eval_on_participant(p).0;
 
                 let presignature = PresignOutput {
                     big_r: big_r.to_affine(),

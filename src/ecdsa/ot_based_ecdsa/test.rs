@@ -5,38 +5,34 @@ use super::{
     PresignArguments, PresignOutput,
 };
 use crate::crypto::hash::scalar_hash_secp256k1;
-use crate::ecdsa::{Element, Signature, KeygenOutput, Secp256K1Sha256};
-use crate::test::{
-    assert_public_key_invariant,
-    generate_participants,
-    generate_random_participants,
-    run_keygen,
-    run_refresh,
-    run_reshare,
-};
+use crate::ecdsa::{Element, KeygenOutput, Secp256K1Sha256, Signature};
 use crate::protocol::{run_protocol, Participant, Protocol};
+use crate::test::{
+    assert_public_key_invariant, generate_participants, generate_random_participants, run_keygen,
+    run_refresh, run_reshare,
+};
 use rand_core::OsRng;
 use std::error::Error;
-
 
 /// Runs signing by calling the generic run_sign function from crate::test
 pub fn run_sign(
     participants_presign: Vec<(Participant, PresignOutput)>,
     public_key: Element,
     msg: &[u8],
-) -> Result<Vec<(Participant, Signature)>, Box<dyn Error>>{
+) -> Result<Vec<(Participant, Signature)>, Box<dyn Error>> {
     // hash the message into secp256k1 field
     let msg_hash = scalar_hash_secp256k1(msg);
     // run sign instanciation with the necessary arguments
-    crate::test::run_sign::<Secp256K1Sha256, _, _, _>
-        (participants_presign,
+    crate::test::run_sign::<Secp256K1Sha256, _, _, _>(
+        participants_presign,
         public_key,
         msg_hash,
         |participants, me, pk, presignature, msg_hash| {
             let pk = pk.to_affine();
             sign(participants, me, pk, presignature, msg_hash)
-            .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = Signature>>)
-        })
+                .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = Signature>>)
+        },
+    )
 }
 
 pub fn run_presign(
@@ -81,7 +77,7 @@ pub fn run_presign(
 }
 
 #[test]
-fn test_refresh() -> Result<(), Box<dyn Error>>{
+fn test_refresh() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants(11);
     let max_malicious = 5;
     let threshold = max_malicious + 1;
@@ -96,16 +92,11 @@ fn test_refresh() -> Result<(), Box<dyn Error>>{
     let (pub1, shares1) = deal(&mut OsRng, &participants, threshold).unwrap();
 
     // Presign
-    let mut presign_result =
-        run_presign(key_packages, shares0, shares1, &pub0, &pub1, threshold);
+    let mut presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, threshold);
     presign_result.sort_by_key(|(p, _)| *p);
 
     let msg = b"hello world";
-    run_sign(
-        presign_result,
-        public_key.to_element(),
-        msg,
-    )?;
+    run_sign(presign_result, public_key.to_element(), msg)?;
 
     Ok(())
 }
@@ -148,11 +139,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
 
     let msg = b"hello world";
 
-    run_sign(
-        presign_result,
-        public_key.to_element(),
-        msg,
-    )?;
+    run_sign(presign_result, public_key.to_element(), msg)?;
     Ok(())
 }
 
@@ -192,11 +179,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
 
     let msg = b"hello world";
 
-    run_sign(
-        presign_result,
-        public_key.to_element(),
-        msg,
-    )?;
+    run_sign(presign_result, public_key.to_element(), msg)?;
     Ok(())
 }
 
@@ -220,11 +203,7 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
 
     let msg = b"hello world";
 
-    run_sign(
-        presign_result,
-        public_key.to_element(),
-        msg,
-    )?;
+    run_sign(presign_result, public_key.to_element(), msg)?;
     Ok(())
 }
 
@@ -249,10 +228,6 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
 
     let msg = b"hello world";
 
-    run_sign(
-        presign_result,
-        public_key.to_element(),
-        msg,
-    )?;
+    run_sign(presign_result, public_key.to_element(), msg)?;
     Ok(())
 }

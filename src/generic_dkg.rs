@@ -4,12 +4,12 @@ use crate::crypto::{
     polynomials::{Polynomial, PolynomialCommitment},
 };
 
-use crate::KeygenOutput;
 use crate::participants::{ParticipantCounter, ParticipantList, ParticipantMap};
 use crate::protocol::{
     echo_broadcast::do_broadcast, internal::SharedChannel, InitializationError, Participant,
     ProtocolError,
 };
+use crate::KeygenOutput;
 
 use frost_core::keys::{
     CoefficientCommitment, SecretShare, SigningShare, VerifiableSecretSharingCommitment,
@@ -489,7 +489,7 @@ async fn do_keyshare<C: Ciphersuite>(
         // securely send to each other participant a secret share
         // using the evaluation secret polynomial on the identifier of the recipient
         // should not panic as secret_coefficients are created internally
-        let signing_share_to_p = secret_coefficients.eval_on_participant(p);
+        let signing_share_to_p = secret_coefficients.eval_on_participant(&p);
         // send the evaluation privately to participant p
         chan.send_private(wait_round_3, p, &signing_share_to_p);
     }
@@ -497,7 +497,7 @@ async fn do_keyshare<C: Ciphersuite>(
     // Start Round 4
     // compute my secret evaluation of my private polynomial
     // should not panic as secret_coefficients are created internally
-    let mut my_signing_share = secret_coefficients.eval_on_participant(me).0;
+    let mut my_signing_share = secret_coefficients.eval_on_participant(&me).0;
     // receive evaluations from all participants
     seen.clear();
     seen.put(me);
@@ -527,7 +527,6 @@ async fn do_keyshare<C: Ciphersuite>(
         public_key: verifying_key,
     })
 }
-
 
 pub(crate) async fn do_keygen<C: Ciphersuite>(
     chan: SharedChannel,
@@ -675,8 +674,8 @@ pub(crate) fn reshare_assertions<C: Ciphersuite>(
 
 #[cfg(test)]
 mod test {
-    use crate::test::generate_participants;
     use super::domain_separate_hash;
+    use crate::test::generate_participants;
 
     #[test]
     fn test_domain_separate_hash() {
