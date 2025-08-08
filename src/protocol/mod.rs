@@ -24,6 +24,8 @@ pub enum ProtocolError {
     EmptyOrZeroCoefficients,
     /// Could not extract the verification Key from a commitment.
     ErrorExtractVerificationKey,
+    /// Encoding a certain input has hit an error
+    ErrorEncoding,
     /// Error in reducing bytes to scalar
     ErrorReducingBytesToScalar,
     /// Encounter the Identity EC point when not supposed to
@@ -65,6 +67,7 @@ impl fmt::Display for ProtocolError {
                 f,
                 "could not extract the verification Key from the commitment."
             ),
+            ProtocolError::ErrorEncoding => write!(f, "panicked while encoding an input."),
             ProtocolError::ErrorReducingBytesToScalar => write!(
                 f,
                 "the given bytes are not mappable to a scalar without modular reduction."

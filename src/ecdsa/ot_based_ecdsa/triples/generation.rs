@@ -1,6 +1,5 @@
 use frost_core::serialization::SerializableScalar;
 use rand_core::OsRng;
-use serde::Serialize;
 
 use crate::{
     crypto::proofs::{dlog, dlogeq, strobe_transcript::Transcript},
@@ -25,9 +24,24 @@ use super::{
     TriplePub, TripleShare,
 };
 
-/// Encode an arbitrary serializable value into a vec.
-fn encode<T: Serialize>(val: &T) -> Vec<u8> {
-    rmp_serde::encode::to_vec(val).expect("failed to encode value")
+/// Creates a transcript and internally encodes the following data:
+///     LABEL,  NAME, Participants, threshold
+fn create_transcript(
+    participants: &ParticipantList,
+    threshold: usize,
+) -> Result<Transcript, ProtocolError> {
+    let mut transcript = Transcript::new(LABEL);
+
+    transcript.message(b"group", NAME);
+
+    let enc = rmp_serde::encode::to_vec(participants).map_err(|_| ProtocolError::ErrorEncoding)?;
+    transcript.message(b"participants", &enc);
+    // To allow interop between platforms where usize is different
+    transcript.message(
+        b"threshold",
+        &u64::try_from(threshold).unwrap().to_be_bytes(),
+    );
+    Ok(transcript)
 }
 
 /// The output of running the triple generation protocol.
@@ -46,16 +60,7 @@ async fn do_generation(
 ) -> Result<TripleGenerationOutput, ProtocolError> {
     let mut rng = OsRng;
     let mut chan = comms.shared_channel();
-    let mut transcript = Transcript::new(LABEL);
-
-    // Spec 1.1
-    transcript.message(b"group", NAME);
-    transcript.message(b"participants", &encode(&participants));
-    // To allow interop between platforms where usize is different
-    transcript.message(
-        b"threshold",
-        &u64::try_from(threshold).unwrap().to_be_bytes(),
-    );
+    let mut transcript = create_transcript(&participants, threshold)?;
 
     // Spec 1.2
     let e = Polynomial::generate_polynomial(None, threshold - 1, &mut rng)?;
@@ -497,16 +502,7 @@ async fn do_generation_many<const N: usize>(
 
     let mut rng = OsRng;
     let mut chan = comms.shared_channel();
-    let mut transcript = Transcript::new(LABEL);
-
-    // Spec 1.1
-    transcript.message(b"group", NAME);
-    transcript.message(b"participants", &encode(&participants));
-    // To allow interop between platforms where usize is different
-    transcript.message(
-        b"threshold",
-        &u64::try_from(threshold).unwrap().to_be_bytes(),
-    );
+    let mut transcript = create_transcript(&participants, threshold)?;
 
     let mut my_commitments = vec![];
     let mut my_randomizers = vec![];
@@ -566,13 +562,15 @@ async fn do_generation_many<const N: usize>(
 
     // Spec 2.2
     let mut my_confirmations = vec![];
-    for comi in all_commitments_vec.iter().take(N) {
-        let my_confirmation = hash(comi);
+    for c in all_commitments_vec.iter().take(N) {
+        let my_confirmation = hash(c);
         my_confirmations.push(my_confirmation);
     }
 
     // Spec 2.3
-    transcript.message(b"confirmation", &encode(&my_confirmations));
+    let enc_confirmations =
+        rmp_serde::encode::to_vec(&my_confirmations).map_err(|_| ProtocolError::ErrorEncoding)?;
+    transcript.message(b"confirmation", &enc_confirmations);
 
     // Spec 2.4
     let multiplication_task = {
