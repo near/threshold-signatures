@@ -27,17 +27,19 @@ pub fn generate_random_participants(number: usize) -> Vec<Participant> {
 }
 
 // +++++++++++++++++ DKG Functions +++++++++++++++++ //
+type GenOutput<C> = Result<Vec<(Participant, KeygenOutput<C>)>, Box<dyn Error>>;
+type GenProtocol<C> = Vec<(Participant, Box<dyn Protocol<Output = KeygenOutput<C>>>)>;
+
 /// Runs distributed keygen
 pub(crate) fn run_keygen<C: Ciphersuite>(
     participants: &[Participant],
     threshold: usize,
-) -> Result<Vec<(Participant, KeygenOutput<C>)>, Box<dyn Error>>
+) -> GenOutput<C>
 where
     frost_core::Element<C>: Send,
     frost_core::Scalar<C>: Send,
 {
-    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = KeygenOutput<C>>>)> =
-        Vec::with_capacity(participants.len());
+    let mut protocols: GenProtocol<C> = Vec::with_capacity(participants.len());
 
     for p in participants {
         let protocol = keygen::<C>(participants, *p, threshold)?;
@@ -53,13 +55,12 @@ pub(crate) fn run_refresh<C: Ciphersuite>(
     participants: &[Participant],
     keys: Vec<(Participant, KeygenOutput<C>)>,
     threshold: usize,
-) -> Result<Vec<(Participant, KeygenOutput<C>)>, Box<dyn Error>>
+) -> GenOutput<C>
 where
     frost_core::Element<C>: Send,
     frost_core::Scalar<C>: Send,
 {
-    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = KeygenOutput<C>>>)> =
-        Vec::with_capacity(participants.len());
+    let mut protocols: GenProtocol<C> = Vec::with_capacity(participants.len());
 
     for (p, out) in keys.iter() {
         let protocol = refresh::<C>(
@@ -84,13 +85,13 @@ pub(crate) fn run_reshare<C: Ciphersuite>(
     old_threshold: usize,
     new_threshold: usize,
     new_participants: Vec<Participant>,
-) -> Result<Vec<(Participant, KeygenOutput<C>)>, Box<dyn Error>>
+) -> GenOutput<C>
 where
     frost_core::Element<C>: Send,
     frost_core::Scalar<C>: Send,
 {
     assert!(!new_participants.is_empty());
-    let mut setup: Vec<_> = vec![];
+    let mut setup = vec![];
 
     for new_participant in &new_participants {
         let mut is_break = false;
@@ -106,8 +107,7 @@ where
         }
     }
 
-    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = KeygenOutput<C>>>)> =
-        Vec::with_capacity(participants.len());
+    let mut protocols: GenProtocol<C> = Vec::with_capacity(participants.len());
 
     for (p, out) in setup.iter() {
         let protocol = reshare(
@@ -129,17 +129,15 @@ where
 /// Assert that each participant has the same view of the public key
 pub(crate) fn assert_public_key_invariant<C: Ciphersuite>(
     participants: &[(Participant, KeygenOutput<C>)],
-) -> Result<(), Box<dyn Error>> {
-    let public_key_package = participants.first().unwrap().1.public_key;
+) {
+    let vk = participants.first().unwrap().1.public_key;
 
     if participants
         .iter()
-        .any(|(_, key_pair)| key_pair.public_key != public_key_package)
+        .any(|(_, key_pair)| key_pair.public_key != vk)
     {
         panic!("public key package is not the same for all participants");
     }
-
-    Ok(())
 }
 
 // +++++++++++++++++ Signing Functions +++++++++++++++++ //

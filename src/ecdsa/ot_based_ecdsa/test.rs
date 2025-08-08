@@ -82,12 +82,12 @@ fn test_refresh() -> Result<(), Box<dyn Error>> {
     let max_malicious = 5;
     let threshold = max_malicious + 1;
     let keys = run_keygen(&participants, threshold)?;
-    assert_public_key_invariant(&keys)?;
+    assert_public_key_invariant(&keys);
     // run refresh on these
     let mut key_packages = run_refresh(&participants, keys, threshold)?;
     key_packages.sort_by_key(|(p, _)| *p);
     let public_key = key_packages[0].1.public_key;
-    assert_public_key_invariant(&key_packages)?;
+    assert_public_key_invariant(&key_packages);
     let (pub0, shares0) = deal(&mut OsRng, &participants, threshold).unwrap();
     let (pub1, shares1) = deal(&mut OsRng, &participants, threshold).unwrap();
 
@@ -106,7 +106,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants(5);
     let threshold = 3;
     let result0 = run_keygen(&participants, threshold)?;
-    assert_public_key_invariant(&result0)?;
+    assert_public_key_invariant(&result0);
 
     let pub_key = result0[2].1.public_key;
 
@@ -124,7 +124,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
         new_threshold,
         new_participant.clone(),
     )?;
-    assert_public_key_invariant(&key_packages)?;
+    assert_public_key_invariant(&key_packages);
     key_packages.sort_by_key(|(p, _)| *p);
 
     let public_key = key_packages[0].1.public_key;
@@ -148,7 +148,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants(5);
     let threshold = 4;
     let result0 = run_keygen(&participants, threshold)?;
-    assert_public_key_invariant(&result0)?;
+    assert_public_key_invariant(&result0);
 
     let pub_key = result0[2].1.public_key;
 
@@ -164,7 +164,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
         new_threshold,
         new_participant.clone(),
     )?;
-    assert_public_key_invariant(&key_packages)?;
+    assert_public_key_invariant(&key_packages);
     key_packages.sort_by_key(|(p, _)| *p);
 
     let public_key = key_packages[0].1.public_key;

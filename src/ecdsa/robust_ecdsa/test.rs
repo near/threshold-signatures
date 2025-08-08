@@ -64,11 +64,11 @@ fn test_refresh() -> Result<(), Box<dyn Error>> {
     let max_malicious = 5;
     let threshold = max_malicious + 1;
     let keys = run_keygen(&participants, threshold)?;
-    assert_public_key_invariant(&keys)?;
+    assert_public_key_invariant(&keys);
     // run refresh on these
     let key_packages = run_refresh(&participants, keys, threshold)?;
     let public_key = key_packages[0].1.public_key;
-    assert_public_key_invariant(&key_packages)?;
+    assert_public_key_invariant(&key_packages);
     let presign_result = run_presign(key_packages, max_malicious);
 
     let msg = b"hello world";
@@ -84,7 +84,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
     let max_malicious = 3;
     let threshold = max_malicious + 1;
     let result0 = run_keygen(&participants, threshold)?;
-    assert_public_key_invariant(&result0)?;
+    assert_public_key_invariant(&result0);
 
     let pub_key = result0[2].1.public_key;
 
@@ -104,7 +104,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
         new_threshold,
         new_participant.clone(),
     )?;
-    assert_public_key_invariant(&key_packages)?;
+    assert_public_key_invariant(&key_packages);
     key_packages.sort_by_key(|(p, _)| *p);
 
     let public_key = key_packages[0].1.public_key;
@@ -126,7 +126,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     let max_malicious = 2;
     let threshold = max_malicious + 1;
     let result0 = run_keygen(&participants, threshold)?;
-    assert_public_key_invariant(&result0)?;
+    assert_public_key_invariant(&result0);
 
     let pub_key = result0[2].1.public_key;
 
@@ -143,7 +143,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
         new_threshold,
         new_participant.clone(),
     )?;
-    assert_public_key_invariant(&key_packages)?;
+    assert_public_key_invariant(&key_packages);
     key_packages.sort_by_key(|(p, _)| *p);
 
     let public_key = key_packages[0].1.public_key;
