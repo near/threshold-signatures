@@ -355,7 +355,7 @@ mod test {
 
         // test dkg
         let key_packages = run_keygen(&participants, threshold)?;
-        assert_public_key_invariant(&key_packages)?;
+        assert_public_key_invariant(&key_packages);
         let coordinators = vec![key_packages[0].0];
         let data = test_run_signature_protocols(
             &key_packages,
@@ -375,7 +375,7 @@ mod test {
 
         // // test refresh
         let key_packages1 = run_refresh(&participants, key_packages, threshold)?;
-        assert_public_key_invariant(&key_packages1)?;
+        assert_public_key_invariant(&key_packages1);
         let msg = "hello_near_2";
         let msg_hash = hash(&msg);
         let data = test_run_signature_protocols(
@@ -406,7 +406,7 @@ mod test {
             new_threshold,
             new_participant,
         )?;
-        assert_public_key_invariant(&key_packages2)?;
+        assert_public_key_invariant(&key_packages2);
         let msg = "hello_near_3";
         let msg_hash = hash(&msg);
         let coordinators = vec![key_packages2[0].0];
@@ -433,7 +433,7 @@ mod test {
         let participants = generate_participants(5);
         let threshold = 3;
         let result0 = run_keygen(&participants, threshold)?;
-        assert_public_key_invariant(&result0)?;
+        assert_public_key_invariant(&result0);
 
         let pub_key = result0[2].1.public_key;
 
@@ -451,7 +451,7 @@ mod test {
             new_threshold,
             new_participant,
         )?;
-        assert_public_key_invariant(&key_packages)?;
+        assert_public_key_invariant(&key_packages);
 
         let participants: Vec<_> = key_packages
             .iter()
@@ -500,7 +500,7 @@ mod test {
         let participants = generate_participants(5);
         let threshold = 4;
         let result0 = run_keygen(&participants, threshold)?;
-        assert_public_key_invariant(&result0)?;
+        assert_public_key_invariant(&result0);
         let coordinators = vec![result0[0].0];
 
         let pub_key = result0[2].1.public_key;
@@ -517,7 +517,7 @@ mod test {
             new_threshold,
             new_participant,
         )?;
-        assert_public_key_invariant(&key_packages)?;
+        assert_public_key_invariant(&key_packages);
 
         let participants: Vec<_> = key_packages
             .iter()
