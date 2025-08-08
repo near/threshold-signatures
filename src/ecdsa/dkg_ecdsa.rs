@@ -20,7 +20,7 @@ mod test {
         let threshold = 3;
 
         let result = run_keygen::<E>(&participants, threshold)?;
-        assert_public_key_invariant(&result)?;
+        assert_public_key_invariant(&result);
 
         assert!(result.len() == participants.len());
         assert_eq!(result[0].1.public_key, result[1].1.public_key);
@@ -52,12 +52,12 @@ mod test {
         let threshold = 3;
 
         let result0 = run_keygen::<E>(&participants, threshold)?;
-        assert_public_key_invariant(&result0)?;
+        assert_public_key_invariant(&result0);
 
         let pub_key = result0[2].1.public_key.to_element();
 
         let result1 = run_refresh(&participants, result0, threshold)?;
-        assert_public_key_invariant(&result1)?;
+        assert_public_key_invariant(&result1);
 
         let participants = vec![result1[0].0, result1[1].0, result1[2].0];
         let shares = [
@@ -80,7 +80,7 @@ mod test {
         let threshold1 = 3;
 
         let result0 = run_keygen::<E>(&participants, threshold0)?;
-        assert_public_key_invariant(&result0)?;
+        assert_public_key_invariant(&result0);
 
         let pub_key = result0[2].1.public_key;
 
@@ -94,7 +94,7 @@ mod test {
             threshold1,
             new_participant,
         )?;
-        assert_public_key_invariant(&result1)?;
+        assert_public_key_invariant(&result1);
 
         let participants = vec![result1[0].0, result1[1].0, result1[2].0, result1[3].0];
         let shares = [
