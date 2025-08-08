@@ -29,6 +29,7 @@ pub fn generate_random_participants(number: usize) -> Vec<Participant> {
 
 // +++++++++++++++++ DKG Functions +++++++++++++++++ //
 /// Runs distributed keygen
+/// If the protocol succeeds, returns a sorted vector based on participants id
 pub(crate) fn run_keygen<C: Ciphersuite>(
     participants: &[Participant],
     threshold: usize,
@@ -50,6 +51,7 @@ where
 }
 
 /// Runs distributed refresh
+/// If the protocol succeeds, returns a sorted vector based on participants id
 pub(crate) fn run_refresh<C: Ciphersuite>(
     participants: &[Participant],
     keys: Vec<(Participant, KeygenOutput<C>)>,
@@ -77,7 +79,8 @@ where
     Ok(result)
 }
 
-/// runs distributed reshare
+/// Runs distributed reshare
+/// If the protocol succeeds, returns a sorted vector based on participants id
 pub(crate) fn run_reshare<C: Ciphersuite>(
     participants: &[Participant],
     pub_key: &VerifyingKey<C>,
