@@ -6,8 +6,6 @@ use rand_core::CryptoRngCore;
 use super::ciphersuite::Ciphersuite;
 use crate::protocol::{Participant, ProtocolError};
 
-use std::ops::Add;
-
 use serde::{Deserialize, Deserializer, Serialize};
 
 /// Polynomial structure of non-empty or non-zero coefficiants
@@ -107,6 +105,7 @@ impl<C: Ciphersuite> Polynomial<C> {
     /// Input requirements:
     ///     * identifiers MUST be pairwise distinct and of length greater than 1
     ///     * shares and identifiers must be of same length
+    ///     * identifier[i] corresponds to share[i]
     // Returns error if shares' and identifiers' lengths are distinct or less than or equals to 1
     pub fn eval_interpolation(
         identifiers: &[Scalar<C>],
@@ -206,6 +205,30 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
         self.coefficients.len() - 1
     }
 
+    /// Adds two PolynomialCommitment together
+    /// and raises an error if the result is the identity
+    pub fn add(&self, rhs: &Self) -> Result<Self, ProtocolError> {
+        let max_len = self.coefficients.len().max(rhs.coefficients.len());
+        let mut coefficients: Vec<CoefficientCommitment<C>> = Vec::with_capacity(max_len);
+
+        // add polynomials even if they have different lengths
+        for i in 0..max_len {
+            let a = self.coefficients.get(i);
+            let b = rhs.coefficients.get(i);
+
+            let sum = match (a, b) {
+                (Some(a), Some(b)) => CoefficientCommitment::new(a.value() + b.value()),
+                (Some(a), None) => *a,
+                (None, Some(b)) => *b,
+                (None, None) => unreachable!(),
+            };
+            coefficients.push(sum);
+        }
+
+        // raises error in the case that the two polynomials are opposite
+        PolynomialCommitment::new(coefficients)
+    }
+
     /// Evaluates the commited polynomial on zero
     /// In other words, outputs the constant term
     pub fn eval_at_zero(&self) -> CoefficientCommitment<C> {
@@ -232,6 +255,7 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
     /// Input requirements:
     ///     * identifiers MUST be pairwise distinct and of length greater than 1
     ///     * shares and identifiers must be of same length
+    ///     * identifier[i] corresponds to share[i]
     // Returns error if shares' and identifiers' lengths are distinct or less than or equals to 1
     pub fn eval_exponent_interpolation(
         identifiers: &[Scalar<C>],
@@ -313,33 +337,6 @@ impl<'de, C: Ciphersuite> Deserialize<'de> for PolynomialCommitment<C> {
             }
             Ok(PolynomialCommitment { coefficients })
         }
-    }
-}
-
-impl<C: Ciphersuite> Add for &PolynomialCommitment<C> {
-    type Output = PolynomialCommitment<C>;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        let max_len = self.coefficients.len().max(rhs.coefficients.len());
-        let mut coefficients: Vec<CoefficientCommitment<C>> = Vec::with_capacity(max_len);
-
-        // add polynomials even if they have different lengths
-        for i in 0..max_len {
-            let a = self.coefficients.get(i);
-            let b = rhs.coefficients.get(i);
-
-            let sum = match (a, b) {
-                (Some(a), Some(b)) => CoefficientCommitment::new(a.value() + b.value()),
-                (Some(a), None) => *a,
-                (None, Some(b)) => *b,
-                (None, None) => unreachable!(),
-            };
-
-            coefficients.push(sum);
-        }
-
-        PolynomialCommitment::new(coefficients)
-            .expect("coefficients must have at least one element")
     }
 }
 
@@ -583,7 +580,7 @@ mod test {
 
         let compoly = poly.commit_polynomial();
         // add two polynomials of the same height
-        let sum = compoly.add(&compoly);
+        let sum = compoly.add(&compoly).unwrap();
 
         let coefpoly = compoly.get_coefficients();
         let mut coefsum = sum.get_coefficients();
@@ -602,8 +599,8 @@ mod test {
         let extend_sum_compoly =
             PolynomialCommitment::new(coefsum).expect("We have proper coefficients");
         // add two polynomials of different heights
-        let ext_sum_left = extend_sum_compoly.add(&compoly).get_coefficients();
-        let ext_sum_right = compoly.add(&extend_sum_compoly).get_coefficients();
+        let ext_sum_left = extend_sum_compoly.add(&compoly).unwrap().get_coefficients();
+        let ext_sum_right = compoly.add(&extend_sum_compoly).unwrap().get_coefficients();
         for (c_left, c_right) in ext_sum_left.iter().zip(ext_sum_right) {
             assert_eq!(c_left.value(), c_right.value());
         }
