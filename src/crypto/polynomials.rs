@@ -423,7 +423,7 @@ mod test {
     }
 
     #[test]
-    fn test_eval_interpolation(){
+    fn test_eval_interpolation() {
         let degree = 5;
         let participants = (0..degree + 1)
             .map(|i| Participant::from(i as u32))
@@ -435,7 +435,7 @@ mod test {
 
         let shares = participants
             .iter()
-            .map(|_| SerializableScalar(Secp256K1ScalarField::random(&mut rand_core::OsRng)) )
+            .map(|_| SerializableScalar(Secp256K1ScalarField::random(&mut rand_core::OsRng)))
             .collect::<Vec<_>>();
         let ref_point = Some(Secp256K1ScalarField::random(&mut rand_core::OsRng));
         let point = ref_point.as_ref();
@@ -481,6 +481,56 @@ mod test {
             // verify that the interpolated points match the polynomial evaluation
             assert_eq!(interpolation.0, evaluation.0);
         }
+    }
+
+    #[test]
+    fn test_eval_exponent_interpolation() {
+        let degree = 5;
+        // generate polynomial of degree 5
+        let poly = Polynomial::<C>::generate_polynomial(None, degree, &mut OsRng)
+            .expect("Generation must not fail with overwhealming probability");
+
+        let compoly = poly.commit_polynomial();
+
+        let participants = (0..degree + 1)
+            .map(|i| Participant::from(i as u32))
+            .collect::<Vec<_>>();
+
+        let shares = participants
+            .iter()
+            .map(|p| compoly.eval_at_participant(*p))
+            .collect::<Vec<_>>();
+
+        let ids = participants
+            .iter()
+            .map(|p| p.scalar::<C>())
+            .collect::<Vec<_>>();
+
+        let ref_point = Some(Secp256K1ScalarField::random(&mut rand_core::OsRng));
+        let point = ref_point.as_ref();
+
+        assert!(
+            PolynomialCommitment::<C>::eval_exponent_interpolation(&ids, &shares, point).is_ok()
+        );
+        assert!(
+            PolynomialCommitment::<C>::eval_exponent_interpolation(&ids, &shares, None).is_ok()
+        );
+        assert!(PolynomialCommitment::<C>::eval_exponent_interpolation(
+            &ids[..1],
+            &shares[..1],
+            None
+        )
+        .is_err());
+        assert!(PolynomialCommitment::<C>::eval_exponent_interpolation(
+            &ids[..0],
+            &shares[..0],
+            None
+        )
+        .is_err());
+        assert!(
+            PolynomialCommitment::<C>::eval_exponent_interpolation(&ids[..2], &shares, None)
+                .is_err()
+        );
     }
 
     #[test]
