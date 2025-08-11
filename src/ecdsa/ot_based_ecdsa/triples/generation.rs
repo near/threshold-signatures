@@ -791,9 +791,9 @@ async fn do_generation_many<const N: usize>(
 
                 big_e_j_zero_v[i].put(from, their_big_e.eval_at_zero());
 
-                big_e_v[i] = big_e_v[i].add(&their_big_e)?;
-                big_f_v[i] = big_f_v[i].add(&their_big_f)?;
-                big_l_v[i] = big_l_v[i].add(&their_big_l)?;
+                big_e_v[i] = big_e_v[i].add(their_big_e)?;
+                big_f_v[i] = big_f_v[i].add(their_big_f)?;
+                big_l_v[i] = big_l_v[i].add(their_big_l)?;
             }
         }
 
