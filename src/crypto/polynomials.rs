@@ -35,7 +35,7 @@ impl<C: Ciphersuite> Polynomial<C> {
         if count == coefficients.len() {
             return Err(ProtocolError::EmptyOrZeroCoefficients);
         }
-        // get the number of non-zero coeffs
+        // get the degree + 1 of the polynomial
         let last_non_null = coefficients.len() - count;
 
         Ok(Polynomial {
@@ -73,18 +73,18 @@ impl<C: Ciphersuite> Polynomial<C> {
     }
 
     /// Returns the constant term
-    pub fn eval_on_zero(&self) -> SerializableScalar<C> {
+    pub fn eval_at_zero(&self) -> SerializableScalar<C> {
         SerializableScalar(self.coefficients[0])
     }
 
-    /// Evaluates a polynomial on a certain scalar
+    /// Evaluates a polynomial at a certain scalar
     /// Evaluate the polynomial with the given coefficients
     /// at the point using Horner's method.
     /// Implements [`polynomial_evaluate`] from the spec:
     /// https://datatracker.ietf.org/doc/html/rfc9591#name-additional-polynomial-opera
-    pub fn eval_on_point(&self, point: Scalar<C>) -> SerializableScalar<C> {
+    pub fn eval_at_point(&self, point: Scalar<C>) -> SerializableScalar<C> {
         if point == <C::Group as Group>::Field::zero() {
-            self.eval_on_zero()
+            self.eval_at_zero()
         } else {
             let mut value = <C::Group as Group>::Field::zero();
             for coeff in self.coefficients.iter().skip(1).rev() {
@@ -96,13 +96,13 @@ impl<C: Ciphersuite> Polynomial<C> {
         }
     }
 
-    /// Evaluates a polynomial on the identifier of a participant
-    pub fn eval_on_participant(&self, participant: Participant) -> SerializableScalar<C> {
+    /// Evaluates a polynomial at the identifier of a participant
+    pub fn eval_at_participant(&self, participant: Participant) -> SerializableScalar<C> {
         let id = participant.scalar::<C>();
-        self.eval_on_point(id)
+        self.eval_at_point(id)
     }
 
-    /// Computes polynomial interpolation on a specific point
+    /// Computes polynomial interpolation at a specific point
     /// using a sequence of sorted elements
     /// Input requirements:
     ///     * identifiers MUST be pairwise distinct and of length greater than 1
@@ -208,12 +208,12 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
 
     /// Evaluates the commited polynomial on zero
     /// In other words, outputs the constant term
-    pub fn eval_on_zero(&self) -> CoefficientCommitment<C> {
+    pub fn eval_at_zero(&self) -> CoefficientCommitment<C> {
         self.coefficients[0]
     }
 
     /// Evaluates the commited polynomial at a specific value
-    pub fn eval_on_point(&self, point: Scalar<C>) -> CoefficientCommitment<C> {
+    pub fn eval_at_point(&self, point: Scalar<C>) -> CoefficientCommitment<C> {
         let mut out = C::Group::identity();
         for c in self.coefficients.iter().rev() {
             out = out * point + c.value();
@@ -221,13 +221,13 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
         CoefficientCommitment::new(out)
     }
 
-    /// Evaluates the commited polynomial on a participant identifier.
-    pub fn eval_on_participant(&self, participant: Participant) -> CoefficientCommitment<C> {
+    /// Evaluates the commited polynomial at a participant identifier.
+    pub fn eval_at_participant(&self, participant: Participant) -> CoefficientCommitment<C> {
         let id = participant.scalar::<C>();
-        self.eval_on_point(id)
+        self.eval_at_point(id)
     }
 
-    /// Computes polynomial interpolation on the exponent on a specific point
+    /// Computes polynomial interpolation on the exponent at a specific point
     /// using a sequence of sorted coefficient commitments
     /// Input requirements:
     ///     * identifiers MUST be pairwise distinct and of length greater than 1
@@ -423,6 +423,30 @@ mod test {
     }
 
     #[test]
+    fn test_eval_interpolation(){
+        let degree = 5;
+        let participants = (0..degree + 1)
+            .map(|i| Participant::from(i as u32))
+            .collect::<Vec<_>>();
+        let ids = participants
+            .iter()
+            .map(|p| p.scalar::<C>())
+            .collect::<Vec<_>>();
+
+        let shares = participants
+            .iter()
+            .map(|_| SerializableScalar(Secp256K1ScalarField::random(&mut rand_core::OsRng)) )
+            .collect::<Vec<_>>();
+        let ref_point = Some(Secp256K1ScalarField::random(&mut rand_core::OsRng));
+        let point = ref_point.as_ref();
+        assert!(Polynomial::<C>::eval_interpolation(&ids, &shares, point).is_ok());
+        assert!(Polynomial::<C>::eval_interpolation(&ids, &shares, None).is_ok());
+        assert!(Polynomial::<C>::eval_interpolation(&ids[..1], &shares[..1], None).is_err());
+        assert!(Polynomial::<C>::eval_interpolation(&ids[..0], &shares[..0], None).is_err());
+        assert!(Polynomial::<C>::eval_interpolation(&ids[..2], &shares, None).is_err());
+    }
+
+    #[test]
     fn poly_generate_evaluate_interpolate() {
         let degree = 5;
         // generate polynomial of degree 5
@@ -436,10 +460,10 @@ mod test {
 
         let shares = participants
             .iter()
-            .map(|p| poly.eval_on_participant(*p))
+            .map(|p| poly.eval_at_participant(*p))
             .collect::<Vec<_>>();
 
-        // interpolate the polynomial using the shares on arbitrary points
+        // interpolate the polynomial using the shares at arbitrary points
         let scalars = participants
             .iter()
             .map(|p| p.scalar::<C>())
@@ -452,7 +476,7 @@ mod test {
                 Polynomial::<C>::eval_interpolation(&scalars, &shares, Some(&point))
                     .expect("Interpolation has the correct inputs");
             // evaluate the polynomial on the point
-            let evaluation = poly.eval_on_point(point);
+            let evaluation = poly.eval_at_point(point);
 
             // verify that the interpolated points match the polynomial evaluation
             assert_eq!(interpolation.0, evaluation.0);
@@ -474,10 +498,10 @@ mod test {
 
         let shares = participants
             .iter()
-            .map(|p| compoly.eval_on_participant(*p))
+            .map(|p| compoly.eval_at_participant(*p))
             .collect::<Vec<_>>();
 
-        // interpolate the polynomial using the shares on arbitrary points
+        // interpolate the polynomial using the shares at arbitrary points
         let scalars = participants
             .iter()
             .map(|p| p.scalar::<C>())
@@ -493,7 +517,7 @@ mod test {
             )
             .expect("Interpolation has the correct inputs");
             // evaluate the polynomial on the point
-            let evaluation = compoly.eval_on_point(point);
+            let evaluation = compoly.eval_at_point(point);
 
             // verify that the interpolated points match the polynomial evaluation
             assert_eq!(interpolation.value(), evaluation.value());

@@ -121,14 +121,14 @@ fn proof_of_knowledge<C: Ciphersuite>(
 ) -> Result<Signature<C>, ProtocolError> {
     // creates an identifier for the participant
     let id = me.scalar::<C>();
-    let vk_share = coefficient_commitment.eval_on_zero();
+    let vk_share = coefficient_commitment.eval_at_zero();
 
     // pick a random k_i and compute R_id = g^{k_id},
     let (k, big_r) = <C>::generate_nonce(&mut OsRng);
 
     // compute H(id, context_string, g^{a_0} , R_id) as a scalar
     let hash = challenge::<C>(session_id, domain_separator, id, &vk_share, &big_r)?;
-    let a_0 = coefficients.eval_on_zero().0;
+    let a_0 = coefficients.eval_at_zero().0;
     let mu = k + a_0 * hash.to_scalar();
     Ok(Signature::new(big_r, mu))
 }
@@ -482,7 +482,7 @@ async fn do_keyshare<C: Ciphersuite>(
         // securely send to each other participant a secret share
         // using the evaluation secret polynomial on the identifier of the recipient
         // should not panic as secret_coefficients are created internally
-        let signing_share_to_p = secret_coefficients.eval_on_participant(p);
+        let signing_share_to_p = secret_coefficients.eval_at_participant(p);
         // send the evaluation privately to participant p
         chan.send_private(wait_round_3, p, &signing_share_to_p);
     }
@@ -490,7 +490,7 @@ async fn do_keyshare<C: Ciphersuite>(
     // Start Round 4
     // compute my secret evaluation of my private polynomial
     // should not panic as secret_coefficients are created internally
-    let mut my_signing_share = secret_coefficients.eval_on_participant(me).0;
+    let mut my_signing_share = secret_coefficients.eval_at_participant(me).0;
     // receive evaluations from all participants
     seen.clear();
     seen.put(me);
