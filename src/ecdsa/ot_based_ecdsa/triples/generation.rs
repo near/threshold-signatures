@@ -138,7 +138,7 @@ async fn do_generation(
             &mut transcript.fork(b"dlog0", &me.bytes()),
             statement0,
             witness0,
-        );
+        )?;
         let statement1 = dlog::Statement::<C> {
             public: &big_f_i.eval_at_zero().value(),
         };
@@ -150,7 +150,7 @@ async fn do_generation(
             &mut transcript.fork(b"dlog1", &me.bytes()),
             statement1,
             witness1,
-        );
+        )?;
 
         // Spec 2.7
         let wait2 = chan.next_waitpoint();
@@ -256,7 +256,7 @@ async fn do_generation(
                 &mut transcript.fork(b"dlog0", &from.bytes()),
                 statement0,
                 &their_phi_proof0,
-            ) {
+            )? {
                 return Err(ProtocolError::AssertionFailed(format!(
                     "dlog proof from {from:?} failed to verify"
                 )));
@@ -269,7 +269,7 @@ async fn do_generation(
                 &mut transcript.fork(b"dlog1", &from.bytes()),
                 statement1,
                 &their_phi_proof1,
-            ) {
+            )? {
                 return Err(ProtocolError::AssertionFailed(format!(
                     "dlog proof from {from:?} failed to verify"
                 )));
@@ -320,7 +320,7 @@ async fn do_generation(
             &mut transcript.fork(b"dlogeq0", &me.bytes()),
             statement,
             witness,
-        );
+        )?;
 
         // Spec 3.10
         let wait4 = chan.next_waitpoint();
@@ -348,7 +348,7 @@ async fn do_generation(
                 &mut transcript.fork(b"dlogeq0", &from.bytes()),
                 statement,
                 &their_phi_proof,
-            ) {
+            )? {
                 return Err(ProtocolError::AssertionFailed(format!(
                     "dlogeq proof from {from:?} failed to verify"
                 )));
@@ -397,7 +397,7 @@ async fn do_generation(
         &mut transcript.fork(b"dlog2", &me.bytes()),
         statement,
         witness,
-    );
+    )?;
 
     // Spec 4.7
     let wait5 = chan.next_waitpoint();
@@ -436,7 +436,7 @@ async fn do_generation(
             &mut transcript.fork(b"dlog2", &from.bytes()),
             statement,
             &their_phi_proof,
-        ) {
+        )? {
             return Err(ProtocolError::AssertionFailed(format!(
                 "dlog proof from {from:?} failed to verify"
             )));
@@ -620,7 +620,7 @@ async fn do_generation_many<const N: usize>(
                 &mut transcript.fork(b"dlog0", &me.bytes()),
                 statement0,
                 witness0,
-            );
+            )?;
             let statement1 = dlog::Statement::<C> {
                 public: &big_f_i.eval_at_zero().value(),
             };
@@ -632,7 +632,7 @@ async fn do_generation_many<const N: usize>(
                 &mut transcript.fork(b"dlog1", &me.bytes()),
                 statement1,
                 witness1,
-            );
+            )?;
             my_phi_proof0v.push(my_phi_proof0);
             my_phi_proof1v.push(my_phi_proof1);
         }
@@ -770,7 +770,7 @@ async fn do_generation_many<const N: usize>(
                     &mut transcript.fork(b"dlog0", &from.bytes()),
                     statement0,
                     their_phi_proof0,
-                ) {
+                )? {
                     return Err(ProtocolError::AssertionFailed(format!(
                         "dlog proof from {from:?} failed to verify"
                     )));
@@ -783,7 +783,7 @@ async fn do_generation_many<const N: usize>(
                     &mut transcript.fork(b"dlog1", &from.bytes()),
                     statement1,
                     their_phi_proof1,
-                ) {
+                )? {
                     return Err(ProtocolError::AssertionFailed(format!(
                         "dlog proof from {from:?} failed to verify"
                     )));
@@ -851,7 +851,7 @@ async fn do_generation_many<const N: usize>(
                 &mut transcript.fork(b"dlogeq0", &me.bytes()),
                 statement,
                 witness,
-            );
+            )?;
             big_c_i_points.push(CoefficientCommitment::new(big_c_i));
             big_c_i_v.push(big_c_i);
             my_phi_proofs.push(my_phi_proof);
@@ -894,7 +894,7 @@ async fn do_generation_many<const N: usize>(
                     &mut transcript.fork(b"dlogeq0", &from.bytes()),
                     statement,
                     their_phi_proof,
-                ) {
+                )? {
                     return Err(ProtocolError::AssertionFailed(format!(
                         "dlogeq proof from {from:?} failed to verify"
                     )));
@@ -950,7 +950,7 @@ async fn do_generation_many<const N: usize>(
             &mut transcript.fork(b"dlog2", &me.bytes()),
             statement,
             witness,
-        );
+        )?;
         hat_big_c_i_points.push(CoefficientCommitment::new(hat_big_c_i));
         hat_big_c_i_v.push(hat_big_c_i);
         my_phi_proofs.push(my_phi_proof);
@@ -1011,7 +1011,7 @@ async fn do_generation_many<const N: usize>(
                 &mut transcript.fork(b"dlog2", &from.bytes()),
                 statement,
                 their_phi_proof,
-            ) {
+            )? {
                 return Err(ProtocolError::AssertionFailed(format!(
                     "dlog proof from {from:?} failed to verify"
                 )));

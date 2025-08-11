@@ -1,6 +1,9 @@
 use rand_core::CryptoRngCore;
 
-use crate::crypto::ciphersuite::{Ciphersuite, Element};
+use crate::{
+    crypto::ciphersuite::{Ciphersuite, Element},
+    protocol::ProtocolError,
+};
 
 use frost_core::{serialization::SerializableScalar, Field, Group};
 
@@ -32,7 +35,10 @@ pub struct Statement<'a, C: Ciphersuite> {
     pub public1: &'a Element<C>,
 }
 
-fn element_into_or_panic<C: Ciphersuite>(point: &Element<C>, label: &[u8]) -> Vec<u8> {
+fn element_into<C: Ciphersuite>(
+    point: &Element<C>,
+    label: &[u8],
+) -> Result<Vec<u8>, ProtocolError> {
     let mut enc = Vec::new();
     match <C::Group as Group>::serialize(point) {
         Ok(ser) => {
@@ -42,9 +48,9 @@ fn element_into_or_panic<C: Ciphersuite>(point: &Element<C>, label: &[u8]) -> Ve
         // unreachable as either the statement is locally created
         // and thus the points are well defined, or it is received
         // from someone and thus it is serializable.
-        _ => panic!("Expected non-identity element"),
+        _ => return Err(ProtocolError::PointSerialization),
     };
-    enc
+    Ok(enc)
 }
 
 impl<C: Ciphersuite> Statement<'_, C> {
@@ -54,17 +60,17 @@ impl<C: Ciphersuite> Statement<'_, C> {
     }
 
     /// Encode into Vec<u8>: some sort of serialization
-    fn encode(&self) -> Vec<u8> {
+    fn encode(&self) -> Result<Vec<u8>, ProtocolError> {
         let mut enc = Vec::new();
         enc.extend_from_slice(ENCODE_LABEL_STATEMENT);
         // None of the following calls should panic as neither public and generator are identity
-        let ser0 = element_into_or_panic::<C>(self.public0, ENCODE_LABEL_PUBLIC0);
-        let ser1 = element_into_or_panic::<C>(self.generator1, ENCODE_LABEL_GENERATOR1);
-        let ser2 = element_into_or_panic::<C>(self.public1, ENCODE_LABEL_PUBLIC1);
+        let ser0 = element_into::<C>(self.public0, ENCODE_LABEL_PUBLIC0)?;
+        let ser1 = element_into::<C>(self.generator1, ENCODE_LABEL_GENERATOR1)?;
+        let ser2 = element_into::<C>(self.public1, ENCODE_LABEL_PUBLIC1)?;
         enc.extend_from_slice(&ser0);
         enc.extend_from_slice(&ser1);
         enc.extend_from_slice(&ser2);
-        enc
+        Ok(enc)
     }
 }
 
@@ -132,8 +138,8 @@ pub fn prove<C: Ciphersuite>(
     transcript: &mut Transcript,
     statement: Statement<'_, C>,
     witness: Witness<C>,
-) -> Proof<C> {
-    transcript.message(STATEMENT_LABEL, &statement.encode());
+) -> Result<Proof<C>, ProtocolError> {
+    transcript.message(STATEMENT_LABEL, &statement.encode()?);
 
     let k = SerializableScalar::<C>(<C::Group as Group>::Field::random(rng));
     let big_k = statement.phi(&k);
@@ -146,22 +152,21 @@ pub fn prove<C: Ciphersuite>(
     let e = <C::Group as Group>::Field::random(&mut rng);
 
     let s = k.0 + e * witness.x.0;
-    Proof {
+    Ok(Proof {
         e: SerializableScalar::<C>(e),
         s: SerializableScalar::<C>(s),
-    }
+    })
 }
 
 /// Verify that a proof attesting to the validity of some statement.
 ///
 /// We use a transcript in order to verify the Fiat-Shamir transformation.
-#[must_use]
 pub fn verify<C: Ciphersuite>(
     transcript: &mut Transcript,
     statement: Statement<'_, C>,
     proof: &Proof<C>,
-) -> bool {
-    transcript.message(STATEMENT_LABEL, &statement.encode());
+) -> Result<bool, ProtocolError> {
+    transcript.message(STATEMENT_LABEL, &statement.encode()?);
 
     let (phi0, phi1) = statement.phi(&proof.s);
     let big_k0 = phi0 - *statement.public0 * proof.e.0;
@@ -171,7 +176,7 @@ pub fn verify<C: Ciphersuite>(
     let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
     let e = <C::Group as Group>::Field::random(&mut rng);
 
-    e == proof.e.0
+    Ok(e == proof.e.0)
 }
 
 #[cfg(test)]
@@ -203,9 +208,10 @@ mod test {
             &mut transcript.fork(b"party", &[1]),
             statement,
             witness,
-        );
+        )
+        .unwrap();
 
-        let ok = verify(&mut transcript.fork(b"party", &[1]), statement, &proof);
+        let ok = verify(&mut transcript.fork(b"party", &[1]), statement, &proof).unwrap();
 
         assert!(ok);
     }

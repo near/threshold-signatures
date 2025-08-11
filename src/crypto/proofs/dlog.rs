@@ -1,4 +1,7 @@
-use crate::crypto::ciphersuite::{Ciphersuite, Element};
+use crate::{
+    crypto::ciphersuite::{Ciphersuite, Element},
+    protocol::ProtocolError,
+};
 use frost_core::{serialization::SerializableScalar, Field, Group};
 
 use super::strobe_transcript::Transcript;
@@ -30,7 +33,7 @@ impl<C: Ciphersuite> Statement<'_, C> {
     }
 
     /// Encode into Vec<u8>: some sort of serialization
-    fn encode(&self) -> Vec<u8> {
+    fn encode(&self) -> Result<Vec<u8>, ProtocolError> {
         let mut enc = Vec::new();
         enc.extend_from_slice(ENCODE_LABEL_STATEMENT);
 
@@ -39,9 +42,9 @@ impl<C: Ciphersuite> Statement<'_, C> {
                 enc.extend_from_slice(ENCODE_LABEL_PUBLIC);
                 enc.extend_from_slice(ser.as_ref());
             }
-            _ => panic!("Expected non-identity element"),
+            _ => return Err(ProtocolError::PointSerialization),
         };
-        enc
+        Ok(enc)
     }
 }
 
@@ -63,7 +66,7 @@ pub struct Proof<C: Ciphersuite> {
 /// Encodes an EC point into a vec including the identity point.
 /// Should be used with HIGH precaution as it allows serializing the identity point
 /// deviating from the standard
-fn encode_point<C: Ciphersuite>(point: &Element<C>) -> Vec<u8> {
+fn encode_point<C: Ciphersuite>(point: &Element<C>) -> Result<Vec<u8>, ProtocolError> {
     // Need to create a serialization containing the all zero strings
     let size = C::Group::serialize(&C::Group::generator())
         .unwrap()
@@ -76,9 +79,9 @@ fn encode_point<C: Ciphersuite>(point: &Element<C>) -> Vec<u8> {
             size
         ]) {
         Ok(ser) => ser,
-        _ => panic!("Should not raise error"),
+        _ => return Err(ProtocolError::ErrorEncoding),
     };
-    C::Group::serialize(point).unwrap_or(ser).as_ref().to_vec()
+    Ok(C::Group::serialize(point).unwrap_or(ser).as_ref().to_vec())
 }
 
 /// Prove that a witness satisfies a given statement.
@@ -90,41 +93,40 @@ pub fn prove<C: Ciphersuite>(
     transcript: &mut Transcript,
     statement: Statement<'_, C>,
     witness: Witness<C>,
-) -> Proof<C> {
-    transcript.message(STATEMENT_LABEL, &statement.encode());
+) -> Result<Proof<C>, ProtocolError> {
+    transcript.message(STATEMENT_LABEL, &statement.encode()?);
 
     let k = <C::Group as Group>::Field::random(rng);
     let big_k = statement.phi(&SerializableScalar(k));
 
-    transcript.message(COMMITMENT_LABEL, &encode_point::<C>(&big_k));
+    transcript.message(COMMITMENT_LABEL, &encode_point::<C>(&big_k)?);
     let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
     let e = <C::Group as Group>::Field::random(&mut rng);
 
     let s = k + e * witness.x.0;
-    Proof {
+    Ok(Proof {
         e: SerializableScalar(e),
         s: SerializableScalar(s),
-    }
+    })
 }
 
 /// Verify that a proof attesting to the validity of some statement.
 ///
 /// We use a transcript in order to verify the Fiat-Shamir transformation.
-#[must_use]
 pub fn verify<C: Ciphersuite>(
     transcript: &mut Transcript,
     statement: Statement<'_, C>,
     proof: &Proof<C>,
-) -> bool {
-    transcript.message(STATEMENT_LABEL, &statement.encode());
+) -> Result<bool, ProtocolError> {
+    transcript.message(STATEMENT_LABEL, &statement.encode()?);
 
     let big_k: Element<C> = statement.phi(&proof.s) - *statement.public * proof.e.0;
 
-    transcript.message(COMMITMENT_LABEL, &encode_point::<C>(&big_k));
+    transcript.message(COMMITMENT_LABEL, &encode_point::<C>(&big_k)?);
     let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
     let e = <C::Group as Group>::Field::random(&mut rng);
 
-    e == proof.e.0
+    Ok(e == proof.e.0)
 }
 
 #[cfg(test)]
@@ -153,9 +155,10 @@ mod test {
             &mut transcript.fork(b"party", &[1]),
             statement,
             witness,
-        );
+        )
+        .unwrap();
 
-        let ok = verify(&mut transcript.fork(b"party", &[1]), statement, &proof);
+        let ok = verify(&mut transcript.fork(b"party", &[1]), statement, &proof).unwrap();
 
         assert!(ok);
     }
