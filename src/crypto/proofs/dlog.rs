@@ -79,7 +79,7 @@ pub fn prove<C: Ciphersuite>(
         C::Group::serialize(&big_k).expect("Identity element should not have been encountered");
     transcript.message(COMMITMENT_LABEL, ser.as_ref());
     let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
-    let e = frost_core::random_nonzero::<C, TranscriptRng>(&mut rng);
+    let e = frost_core::random_nonzero::<C, _>(&mut rng);
 
     let s = k + e * witness.x.0;
     Ok(Proof {
