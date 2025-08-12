@@ -1,8 +1,11 @@
 use crate::{
-    crypto::ciphersuite::{Ciphersuite, Element},
+    crypto::{
+        ciphersuite::{Ciphersuite, Element},
+        proofs::strobe_transcript::TranscriptRng,
+    },
     protocol::ProtocolError,
 };
-use frost_core::{serialization::SerializableScalar, Field, Group};
+use frost_core::{serialization::SerializableScalar, Group};
 
 use super::strobe_transcript::Transcript;
 use rand_core::CryptoRngCore;
@@ -19,7 +22,6 @@ const ENCODE_LABEL_STATEMENT: &[u8] = b"statement:";
 const ENCODE_LABEL_PUBLIC: &[u8] = b"public:";
 
 /// The public statement for this proof.
-///
 /// This statement claims knowledge of the discrete logarithm of some point.
 #[derive(Clone, Copy)]
 pub struct Statement<'a, C: Ciphersuite> {
@@ -58,29 +60,7 @@ pub struct Proof<C: Ciphersuite> {
     s: SerializableScalar<C>,
 }
 
-/// Encodes an EC point into a vec including the identity point.
-/// Should be used with HIGH precaution as it allows serializing the identity point
-/// deviating from the standard
-fn encode_point<C: Ciphersuite>(point: &Element<C>) -> Result<Vec<u8>, ProtocolError> {
-    // Need to create a serialization containing the all zero strings
-    let size = C::Group::serialize(&C::Group::generator())
-        .unwrap()
-        .as_ref()
-        .len();
-    // Serializing the identity might fail!
-    // this is a workaround to be able to serialize even this infinity point.
-    let ser = match <<C as frost_core::Ciphersuite>::Group as Group>::Serialization::try_from(vec![
-            0u8;
-            size
-        ]) {
-        Ok(ser) => ser,
-        _ => return Err(ProtocolError::ErrorEncoding),
-    };
-    Ok(C::Group::serialize(point).unwrap_or(ser).as_ref().to_vec())
-}
-
 /// Prove that a witness satisfies a given statement.
-///
 /// We need some randomness for the proof, and also a transcript, which is
 /// used for the Fiat-Shamir transform.
 pub fn prove<C: Ciphersuite>(
@@ -93,9 +73,13 @@ pub fn prove<C: Ciphersuite>(
 
     let (k, big_k) = <C>::generate_nonce(rng);
 
-    transcript.message(COMMITMENT_LABEL, &encode_point::<C>(&big_k)?);
+    // Create a serialization of big_k
+    // Panic will never be met due to generate_nonce *never* outputting the identity
+    let ser =
+        C::Group::serialize(&big_k).expect("Identity element should not have been encountered");
+    transcript.message(COMMITMENT_LABEL, ser.as_ref());
     let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
-    let e = <C::Group as Group>::Field::random(&mut rng);
+    let e = frost_core::random_nonzero::<C, TranscriptRng>(&mut rng);
 
     let s = k + e * witness.x.0;
     Ok(Proof {
@@ -105,7 +89,6 @@ pub fn prove<C: Ciphersuite>(
 }
 
 /// Verify that a proof attesting to the validity of some statement.
-///
 /// We use a transcript in order to verify the Fiat-Shamir transformation.
 pub fn verify<C: Ciphersuite>(
     transcript: &mut Transcript,
@@ -115,13 +98,14 @@ pub fn verify<C: Ciphersuite>(
     transcript.message(STATEMENT_LABEL, &statement.encode()?);
 
     let big_k = C::Group::generator() * proof.s.0 - *statement.public * proof.e.0;
-    if big_k == C::Group::identity() {
-        return Err(ProtocolError::IdentityElement);
-    }
 
-    transcript.message(COMMITMENT_LABEL, &encode_point::<C>(&big_k)?);
+    // Create a serialization of big_k
+    // Raises error if the big_k turned out to be the identity element
+    let ser = C::Group::serialize(&big_k).map_err(|_| ProtocolError::IdentityElement)?;
+
+    transcript.message(COMMITMENT_LABEL, ser.as_ref());
     let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
-    let e = <C::Group as Group>::Field::random(&mut rng);
+    let e = frost_core::random_nonzero::<C, TranscriptRng>(&mut rng);
 
     Ok(e == proof.e.0)
 }
