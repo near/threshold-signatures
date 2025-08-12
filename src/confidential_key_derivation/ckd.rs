@@ -212,7 +212,7 @@ mod test {
             )?;
 
             // Create the threshold signer's master secret key
-            let msk = f.eval_on_zero().0;
+            let msk = f.eval_at_zero().0;
 
             // Create the app necessary items
             let app_id = [b"App ".as_ref(), i.to_string().as_bytes()].concat();
@@ -235,7 +235,7 @@ mod test {
                 Vec::with_capacity(participants.len());
 
             for p in &participants {
-                let share = f.eval_on_participant(*p);
+                let share = f.eval_at_participant(*p);
                 let private_share = SigningShare::new(share.0);
 
                 let protocol = ckd(
