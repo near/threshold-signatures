@@ -1,4 +1,4 @@
-use super::{CKDCommitments, CKDOutput, CoefficientCommitment, SigningShare};
+use super::{CKDCoordinatorOutput, CKDOutput, CoefficientCommitment, SigningShare};
 use crate::participants::{ParticipantCounter, ParticipantList};
 use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
 use crate::protocol::{InitializationError, Participant, Protocol, ProtocolError};
@@ -90,8 +90,8 @@ async fn do_ckd_coordinator(
         norm_big_y += big_y.value();
         norm_big_c += big_c.value();
     }
-    let ckdcommitments = CKDCommitments::new(norm_big_y, norm_big_c);
-    Ok(Some(ckdcommitments))
+    let ckd_output = CKDCoordinatorOutput::new(norm_big_y, norm_big_c);
+    Ok(Some(ckd_output))
 }
 
 /// Runs the confidential key derivation protocol
@@ -258,10 +258,10 @@ mod test {
             let ckd = some_iter
                 .next()
                 .map(|(_, c)| c.unwrap())
-                .expect("Expected exactly one Some(CKDCommitments)");
+                .expect("Expected exactly one Some(CKDCoordinatorOutput)");
             assert!(
                 some_iter.next().is_none(),
-                "More than one Some(CKDCommitments)"
+                "More than one Some(CKDCoordinatorOutput)"
             );
 
             // compute msk . H(app_id)
