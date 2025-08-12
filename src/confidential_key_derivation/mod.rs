@@ -16,14 +16,14 @@ pub(crate) type Scalar = frost_core::Scalar<Secp256K1Sha256>;
 
 /// The output of the confidential key derivation protocol when run by the coordinator
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct CKDCommitments {
+pub struct CKDCoordinatorOutput {
     big_y: CoefficientCommitment,
     big_c: CoefficientCommitment,
 }
 
-impl CKDCommitments {
+impl CKDCoordinatorOutput {
     pub fn new(big_y: Element, big_c: Element) -> Self {
-        CKDCommitments {
+        CKDCoordinatorOutput {
             big_y: CoefficientCommitment::new(big_y),
             big_c: CoefficientCommitment::new(big_c),
         }
@@ -47,4 +47,4 @@ impl CKDCommitments {
 }
 
 /// None for participants and Some for coordinator
-pub type CKDOutput = Option<CKDCommitments>;
+pub type CKDOutput = Option<CKDCoordinatorOutput>;
