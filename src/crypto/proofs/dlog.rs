@@ -27,11 +27,6 @@ pub struct Statement<'a, C: Ciphersuite> {
 }
 
 impl<C: Ciphersuite> Statement<'_, C> {
-    /// Calculate the homomorphism we want to prove things about.
-    fn phi(&self, x: &SerializableScalar<C>) -> Element<C> {
-        C::Group::generator() * x.0
-    }
-
     /// Encode into Vec<u8>: some sort of serialization
     fn encode(&self) -> Result<Vec<u8>, ProtocolError> {
         let mut enc = Vec::new();
@@ -96,8 +91,7 @@ pub fn prove<C: Ciphersuite>(
 ) -> Result<Proof<C>, ProtocolError> {
     transcript.message(STATEMENT_LABEL, &statement.encode()?);
 
-    let k = <C::Group as Group>::Field::random(rng);
-    let big_k = statement.phi(&SerializableScalar(k));
+    let (k, big_k) = <C>::generate_nonce(rng);
 
     transcript.message(COMMITMENT_LABEL, &encode_point::<C>(&big_k)?);
     let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
@@ -120,7 +114,10 @@ pub fn verify<C: Ciphersuite>(
 ) -> Result<bool, ProtocolError> {
     transcript.message(STATEMENT_LABEL, &statement.encode()?);
 
-    let big_k: Element<C> = statement.phi(&proof.s) - *statement.public * proof.e.0;
+    let big_k = C::Group::generator() * proof.s.0 - *statement.public * proof.e.0;
+    if big_k == C::Group::identity() {
+        return Err(ProtocolError::IdentityElement);
+    }
 
     transcript.message(COMMITMENT_LABEL, &encode_point::<C>(&big_k)?);
     let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
