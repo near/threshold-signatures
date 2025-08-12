@@ -16,7 +16,7 @@ use k256::{
 
 const DOMAIN: &[u8] = b"NEAR CURVE_XOF:SHAKE-256_SSWU_RO_";
 
-fn random_oracle_to_element(app_id: &[u8]) -> Result<ProjectivePoint, ProtocolError> {
+fn hash2curve(app_id: &[u8]) -> Result<ProjectivePoint, ProtocolError> {
     let hash = <Secp256k1 as GroupDigest>::hash_from_bytes::<ExpandMsgXof<sha3::Shake256>>(
         &[app_id],
         &[DOMAIN],
@@ -37,7 +37,7 @@ async fn do_ckd_participant(
     // y <- ZZq* , Y <- y * G
     let (y, big_y) = Secp256K1Sha256::generate_nonce(&mut OsRng);
     // H(app_id) when H is a random oracle
-    let hash_point = random_oracle_to_element(app_id)?;
+    let hash_point = hash2curve(app_id)?;
     // S <- x . H(app_id)
     let big_s = hash_point * private_share.to_scalar();
     // C <- S + y . A
@@ -65,7 +65,7 @@ async fn do_ckd_coordinator(
     // y <- ZZq* , Y <- y * G
     let (y, big_y) = Secp256K1Sha256::generate_nonce(&mut OsRng);
     // H(app_id) when H is a random oracle
-    let hash_point = random_oracle_to_element(app_id)?;
+    let hash_point = hash2curve(app_id)?;
     // S <- x . H(app_id)
     let big_s = hash_point * private_share.to_scalar();
     // C <- S + y . A
@@ -188,15 +188,15 @@ mod test {
     use rand_core::RngCore;
 
     #[test]
-    fn test_random_oracle() {
+    fn test_hash2curve() {
         let app_id = b"Hello Near";
         let app_id_same = b"Hello Near";
-        let pt1 = random_oracle_to_element(app_id).unwrap();
-        let pt2 = random_oracle_to_element(app_id_same).unwrap();
+        let pt1 = hash2curve(app_id).unwrap();
+        let pt2 = hash2curve(app_id_same).unwrap();
         assert!(pt1 == pt2);
 
         let app_id = b"Hello Near!";
-        let pt2 = random_oracle_to_element(app_id).unwrap();
+        let pt2 = hash2curve(app_id).unwrap();
         assert!(pt1 != pt2);
     }
 
@@ -219,7 +219,7 @@ mod test {
             let (app_sk, app_pk) = Secp256K1Sha256::generate_nonce(&mut OsRng);
             let app_pk = CoefficientCommitment::new(app_pk);
 
-            let expected_confidential_key = random_oracle_to_element(&app_id).unwrap() * msk;
+            let expected_confidential_key = hash2curve(&app_id).unwrap() * msk;
 
             let participants = vec![
                 Participant::from(0u32),
@@ -270,7 +270,7 @@ mod test {
             assert_eq!(
                 confidential_key.value(),
                 expected_confidential_key,
-                "Keys should be similar"
+                "Keys should be equal"
             );
         }
         Ok(())
