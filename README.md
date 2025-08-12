@@ -41,7 +41,7 @@ The following functionalities are provided:
 * Our ECDSA signing scheme outsources the message hash to the function caller (i.e. expects a hashed message as input and does not internally hash the input). However, our EdDSA implementation does not outsource the message hashing instead internally performs the message hash. This distinction is an artifact of the multiple different verifiers implemented in the wild where some might perform a "double hashing" and others not.
 (See \[[PoeRas24](https://link.springer.com/chapter/10.1007/978-3-031-57718-5_10)\] for an in-depth security study of ECDSA with outsourced hashing).
 
-* This implementation allows arbitrary number of parties and thresholds as long as the latter verifies some basic requirements (see the documentation). However, it is worth mentioning that the ECDSA scheme scales non-efficiently with the number of participants (Benchmarks to be added soon).
+* This implementation allows arbitrary number of parties and thresholds as long as the latter verifies some basic requirements (see the [documentation](docs/ecdsa/orchestration.md)). However, it is worth mentioning that the ECDSA scheme scales non-efficiently with the number of participants (Benchmarks to be added soon).
 
 * **🚨 Important 🚨:** Our DKG/Resharing protocol is the same for both ECDSA and EdDSA except the underlying elliptic curve instantiation. Internally, this DKG makes use of a reliable broadcast channel implemented for asynchronous peer-to-peer communication. Due to a fundamental impossibility theorem for asynchronous broadcast channel, our DKG/Resharing protocol can only tolerate $n/3$ malicious parties where $n$ is the total number of parties.
 
