@@ -1,4 +1,10 @@
 //! This module serves as a wrapper for ECDSA scheme.
+pub mod dkg_ecdsa;
+pub mod ot_based_ecdsa;
+// pub mod robust_ecdsa;
+#[cfg(test)]
+mod test;
+
 use elliptic_curve::{
     bigint::U256,
     ops::{Invert, Reduce},
@@ -71,6 +77,7 @@ impl FullSignature {
         if r.is_zero().into() || self.s.is_zero().into() {
             return false;
         }
+        // tested earlier is not zero, so inversion will not raise an error and unwrap cannot panic
         let s_inv = self.s.invert_vartime().unwrap();
         let reproduced = (ProjectivePoint::GENERATOR * (*msg_hash * s_inv))
             + (ProjectivePoint::from(*public_key) * (r * s_inv));
@@ -78,8 +85,52 @@ impl FullSignature {
     }
 }
 
-pub mod dkg_ecdsa;
-pub mod ot_based_ecdsa;
-// pub mod robust_ecdsa;
 #[cfg(test)]
-mod test;
+mod test_verify{
+    use k256::{
+        ecdsa::{
+        signature::Verifier,
+        SigningKey,
+        VerifyingKey
+        }, ProjectivePoint, Scalar, Secp256k1,
+    };
+    use rand_core::OsRng;
+    use sha2::{Digest, Sha256, digest::FixedOutput};
+    use elliptic_curve::ops::{Reduce, LinearCombination, Invert};
+    use super::FullSignature;
+
+    #[test]
+    fn test_verify(){
+        let msg = b"Hello from Near";
+        let mut hasher = Sha256::new();
+        hasher.update(msg);
+
+        for _ in 0..100{
+            let sk = SigningKey::random(&mut OsRng);
+            let pk = VerifyingKey::from(&sk);
+            let (sig, _) = sk.sign_digest_recoverable(hasher.clone()).unwrap();
+            assert!(pk.verify(msg, &sig).is_ok());
+
+
+            let z_bytes= hasher.clone().finalize_fixed();
+            let z = <Scalar as Reduce<<Secp256k1 as elliptic_curve::Curve>::Uint>>::reduce_bytes(&z_bytes);
+            let (r, s) = sig.split_scalars();
+            let s_inv = *s.invert_vartime();
+            let u1 = z * s_inv;
+            let u2 = *r * s_inv;
+            let pk = ProjectivePoint::from(pk.as_affine());
+            let big_r = ProjectivePoint::lincomb(&ProjectivePoint::GENERATOR, &u1, &pk, &u2)
+                        .to_affine();
+
+            let full_sig = FullSignature{
+                big_r,
+                s: *s.as_ref(),
+            };
+
+            let is_verified = full_sig.verify(&pk.to_affine(), &z);
+            // Should always be ok as signature contains Uint i.e. normalized elements
+            assert!(is_verified)
+
+        }
+    }
+}
