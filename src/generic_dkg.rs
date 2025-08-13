@@ -402,15 +402,10 @@ async fn do_keyshare<C: Ciphersuite>(
     let wait_round_1 = chan.next_waitpoint();
     chan.send_many(wait_round_1, &commitment_hash);
     // receive commitment_hash
-    let mut seen = ParticipantCounter::new(&participants);
     let mut all_hash_commitments = ParticipantMap::new(&participants);
     all_hash_commitments.put(me, commitment_hash);
-    seen.put(me);
-    while !seen.full() {
+    while !all_hash_commitments.full() {
         let (from, their_commitment_hash) = chan.recv(wait_round_1).await?;
-        if !seen.put(from) {
-            continue;
-        }
         all_hash_commitments.put(from, their_commitment_hash);
     }
 
@@ -492,7 +487,7 @@ async fn do_keyshare<C: Ciphersuite>(
     // should not panic as secret_coefficients are created internally
     let mut my_signing_share = secret_coefficients.eval_at_participant(me).0;
     // receive evaluations from all participants
-    seen.clear();
+    let mut seen = ParticipantCounter::new(&participants);
     seen.put(me);
     while !seen.full() {
         let (from, signing_share_from): (Participant, SigningShare<C>) =
