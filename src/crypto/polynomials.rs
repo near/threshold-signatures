@@ -139,6 +139,8 @@ impl<C: Ciphersuite> Polynomial<C> {
             .iter()
             .map(|c| CoefficientCommitment::new(C::Group::generator() * *c))
             .collect();
+        // self cannot be the zero polynomial because there is no way
+        // to create such a polynomial using this library. This implies the panic never occurs.
         PolynomialCommitment::new(coef_commitment)
             .expect("coefficients must have at least one element set to non-zero")
     }
