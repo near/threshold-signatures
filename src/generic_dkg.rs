@@ -378,8 +378,8 @@ async fn do_keyshare<C: Ciphersuite>(
         Polynomial::<C>::generate_polynomial(Some(secret), threshold - 1, &mut OsRng)?;
 
     // Compute the multiplication of every coefficient of p with the generator G
-    let coefficient_commitment = generate_coefficient_commitment::<C>(&secret_coefficients)
-        .expect("expects non constant polynomial (i.e. threshold strictly larger than 1)");
+    let coefficient_commitment = generate_coefficient_commitment::<C>(&secret_coefficients)?;
+
     // generate a proof of knowledge if the participant me is not holding a secret that is zero
     let proof_domain_separator = domain_separator;
     let proof_of_knowledge = compute_proof_of_knowledge(
