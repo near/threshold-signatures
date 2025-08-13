@@ -86,43 +86,41 @@ impl FullSignature {
 }
 
 #[cfg(test)]
-mod test_verify{
+mod test_verify {
+    use super::FullSignature;
+    use elliptic_curve::ops::{Invert, LinearCombination, Reduce};
     use k256::{
-        ecdsa::{
-        signature::Verifier,
-        SigningKey,
-        VerifyingKey
-        }, ProjectivePoint, Scalar, Secp256k1,
+        ecdsa::{signature::Verifier, SigningKey, VerifyingKey},
+        ProjectivePoint, Scalar, Secp256k1,
     };
     use rand_core::OsRng;
-    use sha2::{Digest, Sha256, digest::FixedOutput};
-    use elliptic_curve::ops::{Reduce, LinearCombination, Invert};
-    use super::FullSignature;
+    use sha2::{digest::FixedOutput, Digest, Sha256};
 
     #[test]
-    fn test_verify(){
+    fn test_verify() {
         let msg = b"Hello from Near";
         let mut hasher = Sha256::new();
         hasher.update(msg);
 
-        for _ in 0..100{
+        for _ in 0..100 {
             let sk = SigningKey::random(&mut OsRng);
             let pk = VerifyingKey::from(&sk);
             let (sig, _) = sk.sign_digest_recoverable(hasher.clone()).unwrap();
             assert!(pk.verify(msg, &sig).is_ok());
 
-
-            let z_bytes= hasher.clone().finalize_fixed();
-            let z = <Scalar as Reduce<<Secp256k1 as elliptic_curve::Curve>::Uint>>::reduce_bytes(&z_bytes);
+            let z_bytes = hasher.clone().finalize_fixed();
+            let z = <Scalar as Reduce<<Secp256k1 as elliptic_curve::Curve>::Uint>>::reduce_bytes(
+                &z_bytes,
+            );
             let (r, s) = sig.split_scalars();
             let s_inv = *s.invert_vartime();
             let u1 = z * s_inv;
             let u2 = *r * s_inv;
             let pk = ProjectivePoint::from(pk.as_affine());
-            let big_r = ProjectivePoint::lincomb(&ProjectivePoint::GENERATOR, &u1, &pk, &u2)
-                        .to_affine();
+            let big_r =
+                ProjectivePoint::lincomb(&ProjectivePoint::GENERATOR, &u1, &pk, &u2).to_affine();
 
-            let full_sig = FullSignature{
+            let full_sig = FullSignature {
                 big_r,
                 s: *s.as_ref(),
             };
@@ -130,7 +128,6 @@ mod test_verify{
             let is_verified = full_sig.verify(&pk.to_affine(), &z);
             // Should always be ok as signature contains Uint i.e. normalized elements
             assert!(is_verified)
-
         }
     }
 }
