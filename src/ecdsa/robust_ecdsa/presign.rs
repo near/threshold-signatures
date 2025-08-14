@@ -183,7 +183,7 @@ async fn do_presign(
 /// all the work we can do without yet knowing the message to be signed.
 ///
 /// This work does depend on the private key though, and it's crucial
-/// that a presignature is never used.
+/// that a presignature is never reused.
 pub fn presign(
     participants: &[Participant],
     me: Participant,
@@ -191,20 +191,20 @@ pub fn presign(
 ) -> Result<impl Protocol<Output = PresignOutput>, InitializationError> {
     if participants.len() < 2 {
         return Err(InitializationError::BadParameters(format!(
-            "participant count cannot be strictly less than 2, found: {}",
+            "participant count cannot be less than 2, found: {}",
             participants.len()
         )));
     };
 
     if args.threshold > participants.len() {
         return Err(InitializationError::BadParameters(
-            "threshold must be less or equals to participant count".to_string(),
+            "threshold must be less than or equals to participant count".to_string(),
         ));
     }
 
     if 2 * args.threshold + 1 > participants.len() {
         return Err(InitializationError::BadParameters(
-            "2*threshold+1 must be less or equals to participant count".to_string(),
+            "2*threshold+1 must be less than or equals to participant count".to_string(),
         ));
     }
 
