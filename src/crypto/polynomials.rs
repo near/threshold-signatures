@@ -85,11 +85,9 @@ impl<C: Ciphersuite> Polynomial<C> {
             self.eval_at_zero()
         } else {
             let mut value = <C::Group as Group>::Field::zero();
-            for coeff in self.coefficients.iter().skip(1).rev() {
-                value = value + *coeff;
-                value = value * point;
+            for coeff in self.coefficients.iter().rev() {
+                value = value * point + *coeff;
             }
-            value = value + self.coefficients[0];
             SerializableScalar(value)
         }
     }
@@ -400,7 +398,7 @@ mod test {
     use super::*;
     use frost_core::Field;
     use frost_secp256k1::{Secp256K1Group, Secp256K1ScalarField, Secp256K1Sha256};
-    use rand_core::OsRng;
+    use rand_core::{OsRng, RngCore};
     type C = Secp256K1Sha256;
     #[test]
     fn abort_no_polynomial() {
@@ -419,6 +417,216 @@ mod test {
         let vec = vec![CoefficientCommitment::<C>::new(Secp256K1Group::identity()); 10];
         let poly = PolynomialCommitment::new(vec);
         assert!(poly.is_err(), "Polynomial should be raising error");
+    }
+
+    #[test]
+    fn test_get_coefficients_poly() {
+        let poly_size = 50;
+        let mut coefficients = Vec::with_capacity(poly_size);
+
+        for _ in 0..poly_size {
+            coefficients
+                .push(<<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut OsRng));
+        }
+
+        let poly = Polynomial::<C>::new(coefficients.clone()).unwrap();
+        for (a, b) in poly.get_coefficients().iter().zip(coefficients) {
+            assert_eq!(*a, b);
+        }
+    }
+
+    #[test]
+    fn test_get_coefficients_commitments() {
+        let poly_size = 50;
+        let mut coefficients = Vec::with_capacity(poly_size);
+
+        let generator = <C as frost_core::Ciphersuite>::Group::generator();
+        for _ in 0..poly_size {
+            let scalar =
+                <<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut OsRng);
+            coefficients.push(CoefficientCommitment::<C>::new(generator * scalar));
+        }
+
+        let poly = PolynomialCommitment::<C>::new(coefficients.clone()).unwrap();
+        for (a, b) in poly.get_coefficients().iter().zip(coefficients) {
+            assert_eq!(*a, b);
+        }
+    }
+
+    #[test]
+    fn test_eval_on_zero_poly() {
+        let poly_size = 20;
+        let mut coefficients = Vec::with_capacity(poly_size);
+
+        let zero_coeff =
+            <<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut OsRng);
+        for i in 0..poly_size {
+            if i == 0 {
+                coefficients.push(zero_coeff);
+            } else {
+                coefficients.push(
+                    <<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut OsRng),
+                );
+            }
+        }
+
+        let poly = Polynomial::<C>::new(coefficients).unwrap();
+        // test eval_at_zero
+        let point = <<C as frost_core::Ciphersuite>::Group as Group>::Field::zero();
+        assert_eq!(zero_coeff, poly.eval_at_zero().0);
+        assert_eq!(zero_coeff, poly.eval_at_point(point).0)
+    }
+
+    #[test]
+    fn test_eval_on_zero_commitments() {
+        let poly_size = 50;
+        let mut coefficients = Vec::with_capacity(poly_size);
+
+        let generator = <C as frost_core::Ciphersuite>::Group::generator();
+        let zero_coeff =
+            <<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut OsRng);
+        let zero_coeff = generator * zero_coeff;
+        for i in 0..poly_size {
+            if i == 0 {
+                coefficients.push(CoefficientCommitment::<C>::new(zero_coeff));
+            } else {
+                let scalar =
+                    <<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut OsRng);
+                coefficients.push(CoefficientCommitment::<C>::new(generator * scalar));
+            }
+        }
+
+        let poly = PolynomialCommitment::<C>::new(coefficients).unwrap();
+        // test eval_at_zero
+        let point = <<C as frost_core::Ciphersuite>::Group as Group>::Field::zero();
+        assert_eq!(zero_coeff, poly.eval_at_zero().value());
+        assert_eq!(zero_coeff, poly.eval_at_point(point).value())
+    }
+
+    #[test]
+    fn test_eval_on_point() {
+        let poly_size = 4;
+        let mut coefficients = Vec::with_capacity(poly_size);
+        let mut coefficients_com = Vec::with_capacity(poly_size);
+
+        // X^3 + X^2 + X + 1
+        for _ in 0..poly_size {
+            coefficients.push(<<C as frost_core::Ciphersuite>::Group as Group>::Field::one());
+            coefficients_com.push(CoefficientCommitment::<C>::new(
+                <<C as frost_core::Ciphersuite>::Group as Group>::generator(),
+            ))
+        }
+
+        let poly = Polynomial::<C>::new(coefficients).unwrap();
+        let polycom = PolynomialCommitment::<C>::new(coefficients_com).unwrap();
+
+        for _ in 1..50 {
+            // test eval_at_zero
+            let point = <<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut OsRng);
+            // explicit calculation
+            let output_poly_eval = point * point * point
+                + point * point
+                + point
+                + <<C as frost_core::Ciphersuite>::Group as Group>::Field::one();
+            let output_polycom_eval =
+                <C as frost_core::Ciphersuite>::Group::generator() * output_poly_eval;
+
+            assert_eq!(output_poly_eval, poly.eval_at_point(point).0);
+            assert_eq!(output_polycom_eval, polycom.eval_at_point(point).value())
+        }
+    }
+
+    #[test]
+    fn test_eval_on_participant() {
+        let poly_size = 6;
+        let mut coefficients = Vec::with_capacity(poly_size);
+        let mut coefficients_com = Vec::with_capacity(poly_size);
+
+        // X^5 + X^3 + X
+        for i in 0..poly_size {
+            if i % 2 == 1 {
+                coefficients.push(<<C as frost_core::Ciphersuite>::Group as Group>::Field::one());
+                coefficients_com.push(CoefficientCommitment::<C>::new(
+                    <<C as frost_core::Ciphersuite>::Group as Group>::generator(),
+                ))
+            } else {
+                coefficients.push(<<C as frost_core::Ciphersuite>::Group as Group>::Field::zero());
+                coefficients_com.push(CoefficientCommitment::<C>::new(
+                    <<C as frost_core::Ciphersuite>::Group as Group>::identity(),
+                ))
+            }
+        }
+
+        let poly = Polynomial::<C>::new(coefficients).unwrap();
+        let polycom = PolynomialCommitment::<C>::new(coefficients_com).unwrap();
+
+        for _ in 1..50 {
+            let participant = Participant::from(OsRng.next_u32());
+            let point = participant.scalar::<C>();
+            // explicit calculation
+            let output_poly_eval =
+                point * point * point * point * point + point * point * point + point;
+            let output_polycom_eval =
+                <C as frost_core::Ciphersuite>::Group::generator() * output_poly_eval;
+
+            assert_eq!(output_poly_eval, poly.eval_at_participant(participant).0);
+            assert_eq!(
+                output_polycom_eval,
+                polycom.eval_at_participant(participant).value()
+            )
+        }
+    }
+
+    #[test]
+    fn test_commit_polynomial() {
+        let poly_size = 4;
+        let mut coefficients = Vec::with_capacity(poly_size);
+        let mut coefficients_com = Vec::with_capacity(poly_size);
+        for _ in 0..poly_size {
+            let scalar =
+                <<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut OsRng);
+            coefficients.push(scalar);
+            let commitment = <<C as frost_core::Ciphersuite>::Group as Group>::generator() * scalar;
+            coefficients_com.push(CoefficientCommitment::<C>::new(commitment));
+        }
+        let poly = Polynomial::<C>::new(coefficients).unwrap();
+        let polycom = poly.commit_polynomial();
+        for (a, b) in polycom.get_coefficients().iter().zip(coefficients_com) {
+            assert_eq!(*a, b);
+        }
+    }
+
+    #[test]
+    fn test_set_to_non_zero_poly() {
+        let poly_size = 20;
+        let mut coefficients = Vec::with_capacity(poly_size);
+
+        let zero_coeff =
+            <<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut OsRng);
+        for i in 0..poly_size {
+            let mut rand_scalar =
+                <<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut OsRng);
+            while i == 0 && zero_coeff == rand_scalar {
+                rand_scalar =
+                    <<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut OsRng);
+            }
+            coefficients.push(rand_scalar);
+        }
+
+        let mut poly = Polynomial::<C>::new(coefficients).unwrap();
+        let point = <<C as frost_core::Ciphersuite>::Group as Group>::Field::zero();
+        assert!(zero_coeff != poly.eval_at_zero().0);
+        assert!(zero_coeff != poly.eval_at_point(point).0);
+
+        poly.set_nonzero_constant(zero_coeff).unwrap();
+        assert_eq!(zero_coeff, poly.eval_at_zero().0);
+        assert_eq!(zero_coeff, poly.eval_at_point(point).0);
+
+        let one = <<C as frost_core::Ciphersuite>::Group as Group>::Field::one();
+        let mut poly_abort =
+            Polynomial::<C>::generate_polynomial(Some(one), 0, &mut OsRng).unwrap();
+        let zero = <<C as frost_core::Ciphersuite>::Group as Group>::Field::zero();
+        assert!(poly_abort.set_nonzero_constant(zero).is_err())
     }
 
     #[test]
@@ -446,7 +654,7 @@ mod test {
     }
 
     #[test]
-    fn poly_generate_evaluate_interpolate() {
+    fn poly_eval_interpolate() {
         let degree = 5;
         // generate polynomial of degree 5
         let poly = Polynomial::<C>::generate_polynomial(None, degree, &mut OsRng)
