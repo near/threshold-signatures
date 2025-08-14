@@ -133,32 +133,6 @@ fn proof_of_knowledge<C: Ciphersuite>(
     Ok(Signature::new(big_r, mu))
 }
 
-/// Generates a proof of knowledge.
-/// The proof of knowledge could be set to None in case the participant is new
-/// and thus its secret share is known (set to zero)
-fn compute_proof_of_knowledge<C: Ciphersuite>(
-    session_id: &HashOutput,
-    domain_separator: u32,
-    me: Participant,
-    old_participants: Option<ParticipantList>,
-    coefficients: &Polynomial<C>,
-    coefficient_commitment: &PolynomialCommitment<C>,
-) -> Result<Option<Signature<C>>, ProtocolError> {
-    // I am allowed to send none only if I am a new participant
-    if old_participants.is_some() && !old_participants.unwrap().contains(me) {
-        return Ok(None);
-    };
-    // generate a proof of knowledge if the participant me is not holding a secret that is zero
-    let proof = proof_of_knowledge(
-        session_id,
-        domain_separator,
-        me,
-        coefficients,
-        coefficient_commitment,
-    )?;
-    Ok(Some(proof))
-}
-
 /// Verifies the proof of knowledge of the secret coefficients used to generate the
 /// public secret sharing commitment.
 fn internal_verify_proof_of_knowledge<C: Ciphersuite>(
@@ -380,16 +354,26 @@ async fn do_keyshare<C: Ciphersuite>(
     // Compute the multiplication of every coefficient of p with the generator G
     let coefficient_commitment = generate_coefficient_commitment::<C>(&secret_coefficients)?;
 
-    // generate a proof of knowledge if the participant me is not holding a secret that is zero
+    // Generates a proof of knowledge if me is not holding the zero secret.
     let proof_domain_separator = domain_separator;
-    let proof_of_knowledge = compute_proof_of_knowledge(
-        &session_id,
-        domain_separator,
-        me,
-        old_participants.clone(),
-        &secret_coefficients,
-        &coefficient_commitment,
-    )?;
+    // Send none if me is a new participant
+    let generate_proof: bool = if let Some(old) = &old_participants {
+        old.contains(me)
+    } else {
+        true
+    };
+    let proof_of_knowledge = if generate_proof {
+        Some(proof_of_knowledge(
+            &session_id,
+            domain_separator,
+            me,
+            &secret_coefficients,
+            &coefficient_commitment,
+        )?)
+    } else {
+        None
+    };
+
     domain_separator += 1;
 
     // Create the public polynomial = secret coefficients times G
