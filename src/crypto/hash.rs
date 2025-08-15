@@ -49,7 +49,11 @@ mod test {
         let hash1 = hash(&val);
         let hash2 = hash(&val);
         assert_eq!(hash1.0, hash2.0);
+    }
 
+    #[test]
+    fn test_same_inputs_domain_separate_hash() {
+        let val = ("abc", 123);
         let hash1 = domain_separate_hash(42, &val);
         let hash2 = domain_separate_hash(42, &val);
         assert_eq!(hash1.0, hash2.0);
@@ -62,7 +66,12 @@ mod test {
         let hash1 = hash(&val1);
         let hash2 = hash(&val2);
         assert_ne!(hash1.0, hash2.0);
+    }
 
+    #[test]
+    fn test_different_inputs_domain_separate_hash() {
+        let val1 = ("abc", 123);
+        let val2 = ("abc", 124);
         let hash1 = domain_separate_hash(41, &val1);
         let hash2 = domain_separate_hash(42, &val1);
         assert_ne!(hash1.0, hash2.0);
@@ -71,7 +80,6 @@ mod test {
         assert_ne!(hash1.0, hash2.0);
     }
 
-    #[cfg(test)]
     /// Hashes a message string into an arbitrary scalar
     pub(crate) fn scalar_hash(msg: &[u8]) -> <Secp256k1 as CurveArithmetic>::Scalar {
         let digest = <Secp256k1 as DigestPrimitive>::Digest::new_with_prefix(msg);
