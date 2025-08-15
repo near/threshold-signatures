@@ -2,7 +2,7 @@ use std::error::Error;
 
 use super::{presign::presign, sign::sign, PresignArguments, PresignOutput};
 
-use crate::test::{run_keygen, run_reshare, run_refresh, assert_public_key_invariant};
+use crate::test::{assert_public_key_invariant, run_keygen, run_refresh, run_reshare};
 
 use crate::ecdsa::{test::run_sign, AffinePoint, FullSignature, KeygenOutput, Scalar};
 use crate::protocol::{run_protocol, InitializationError, Participant, Protocol};
@@ -48,9 +48,8 @@ pub fn run_presign(
     run_protocol(protocols).unwrap()
 }
 
-
 #[test]
-fn test_refresh() -> Result<(), Box<dyn Error>>{
+fn test_refresh() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants(11);
     let max_malicious = 5;
     let threshold = max_malicious + 1;

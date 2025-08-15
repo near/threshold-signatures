@@ -4,13 +4,10 @@ use super::{
     triples::{test::deal, TriplePub, TripleShare},
     PresignArguments, PresignOutput,
 };
-use crate::test::{run_keygen, run_reshare, run_refresh, assert_public_key_invariant};
-use crate::ecdsa::{
-    test::run_sign,
-    AffinePoint, FullSignature, KeygenOutput, Scalar,
-};
-use crate::test::{generate_participants, generate_random_participants};
+use crate::ecdsa::{test::run_sign, AffinePoint, FullSignature, KeygenOutput, Scalar};
 use crate::protocol::{run_protocol, InitializationError, Participant, Protocol};
+use crate::test::{assert_public_key_invariant, run_keygen, run_refresh, run_reshare};
+use crate::test::{generate_participants, generate_random_participants};
 use rand_core::OsRng;
 use std::error::Error;
 
@@ -68,7 +65,7 @@ pub fn run_presign(
 }
 
 #[test]
-fn test_refresh() -> Result<(), Box<dyn Error>>{
+fn test_refresh() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants(11);
     let max_malicious = 5;
     let threshold = max_malicious + 1;
@@ -83,8 +80,7 @@ fn test_refresh() -> Result<(), Box<dyn Error>>{
     let (pub1, shares1) = deal(&mut OsRng, &participants, threshold).unwrap();
 
     // Presign
-    let mut presign_result =
-        run_presign(key_packages, shares0, shares1, &pub0, &pub1, threshold);
+    let mut presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, threshold);
     presign_result.sort_by_key(|(p, _)| *p);
 
     let msg = b"hello world";
