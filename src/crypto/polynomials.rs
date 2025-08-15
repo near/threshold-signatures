@@ -631,6 +631,16 @@ mod test {
     }
 
     #[test]
+    fn test_generate_polynomial() {
+        let degree = 10;
+        let point = <<C as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut OsRng);
+        let poly = Polynomial::<C>::generate_polynomial(Some(point), degree, &mut OsRng).unwrap();
+        let coeffs = poly.get_coefficients();
+        assert_eq!(coeffs.len(), degree + 1);
+        assert_eq!(coeffs[0], point);
+    }
+
+    #[test]
     fn test_set_to_non_zero_poly() {
         let poly_size = 20;
         let mut coefficients = Vec::with_capacity(poly_size);
