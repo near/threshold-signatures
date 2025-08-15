@@ -194,12 +194,10 @@ mod test {
     use rand_core::OsRng;
 
     use crate::{
-        test::generate_participants,
         crypto::hash::hash,
         participants::ParticipantList,
-        protocol::{
-            errors::ProtocolError, internal::make_protocol, run_protocol, Participant, Protocol,
-        },
+        protocol::{internal::make_protocol, run_protocol, Participant, Protocol, errors::ProtocolError},
+        test::generate_participants,
     };
 
     use super::multiplication;

@@ -114,8 +114,8 @@ mod test {
     use rand_core::OsRng;
 
     use super::*;
-    use crate::test::generate_participants;
     use crate::ecdsa::{x_coordinate, Field, ProjectivePoint, Secp256K1ScalarField};
+    use crate::test::generate_participants;
 
     use crate::{crypto::hash::test::scalar_hash, protocol::run_protocol};
 

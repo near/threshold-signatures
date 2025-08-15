@@ -2,9 +2,11 @@
 mod test {
     use frost_ed25519::Ed25519Sha512;
     type E = Ed25519Sha512;
-    use crate::test::{generate_participants,  run_keygen, run_refresh, run_reshare, assert_public_key_invariant};
     use crate::participants::ParticipantList;
     use crate::protocol::Participant;
+    use crate::test::{
+        assert_public_key_invariant, generate_participants, run_keygen, run_refresh, run_reshare,
+    };
     use frost_core::Group;
     use frost_ed25519::Ed25519Group;
     use std::error::Error;
