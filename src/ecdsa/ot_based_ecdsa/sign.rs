@@ -111,8 +111,8 @@ mod test {
     use crate::crypto::hash::scalar_hash;
     use crate::{
         ecdsa::Polynomial,
-        test::generate_participants,
         protocol::{run_protocol, Participant, Protocol},
+        test::generate_participants,
     };
     use ecdsa::Signature;
     use k256::{ecdsa::signature::Verifier, ecdsa::VerifyingKey, ProjectivePoint, PublicKey};

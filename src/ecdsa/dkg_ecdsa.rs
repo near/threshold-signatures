@@ -1,11 +1,13 @@
 #[cfg(test)]
 mod test {
-    use frost_secp256k1::{Secp256K1Sha256, Secp256K1Group, Group};
+    use frost_secp256k1::{Group, Secp256K1Group, Secp256K1Sha256};
     type E = Secp256K1Sha256;
 
     use crate::participants::ParticipantList;
     use crate::protocol::Participant;
-    use crate::test::{generate_participants, run_keygen, run_refresh, run_reshare, assert_public_key_invariant};
+    use crate::test::{
+        assert_public_key_invariant, generate_participants, run_keygen, run_refresh, run_reshare,
+    };
     use std::error::Error;
 
     #[test]

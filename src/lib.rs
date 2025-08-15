@@ -2,9 +2,9 @@ mod crypto;
 mod generic_dkg;
 mod participants;
 
-pub mod protocol;
 pub mod ecdsa;
 pub mod eddsa;
+pub mod protocol;
 
 #[cfg(test)]
 mod test;
@@ -16,25 +16,24 @@ pub struct KeygenOutput<C: Ciphersuite> {
     pub public_key: VerifyingKey<C>,
 }
 
-
 /// Generic key generation function agnostic of the curve
-pub fn keygen<C:Ciphersuite>(
+pub fn keygen<C: Ciphersuite>(
     participants: &[Participant],
     me: Participant,
     threshold: usize,
 ) -> Result<impl Protocol<Output = KeygenOutput<C>>, InitializationError>
-where frost_core::Element<C>: Send,
-frost_core::Scalar<C>: Send,
+where
+    frost_core::Element<C>: Send,
+    frost_core::Scalar<C>: Send,
 {
     let comms = Comms::new();
     let participants = assert_keygen_invariants(participants, me, threshold)?;
-    let fut =
-      do_keygen::<C>(comms.shared_channel(), participants, me, threshold);
+    let fut = do_keygen::<C>(comms.shared_channel(), participants, me, threshold);
     Ok(make_protocol(comms, fut))
 }
 
 /// Performs the key reshare protocol
-pub fn reshare<C:Ciphersuite>(
+pub fn reshare<C: Ciphersuite>(
     old_participants: &[Participant],
     old_threshold: usize,
     old_signing_key: Option<SigningShare<C>>,
@@ -43,8 +42,9 @@ pub fn reshare<C:Ciphersuite>(
     new_threshold: usize,
     me: Participant,
 ) -> Result<impl Protocol<Output = KeygenOutput<C>>, InitializationError>
-where frost_core::Element<C>: Send,
-frost_core::Scalar<C>: Send,
+where
+    frost_core::Element<C>: Send,
+    frost_core::Scalar<C>: Send,
 {
     let comms = Comms::new();
     let threshold = new_threshold;
@@ -68,17 +68,17 @@ frost_core::Scalar<C>: Send,
     Ok(make_protocol(comms, fut))
 }
 
-
 /// Performs the refresh protocol
-pub fn refresh<C:Ciphersuite>(
+pub fn refresh<C: Ciphersuite>(
     old_signing_key: Option<SigningShare<C>>,
     old_public_key: VerifyingKey<C>,
     new_participants: &[Participant],
     new_threshold: usize,
     me: Participant,
 ) -> Result<impl Protocol<Output = KeygenOutput<C>>, InitializationError>
-where frost_core::Element<C>: Send,
-frost_core::Scalar<C>: Send,
+where
+    frost_core::Element<C>: Send,
+    frost_core::Scalar<C>: Send,
 {
     if old_signing_key.is_none() {
         return Err(InitializationError::BadParameters(format!(
@@ -106,8 +106,6 @@ frost_core::Scalar<C>: Send,
     );
     Ok(make_protocol(comms, fut))
 }
-
-
 
 // Libraries calls
 use crypto::ciphersuite::Ciphersuite;

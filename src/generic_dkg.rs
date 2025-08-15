@@ -4,12 +4,12 @@ use crate::crypto::{
     polynomials::{Polynomial, PolynomialCommitment},
 };
 
-use crate::KeygenOutput;
 use crate::participants::{ParticipantCounter, ParticipantList, ParticipantMap};
 use crate::protocol::{
     echo_broadcast::do_broadcast, internal::SharedChannel, InitializationError, Participant,
     ProtocolError,
 };
+use crate::KeygenOutput;
 
 use frost_core::keys::{
     CoefficientCommitment, SecretShare, SigningShare, VerifiableSecretSharingCommitment,
@@ -502,7 +502,6 @@ async fn do_keyshare<C: Ciphersuite>(
     })
 }
 
-
 pub(crate) async fn do_keygen<C: Ciphersuite>(
     chan: SharedChannel,
     participants: ParticipantList,
@@ -643,8 +642,8 @@ pub(crate) fn reshare_assertions<C: Ciphersuite>(
 
 #[cfg(test)]
 mod test {
-    use crate::test::generate_participants;
     use super::domain_separate_hash;
+    use crate::test::generate_participants;
 
     #[test]
     fn test_domain_separate_hash() {

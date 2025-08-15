@@ -396,10 +396,10 @@ pub fn compute_lagrange_coefficient<C: Ciphersuite>(
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::test::generate_participants;
     use frost_core::Field;
     use frost_secp256k1::{Secp256K1Group, Secp256K1ScalarField, Secp256K1Sha256};
     use rand_core::{OsRng, RngCore};
-    use crate::test::generate_participants;
     type C = Secp256K1Sha256;
     #[test]
     fn abort_no_polynomial() {
