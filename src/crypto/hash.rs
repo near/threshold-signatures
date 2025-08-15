@@ -16,23 +16,28 @@ impl AsRef<[u8]> for HashOutput {
 
 /// Hash some value to produce a short digest as follows
 /// SHA256(HASH_LABEL || msgpack(value))
-pub fn hash<T: Serialize>(val: &T) -> HashOutput {
+pub fn hash<T: Serialize>(val: &T) -> Result<HashOutput, ProtocolError> {
     let mut hasher = Sha256::new();
     hasher.update(HASH_LABEL);
-    rmp_serde::encode::write(&mut hasher, val).expect("failed to encode value");
-    HashOutput(hasher.finalize().into())
+    rmp_serde::encode::write(&mut hasher, val).map_err(|_| ProtocolError::ErrorEncoding)?;
+    Ok(HashOutput(hasher.finalize().into()))
 }
 
 /// Hashes using a domain separator as follows:
 /// SHA256(HASH_LABEL || msgpack([domain_separator, data])
 /// This function DOES NOT internally increment the domain separator
-pub fn domain_separate_hash<T: Serialize>(domain_separator: u32, data: &T) -> HashOutput {
+pub fn domain_separate_hash<T: Serialize>(
+    domain_separator: u32,
+    data: &T,
+) -> Result<HashOutput, ProtocolError> {
     let preimage = (domain_separator, data);
     hash(&preimage)
 }
 
 #[cfg(test)]
 pub(crate) use test::scalar_hash;
+
+use crate::protocol::ProtocolError;
 
 #[cfg(test)]
 mod test {
@@ -46,16 +51,16 @@ mod test {
     #[test]
     fn test_same_inputs_hash() {
         let val = ("abc", 123);
-        let hash1 = hash(&val);
-        let hash2 = hash(&val);
+        let hash1 = hash(&val).unwrap();
+        let hash2 = hash(&val).unwrap();
         assert_eq!(hash1.0, hash2.0);
     }
 
     #[test]
     fn test_same_inputs_domain_separate_hash() {
         let val = ("abc", 123);
-        let hash1 = domain_separate_hash(42, &val);
-        let hash2 = domain_separate_hash(42, &val);
+        let hash1 = domain_separate_hash(42, &val).unwrap();
+        let hash2 = domain_separate_hash(42, &val).unwrap();
         assert_eq!(hash1.0, hash2.0);
     }
 
@@ -63,8 +68,8 @@ mod test {
     fn test_different_inputs_hash() {
         let val1 = ("abc", 123);
         let val2 = ("abc", 124);
-        let hash1 = hash(&val1);
-        let hash2 = hash(&val2);
+        let hash1 = hash(&val1).unwrap();
+        let hash2 = hash(&val2).unwrap();
         assert_ne!(hash1.0, hash2.0);
     }
 
@@ -72,11 +77,11 @@ mod test {
     fn test_different_inputs_domain_separate_hash() {
         let val1 = ("abc", 123);
         let val2 = ("abc", 124);
-        let hash1 = domain_separate_hash(41, &val1);
-        let hash2 = domain_separate_hash(42, &val1);
+        let hash1 = domain_separate_hash(41, &val1).unwrap();
+        let hash2 = domain_separate_hash(42, &val1).unwrap();
         assert_ne!(hash1.0, hash2.0);
 
-        let hash2 = domain_separate_hash(41, &val2);
+        let hash2 = domain_separate_hash(41, &val2).unwrap();
         assert_ne!(hash1.0, hash2.0);
     }
 

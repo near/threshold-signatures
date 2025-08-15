@@ -128,14 +128,14 @@ pub async fn multiplication_many<const N: usize>(
     let bv_iv_arc = Arc::new(bv_iv);
     let mut tasks = Vec::with_capacity(participants.len() - 1);
     for i in 0..N {
-        let order_key_me = hash(&(i, me));
+        let order_key_me = hash(&(i, me))?;
         for p in participants.others(me) {
             let sid_arc = sid_arc.clone();
             let av_iv_arc = av_iv_arc.clone();
             let bv_iv_arc = bv_iv_arc.clone();
             let fut = {
                 let chan = comms.private_channel(me, p).child(i as u64);
-                let order_key_other = hash(&(i, p));
+                let order_key_other = hash(&(i, p))?;
 
                 async move {
                     // Use a deterministic but random comparison function to decide who
@@ -224,7 +224,7 @@ mod test {
         let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = Scalar>>)> =
             Vec::with_capacity(prep.len());
 
-        let sid = hash(b"sid");
+        let sid = hash(b"sid")?;
 
         for (p, a_i, b_i) in prep {
             let ctx = Comms::new();
@@ -295,7 +295,9 @@ mod test {
         let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = Vec<Scalar>>>)> =
             Vec::with_capacity(prep.len());
 
-        let sids: Vec<_> = (0..N).map(|i| hash(&format!("sid{i}"))).collect();
+        let sids = (0..N)
+            .map(|i| hash(&format!("sid{i}")))
+            .collect::<Result<Vec<_>, _>>()?;
 
         for (p, a_iv, b_iv) in prep {
             let ctx = Comms::new();

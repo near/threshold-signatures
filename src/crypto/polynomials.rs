@@ -19,7 +19,7 @@ pub struct Polynomial<C: Ciphersuite> {
 impl<C: Ciphersuite> Polynomial<C> {
     /// Constructs the polynomial out of scalars
     /// The first scalar (coefficients[0]) is the constant term
-    /// The highest degree null coefficients are dropped out
+    /// The highest degree null coefficients are dropped
     pub fn new(coefficients: Vec<Scalar<C>>) -> Result<Self, ProtocolError> {
         if coefficients.is_empty() {
             return Err(ProtocolError::EmptyOrZeroCoefficients);

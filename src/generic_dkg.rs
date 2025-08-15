@@ -215,7 +215,7 @@ fn verify_commitment_hash<C: Ciphersuite>(
 ) -> Result<(), ProtocolError> {
     let actual_commitment_hash = all_hash_commitments.index(participant);
     let commitment_hash =
-        domain_separate_hash(domain_separator, &(&participant, &commitment, &session_id));
+        domain_separate_hash(domain_separator, &(&participant, &commitment, &session_id))?;
     if *actual_commitment_hash != commitment_hash {
         return Err(ProtocolError::InvalidCommitmentHash);
     }
@@ -345,7 +345,7 @@ async fn do_keyshare<C: Ciphersuite>(
     // and the rest of the coefficients are picked at random
     // because the library does not allow serializing the zero and identity term,
     // this function does not add the zero coefficient
-    let session_id = domain_separate_hash(domain_separator, &session_ids);
+    let session_id = domain_separate_hash(domain_separator, &session_ids)?;
     domain_separator += 1;
     // the degree of the polynomial is threshold - 1
     let secret_coefficients =
@@ -382,7 +382,7 @@ async fn do_keyshare<C: Ciphersuite>(
 
     // hash commitment and send it
     let commit_domain_separator = domain_separator;
-    let commitment_hash = domain_separate_hash(domain_separator, &(&me, &commitment, &session_id));
+    let commitment_hash = domain_separate_hash(domain_separator, &(&me, &commitment, &session_id))?;
     let wait_round_1 = chan.next_waitpoint();
     chan.send_many(wait_round_1, &commitment_hash);
     // receive commitment_hash
@@ -645,24 +645,4 @@ pub(crate) fn reshare_assertions<C: Ciphersuite>(
         ));
     }
     Ok((participants, old_participants))
-}
-
-#[test]
-fn test_domain_separate_hash() {
-    let cnt = 1;
-    let participants_1 = vec![
-        Participant::from(0u32),
-        Participant::from(1u32),
-        Participant::from(2u32),
-    ];
-    let participants_2 = vec![
-        Participant::from(0u32),
-        Participant::from(1u32),
-        Participant::from(2u32),
-    ];
-    let hash_1 = domain_separate_hash(cnt, &participants_1);
-    let hash_2 = domain_separate_hash(cnt, &participants_2);
-    assert!(hash_1 == hash_2);
-    let hash_2 = domain_separate_hash(cnt + 1, &participants_2);
-    assert!(hash_1 != hash_2);
 }

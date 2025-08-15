@@ -303,7 +303,7 @@ mod test {
         let threshold = 2;
         let actual_signers = 2;
         let msg = "hello_near";
-        let msg_hash = hash(&msg);
+        let msg_hash = hash(&msg).unwrap();
 
         let key_packages = build_key_packages_with_dealer(max_signers, threshold);
         let coordinators = vec![key_packages[0].0];
@@ -322,7 +322,7 @@ mod test {
     fn stress() {
         let max_signers = 7;
         let msg = "hello_near";
-        let msg_hash = hash(&msg);
+        let msg_hash = hash(&msg).unwrap();
 
         for min_signers in 2..max_signers {
             for actual_signers in min_signers..=max_signers {
@@ -352,7 +352,7 @@ mod test {
         let actual_signers = participants.len();
         let threshold = 2;
         let msg = "hello_near";
-        let msg_hash = hash(&msg);
+        let msg_hash = hash(&msg).unwrap();
 
         // test dkg
         let key_packages = run_keygen(&participants, threshold)?;
@@ -378,7 +378,7 @@ mod test {
         let key_packages1 = run_refresh(&participants, key_packages, threshold)?;
         assert_public_key_invariant(&key_packages1)?;
         let msg = "hello_near_2";
-        let msg_hash = hash(&msg);
+        let msg_hash = hash(&msg).unwrap();
         let data = test_run_signature_protocols(
             &key_packages1,
             actual_signers,
@@ -409,7 +409,7 @@ mod test {
         )?;
         assert_public_key_invariant(&key_packages2)?;
         let msg = "hello_near_3";
-        let msg_hash = hash(&msg);
+        let msg_hash = hash(&msg).unwrap();
         let coordinators = vec![key_packages2[0].0];
         let data = test_run_signature_protocols(
             &key_packages2,
@@ -482,7 +482,7 @@ mod test {
         // Sign
         let actual_signers = participants.len();
         let msg = "hello_near";
-        let msg_hash = hash(&msg);
+        let msg_hash = hash(&msg).unwrap();
 
         let coordinators = vec![key_packages[0].0];
         let data = test_run_signature_protocols(
@@ -553,7 +553,7 @@ mod test {
 
         // Sign
         let msg = "hello_near";
-        let msg_hash = hash(&msg);
+        let msg_hash = hash(&msg).unwrap();
 
         let data = test_run_signature_protocols(
             &key_packages,

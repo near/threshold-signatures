@@ -92,7 +92,7 @@ async fn do_generation(
     }
 
     // Spec 2.2
-    let my_confirmation = hash(&all_commitments);
+    let my_confirmation = hash(&all_commitments)?;
 
     // Spec 2.3
     transcript.message(b"confirmation", my_confirmation.as_ref());
@@ -563,7 +563,7 @@ async fn do_generation_many<const N: usize>(
     // Spec 2.2
     let mut my_confirmations = vec![];
     for c in all_commitments_vec.iter().take(N) {
-        let my_confirmation = hash(c);
+        let my_confirmation = hash(c)?;
         my_confirmations.push(my_confirmation);
     }
 
