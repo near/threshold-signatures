@@ -5,8 +5,12 @@ use crate::crypto::{
 };
 
 use crate::participants::{ParticipantCounter, ParticipantList, ParticipantMap};
-use crate::protocol::errors::{InitializationError, ProtocolError};
-use crate::protocol::{echo_broadcast::do_broadcast, internal::SharedChannel, Participant};
+use crate::protocol::{
+    echo_broadcast::do_broadcast,
+    errors::{InitializationError, ProtocolError},
+    internal::SharedChannel,
+    Participant,
+};
 use crate::KeygenOutput;
 
 use frost_core::keys::{
