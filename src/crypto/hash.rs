@@ -25,7 +25,7 @@ pub fn hash<T: Serialize>(val: &T) -> HashOutput {
 
 /// Hashes using a domain separator as follows:
 /// SHA256(HASH_LABEL || msgpack([domain_separator, data])
-/// The domain separator has to be manually incremented after the use of this function
+/// This function DOES NOT internally increment the domain separator
 pub fn domain_separate_hash<T: Serialize>(domain_separator: u32, data: &T) -> HashOutput {
     let preimage = (domain_separator, data);
     hash(&preimage)

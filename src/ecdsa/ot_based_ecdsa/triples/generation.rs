@@ -71,9 +71,9 @@ async fn do_generation(
     let mut l = Polynomial::generate_polynomial(None, threshold - 2, &mut rng)?;
 
     // Spec 1.4
-    let big_e_i = e.commit_polynomial();
-    let big_f_i = f.commit_polynomial();
-    let big_l_i = l.commit_polynomial();
+    let big_e_i = e.commit_polynomial()?;
+    let big_f_i = f.commit_polynomial()?;
+    let big_l_i = l.commit_polynomial()?;
 
     // Spec 1.5
     let (my_commitment, my_randomizer) = commit(&mut rng, &(&big_e_i, &big_f_i, &big_l_i))
@@ -361,7 +361,7 @@ async fn do_generation(
             big_e,
             big_f,
             // extend big_l of degree threshold - 2
-            big_l: big_l.extend_with_identity(),
+            big_l: big_l.extend_with_identity()?,
             big_c,
             a_i,
             b_i,
@@ -408,7 +408,7 @@ async fn do_generation(
 
     // Spec 4.8
     // extend to make the degree threshold - 1
-    l = l.extend_with_zero();
+    l = l.extend_with_zero()?;
     l.set_nonzero_constant(l0)?;
     let wait6 = chan.next_waitpoint();
     for p in participants.others(me) {
@@ -520,9 +520,9 @@ async fn do_generation_many<const N: usize>(
         let l = Polynomial::generate_polynomial(None, threshold - 2, &mut rng)?;
 
         // Spec 1.4
-        let big_e_i = e.commit_polynomial();
-        let big_f_i = f.commit_polynomial();
-        let big_l_i = l.commit_polynomial();
+        let big_e_i = e.commit_polynomial()?;
+        let big_f_i = f.commit_polynomial()?;
+        let big_l_i = l.commit_polynomial()?;
 
         // Spec 1.5
         let (my_commitment, my_randomizer) = commit(&mut rng, &(&big_e_i, &big_f_i, &big_l_i))
@@ -905,7 +905,7 @@ async fn do_generation_many<const N: usize>(
         let big_l_v = big_l_v
             .iter()
             .map(|big_l| big_l.extend_with_identity())
-            .collect();
+            .collect::<Result<Vec<_>, _>>()?;
         Ok(ParallelToMultiplicationTaskOutput {
             seen,
             big_e_v,
@@ -965,7 +965,7 @@ async fn do_generation_many<const N: usize>(
         let l = &mut l_v[i];
         let l0 = &l0_v[i];
         // extend to make the degree threshold - 1
-        *l = l.extend_with_zero();
+        *l = l.extend_with_zero()?;
         l.set_nonzero_constant(*l0)?;
     }
     let wait6 = chan.next_waitpoint();

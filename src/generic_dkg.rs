@@ -64,7 +64,7 @@ fn generate_coefficient_commitment<C: Ciphersuite>(
     if secret_coefficients.first() == Some(&<C::Group as Group>::Field::zero()) {
         secret_coefficients.remove(0);
     };
-    Ok(Polynomial::new(secret_coefficients)?.commit_polynomial())
+    Polynomial::new(secret_coefficients)?.commit_polynomial()
 }
 
 /// Generates the challenge for the proof of knowledge

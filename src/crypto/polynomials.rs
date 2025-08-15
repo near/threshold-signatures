@@ -130,7 +130,7 @@ impl<C: Ciphersuite> Polynomial<C> {
 
     /// Commits to a polynomial returning a sequence of group coefficients
     /// Creates a commitment vector of coefficients * G
-    pub fn commit_polynomial(&self) -> PolynomialCommitment<C> {
+    pub fn commit_polynomial(&self) -> Result<PolynomialCommitment<C>, ProtocolError> {
         // Computes the multiplication of every coefficient of p with the generator G
         let coef_commitment = self
             .coefficients
@@ -140,7 +140,6 @@ impl<C: Ciphersuite> Polynomial<C> {
         // self cannot be the zero polynomial because there is no way
         // to create such a polynomial using this library. This implies the panic never occurs.
         PolynomialCommitment::new(coef_commitment)
-            .expect("coefficients must have at least one element set to non-zero")
     }
 
     /// Set the constant value of this polynomial to a new scalar
@@ -156,10 +155,10 @@ impl<C: Ciphersuite> Polynomial<C> {
     /// Extends the Polynomial with an extra value as a constant
     /// Used usually after sending a smaller polynomial to prevent serialization from
     /// failing if the constant term is the identity
-    pub fn extend_with_zero(&self) -> Self {
+    pub fn extend_with_zero(&self) -> Result<Self, ProtocolError> {
         let mut coeffcommitment = vec![<C::Group as Group>::Field::zero()];
         coeffcommitment.extend(self.get_coefficients());
-        Polynomial::new(coeffcommitment).expect("coefficients must have at least one element")
+        Polynomial::new(coeffcommitment)
     }
 }
 
@@ -283,11 +282,10 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
     /// Extends the Commited Polynomial with an extra value as a constant
     /// Used usually after sending a smaller polynomial to prevent serialization from
     /// failing if the constant term is the identity
-    pub fn extend_with_identity(&self) -> Self {
+    pub fn extend_with_identity(&self) -> Result<Self, ProtocolError> {
         let mut coeffcommitment = vec![CoefficientCommitment::<C>::new(C::Group::identity())];
         coeffcommitment.extend(self.get_coefficients());
         PolynomialCommitment::new(coeffcommitment)
-            .expect("coefficients must have at least one element")
     }
 
     /// Set the constant value of this polynomial to a new group element
@@ -590,7 +588,7 @@ mod test {
             coefficients_com.push(CoefficientCommitment::<C>::new(commitment));
         }
         let poly = Polynomial::<C>::new(coefficients).unwrap();
-        let polycom = poly.commit_polynomial();
+        let polycom = poly.commit_polynomial().unwrap();
         for (a, b) in polycom.get_coefficients().iter().zip(coefficients_com) {
             assert_eq!(*a, b);
         }
@@ -697,7 +695,7 @@ mod test {
         let poly = Polynomial::<C>::generate_polynomial(None, degree, &mut OsRng)
             .expect("Generation must not fail with overwhealming probability");
 
-        let compoly = poly.commit_polynomial();
+        let compoly = poly.commit_polynomial().unwrap();
 
         let participants = (0..degree + 1)
             .map(|i| Participant::from(i as u32))
@@ -747,7 +745,7 @@ mod test {
         let poly = Polynomial::<C>::generate_polynomial(None, degree, &mut OsRng)
             .expect("Generation must not fail with overwhealming probability");
 
-        let compoly = poly.commit_polynomial();
+        let compoly = poly.commit_polynomial().unwrap();
         // evaluate polynomial on 6 different points
         let participants = (0..degree + 1)
             .map(|i| Participant::from(i as u32))
@@ -788,7 +786,7 @@ mod test {
         let poly = Polynomial::<C>::generate_polynomial(None, degree, &mut OsRng)
             .expect("Generation must not fail with overwhealming probability");
 
-        let compoly = poly.commit_polynomial();
+        let compoly = poly.commit_polynomial().unwrap();
         // add two polynomials of the same height
         let sum = compoly.add(&compoly).unwrap();
 
