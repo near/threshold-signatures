@@ -96,7 +96,6 @@ fn encode_two_points<C: Ciphersuite>(
     point_2: &Element<C>,
 ) -> Result<Vec<u8>, ProtocolError> {
     // Create a serialization of big_k
-    // Panic will never be met due to generate_nonce *never* outputting the identity
     let mut ser1 = C::Group::serialize(point_1)
         .map_err(|_| ProtocolError::IdentityElement)?
         .as_ref()
@@ -130,9 +129,8 @@ pub fn prove<C: Ciphersuite>(
     let k = frost_core::random_nonzero::<C, _>(rng);
     let (big_k_0, big_k_1) = statement.phi(&k);
 
-    // This will never panic as k is not zero and generator1 is not the identity
-    let enc = encode_two_points::<C>(&big_k_0, &big_k_1)
-        .expect("None of the points should be an identity");
+    // This will never raise error as k is not zero and generator1 is not the identity
+    let enc = encode_two_points::<C>(&big_k_0, &big_k_1)?;
 
     transcript.message(COMMITMENT_LABEL, &enc);
     let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);

@@ -74,9 +74,7 @@ pub fn prove<C: Ciphersuite>(
     let (k, big_k) = <C>::generate_nonce(rng);
 
     // Create a serialization of big_k
-    // Panic will never be met due to generate_nonce *never* outputting the identity
-    let ser =
-        C::Group::serialize(&big_k).expect("Identity element should not have been encountered");
+    let ser = C::Group::serialize(&big_k).map_err(|_| ProtocolError::IdentityElement)?;
     transcript.message(COMMITMENT_LABEL, ser.as_ref());
     let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
     let e = frost_core::random_nonzero::<C, _>(&mut rng);
