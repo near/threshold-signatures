@@ -816,6 +816,30 @@ mod test {
     }
 
     #[test]
+    fn test_extend_with_identity() {
+        let degree = 5;
+        // generate polynomial of degree 5
+        let poly = Polynomial::<C>::generate_polynomial(None, degree, &mut OsRng)
+            .expect("Generation must not fail with overwhealming probability");
+
+        let compoly = poly.commit_polynomial().unwrap();
+        // evaluate polynomial on 6 different points
+
+        let extended = compoly.extend_with_identity().unwrap().get_coefficients();
+        let coeffs = compoly.get_coefficients();
+        for i in 0..extended.len() {
+            if i == 0 {
+                assert_eq!(
+                    extended[i].value(),
+                    <C as frost_core::Ciphersuite>::Group::identity()
+                )
+            } else {
+                assert_eq!(extended[i].value(), coeffs[i - 1].value());
+            }
+        }
+    }
+
+    #[test]
     fn add_polynomial_commitments() {
         let degree = 5;
         // generate polynomial of degree 5
