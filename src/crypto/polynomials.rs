@@ -219,7 +219,8 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
                 (Some(a), Some(b)) => CoefficientCommitment::new(a.value() + b.value()),
                 (Some(a), None) => *a,
                 (None, Some(b)) => *b,
-                (None, None) => unreachable!(),
+                (None, None) => // should be unreachable
+                    return Err(ProtocolError::EmptyOrZeroCoefficients),
             };
             coefficients.push(sum);
         }
