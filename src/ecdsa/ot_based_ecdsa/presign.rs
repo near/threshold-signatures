@@ -210,7 +210,7 @@ mod test {
         ];
         let original_threshold = 2;
         let f = Polynomial::generate_polynomial(None, original_threshold - 1, &mut OsRng).unwrap();
-        let big_x = ProjectivePoint::GENERATOR * f.eval_at_zero().0;
+        let big_x = ProjectivePoint::GENERATOR * f.eval_at_zero().unwrap().0;
 
         let threshold = 2;
 
@@ -229,7 +229,7 @@ mod test {
             .zip(triple0_shares.into_iter())
             .zip(triple1_shares.into_iter())
         {
-            let private_share = f.eval_at_participant(*p).0;
+            let private_share = f.eval_at_participant(*p).unwrap().0;
             let verifying_key = VerifyingKey::new(big_x);
             let public_key_package = PublicKeyPackage::new(BTreeMap::new(), verifying_key);
             let keygen_out = KeygenOutput {
@@ -273,6 +273,6 @@ mod test {
         assert_eq!(ProjectivePoint::GENERATOR * k.invert().unwrap(), big_k);
         let sigma = p_list.lagrange::<Secp256>(participants[0]) * sigma_shares[0]
             + p_list.lagrange::<Secp256>(participants[1]) * sigma_shares[1];
-        assert_eq!(sigma, k * f.eval_at_zero().0);
+        assert_eq!(sigma, k * f.eval_at_zero().unwrap().0);
     }
 }

@@ -70,9 +70,12 @@ impl<C: Ciphersuite> Polynomial<C> {
         Self::new(coefficients)
     }
 
-    /// Returns the constant term
-    pub fn eval_at_zero(&self) -> SerializableScalar<C> {
-        SerializableScalar(self.coefficients[0])
+    /// Returns the constant term or error in case the polynomial is empty
+    pub fn eval_at_zero(&self) -> Result<SerializableScalar<C>, ProtocolError> {
+        if self.coefficients.is_empty() {
+            return Err(ProtocolError::EmptyOrZeroCoefficients);
+        }
+        Ok(SerializableScalar(self.coefficients[0]))
     }
 
     /// Evaluates a polynomial at a certain scalar
@@ -80,7 +83,11 @@ impl<C: Ciphersuite> Polynomial<C> {
     /// at the point using Horner's method.
     /// Implements [`polynomial_evaluate`] from the spec:
     /// https://datatracker.ietf.org/doc/html/rfc9591#name-additional-polynomial-opera
-    pub fn eval_at_point(&self, point: Scalar<C>) -> SerializableScalar<C> {
+    /// Returns error if the polynomial is empty
+    pub fn eval_at_point(&self, point: Scalar<C>) -> Result<SerializableScalar<C>, ProtocolError> {
+        if self.coefficients.is_empty() {
+            return Err(ProtocolError::EmptyOrZeroCoefficients);
+        }
         if point == <C::Group as Group>::Field::zero() {
             self.eval_at_zero()
         } else {
@@ -88,12 +95,15 @@ impl<C: Ciphersuite> Polynomial<C> {
             for coeff in self.coefficients.iter().rev() {
                 value = value * point + *coeff;
             }
-            SerializableScalar(value)
+            Ok(SerializableScalar(value))
         }
     }
 
     /// Evaluates a polynomial at the identifier of a participant
-    pub fn eval_at_participant(&self, participant: Participant) -> SerializableScalar<C> {
+    pub fn eval_at_participant(
+        &self,
+        participant: Participant,
+    ) -> Result<SerializableScalar<C>, ProtocolError> {
         let id = participant.scalar::<C>();
         self.eval_at_point(id)
     }
@@ -143,9 +153,11 @@ impl<C: Ciphersuite> Polynomial<C> {
     }
 
     /// Set the constant value of this polynomial to a new scalar
-    /// Abort if the output polynomial is zero
+    /// Abort if the output polynomial is zero or empty
     pub fn set_nonzero_constant(&mut self, v: Scalar<C>) -> Result<(), ProtocolError> {
-        if self.coefficients.len() == 1 && v == <C::Group as Group>::Field::zero() {
+        if self.coefficients.is_empty()
+            || (self.coefficients.len() == 1 && v == <C::Group as Group>::Field::zero())
+        {
             return Err(ProtocolError::EmptyOrZeroCoefficients);
         }
         self.coefficients[0] = v;
@@ -219,8 +231,11 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
                 (Some(a), Some(b)) => CoefficientCommitment::new(a.value() + b.value()),
                 (Some(a), None) => *a,
                 (None, Some(b)) => *b,
-                (None, None) => // should be unreachable
-                    return Err(ProtocolError::EmptyOrZeroCoefficients),
+                (None, None) =>
+                // should be unreachable
+                {
+                    return Err(ProtocolError::EmptyOrZeroCoefficients)
+                }
             };
             coefficients.push(sum);
         }
@@ -229,23 +244,35 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
         PolynomialCommitment::new(coefficients)
     }
 
-    /// Evaluates the commited polynomial on zero
-    /// In other words, outputs the constant term
-    pub fn eval_at_zero(&self) -> CoefficientCommitment<C> {
-        self.coefficients[0]
+    /// Evaluates the commited polynomial on zero (outputs the constant term)
+    /// Returns error if the polynomial is empty
+    pub fn eval_at_zero(&self) -> Result<CoefficientCommitment<C>, ProtocolError> {
+        if self.coefficients.is_empty() {
+            return Err(ProtocolError::EmptyOrZeroCoefficients);
+        }
+        Ok(self.coefficients[0])
     }
 
     /// Evaluates the commited polynomial at a specific value
-    pub fn eval_at_point(&self, point: Scalar<C>) -> CoefficientCommitment<C> {
+    pub fn eval_at_point(
+        &self,
+        point: Scalar<C>,
+    ) -> Result<CoefficientCommitment<C>, ProtocolError> {
+        if self.coefficients.is_empty() {
+            return Err(ProtocolError::EmptyOrZeroCoefficients);
+        }
         let mut out = C::Group::identity();
         for c in self.coefficients.iter().rev() {
             out = out * point + c.value();
         }
-        CoefficientCommitment::new(out)
+        Ok(CoefficientCommitment::new(out))
     }
 
     /// Evaluates the commited polynomial at a participant identifier.
-    pub fn eval_at_participant(&self, participant: Participant) -> CoefficientCommitment<C> {
+    pub fn eval_at_participant(
+        &self,
+        participant: Participant,
+    ) -> Result<CoefficientCommitment<C>, ProtocolError> {
         let id = participant.scalar::<C>();
         self.eval_at_point(id)
     }
@@ -290,12 +317,14 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
     }
 
     /// Set the constant value of this polynomial to a new group element
-    /// Aborts if the output polynomial is the identity
+    /// Aborts if the output polynomial is the identity or empty
     pub fn set_non_identity_constant(
         &mut self,
         v: CoefficientCommitment<C>,
     ) -> Result<(), ProtocolError> {
-        if self.coefficients.len() == 1 && v.value() == C::Group::identity() {
+        if self.coefficients.is_empty()
+            || (self.coefficients.len() == 1 && v.value() == C::Group::identity())
+        {
             return Err(ProtocolError::EmptyOrZeroCoefficients);
         }
         self.coefficients[0] = v;
@@ -472,8 +501,8 @@ mod test {
         let poly = Polynomial::<C>::new(coefficients).unwrap();
         // test eval_at_zero
         let point = <<C as frost_core::Ciphersuite>::Group as Group>::Field::zero();
-        assert_eq!(zero_coeff, poly.eval_at_zero().0);
-        assert_eq!(zero_coeff, poly.eval_at_point(point).0)
+        assert_eq!(zero_coeff, poly.eval_at_zero().unwrap().0);
+        assert_eq!(zero_coeff, poly.eval_at_point(point).unwrap().0)
     }
 
     #[test]
@@ -498,8 +527,8 @@ mod test {
         let poly = PolynomialCommitment::<C>::new(coefficients).unwrap();
         // test eval_at_zero
         let point = <<C as frost_core::Ciphersuite>::Group as Group>::Field::zero();
-        assert_eq!(zero_coeff, poly.eval_at_zero().value());
-        assert_eq!(zero_coeff, poly.eval_at_point(point).value())
+        assert_eq!(zero_coeff, poly.eval_at_zero().unwrap().value());
+        assert_eq!(zero_coeff, poly.eval_at_point(point).unwrap().value())
     }
 
     #[test]
@@ -530,8 +559,11 @@ mod test {
             let output_polycom_eval =
                 <C as frost_core::Ciphersuite>::Group::generator() * output_poly_eval;
 
-            assert_eq!(output_poly_eval, poly.eval_at_point(point).0);
-            assert_eq!(output_polycom_eval, polycom.eval_at_point(point).value())
+            assert_eq!(output_poly_eval, poly.eval_at_point(point).unwrap().0);
+            assert_eq!(
+                output_polycom_eval,
+                polycom.eval_at_point(point).unwrap().value()
+            )
         }
     }
 
@@ -568,10 +600,13 @@ mod test {
             let output_polycom_eval =
                 <C as frost_core::Ciphersuite>::Group::generator() * output_poly_eval;
 
-            assert_eq!(output_poly_eval, poly.eval_at_participant(participant).0);
+            assert_eq!(
+                output_poly_eval,
+                poly.eval_at_participant(participant).unwrap().0
+            );
             assert_eq!(
                 output_polycom_eval,
-                polycom.eval_at_participant(participant).value()
+                polycom.eval_at_participant(participant).unwrap().value()
             )
         }
     }
@@ -614,12 +649,12 @@ mod test {
 
         let mut poly = Polynomial::<C>::new(coefficients).unwrap();
         let point = <<C as frost_core::Ciphersuite>::Group as Group>::Field::zero();
-        assert!(zero_coeff != poly.eval_at_zero().0);
-        assert!(zero_coeff != poly.eval_at_point(point).0);
+        assert!(zero_coeff != poly.eval_at_zero().unwrap().0);
+        assert!(zero_coeff != poly.eval_at_point(point).unwrap().0);
 
         poly.set_nonzero_constant(zero_coeff).unwrap();
-        assert_eq!(zero_coeff, poly.eval_at_zero().0);
-        assert_eq!(zero_coeff, poly.eval_at_point(point).0);
+        assert_eq!(zero_coeff, poly.eval_at_zero().unwrap().0);
+        assert_eq!(zero_coeff, poly.eval_at_point(point).unwrap().0);
 
         let one = <<C as frost_core::Ciphersuite>::Group as Group>::Field::one();
         let mut poly_abort =
@@ -666,7 +701,7 @@ mod test {
 
         let shares = participants
             .iter()
-            .map(|p| poly.eval_at_participant(*p))
+            .map(|p| poly.eval_at_participant(*p).unwrap())
             .collect::<Vec<_>>();
 
         // interpolate the polynomial using the shares at arbitrary points
@@ -682,7 +717,7 @@ mod test {
                 Polynomial::<C>::eval_interpolation(&scalars, &shares, Some(&point))
                     .expect("Interpolation has the correct inputs");
             // evaluate the polynomial on the point
-            let evaluation = poly.eval_at_point(point);
+            let evaluation = poly.eval_at_point(point).unwrap();
 
             // verify that the interpolated points match the polynomial evaluation
             assert_eq!(interpolation.0, evaluation.0);
@@ -704,7 +739,7 @@ mod test {
 
         let shares = participants
             .iter()
-            .map(|p| compoly.eval_at_participant(*p))
+            .map(|p| compoly.eval_at_participant(*p).unwrap())
             .collect::<Vec<_>>();
 
         let ids = participants
@@ -754,7 +789,7 @@ mod test {
 
         let shares = participants
             .iter()
-            .map(|p| compoly.eval_at_participant(*p))
+            .map(|p| compoly.eval_at_participant(*p).unwrap())
             .collect::<Vec<_>>();
 
         // interpolate the polynomial using the shares at arbitrary points
@@ -773,7 +808,7 @@ mod test {
             )
             .expect("Interpolation has the correct inputs");
             // evaluate the polynomial on the point
-            let evaluation = compoly.eval_at_point(point);
+            let evaluation = compoly.eval_at_point(point).unwrap();
 
             // verify that the interpolated points match the polynomial evaluation
             assert_eq!(interpolation.value(), evaluation.value());
