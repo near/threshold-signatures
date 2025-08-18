@@ -126,7 +126,7 @@ mod test {
         for _ in 0..100 {
             let fx = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng).unwrap();
             // master secret key
-            let x = fx.eval_at_zero().0;
+            let x = fx.eval_at_zero().unwrap().0;
             // master public key
             let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
 
@@ -146,11 +146,11 @@ mod test {
             )
             .unwrap();
 
-            let k = fk.eval_at_zero().0;
+            let k = fk.eval_at_zero()?.0;
             let big_r = ProjectivePoint::GENERATOR * k;
             let big_r_x_coordinate = x_coordinate(&big_r.to_affine());
 
-            let w = fa.eval_at_zero().0 * k;
+            let w = fa.eval_at_zero()?.0 * k;
             let w_invert = w.invert().unwrap();
 
             let participants = vec![
@@ -167,10 +167,10 @@ mod test {
                 Box<dyn Protocol<Output = FullSignature>>,
             )> = Vec::with_capacity(participants.len());
             for p in &participants {
-                let h_i = w_invert * fa.eval_at_participant(*p).0;
-                let alpha_i = h_i + fd.eval_at_participant(*p).0;
-                let beta_i = h_i * big_r_x_coordinate * fx.eval_at_participant(*p).0
-                    + fe.eval_at_participant(*p).0;
+                let h_i = w_invert * fa.eval_at_participant(*p).unwrap().0;
+                let alpha_i = h_i + fd.eval_at_participant(*p).unwrap().0;
+                let beta_i = h_i * big_r_x_coordinate * fx.eval_at_participant(*p)?.0
+                    + fe.eval_at_participant(*p).unwrap().0;
 
                 let presignature = PresignOutput {
                     big_r: big_r.to_affine(),

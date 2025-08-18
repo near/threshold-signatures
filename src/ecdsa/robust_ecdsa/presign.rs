@@ -54,7 +54,7 @@ async fn do_presign(
         let package = polynomials
             .iter()
             .map(|poly| poly.eval_at_participant(p))
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>, _>>()?;
 
         // send the evaluation privately to participant p
         chan.send_private(wait_round_0, p, &package);
@@ -64,7 +64,7 @@ async fn do_presign(
     let shares = polynomials
         .iter()
         .map(|poly| poly.eval_at_participant(me))
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, _>>()?;
 
     // Extract the shares into a vec of scalars
     let mut shares: Vec<Scalar> = shares.iter().map(|signing_share| signing_share.0).collect();
@@ -247,7 +247,7 @@ mod test {
         let max_malicious = 2;
 
         let f = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
-        let big_x = ProjectivePoint::GENERATOR * f.eval_at_zero().0;
+        let big_x = ProjectivePoint::GENERATOR * f.eval_at_zero().unwrap().0;
 
         #[allow(clippy::type_complexity)]
         let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)> =
@@ -255,7 +255,7 @@ mod test {
 
         for p in &participants {
             // simulating the key packages for each participant
-            let private_share = f.eval_at_participant(*p);
+            let private_share = f.eval_at_participant(*p).unwrap();
             let verifying_key = VerifyingKey::new(big_x);
             let public_key_package = PublicKeyPackage::new(BTreeMap::new(), verifying_key);
             let keygen_out = KeygenOutput {
