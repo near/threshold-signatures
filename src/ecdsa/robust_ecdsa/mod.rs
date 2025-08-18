@@ -1,6 +1,10 @@
-use serde::{Deserialize, Serialize};
+pub mod presign;
+pub mod sign;
+#[cfg(test)]
+mod test;
 
 use crate::ecdsa::{AffinePoint, KeygenOutput, Scalar};
+use serde::{Deserialize, Serialize};
 
 /// The arguments needed to create a presignature.
 #[derive(Debug, Clone)]
@@ -24,8 +28,3 @@ pub struct PresignOutput {
     pub alpha_i: Scalar,
     pub beta_i: Scalar,
 }
-
-pub mod presign;
-pub mod sign;
-#[cfg(test)]
-mod test;
