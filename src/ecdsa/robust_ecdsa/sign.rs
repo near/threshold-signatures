@@ -51,14 +51,21 @@ async fn do_sign(
         .into_vec_or_none()
         .ok_or(ProtocolError::InvalidInterpolationArguments)?;
 
+    // interpolate s
     let mut s = Polynomial::eval_interpolation(&identifiers, &sshares, None)?.0;
-    let big_r = presignature.big_r;
-
+    // raise error if s is zero
+    if s == <<<C as frost_core::Ciphersuite>::Group as frost_core::Group>::Field as frost_core::Field>::zero(){
+        return Err(ProtocolError::AssertionFailed(
+            "signature part s cannot be zero".to_string(),
+        ))
+    }
     // Normalize s
     s.conditional_assign(&(-s), s.is_high());
 
+    let big_r = presignature.big_r;
     let sig = FullSignature { big_r, s };
 
+    // verify the generated signature
     if !sig.verify(&public_key, &msg_hash) {
         return Err(ProtocolError::AssertionFailed(
             "signature failed to verify".to_string(),
