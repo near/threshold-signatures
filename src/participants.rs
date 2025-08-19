@@ -10,7 +10,7 @@ use frost_core::Scalar;
 use serde::Serialize;
 
 use crate::crypto::{ciphersuite::Ciphersuite, polynomials::compute_lagrange_coefficient};
-use crate::protocol::Participant;
+use crate::protocol::{Participant, ProtocolError};
 
 /// Represents a sorted list of participants.
 ///
@@ -85,16 +85,14 @@ impl ParticipantList {
     /// Get the lagrange coefficient for a participant, relative to this list.
     /// The lagrange coefficient is evaluated at zero
     /// Use generic frost library types
-    pub fn lagrange<C: Ciphersuite>(&self, p: Participant) -> Scalar<C> {
+    pub fn lagrange<C: Ciphersuite>(&self, p: Participant) -> Result<Scalar<C>, ProtocolError> {
         let p = p.scalar::<C>();
         let identifiers: Vec<Scalar<C>> = self
             .participants()
             .iter()
             .map(|p| p.scalar::<C>())
             .collect();
-        compute_lagrange_coefficient::<C>(&identifiers, &p, None)
-            .unwrap()
-            .0
+        Ok(compute_lagrange_coefficient::<C>(&identifiers, &p, None)?.0)
     }
 
     /// Return the intersection of this list with another list.
