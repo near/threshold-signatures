@@ -92,13 +92,7 @@ mod test {
                     sid: &sid_r,
                     batch_size,
                 };
-                Ok(correlated_ot_receiver(
-                    comms_r.private_channel(r, s),
-                    params,
-                    &k0,
-                    &k1,
-                    &x,
-                )?)
+                correlated_ot_receiver(comms_r.private_channel(r, s), params, &k0, &k1, &x)
             }),
         )
     }

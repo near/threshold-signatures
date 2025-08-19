@@ -303,7 +303,11 @@ impl Comms {
     }
 
     /// (Indicate that you want to) send a message to everybody else.
-    fn send_many<T: Serialize>(&self, header: MessageHeader, data: &T) -> Result<(), ProtocolError>{
+    fn send_many<T: Serialize>(
+        &self,
+        header: MessageHeader,
+        data: &T,
+    ) -> Result<(), ProtocolError> {
         let header_bytes = header.to_bytes();
         let message_data = encode_with_tag(&header_bytes, data)?;
         self.send_raw(Message::Many(message_data));
@@ -311,7 +315,12 @@ impl Comms {
     }
 
     /// (Indicate that you want to) send a message privately to someone.
-    fn send_private<T: Serialize>(&self, header: MessageHeader, to: Participant, data: &T) -> Result<(), ProtocolError> {
+    fn send_private<T: Serialize>(
+        &self,
+        header: MessageHeader,
+        to: Participant,
+        data: &T,
+    ) -> Result<(), ProtocolError> {
         let header_bytes = header.to_bytes();
         let message_data = encode_with_tag(&header_bytes, data)?;
         self.send_raw(Message::Private(to, message_data));
@@ -356,13 +365,22 @@ impl SharedChannel {
         self.header.next_waitpoint()
     }
 
-    pub fn send_many<T: Serialize>(&self, waitpoint: Waitpoint, data: &T) -> Result<(), ProtocolError>{
+    pub fn send_many<T: Serialize>(
+        &self,
+        waitpoint: Waitpoint,
+        data: &T,
+    ) -> Result<(), ProtocolError> {
         self.comms
             .send_many(self.header.with_waitpoint(waitpoint), data)?;
         Ok(())
     }
 
-    pub fn send_private<T: Serialize>(&self, waitpoint: Waitpoint, to: Participant, data: &T) -> Result<(), ProtocolError> {
+    pub fn send_private<T: Serialize>(
+        &self,
+        waitpoint: Waitpoint,
+        to: Participant,
+        data: &T,
+    ) -> Result<(), ProtocolError> {
         self.comms
             .send_private(self.header.with_waitpoint(waitpoint), to, data)?;
         Ok(())
@@ -406,7 +424,7 @@ impl PrivateChannel {
         self.header.next_waitpoint()
     }
 
-    pub fn send<T: Serialize>(&self, waitpoint: Waitpoint, data: &T) -> Result<(), ProtocolError>{
+    pub fn send<T: Serialize>(&self, waitpoint: Waitpoint, data: &T) -> Result<(), ProtocolError> {
         self.comms
             .send_private(self.header.with_waitpoint(waitpoint), self.to, data)?;
         Ok(())
