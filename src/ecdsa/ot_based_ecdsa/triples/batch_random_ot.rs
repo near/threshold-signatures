@@ -59,7 +59,7 @@ pub async fn batch_random_ot_sender(
     // as it contains a private struct SerializableElement
     let ser_big_y = CoefficientCommitment::new(big_y);
     let wait0 = chan.next_waitpoint();
-    chan.send(wait0, &ser_big_y);
+    chan.send(wait0, &ser_big_y)?;
 
     let tasks = (0..SECURITY_PARAMETER).map(|i| {
         let mut chan = chan.child(i as u64);
@@ -115,7 +115,7 @@ pub async fn batch_random_ot_sender_many<const N: usize>(
     for big_y_verkey in big_y_v.iter() {
         big_y_ser_v.push(CoefficientCommitment::new(*big_y_verkey));
     }
-    chan.send(wait0, &big_y_ser_v);
+    chan.send(wait0, &big_y_ser_v)?;
 
     let y_v_arc = Arc::new(yv);
     let big_y_verkey_v_arc = Arc::new(big_y_ser_v);
@@ -200,7 +200,7 @@ pub async fn batch_random_ot_receiver(
             // Step 6
             let wait0 = chan.next_waitpoint();
             let big_x_i_verkey = CoefficientCommitment::new(big_x_i);
-            chan.send(wait0, &big_x_i_verkey);
+            chan.send(wait0, &big_x_i_verkey)?;
 
             // Step 5
             hash(
@@ -276,7 +276,7 @@ pub async fn batch_random_ot_receiver_many<const N: usize>(
             for big_x_i_verkey in big_x_i_v.iter() {
                 big_x_i_verkey_v.push(CoefficientCommitment::new(*big_x_i_verkey));
             }
-            chan.send(wait0, &big_x_i_verkey_v);
+            chan.send(wait0, &big_x_i_verkey_v)?;
 
             // Step 5
             let mut hashv = Vec::new();

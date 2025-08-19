@@ -53,7 +53,7 @@ pub async fn mta_sender(
             .collect(),
     );
     let wait0 = chan.next_waitpoint();
-    chan.send(wait0, &c);
+    chan.send(wait0, &c)?;
 
     // Step 7
     let wait1 = chan.next_waitpoint();
@@ -116,7 +116,7 @@ pub async fn mta_receiver(
     // Step 6
     let wait1 = chan.next_waitpoint();
     let chi1 = SerializableScalar::<Secp256>(chi1);
-    chan.send(wait1, &(chi1, seed));
+    chan.send(wait1, &(chi1, seed))?;
 
     Ok(beta)
 }

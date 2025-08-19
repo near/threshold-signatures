@@ -44,7 +44,7 @@ async fn do_presign(
 
     // Spec 1.4
     let wait0 = chan.next_waitpoint();
-    chan.send_many(wait0, &kd_i);
+    chan.send_many(wait0, &kd_i)?;
 
     // Spec 1.9
     let ka_i: Scalar = k_prime_i + a_prime_i;
@@ -52,7 +52,7 @@ async fn do_presign(
 
     // Spec 1.10
     let wait1 = chan.next_waitpoint();
-    chan.send_many(wait1, &(ka_i, xb_i));
+    chan.send_many(wait1, &(ka_i, xb_i))?;
 
     // Spec 2.1 and 2.2
     let mut kd = kd_i;

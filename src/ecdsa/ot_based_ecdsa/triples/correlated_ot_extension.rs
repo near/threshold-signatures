@@ -40,7 +40,7 @@ pub fn correlated_ot_receiver(
     k0: &SquareBitMatrix,
     k1: &SquareBitMatrix,
     x: &BitMatrix,
-) -> BitMatrix {
+) -> Result<BitMatrix, ProtocolError> {
     assert_eq!(x.height(), params.batch_size);
     // Spec 1
     let t0 = k0.expand_transpose(params.sid, params.batch_size);
@@ -51,9 +51,8 @@ pub fn correlated_ot_receiver(
 
     // Spec 4
     let wait0 = chan.next_waitpoint();
-    chan.send(wait0, &u);
-
-    t0
+    chan.send(wait0, &u)?;
+    Ok(t0)
 }
 
 #[cfg(test)]
@@ -99,7 +98,7 @@ mod test {
                     &k0,
                     &k1,
                     &x,
-                ))
+                )?)
             }),
         )
     }

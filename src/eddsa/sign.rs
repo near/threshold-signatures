@@ -88,7 +88,7 @@ async fn do_sign_coordinator(
         BTreeMap::new();
 
     let r2_wait_point = chan.next_waitpoint();
-    chan.send_many(r2_wait_point, &signing_package);
+    chan.send_many(r2_wait_point, &signing_package)?;
 
     let vk_package = keygen_output.public_key;
     let key_package = construct_key_package(threshold, &me, &signing_share, &vk_package);
@@ -158,7 +158,7 @@ async fn do_sign_participant(
     // * Send coordinator our commitment.
 
     let commit_waitpoint = chan.next_waitpoint();
-    chan.send_private(commit_waitpoint, coordinator, &commitments);
+    chan.send_private(commit_waitpoint, coordinator, &commitments)?;
 
     // --- Round 2.
     // * Wait for a signing package.
@@ -187,7 +187,7 @@ async fn do_sign_participant(
     let signature_share = round2::sign(&signing_package, &nonces, &key_package)
         .map_err(|e| ProtocolError::AssertionFailed(e.to_string()))?;
 
-    chan.send_private(r2_wait_point, coordinator, &signature_share);
+    chan.send_private(r2_wait_point, coordinator, &signature_share)?;
 
     Ok(None)
 }

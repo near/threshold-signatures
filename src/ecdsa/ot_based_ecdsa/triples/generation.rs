@@ -81,7 +81,7 @@ async fn do_generation(
 
     // Spec 1.6
     let wait0 = chan.next_waitpoint();
-    chan.send_many(wait0, &my_commitment);
+    chan.send_many(wait0, &my_commitment)?;
 
     // Spec 2.1
     let mut all_commitments = ParticipantMap::new(&participants);
@@ -124,7 +124,7 @@ async fn do_generation(
     let parallel_to_multiplication_task = async {
         // Spec 2.5
         let wait1 = chan.next_waitpoint();
-        chan.send_many(wait1, &my_confirmation);
+        chan.send_many(wait1, &my_confirmation)?;
 
         // Spec 2.6
         let statement0 = dlog::Statement::<C> {
@@ -165,7 +165,7 @@ async fn do_generation(
                     my_phi_proof0,
                     my_phi_proof1,
                 ),
-            );
+            )?;
         }
 
         // Spec 2.8
@@ -173,7 +173,7 @@ async fn do_generation(
         for p in participants.others(me) {
             let a_i_j = e.eval_at_participant(p)?;
             let b_i_j = f.eval_at_participant(p)?;
-            chan.send_private(wait3, p, &(a_i_j, b_i_j));
+            chan.send_private(wait3, p, &(a_i_j, b_i_j))?;
         }
         let mut a_i = e.eval_at_participant(me)?.0;
         let mut b_i = f.eval_at_participant(me)?.0;
@@ -324,7 +324,7 @@ async fn do_generation(
 
         // Spec 3.10
         let wait4 = chan.next_waitpoint();
-        chan.send_many(wait4, &(CoefficientCommitment::new(big_c_i), my_phi_proof));
+        chan.send_many(wait4, &(CoefficientCommitment::new(big_c_i), my_phi_proof))?;
 
         // Spec 4.1 + 4.2 + 4.3
         seen.clear();
@@ -404,7 +404,7 @@ async fn do_generation(
     chan.send_many(
         wait5,
         &(CoefficientCommitment::new(hat_big_c_i), my_phi_proof),
-    );
+    )?;
 
     // Spec 4.8
     // extend to make the degree threshold - 1
@@ -413,7 +413,7 @@ async fn do_generation(
     let wait6 = chan.next_waitpoint();
     for p in participants.others(me) {
         let c_i_j = l.eval_at_participant(p)?;
-        chan.send_private(wait6, p, &c_i_j);
+        chan.send_private(wait6, p, &c_i_j)?;
     }
     let mut c_i = l.eval_at_participant(me)?.0;
 
@@ -540,7 +540,7 @@ async fn do_generation_many<const N: usize>(
 
     // Spec 1.6
     let wait0 = chan.next_waitpoint();
-    chan.send_many(wait0, &my_commitments);
+    chan.send_many(wait0, &my_commitments)?;
 
     // Spec 2.1
     let mut all_commitments_vec: Vec<ParticipantMap<Commitment>> = vec![];
@@ -604,7 +604,7 @@ async fn do_generation_many<const N: usize>(
     let parallel_to_multiplication_task = async {
         // Spec 2.5
         let wait1 = chan.next_waitpoint();
-        chan.send_many(wait1, &my_confirmations);
+        chan.send_many(wait1, &my_confirmations)?;
 
         let mut my_phi_proof0v = vec![];
         let mut my_phi_proof1v = vec![];
@@ -656,7 +656,7 @@ async fn do_generation_many<const N: usize>(
                     &my_phi_proof0v,
                     &my_phi_proof1v,
                 ),
-            );
+            )?;
         }
 
         // Spec 2.8
@@ -672,7 +672,7 @@ async fn do_generation_many<const N: usize>(
                 a_i_j_v.push(a_i_j);
                 b_i_j_v.push(b_i_j);
             }
-            chan.send_private(wait3, p, &(a_i_j_v, b_i_j_v));
+            chan.send_private(wait3, p, &(a_i_j_v, b_i_j_v))?;
         }
         let mut a_i_v = vec![];
         let mut b_i_v = vec![];
@@ -865,7 +865,7 @@ async fn do_generation_many<const N: usize>(
 
         // Spec 3.10
         let wait4 = chan.next_waitpoint();
-        chan.send_many(wait4, &(&big_c_i_points, &my_phi_proofs));
+        chan.send_many(wait4, &(&big_c_i_points, &my_phi_proofs))?;
 
         // Spec 4.1 + 4.2 + 4.3
         seen.clear();
@@ -964,7 +964,7 @@ async fn do_generation_many<const N: usize>(
 
     // Spec 4.8
     let wait5 = chan.next_waitpoint();
-    chan.send_many(wait5, &(&hat_big_c_i_points, &my_phi_proofs));
+    chan.send_many(wait5, &(&hat_big_c_i_points, &my_phi_proofs))?;
 
     // Spec 4.9
     for i in 0..N {
@@ -982,7 +982,7 @@ async fn do_generation_many<const N: usize>(
             let c_i_j = l.eval_at_participant(p)?.0;
             c_i_j_v.push(c_i_j);
         }
-        chan.send_private(wait6, p, &c_i_j_v);
+        chan.send_private(wait6, p, &c_i_j_v)?;
     }
     for l in l_v.iter_mut() {
         let c_i = l.eval_at_participant(me)?;

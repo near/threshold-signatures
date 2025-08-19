@@ -83,7 +83,7 @@ pub async fn random_ot_extension_sender(
     let mut seed = [0u8; 32];
     OsRng.fill_bytes(&mut seed);
     let wait0 = chan.next_waitpoint();
-    chan.send(wait0, &seed);
+    chan.send(wait0, &seed)?;
 
     let mu = adjusted_size / SECURITY_PARAMETER;
 
@@ -154,7 +154,7 @@ pub async fn random_ot_extension_receiver(
         k0,
         k1,
         &x,
-    );
+    )?;
 
     let wait0 = chan.next_waitpoint();
 
@@ -184,7 +184,7 @@ pub async fn random_ot_extension_receiver(
 
     // Step 11
     let wait1 = chan.next_waitpoint();
-    chan.send(wait1, &(small_x, small_t));
+    chan.send(wait1, &(small_x, small_t))?;
 
     // Step 15
     let out: Vec<_> = b

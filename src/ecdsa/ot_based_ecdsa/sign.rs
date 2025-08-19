@@ -32,7 +32,7 @@ async fn do_sign(
 
     // Spec 1.4
     let wait0 = chan.next_waitpoint();
-    chan.send_many(wait0, &s_i);
+    chan.send_many(wait0, &s_i)?;
 
     // Spec 2.1 + 2.2
     let mut seen = ParticipantCounter::new(&participants);
