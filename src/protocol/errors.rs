@@ -1,9 +1,8 @@
+use crate::protocol::Participant;
 use std::error;
 use thiserror::Error;
 
-use super::Participant;
-
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq, Eq, Clone)]
 pub enum ProtocolError {
     #[error("assertion failed {0}")]
     AssertionFailed(String),
@@ -56,8 +55,15 @@ pub enum ProtocolError {
     #[error("encountered a zero scalar")]
     ZeroScalar,
 
-    #[error(transparent)]
-    Other(#[from] Box<dyn error::Error + Send + Sync>),
+    // catch-all for foreign errors
+    #[error("{0}")]
+    Other(String),
+}
+
+impl From<Box<dyn error::Error + Send + Sync>> for ProtocolError {
+    fn from(err: Box<dyn error::Error + Send + Sync>) -> Self {
+        ProtocolError::Other(err.to_string())
+    }
 }
 
 /// Represents an error which can happen when *initializing* a protocol.
