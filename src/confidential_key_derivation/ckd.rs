@@ -1,7 +1,7 @@
 use super::{CKDCoordinatorOutput, CKDOutput, CoefficientCommitment, SigningShare};
 use crate::participants::{ParticipantCounter, ParticipantList};
 use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
-use crate::protocol::{InitializationError, Participant, Protocol, ProtocolError};
+use crate::protocol::{errors::InitializationError, errors::ProtocolError, Participant, Protocol};
 
 use frost_core::Ciphersuite;
 use rand_core::OsRng;
@@ -43,7 +43,7 @@ async fn do_ckd_participant(
     // C <- S + y . A
     let big_c = big_s + app_pk.value() * y;
     // Compute  λi := λi(0)
-    let lambda_i = participants.lagrange::<Secp256K1Sha256>(me);
+    let lambda_i = participants.lagrange::<Secp256K1Sha256>(me)?;
     // Normalize Y and C into  (λi . Y , λi . C)
     let norm_big_y = CoefficientCommitment::new(big_y * lambda_i);
     let norm_big_c = CoefficientCommitment::new(big_c * lambda_i);
@@ -71,7 +71,7 @@ async fn do_ckd_coordinator(
     // C <- S + y . A
     let big_c = big_s + app_pk.value() * y;
     // Compute  λi := λi(0)
-    let lambda_i = participants.lagrange::<Secp256K1Sha256>(me);
+    let lambda_i = participants.lagrange::<Secp256K1Sha256>(me)?;
     // Normalize Y and C into  (λi . Y , λi . C)
     let mut norm_big_y = big_y * lambda_i;
     let mut norm_big_c = big_c * lambda_i;
@@ -212,7 +212,7 @@ mod test {
             )?;
 
             // Create the threshold signer's master secret key
-            let msk = f.eval_at_zero().0;
+            let msk = f.eval_at_zero().unwrap();
 
             // Create the app necessary items
             let app_id = [b"App ".as_ref(), i.to_string().as_bytes()].concat();
@@ -236,7 +236,7 @@ mod test {
 
             for p in &participants {
                 let share = f.eval_at_participant(*p);
-                let private_share = SigningShare::new(share.0);
+                let private_share = SigningShare::new(share.unwrap());
 
                 let protocol = ckd(
                     &participants,
