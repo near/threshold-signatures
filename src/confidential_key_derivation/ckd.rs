@@ -49,7 +49,7 @@ async fn do_ckd_participant(
     let norm_big_c = CoefficientCommitment::new(big_c * lambda_i);
 
     let waitpoint = chan.next_waitpoint();
-    chan.send_private(waitpoint, coordinator, &(norm_big_y, norm_big_c));
+    chan.send_private(waitpoint, coordinator, &(norm_big_y, norm_big_c))?;
 
     Ok(None)
 }
@@ -219,7 +219,7 @@ mod test {
             let (app_sk, app_pk) = Secp256K1Sha256::generate_nonce(&mut OsRng);
             let app_pk = CoefficientCommitment::new(app_pk);
 
-            let expected_confidential_key = hash2curve(&app_id).unwrap() * msk;
+            let expected_confidential_key = hash2curve(&app_id).unwrap() * msk.0;
 
             let participants = vec![
                 Participant::from(0u32),
@@ -236,7 +236,7 @@ mod test {
 
             for p in &participants {
                 let share = f.eval_at_participant(*p);
-                let private_share = SigningShare::new(share.unwrap());
+                let private_share = SigningShare::new(share.unwrap().0);
 
                 let protocol = ckd(
                     &participants,
