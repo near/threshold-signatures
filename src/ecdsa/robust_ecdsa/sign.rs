@@ -8,8 +8,9 @@ use crate::{
     ecdsa::{AffinePoint, FullSignature, Polynomial, Scalar, Secp256K1Sha256},
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     protocol::{
+        errors::{InitializationError, ProtocolError},
         internal::{make_protocol, Comms, SharedChannel},
-        InitializationError, Participant, Protocol, ProtocolError,
+        Participant, Protocol,
     },
 };
 type C = Secp256K1Sha256;
@@ -26,7 +27,7 @@ async fn do_sign(
     let s_me = SerializableScalar(s_me);
 
     let wait_round = chan.next_waitpoint();
-    chan.send_many(wait_round, &s_me);
+    chan.send_many(wait_round, &s_me)?;
 
     let mut seen = ParticipantCounter::new(&participants);
     let mut s_map = ParticipantMap::new(&participants);
@@ -115,7 +116,7 @@ mod test {
     use super::*;
     use crate::ecdsa::{x_coordinate, Field, ProjectivePoint, Secp256K1ScalarField};
 
-    use crate::{crypto::hash::scalar_hash, protocol::run_protocol};
+    use crate::{crypto::hash::test::scalar_hash, protocol::run_protocol};
 
     #[test]
     fn test_sign() -> Result<(), Box<dyn Error>> {

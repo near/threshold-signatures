@@ -6,7 +6,7 @@ use crate::ecdsa::{
     test::{assert_public_key_invariant, run_keygen, run_reshare, run_sign},
     AffinePoint, FullSignature, KeygenOutput, Scalar,
 };
-use crate::protocol::{run_protocol, InitializationError, Participant, Protocol};
+use crate::protocol::{errors::InitializationError, run_protocol, Participant, Protocol};
 
 #[cfg(test)]
 fn sign_box(

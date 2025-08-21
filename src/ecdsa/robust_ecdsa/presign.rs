@@ -11,8 +11,9 @@ use crate::{
     },
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     protocol::{
+        errors::{InitializationError, ProtocolError},
         internal::{make_protocol, Comms, SharedChannel},
-        InitializationError, Participant, Protocol, ProtocolError,
+        Participant, Protocol,
     },
 };
 
@@ -57,7 +58,7 @@ async fn do_presign(
             .collect::<Result<Vec<_>, _>>()?;
 
         // send the evaluation privately to participant p
-        chan.send_private(wait_round_0, p, &package);
+        chan.send_private(wait_round_0, p, &package)?;
     }
 
     // Evaluate my secret shares for my polynomials
@@ -94,7 +95,7 @@ async fn do_presign(
 
     // Send and receive
     let wait_round_1 = chan.next_waitpoint();
-    chan.send_many(wait_round_1, &(&big_r_me, &SigningShare::new(w_me)));
+    chan.send_many(wait_round_1, &(&big_r_me, &SigningShare::new(w_me)))?;
 
     // Store the sent items
     let mut signingshares_map = ParticipantMap::new(&participants);
