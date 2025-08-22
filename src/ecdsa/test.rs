@@ -1,7 +1,7 @@
-use k256::{AffinePoint, Scalar};
 use crate::crypto::hash::test::scalar_hash;
 use crate::ecdsa::FullSignature;
-use crate::protocol::{run_protocol, errors::InitializationError, Participant, Protocol};
+use crate::protocol::{errors::InitializationError, run_protocol, Participant, Protocol};
+use k256::{AffinePoint, Scalar};
 
 #[allow(clippy::type_complexity)]
 pub fn run_sign<PresignOutput, F>(

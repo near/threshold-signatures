@@ -1163,7 +1163,7 @@ mod test {
     use crate::{
         ecdsa::{ot_based_ecdsa::triples::generate_triple, ProjectivePoint},
         participants::ParticipantList,
-        protocol::{run_protocol, Participant, Protocol, errors::ProtocolError},
+        protocol::{errors::ProtocolError, run_protocol, Participant, Protocol},
         test::generate_participants,
     };
 

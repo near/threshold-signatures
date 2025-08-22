@@ -5,7 +5,7 @@ use super::{presign::presign, sign::sign, PresignArguments, PresignOutput};
 use crate::test::{assert_public_key_invariant, run_keygen, run_refresh, run_reshare};
 
 use crate::ecdsa::{test::run_sign, AffinePoint, FullSignature, KeygenOutput, Scalar};
-use crate::protocol::{run_protocol, errors::InitializationError, Participant, Protocol};
+use crate::protocol::{errors::InitializationError, run_protocol, Participant, Protocol};
 use crate::test::{generate_participants, generate_random_participants};
 
 #[cfg(test)]
