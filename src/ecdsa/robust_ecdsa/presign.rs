@@ -229,7 +229,7 @@ mod test {
     use super::*;
     use rand_core::OsRng;
 
-    use crate::{ecdsa::KeygenOutput, protocol::run_protocol};
+    use crate::{ecdsa::KeygenOutput, protocol::run_protocol, test::generate_participants};
     use frost_secp256k1::keys::PublicKeyPackage;
     use frost_secp256k1::VerifyingKey;
     use std::collections::BTreeMap;
@@ -238,13 +238,8 @@ mod test {
 
     #[test]
     fn test_presign() {
-        let participants = vec![
-            Participant::from(0u32),
-            Participant::from(1u32),
-            Participant::from(2u32),
-            Participant::from(3u32),
-            Participant::from(4u32),
-        ];
+        let participants = generate_participants(5);
+
         let max_malicious = 2;
 
         let f = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
