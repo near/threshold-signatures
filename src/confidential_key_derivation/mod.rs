@@ -1,4 +1,4 @@
-pub mod ckd;
+pub mod protocol;
 
 use frost_secp256k1::{keys::SigningShare, Secp256K1Sha256, VerifyingKey};
 use serde::{Deserialize, Serialize};
