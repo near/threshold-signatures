@@ -80,7 +80,7 @@ async fn do_presign(
             continue;
         }
 
-        // calculate the respective sum of the received different shares from each participant
+        // calculate the respective sum of the different shares received from each participant
         for i in 0..shares.len() {
             shares[i] += package[i].0;
         }
@@ -238,13 +238,7 @@ mod test {
 
     #[test]
     fn test_presign() {
-        let participants = vec![
-            Participant::from(0u32),
-            Participant::from(1u32),
-            Participant::from(2u32),
-            Participant::from(3u32),
-            Participant::from(4u32),
-        ];
+        let participants = (0..=4).map(Participant::from).collect::<Vec<_>>();
         let max_malicious = 2;
 
         let f = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
@@ -271,15 +265,12 @@ mod test {
                     keygen_out,
                     threshold: max_malicious,
                 },
-            );
-            assert!(protocol.is_ok());
-            let protocol = protocol.unwrap();
+            )
+            .unwrap();
             protocols.push((*p, Box::new(protocol)));
         }
 
-        let result = run_protocol(protocols);
-        assert!(result.is_ok());
-        let result = result.unwrap();
+        let result = run_protocol(protocols).unwrap();
 
         assert!(result.len() == 5);
         // testing that big_r is the same accross participants

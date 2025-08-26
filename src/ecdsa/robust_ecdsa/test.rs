@@ -25,7 +25,6 @@ pub fn run_presign(
     participants: Vec<(Participant, KeygenOutput)>,
     max_malicious: usize,
 ) -> Vec<(Participant, PresignOutput)> {
-    #[allow(clippy::type_complexity)]
     let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)> =
         Vec::with_capacity(participants.len());
 
@@ -49,20 +48,9 @@ pub fn run_presign(
 }
 
 #[test]
+/// Tests the resharing protocol when more participants are added to the pool
 fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
-    let participants = vec![
-        Participant::from(0u32),
-        Participant::from(1u32),
-        Participant::from(2u32),
-        Participant::from(3u32),
-        Participant::from(4u32),
-        Participant::from(5u32),
-        Participant::from(6u32),
-        Participant::from(7u32),
-        Participant::from(8u32),
-        Participant::from(9u32),
-        Participant::from(10u32),
-    ];
+    let participants = (0..=10).map(Participant::from).collect::<Vec<_>>();
     let max_malicious = 3;
     let threshold = max_malicious + 1;
     let result0 = run_keygen(&participants, threshold)?;
@@ -107,6 +95,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
+/// Tests the resharing protocol when participants are kicked out of the pool
 fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     let participants = vec![
         Participant::from(0u32),
@@ -157,16 +146,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_e2e() -> Result<(), Box<dyn Error>> {
-    let participants = vec![
-        Participant::from(0u32),
-        Participant::from(1u32),
-        Participant::from(2u32),
-        Participant::from(3u32),
-        Participant::from(4u32),
-        Participant::from(5u32),
-        Participant::from(6u32),
-        Participant::from(7u32),
-    ];
+    let participants = (0..=7).map(Participant::from).collect::<Vec<_>>();
     let max_malicious = 3;
 
     let mut keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;
