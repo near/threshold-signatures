@@ -84,6 +84,7 @@ fn test_refresh() -> Result<(), Box<dyn Error>> {
     presign_result.sort_by_key(|(p, _)| *p);
 
     let msg = b"hello world";
+    // internally verifies the signature's validity
     run_sign(
         presign_result,
         public_key.to_element().to_affine(),
@@ -132,6 +133,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
 
     let msg = b"hello world";
 
+    // internally verifies the signature's validity
     run_sign(
         presign_result,
         public_key.to_element().to_affine(),
@@ -177,6 +179,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
 
     let msg = b"hello world";
 
+    // internally verifies the signature's validity
     run_sign(
         presign_result,
         public_key.to_element().to_affine(),
@@ -206,6 +209,7 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
 
     let msg = b"hello world";
 
+    // internally verifies the signature's validity
     run_sign(
         presign_result,
         public_key.to_element().to_affine(),
@@ -236,6 +240,7 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
 
     let msg = b"hello world";
 
+    // internally verifies the signature's validity
     run_sign(
         presign_result,
         public_key.to_element().to_affine(),
