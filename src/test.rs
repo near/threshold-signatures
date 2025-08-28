@@ -4,8 +4,7 @@
 use rand_core::{OsRng, RngCore};
 use std::error::Error;
 
-use crate::crypto::hash::test::scalar_hash;
-use crate::protocol::{errors::InitializationError, run_protocol, Participant, Protocol};
+use crate::protocol::{run_protocol, Participant, Protocol};
 use crate::{keygen, refresh, reshare, Ciphersuite, KeygenOutput, VerifyingKey};
 
 // +++++++++++++++++ Participants Utilities +++++++++++++++++ //

@@ -11,7 +11,7 @@ use elliptic_curve::{
     point::AffineCoordinates,
 };
 
-use frost_secp256k1::{keys::SigningShare, Field, Secp256K1ScalarField, Secp256K1Sha256};
+use frost_secp256k1::{Field, Secp256K1ScalarField, Secp256K1Sha256};
 use k256::{AffinePoint, ProjectivePoint};
 
 use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat};
