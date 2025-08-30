@@ -36,12 +36,13 @@ We also write $\text{Mau}(\varphi, X)$ to denote the verifier's
 view of this relation, where $x$ is not known.
 
 Using this notation, we write:
-- $$
+- $
 \text{Prove}(T, \text{Mau}(\varphi, X; x))
-$$
-- $$
+$
+- $
 \text{Verify}(T, \pi, \text{Mau}(\varphi, X))
-$$
+$
+
 for creating and verifying a proof, using a transcript for binding
 proofs to a given context.
 

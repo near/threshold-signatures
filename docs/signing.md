@@ -85,7 +85,6 @@ $$
 &A \gets A^1, &B \gets B^1,\quad &C \gets C^1\cr
 \end{aligned}
 $$
-
 3. Then, each $P_i$ linearizes their shares, setting:
 
 $$
@@ -96,8 +95,14 @@ x'_i &\gets \lambda(\mathcal{P}_1)_i \cdot x_i\cr
 \end{aligned}
 $$
 
-4. $\star$ Each $P_i$ sends $\text{kd}_i$ to every other party.
-5. Each $P_i$ sets:
+``` diff
++++ 4. Each $P_i$ generates a polynomial $E_i$ of degree $t-1$  where $E_i(0) = 0$
+
++++ 5. Each $P_i$ commits to $E_i$ by computing $e_{ij} \cdot G$ where $e_{ij}$ corresponds to the coefficient $j$ of $E_i$. We denote with $W_i$ the commited polynomial with
+```
+
+6. $\star$ Each $P_i$ sends $(\text{kd}_i, {\color{green} W_i})$ to every other party.
+7. Each $P_i$ sets:
 
 $$
 \begin{aligned}
@@ -106,13 +111,23 @@ $$
 \end{aligned}
 $$
 
-6. $\star$ Each $P_i$ sends $\text{ka}_i$ and $\text{xb}_i$ to every other party.
+8. $\star$ Each $P_i$ sends $\text{ka}_i$ and $\text{xb}_i$ to every other party.
 
 **Round 2:**
 
-1. $\bullet$ Each $P_i$ waits to receive $\text{kd}_j$ from each other $P_j$.
+1. $\bullet$ Each $P_i$ waits to receive $(\text{kd}_j, {\color{green} W_j})$ from each other $P_j$.
 2. Each $P_i$ sets $\text{kd} \gets \sum_j \text{kd}_j$.
-3. $\blacktriangle$ Each $P_i$ *asserts* that $\text{kd} \cdot G = \text{KD}$.
+3. $\blacktriangle$ Each $P_i$ asserts that
+$$
+\begin{aligned}
+\text{kd} \cdot G = \text{KD}\cr
+{\color{green}W_j(0) = 0\cdot G}\cr
+{\color{green}
+W_j \text{ is of degree } t-1
+}
+\end{aligned}
+$$
+
 4. $\bullet$ Each $P_i$ waits to receive $\text{ka}_j$ and $\text{xb}_j$ from from every other party $P_j$.
 5. Each $P_i$ sets $\text{ka} \gets \sum_j \text{ka}_j$ and $\text{xb} \gets \sum_j \text{xb}_j$.
 6. $\blacktriangle$ Each $P_i$ asserts that:
@@ -125,11 +140,20 @@ $$
 $$
 
 7. Each $P_i$ sets: $R \gets \frac{1}{\text{kd}} \cdot D$.
-8. Each $P_i$ sets $\sigma_i \gets \text{ka} \cdot x_i - \text{xb} \cdot a_i + c_i$, which is already threshold shared.
+
+``` diff
++++ 8. $\textcolor{red}\star$ Each $P_i$ privately sends $E_i(j)$ to $P_j$
+```
+**Round 3:**
+``` diff
++++ 1. $\bullet$ Each $P_i$ waits to receive $E_j(i)$
++++ 2. Each $P_i$ asserts $E_j(i)\cdot G = W_j(i)$
++++ 3. Each $P_i$ computes the sum $e_i = \Sigma_j E_j(i)$
+```
+4. Each $P_i$ sets $\sigma_i \gets \text{ka} \cdot x_i - \text{xb} \cdot a_i + c_i + \color{green} e_i$, which is already threshold shared.
 
 **Output:**
-The output is the presignature $(R, k, \sigma)$, with $k$ and $\sigma$
-threshold shared as $k_1, \ldots$ and $\sigma_1, \ldots$.
+The output is the presignature $(R, k_i, \sigma_i)$.
 
 # 4 Signing
 
