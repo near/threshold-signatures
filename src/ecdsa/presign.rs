@@ -1,7 +1,7 @@
 use crate::compat::CSCurve;
 use crate::ecdsa::triples::{TriplePub, TripleShare};
 use crate::ecdsa::KeygenOutput;
-use crate::participants::ParticipantCounter;
+use crate::participants::{ParticipantCounter, ParticipantMap};
 use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
 use crate::protocol::{InitializationError, Protocol};
 use crate::{
@@ -12,6 +12,8 @@ use elliptic_curve::{Field, Group, ScalarPrimitive};
 use frost_secp256k1::keys::SigningShare;
 use frost_secp256k1::VerifyingKey;
 use serde::{Deserialize, Serialize};
+use crate::ecdsa::math::{Polynomial, GroupPolynomial};
+use rand_core::OsRng;
 
 /// The output of the presigning protocol.
 ///
@@ -100,11 +102,18 @@ async fn do_presign<C: CSCurve>(
     let private_share = from_secp256k1sha256_to_cscurve_sk::<C>(&args.keygen_out.private_share);
     let x_prime_i = sk_lambda * private_share;
 
+    // generate a polynomial of degree t.
+    let mut poly_me = Polynomial::<C>::random(&mut OsRng, args.threshold +1 );
+    // set the constant term to zero
+    poly_me.set_zero(C::Scalar::ZERO);
+    // commit to the polynomial
+    let poly_com_me = poly_me.commit();
+
     // Spec 1.4
     let wait0 = chan.next_waitpoint();
     {
         let kd_i: ScalarPrimitive<C> = kd_i.into();
-        chan.send_many(wait0, &kd_i);
+        chan.send_many(wait0, &(&kd_i, poly_com_me));
     }
 
     // Spec 1.9
@@ -123,18 +132,28 @@ async fn do_presign<C: CSCurve>(
     let mut kd = kd_i;
     let mut seen = ParticipantCounter::new(&participants);
     seen.put(me);
+    let mut poly_com_map = ParticipantMap::new(&participants);
     while !seen.full() {
-        let (from, kd_j): (_, ScalarPrimitive<C>) = chan.recv(wait0).await?;
-
+        let (from, (kd_j, poly_com_their)): (_, (ScalarPrimitive<C>, GroupPolynomial<C>)) = chan.recv(wait0).await?;
+        if !seen.put(from) {
+            continue;
+        }
         if kd_j.is_zero().into() {
             return Err(ProtocolError::AssertionFailed(
                 "Received zero share of kd, indicating a triple wasn't available.".to_string(),
             ));
         }
-
-        if !seen.put(from) {
-            continue;
+        if !bool::from(poly_com_their.evaluate_zero().is_identity()){
+            return Err(ProtocolError::AssertionFailed(
+                "Received polynomial commitment whose constant is non identity.".to_string(),
+            ));
         }
+        if poly_com_their.len() != args.threshold +1 {
+            return Err(ProtocolError::AssertionFailed(
+                "Received polynomial commitment of the wrong degree.".to_string(),
+            ));
+        }
+        poly_com_map.put(from, poly_com_their);
         kd += C::Scalar::from(kd_j);
     }
 
@@ -175,9 +194,35 @@ async fn do_presign<C: CSCurve>(
         kd_inv.ok_or_else(|| ProtocolError::AssertionFailed("failed to invert kd".to_string()))?;
     let big_r = (C::ProjectivePoint::from(big_d) * kd_inv).into();
 
+
+    let wait2 = chan.next_waitpoint();
+    for p in  participants.others(me) {
+        let eval_p: ScalarPrimitive<C> = poly_me.evaluate(&p.scalar::<C>())
+                                                .into();
+        chan.send_private(wait2, p, &eval_p);
+    }
+
+    seen.clear();
+    seen.put(me);
+    let mut my_share_poly = poly_me.evaluate(&me.scalar::<C>());
+    while !seen.full() {
+        let (from, my_share_them): (_, ScalarPrimitive<C>) = chan.recv(wait1).await?;
+        if !seen.put(from) {
+            continue;
+        }
+        let my_share_them: C::Scalar = my_share_them.into();
+        if C::ProjectivePoint::generator() * my_share_them  !=
+            poly_com_map[from].evaluate(&me.scalar::<C>()){
+            return Err(ProtocolError::AssertionFailed(
+                "Received inconsistent polynomial commitment and share.".to_string(),
+            ));
+        }
+        my_share_poly += my_share_them;
+    }
+
     // Spec 2.8
     let lambda_diff = bt_lambda * sk_lambda.invert().expect("to invert sk_lambda");
-    let sigma_i = ka * private_share - (xb * a_i - c_i) * lambda_diff;
+    let sigma_i = ka * private_share - (xb * a_i - c_i) * lambda_diff + my_share_poly;
 
     Ok(PresignOutput {
         big_r,

@@ -96,7 +96,7 @@ x'_i &\gets \lambda(\mathcal{P}_1)_i \cdot x_i\cr
 $$
 
 ``` diff
-+++ 4. Each $P_i$ generates a polynomial $E_i$ of degree $t-1$  where $E_i(0) = 0$
++++ 4. Each $P_i$ generates a polynomial $E_i$ of degree $t$  where $E_i(0) = 0$
 
 +++ 5. Each $P_i$ commits to $E_i$ by computing $e_{ij} \cdot G$ where $e_{ij}$ corresponds to the coefficient $j$ of $E_i$. We denote with $W_i$ the commited polynomial with
 ```
@@ -121,9 +121,9 @@ $$
 $$
 \begin{aligned}
 \text{kd} \cdot G = \text{KD}\cr
-{\color{green}W_j(0) = 0\cdot G}\cr
+{\color{green} \forall j\quad W_j(0) = 0\cdot G}\cr
 {\color{green}
-W_j \text{ is of degree } t-1
+\forall j\quad  W_j \text{ is of degree } t-1
 }
 \end{aligned}
 $$
@@ -143,12 +143,9 @@ $$
 
 ``` diff
 +++ 8. $\textcolor{red}\star$ Each $P_i$ privately sends $E_i(j)$ to $P_j$
-```
-**Round 3:**
-``` diff
-+++ 1. $\bullet$ Each $P_i$ waits to receive $E_j(i)$
-+++ 2. Each $P_i$ asserts $E_j(i)\cdot G = W_j(i)$
-+++ 3. Each $P_i$ computes the sum $e_i = \Sigma_j E_j(i)$
++++ 9. $\bullet$ Each $P_i$ waits to receive $E_j(i)$
++++ 10. Each $P_i$ asserts $E_j(i)\cdot G = W_j(i)$
++++ 11. Each $P_i$ computes the sum $e_i = \Sigma_j E_j(i)$
 ```
 4. Each $P_i$ sets $\sigma_i \gets \text{ka} \cdot x_i - \text{xb} \cdot a_i + c_i + \color{green} e_i$, which is already threshold shared.
 
