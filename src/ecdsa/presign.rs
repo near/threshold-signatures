@@ -103,7 +103,8 @@ async fn do_presign<C: CSCurve>(
     let x_prime_i = sk_lambda * private_share;
 
     // generate a polynomial of degree t.
-    let mut poly_me = Polynomial::<C>::random(&mut OsRng, args.threshold +1 );
+    let mut poly_me = Polynomial::<C>::random(&mut OsRng, args.threshold);
+    println!("{:?}",poly_me.len());
     // set the constant term to zero
     poly_me.set_zero(C::Scalar::ZERO);
     // commit to the polynomial
@@ -148,7 +149,7 @@ async fn do_presign<C: CSCurve>(
                 "Received polynomial commitment whose constant is non identity.".to_string(),
             ));
         }
-        if poly_com_their.len() != args.threshold +1 {
+        if poly_com_their.len() != args.threshold {
             return Err(ProtocolError::AssertionFailed(
                 "Received polynomial commitment of the wrong degree.".to_string(),
             ));
