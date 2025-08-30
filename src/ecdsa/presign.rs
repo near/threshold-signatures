@@ -206,7 +206,7 @@ async fn do_presign<C: CSCurve>(
     seen.put(me);
     let mut my_share_poly = poly_me.evaluate(&me.scalar::<C>());
     while !seen.full() {
-        let (from, my_share_them): (_, ScalarPrimitive<C>) = chan.recv(wait1).await?;
+        let (from, my_share_them): (_, ScalarPrimitive<C>) = chan.recv(wait2).await?;
         if !seen.put(from) {
             continue;
         }
