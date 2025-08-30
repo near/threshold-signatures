@@ -244,7 +244,6 @@ mod test {
         let f = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
         let big_x = ProjectivePoint::GENERATOR * f.eval_at_zero().unwrap().0;
 
-        #[allow(clippy::type_complexity)]
         let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)> =
             Vec::with_capacity(participants.len());
 
