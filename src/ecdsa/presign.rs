@@ -103,8 +103,7 @@ async fn do_presign<C: CSCurve>(
     let x_prime_i = sk_lambda * private_share;
 
     // generate a polynomial of degree t.
-    let mut poly_me = Polynomial::<C>::random(&mut OsRng, args.threshold);
-    println!("{:?}",poly_me.len());
+    let mut poly_me = Polynomial::<C>::random(&mut OsRng, args.threshold +1 );
     // set the constant term to zero
     poly_me.set_zero(C::Scalar::ZERO);
     // commit to the polynomial
@@ -117,19 +116,6 @@ async fn do_presign<C: CSCurve>(
         chan.send_many(wait0, &(&kd_i, poly_com_me));
     }
 
-    // Spec 1.9
-    let ka_i: C::Scalar = k_prime_i + a_prime_i;
-    let xb_i: C::Scalar = x_prime_i + b_prime_i;
-
-    // Spec 1.10
-    let wait1 = chan.next_waitpoint();
-    {
-        let ka_i: ScalarPrimitive<C> = ka_i.into();
-        let xb_i: ScalarPrimitive<C> = xb_i.into();
-        chan.send_many(wait1, &(ka_i, xb_i));
-    }
-
-    // Spec 2.1 and 2.2
     let mut kd = kd_i;
     let mut seen = ParticipantCounter::new(&participants);
     seen.put(me);
@@ -149,7 +135,7 @@ async fn do_presign<C: CSCurve>(
                 "Received polynomial commitment whose constant is non identity.".to_string(),
             ));
         }
-        if poly_com_their.len() != args.threshold {
+        if poly_com_their.len() != args.threshold +1  {
             return Err(ProtocolError::AssertionFailed(
                 "Received polynomial commitment of the wrong degree.".to_string(),
             ));
@@ -165,19 +151,50 @@ async fn do_presign<C: CSCurve>(
         ));
     }
 
+    // Spec 1.9
+    let ka_i: C::Scalar = k_prime_i + a_prime_i;
+    let xb_i: C::Scalar = x_prime_i + b_prime_i;
+
+
+
+    // Spec 1.10
+    let wait1 = chan.next_waitpoint();
+    {
+        let ka_i: ScalarPrimitive<C> = ka_i.into();
+        let xb_i: ScalarPrimitive<C> = xb_i.into();
+
+        for p in  participants.others(me) {
+            let eval_p: ScalarPrimitive<C> = poly_me.evaluate(
+                                                &p.scalar::<C>()
+                                                ).into();
+            chan.send_private(wait1, p, &(ka_i, xb_i, eval_p));
+        }
+    }
+
+
     // Spec 2.4 and 2.5
     let mut ka = ka_i;
     let mut xb = xb_i;
     seen.clear();
     seen.put(me);
+    let mut my_share_poly = poly_me.evaluate(&me.scalar::<C>());
     while !seen.full() {
-        let (from, (ka_j, xb_j)): (_, (ScalarPrimitive<C>, ScalarPrimitive<C>)) =
+        let (from, (ka_j, xb_j, my_share_them)): (_, (ScalarPrimitive<C>, ScalarPrimitive<C>, ScalarPrimitive<C>)) =
             chan.recv(wait1).await?;
         if !seen.put(from) {
             continue;
         }
         ka += C::Scalar::from(ka_j);
         xb += C::Scalar::from(xb_j);
+        let my_share_them = C::Scalar::from(my_share_them);
+
+        if C::ProjectivePoint::generator() * my_share_them  !=
+            poly_com_map[from].evaluate(&me.scalar::<C>()){
+            return Err(ProtocolError::AssertionFailed(
+                "Received inconsistent polynomial commitment and share.".to_string(),
+            ));
+        }
+        my_share_poly += my_share_them;
     }
 
     // Spec 2.6
@@ -196,30 +213,6 @@ async fn do_presign<C: CSCurve>(
     let big_r = (C::ProjectivePoint::from(big_d) * kd_inv).into();
 
 
-    let wait2 = chan.next_waitpoint();
-    for p in  participants.others(me) {
-        let eval_p: ScalarPrimitive<C> = poly_me.evaluate(&p.scalar::<C>())
-                                                .into();
-        chan.send_private(wait2, p, &eval_p);
-    }
-
-    seen.clear();
-    seen.put(me);
-    let mut my_share_poly = poly_me.evaluate(&me.scalar::<C>());
-    while !seen.full() {
-        let (from, my_share_them): (_, ScalarPrimitive<C>) = chan.recv(wait2).await?;
-        if !seen.put(from) {
-            continue;
-        }
-        let my_share_them: C::Scalar = my_share_them.into();
-        if C::ProjectivePoint::generator() * my_share_them  !=
-            poly_com_map[from].evaluate(&me.scalar::<C>()){
-            return Err(ProtocolError::AssertionFailed(
-                "Received inconsistent polynomial commitment and share.".to_string(),
-            ));
-        }
-        my_share_poly += my_share_them;
-    }
 
     // Spec 2.8
     let lambda_diff = bt_lambda * sk_lambda.invert().expect("to invert sk_lambda");

@@ -123,7 +123,7 @@ $$
 \text{kd} \cdot G = \text{KD}\cr
 {\color{green} \forall j\quad W_j(0) = 0\cdot G}\cr
 {\color{green}
-\forall j\quad  W_j \text{ is of degree } t-1
+\forall j\quad  W_j \text{ is of degree } t
 }
 \end{aligned}
 $$
