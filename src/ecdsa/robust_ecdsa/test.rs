@@ -2,11 +2,11 @@ use std::error::Error;
 
 use super::{presign::presign, sign::sign, PresignArguments, PresignOutput};
 
-use crate::ecdsa::{
-    test::{assert_public_key_invariant, run_keygen, run_reshare, run_sign},
-    AffinePoint, FullSignature, KeygenOutput, Scalar,
-};
+use crate::ecdsa::{test::run_sign, AffinePoint, FullSignature, KeygenOutput, Scalar};
+
 use crate::protocol::{errors::InitializationError, run_protocol, Participant, Protocol};
+use crate::test::{assert_public_key_invariant, run_keygen, run_reshare};
+use crate::test::{generate_participants, generate_participants_with_random_ids};
 
 #[cfg(test)]
 fn sign_box(
@@ -50,11 +50,12 @@ pub fn run_presign(
 #[test]
 /// Tests the resharing protocol when more participants are added to the pool
 fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
-    let participants = (0..=10).map(Participant::from).collect::<Vec<_>>();
+    let participants = generate_participants(11);
+
     let max_malicious = 3;
     let threshold = max_malicious + 1;
     let result0 = run_keygen(&participants, threshold)?;
-    assert_public_key_invariant(&result0)?;
+    assert_public_key_invariant(&result0);
 
     let pub_key = result0[2].1.public_key;
 
@@ -74,7 +75,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
         new_threshold,
         new_participant.clone(),
     )?;
-    assert_public_key_invariant(&key_packages)?;
+    assert_public_key_invariant(&key_packages);
     key_packages.sort_by_key(|(p, _)| *p);
 
     let public_key = key_packages[0].1.public_key;
@@ -97,17 +98,12 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
 #[test]
 /// Tests the resharing protocol when participants are kicked out of the pool
 fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
-    let participants = vec![
-        Participant::from(0u32),
-        Participant::from(1u32),
-        Participant::from(2u32),
-        Participant::from(3u32),
-        Participant::from(4u32),
-    ];
+    let participants = generate_participants(5);
+
     let max_malicious = 2;
     let threshold = max_malicious + 1;
     let result0 = run_keygen(&participants, threshold)?;
-    assert_public_key_invariant(&result0)?;
+    assert_public_key_invariant(&result0);
 
     let pub_key = result0[2].1.public_key;
 
@@ -124,7 +120,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
         new_threshold,
         new_participant.clone(),
     )?;
-    assert_public_key_invariant(&key_packages)?;
+    assert_public_key_invariant(&key_packages);
     key_packages.sort_by_key(|(p, _)| *p);
 
     let public_key = key_packages[0].1.public_key;
@@ -146,7 +142,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn test_e2e() -> Result<(), Box<dyn Error>> {
-    let participants = (0..=7).map(Participant::from).collect::<Vec<_>>();
+    let participants = generate_participants(8);
     let max_malicious = 3;
 
     let mut keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;
@@ -173,10 +169,7 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
 #[test]
 fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     let participants_count = 7;
-    let mut participants: Vec<_> = (0..participants_count)
-        .map(|_| Participant::from(rand::random::<u32>()))
-        .collect();
-    participants.sort();
+    let participants = generate_participants_with_random_ids(participants_count);
     let max_malicious = 3;
 
     let mut keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;

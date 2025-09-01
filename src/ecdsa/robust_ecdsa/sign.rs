@@ -115,11 +115,12 @@ mod test {
 
     use super::*;
     use crate::ecdsa::{x_coordinate, Field, ProjectivePoint, Secp256K1ScalarField};
+    use crate::test::generate_participants;
 
     use crate::{crypto::hash::test::scalar_hash, protocol::run_protocol};
 
     #[test]
-    fn test_100_sign_given_presignature() -> Result<(), Box<dyn Error>> {
+    fn test_sign() -> Result<(), Box<dyn Error>> {
         let max_malicious = 2;
         let threshold = max_malicious + 1;
         let msg = b"hello?";
@@ -154,13 +155,7 @@ mod test {
             let w = fa.eval_at_zero()?.0 * k;
             let w_invert = w.invert().unwrap();
 
-            let participants = vec![
-                Participant::from(0u32),
-                Participant::from(1u32),
-                Participant::from(2u32),
-                Participant::from(3u32),
-                Participant::from(4u32),
-            ];
+            let participants = generate_participants(5);
 
             #[allow(clippy::type_complexity)]
             let mut protocols: Vec<(

@@ -7,7 +7,7 @@ use super::{PresignArguments, PresignOutput};
 use crate::{
     ecdsa::{
         CoefficientCommitment, Field, Polynomial, PolynomialCommitment, Scalar,
-        Secp256K1ScalarField, Secp256K1Sha256, SigningShare,
+        Secp256K1ScalarField, Secp256K1Sha256,
     },
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     protocol::{
@@ -15,6 +15,7 @@ use crate::{
         internal::{make_protocol, Comms, SharedChannel},
         Participant, Protocol,
     },
+    SigningShare,
 };
 
 type C = Secp256K1Sha256;
@@ -95,7 +96,7 @@ async fn do_presign(
 
     // Send and receive
     let wait_round_1 = chan.next_waitpoint();
-    chan.send_many(wait_round_1, &(&big_r_me, &SigningShare::new(w_me)))?;
+    chan.send_many(wait_round_1, &(&big_r_me, &SigningShare::<C>::new(w_me)))?;
 
     // Store the sent items
     let mut signingshares_map = ParticipantMap::new(&participants);
@@ -107,7 +108,7 @@ async fn do_presign(
     seen.clear();
     seen.put(me);
     while !seen.full() {
-        let (from, (big_r_p, w_p)): (_, (CoefficientCommitment, SigningShare)) =
+        let (from, (big_r_p, w_p)): (_, (CoefficientCommitment, SigningShare<C>)) =
             chan.recv(wait_round_1).await?;
         if !seen.put(from) {
             continue;
@@ -229,7 +230,7 @@ mod test {
     use super::*;
     use rand_core::OsRng;
 
-    use crate::{ecdsa::KeygenOutput, protocol::run_protocol};
+    use crate::{ecdsa::KeygenOutput, protocol::run_protocol, test::generate_participants};
     use frost_secp256k1::keys::PublicKeyPackage;
     use frost_secp256k1::VerifyingKey;
     use std::collections::BTreeMap;
@@ -238,7 +239,8 @@ mod test {
 
     #[test]
     fn test_presign() {
-        let participants = (0..=4).map(Participant::from).collect::<Vec<_>>();
+        let participants = generate_participants(5);
+
         let max_malicious = 2;
 
         let f = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
