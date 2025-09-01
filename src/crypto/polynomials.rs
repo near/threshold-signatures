@@ -128,8 +128,7 @@ impl<C: Ciphersuite> Polynomial<C> {
         }
 
         // Compute the Lagrange coefficients in batch
-        let lagrange_coefficients =
-            batch_compute_lagrange_coefficients::<C>(identifiers, point)?;
+        let lagrange_coefficients = batch_compute_lagrange_coefficients::<C>(identifiers, point)?;
 
         // Compute y = f(point) via polynomial interpolation of these points of f
         for (lagrange_coefficient, share) in lagrange_coefficients.iter().zip(shares) {
@@ -298,8 +297,7 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
         };
 
         // Compute the Lagrange coefficients in batch
-        let lagrange_coefficients =
-            batch_compute_lagrange_coefficients::<C>(identifiers, point)?;
+        let lagrange_coefficients = batch_compute_lagrange_coefficients::<C>(identifiers, point)?;
 
         // Compute y = g^f(point) via polynomial interpolation of these points of f
         for (lagrange_coefficient, share) in lagrange_coefficients.iter().zip(shares) {
