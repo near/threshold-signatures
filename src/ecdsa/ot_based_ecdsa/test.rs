@@ -7,7 +7,7 @@ use super::{
 use crate::ecdsa::{test::run_sign, AffinePoint, FullSignature, KeygenOutput, Scalar};
 use crate::protocol::{errors::InitializationError, run_protocol, Participant, Protocol};
 use crate::test::{assert_public_key_invariant, run_keygen, run_refresh, run_reshare};
-use crate::test::{generate_participants, generate_random_participants};
+use crate::test::{generate_participants, generate_participants_with_random_ids};
 use rand_core::OsRng;
 use std::error::Error;
 
@@ -222,7 +222,7 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
 #[test]
 fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     let participants_count = 3;
-    let participants = generate_random_participants(participants_count);
+    let participants = generate_participants_with_random_ids(participants_count);
     let threshold = 3;
 
     let mut keygen_result = run_keygen(&participants.clone(), threshold)?;
