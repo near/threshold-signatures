@@ -103,23 +103,24 @@ async fn do_presign<C: CSCurve>(
     let x_prime_i = sk_lambda * private_share;
 
     // generate a polynomial of degree t.
-    let mut poly_me = Polynomial::<C>::random(&mut OsRng, args.threshold +1 );
+    let mut poly_me = Polynomial::<C>::random(&mut OsRng, args.threshold );
     // set the constant term to zero
     poly_me.set_zero(C::Scalar::ZERO);
     // commit to the polynomial
     let poly_com_me = poly_me.commit();
+    let mut poly_com_map = ParticipantMap::new(&participants);
+    poly_com_map.put(me, poly_com_me.evaluate(&me.scalar::<C>()));
 
     // Spec 1.4
     let wait0 = chan.next_waitpoint();
     {
         let kd_i: ScalarPrimitive<C> = kd_i.into();
-        chan.send_many(wait0, &(&kd_i, poly_com_me));
+        chan.send_many(wait0, &(&kd_i, &poly_com_me));
     }
 
     let mut kd = kd_i;
     let mut seen = ParticipantCounter::new(&participants);
     seen.put(me);
-    let mut poly_com_map = ParticipantMap::new(&participants);
     while !seen.full() {
         let (from, (kd_j, poly_com_their)): (_, (ScalarPrimitive<C>, GroupPolynomial<C>)) = chan.recv(wait0).await?;
         if !seen.put(from) {
@@ -140,7 +141,7 @@ async fn do_presign<C: CSCurve>(
                 "Received polynomial commitment of the wrong degree.".to_string(),
             ));
         }
-        poly_com_map.put(from, poly_com_their);
+        poly_com_map.put(from, poly_com_their.evaluate(&me.scalar::<C>()));
         kd += C::Scalar::from(kd_j);
     }
 
@@ -188,8 +189,7 @@ async fn do_presign<C: CSCurve>(
         xb += C::Scalar::from(xb_j);
         let my_share_them = C::Scalar::from(my_share_them);
 
-        if C::ProjectivePoint::generator() * my_share_them  !=
-            poly_com_map[from].evaluate(&me.scalar::<C>()){
+        if C::ProjectivePoint::generator() * my_share_them  != poly_com_map[from]{
             return Err(ProtocolError::AssertionFailed(
                 "Received inconsistent polynomial commitment and share.".to_string(),
             ));

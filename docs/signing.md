@@ -102,16 +102,8 @@ $$
 ```
 
 6. $\star$ Each $P_i$ sends $(\text{kd}_i, {\color{green} W_i})$ to every other party.
-7. Each $P_i$ sets:
 
-$$
-\begin{aligned}
-&\text{ka}_i \gets k'_i + a'_i\cr
-&\text{xb}_i \gets x'_i + b'_i\cr
-\end{aligned}
-$$
 
-8. $\star$ Each $P_i$ sends $\text{ka}_i$ and $\text{xb}_i$ to every other party.
 
 **Round 2:**
 
@@ -128,9 +120,19 @@ $$
 \end{aligned}
 $$
 
-4. $\bullet$ Each $P_i$ waits to receive $\text{ka}_j$ and $\text{xb}_j$ from from every other party $P_j$.
-5. Each $P_i$ sets $\text{ka} \gets \sum_j \text{ka}_j$ and $\text{xb} \gets \sum_j \text{xb}_j$.
-6. $\blacktriangle$ Each $P_i$ asserts that:
+4. Each $P_i$ sets:
+
+$$
+\begin{aligned}
+&\text{ka}_i \gets k'_i + a'_i\cr
+&\text{xb}_i \gets x'_i + b'_i\cr
+\end{aligned}
+$$
+
+5. $\star$ Each $P_i$ sends $\text{ka}_i$ and $\text{xb}_i$ to every other party.
+6. $\bullet$ Each $P_i$ waits to receive $\text{ka}_j$ and $\text{xb}_j$ from from every other party $P_j$.
+7. Each $P_i$ sets $\text{ka} \gets \sum_j \text{ka}_j$ and $\text{xb} \gets \sum_j \text{xb}_j$.
+8. $\blacktriangle$ Each $P_i$ asserts that:
 
 $$
 \begin{aligned}
@@ -139,7 +141,7 @@ $$
 \end{aligned}
 $$
 
-7. Each $P_i$ sets: $R \gets \frac{1}{\text{kd}} \cdot D$.
+9. Each $P_i$ sets: $R \gets \frac{1}{\text{kd}} \cdot D$.
 
 ``` diff
 +++ 8. $\textcolor{red}\star$ Each $P_i$ privately sends $E_i(j)$ to $P_j$
@@ -147,7 +149,7 @@ $$
 +++ 10. Each $P_i$ asserts $E_j(i)\cdot G = W_j(i)$
 +++ 11. Each $P_i$ computes the sum $e_i = \Sigma_j E_j(i)$
 ```
-4. Each $P_i$ sets $\sigma_i \gets \text{ka} \cdot x_i - \text{xb} \cdot a_i + c_i + \color{green} e_i$, which is already threshold shared.
+10. Each $P_i$ sets $\sigma_i \gets \text{ka} \cdot x_i - \text{xb} \cdot a_i + c_i + \color{green} e_i$, which is already threshold shared.
 
 **Output:**
 The output is the presignature $(R, k_i, \sigma_i)$.
