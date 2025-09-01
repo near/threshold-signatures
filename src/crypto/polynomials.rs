@@ -127,11 +127,12 @@ impl<C: Ciphersuite> Polynomial<C> {
             return Err(ProtocolError::InvalidInterpolationArguments);
         }
 
-        // Compute the Lagrange coefficients
-        for (id, share) in identifiers.iter().zip(shares) {
-            let lagrange_coefficient = compute_lagrange_coefficient::<C>(identifiers, id, point)?;
+        // Compute the Lagrange coefficients in batch
+        let lagrange_coefficients =
+            batch_compute_lagrange_coefficients::<C>(identifiers, point)?;
 
-            // Compute y = f(point) via polynomial interpolation of these points of f
+        // Compute y = f(point) via polynomial interpolation of these points of f
+        for (lagrange_coefficient, share) in lagrange_coefficients.iter().zip(shares) {
             interpolation = interpolation + (lagrange_coefficient.0 * share.0);
         }
 
@@ -296,11 +297,12 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
             return Err(ProtocolError::InvalidInterpolationArguments);
         };
 
-        // Compute the Lagrange coefficients
-        for (id, share) in identifiers.iter().zip(shares) {
-            let lagrange_coefficient = compute_lagrange_coefficient::<C>(identifiers, id, point)?;
+        // Compute the Lagrange coefficients in batch
+        let lagrange_coefficients =
+            batch_compute_lagrange_coefficients::<C>(identifiers, point)?;
 
-            // Compute y = g^f(point) via polynomial interpolation of these points of f
+        // Compute y = g^f(point) via polynomial interpolation of these points of f
+        for (lagrange_coefficient, share) in lagrange_coefficients.iter().zip(shares) {
             interpolation = interpolation + (share.value() * lagrange_coefficient.0);
         }
 
@@ -419,6 +421,93 @@ pub fn compute_lagrange_coefficient<C: Ciphersuite>(
     let den = <C::Group as Group>::Field::invert(&den)
         .map_err(|_| ProtocolError::InvalidInterpolationArguments)?;
     Ok(SerializableScalar(num * den))
+}
+
+/// Computes the Lagrange coefficients (a.k.a. Lagrange basis polynomial)
+/// evaluated at point x in batch.
+/// lamda_i(x) = \prod_j (x - x_j)/(x_i - x_j)  where j != i
+/// Note: if `x` is None then consider it as 0.
+/// Note: `x_j` are elements in `point_set`
+/// Note: `point_set` must not have repeating values.
+pub fn batch_compute_lagrange_coefficients<C: Ciphersuite>(
+    points_set: &[Scalar<C>],
+    x: Option<&Scalar<C>>,
+) -> Result<Vec<SerializableScalar<C>>, ProtocolError> {
+    let n = points_set.len();
+    if n <= 1 {
+        return Err(ProtocolError::InvalidInterpolationArguments);
+    }
+
+    let zero = <C::Group as Group>::Field::zero();
+    let x_val = x.unwrap_or(&zero);
+
+    if let Some(k) = points_set.iter().position(|&p| p == *x_val) {
+        let mut coeffs = vec![SerializableScalar(<C::Group as Group>::Field::zero()); n];
+        coeffs[k] = SerializableScalar(<C::Group as Group>::Field::one());
+        return Ok(coeffs);
+    }
+
+    let mut denominators = Vec::with_capacity(n);
+    for i in 0..n {
+        let mut den = <C::Group as Group>::Field::one();
+        for j in 0..n {
+            if i == j {
+                continue;
+            }
+            den = den * (points_set[i] - points_set[j]);
+        }
+        denominators.push(den);
+    }
+
+    let inv_denominators = batch_invert::<C>(&denominators)?;
+
+    let mut full_numerator = <C::Group as Group>::Field::one();
+    let mut x_minus_xis = Vec::with_capacity(n);
+    for x_i in points_set.iter() {
+        let x_minus_xi = *x_val - *x_i;
+        full_numerator = full_numerator * x_minus_xi;
+        x_minus_xis.push(x_minus_xi);
+    }
+
+    let inv_x_minus_xis = batch_invert::<C>(&x_minus_xis)?;
+
+    let mut lagrange_coeffs = Vec::with_capacity(n);
+    for i in 0..n {
+        let num_i = full_numerator * inv_x_minus_xis[i];
+        lagrange_coeffs.push(SerializableScalar(num_i * inv_denominators[i]));
+    }
+
+    Ok(lagrange_coeffs)
+}
+
+// Batch inversion function
+fn batch_invert<C: Ciphersuite>(values: &[Scalar<C>]) -> Result<Vec<Scalar<C>>, ProtocolError> {
+    if values.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut products = vec![<C::Group as Group>::Field::one(); values.len()];
+    let mut acc = <C::Group as Group>::Field::one();
+    for (i, v) in values.iter().enumerate() {
+        if *v == <C::Group as Group>::Field::zero() {
+            return Err(ProtocolError::InvalidInterpolationArguments);
+        }
+        acc = acc * *v;
+        products[i] = acc;
+    }
+
+    let mut inv_last = <C::Group as Group>::Field::invert(&acc)
+        .map_err(|_| ProtocolError::InvalidInterpolationArguments)?;
+
+    let mut inverted = vec![<C::Group as Group>::Field::one(); values.len()];
+    for i in (1..values.len()).rev() {
+        let prev_prod = products[i - 1];
+        inverted[i] = prev_prod * inv_last;
+        inv_last = inv_last * values[i];
+    }
+    inverted[0] = inv_last;
+
+    Ok(inverted)
 }
 
 #[cfg(test)]
@@ -890,5 +979,57 @@ mod test {
                 assert_eq!(c, coefpoly[index].value() * two);
             }
         }
+    }
+
+    #[test]
+    fn benchmark_lagrange_computation() {
+        use std::time::Instant;
+
+        let degree = 100;
+        let participants = (0..degree + 1)
+            .map(|i| Participant::from(i as u32))
+            .collect::<Vec<_>>();
+        let ids = participants
+            .iter()
+            .map(|p| p.scalar::<C>())
+            .collect::<Vec<_>>();
+        let point = Some(Secp256K1ScalarField::random(&mut rand_core::OsRng));
+
+        // Benchmark sequential computation
+        let start_seq = Instant::now();
+        let mut lagrange_coefficients_seq = Vec::new();
+        for id in &ids {
+            lagrange_coefficients_seq
+                .push(compute_lagrange_coefficient::<C>(&ids, id, point.as_ref()).unwrap());
+        }
+        let duration_seq = start_seq.elapsed();
+
+        // Benchmark batch computation
+        let start_batch = Instant::now();
+        let lagrange_coefficients_batch =
+            batch_compute_lagrange_coefficients::<C>(&ids, point.as_ref()).unwrap();
+        let duration_batch = start_batch.elapsed();
+
+        // Verify that the results are the same
+        for (a, b) in lagrange_coefficients_seq
+            .iter()
+            .zip(lagrange_coefficients_batch.iter())
+        {
+            assert_eq!(a.0, b.0);
+        }
+
+        println!();
+        println!(
+            "Sequential Lagrange computation for {} participants: {:?}",
+            ids.len(),
+            duration_seq
+        );
+        println!(
+            "Batch Lagrange computation for {} participants:      {:?}",
+            ids.len(),
+            duration_batch
+        );
+
+        assert!(duration_batch < duration_seq);
     }
 }
