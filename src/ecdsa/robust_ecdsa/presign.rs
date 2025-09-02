@@ -19,6 +19,57 @@ use crate::{
 
 type C = Secp256K1Sha256;
 
+/// Contains five shares used during presigniture
+/// (k, a, b, d, e)
+#[derive(serde::Deserialize, serde::Serialize)]
+struct Shares([SerializableScalar<C>; 5]);
+
+impl Shares {
+    /// Constructs a new Shares out of five polynomials
+    pub(crate) fn new(polynomials: [Polynomial; 5], p: Participant) -> Result<Self, ProtocolError> {
+        // iterate over the polynomials and map them
+        let shares = polynomials
+            .iter()
+            .map(|poly| poly.eval_at_participant(p))
+            .collect::<Result<Vec<_>, _>>()?
+            .try_into()
+            .map_err(|_| ProtocolError::Other("Unable to build Shares".to_string()))?;
+        Ok(Shares(shares))
+    }
+
+    /// Returns k element
+    pub(crate) fn k(&self) -> Scalar {
+        self.0[0].0
+    }
+
+    /// Returns a element
+    pub(crate) fn a(&self) -> Scalar {
+        self.0[1].0
+    }
+
+    /// Returns b element
+    pub(crate) fn b(&self) -> Scalar {
+        self.0[2].0
+    }
+
+    /// Returns d element
+    pub(crate) fn d(&self) -> Scalar {
+        self.0[3].0
+    }
+
+    /// Returns e element
+    pub(crate) fn e(&self) -> Scalar {
+        self.0[4].0
+    }
+
+    /// Adds two sets of shares together respectively and puts the result back into self
+    pub(crate) fn add_shares(&mut self, shares: &Self) {
+        for i in 0..self.0.len() {
+            self.0[i].0 += shares.0[i].0;
+        }
+    }
+}
+
 /// Generates a secret polynomial where the constant term is zero
 fn zero_secret_polynomial(degree: usize, rng: &mut OsRng) -> Result<Polynomial, ProtocolError> {
     let secret = Secp256K1ScalarField::zero();
@@ -62,36 +113,28 @@ async fn do_presign(
     }
 
     // Evaluate my secret shares for my polynomials
-    let shares = polynomials
-        .iter()
-        .map(|poly| poly.eval_at_participant(me))
-        .collect::<Result<Vec<_>, _>>()?;
-
-    // Extract the shares into a vec of scalars
-    let mut shares: Vec<Scalar> = shares.iter().map(|signing_share| signing_share.0).collect();
+    let mut shares = Shares::new(polynomials, me)?;
 
     // Round 1
     // Receive evaluations from all participants
     let mut seen = ParticipantCounter::new(&participants);
     seen.put(me);
     while !seen.full() {
-        let (from, package): (_, [SerializableScalar<C>; 5]) = chan.recv(wait_round_0).await?;
+        let (from, package): (_, Shares) = chan.recv(wait_round_0).await?;
         if !seen.put(from) {
             continue;
         }
 
         // calculate the respective sum of the different shares received from each participant
-        for i in 0..shares.len() {
-            shares[i] += package[i].0;
-        }
+        shares.add_shares(&package);
     }
 
     // Compute R_me = g^{k_me}
-    let big_r_me = Secp256K1Group::generator() * shares[0];
+    let big_r_me = Secp256K1Group::generator() * shares.k();
     let big_r_me = CoefficientCommitment::new(big_r_me);
 
     // Compute w_me = a_me * k_me + b_me
-    let w_me = shares[1] * shares[0] + shares[2];
+    let w_me = shares.a() * shares.k() + shares.b();
 
     // Send and receive
     let wait_round_1 = chan.next_waitpoint();
@@ -160,14 +203,14 @@ async fn do_presign(
     }
 
     // w is non-zero due to previous check and so I can unwrap safely
-    let h_me = w.0.invert().unwrap() * shares[1];
+    let h_me = w.0.invert().unwrap() * shares.a();
 
     // Some extra computation is pushed in this offline phase
-    let alpha_me = h_me + shares[3];
+    let alpha_me = h_me + shares.d();
 
     let big_r_x_coordinate = x_coordinate(&big_r.value().to_affine());
     let x_me = args.keygen_out.private_share.to_scalar();
-    let beta_me = h_me * big_r_x_coordinate * x_me + shares[4];
+    let beta_me = h_me * big_r_x_coordinate * x_me + shares.e();
 
     Ok(PresignOutput {
         big_r: big_r.value().to_affine(),
