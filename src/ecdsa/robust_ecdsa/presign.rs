@@ -1,4 +1,3 @@
-use elliptic_curve::point::AffineCoordinates;
 use frost_core::serialization::SerializableScalar;
 use frost_secp256k1::{Group, Secp256K1Group};
 use rand_core::OsRng;
@@ -6,7 +5,7 @@ use rand_core::OsRng;
 use super::{PresignArguments, PresignOutput};
 use crate::{
     ecdsa::{
-        CoefficientCommitment, Field, Polynomial, PolynomialCommitment, Scalar,
+        x_coordinate, CoefficientCommitment, Field, Polynomial, PolynomialCommitment, Scalar,
         Secp256K1ScalarField, Secp256K1Sha256,
     },
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
@@ -166,9 +165,7 @@ async fn do_presign(
     // Some extra computation is pushed in this offline phase
     let alpha_me = h_me + shares[3];
 
-    let big_r_x_coordinate: [u8; 32] = big_r.value().to_affine().x().into();
-    let big_r_x_coordinate = <Secp256K1ScalarField as Field>::deserialize(&big_r_x_coordinate)
-        .map_err(|_| ProtocolError::ErrorReducingBytesToScalar)?;
+    let big_r_x_coordinate = x_coordinate(&big_r.value().to_affine());
     let x_me = args.keygen_out.private_share.to_scalar();
     let beta_me = h_me * big_r_x_coordinate * x_me + shares[4];
 
