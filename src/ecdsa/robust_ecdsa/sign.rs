@@ -126,7 +126,7 @@ mod test {
     use crate::{crypto::hash::test::scalar_hash, protocol::run_protocol};
 
     #[test]
-    fn test_sign() -> Result<(), Box<dyn Error>> {
+    fn test_sign_given_presignature() -> Result<(), Box<dyn Error>> {
         let max_malicious = 2;
         let msg = b"hello?";
 
@@ -160,7 +160,7 @@ mod test {
             .unwrap();
 
             // computing k, R, Rx
-            let k = fk.eval_at_zero()?.0;;
+            let k = fk.eval_at_zero()?.0;
             let big_r = ProjectivePoint::GENERATOR * k;
             let big_r_x_coordinate = x_coordinate(&big_r.to_affine());
 
