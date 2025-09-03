@@ -128,7 +128,7 @@ mod test {
     #[test]
     fn test_sign_given_presignature() -> Result<(), Box<dyn Error>> {
         let max_malicious = 2;
-        let msg = b"hello?";
+        let msg = b"Hello? Is it me you're looking for?";
 
         // loop 100 times and manually compute presignatures
         // then deliver these presignatures to the signing function
