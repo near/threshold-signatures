@@ -19,61 +19,50 @@ use crate::{
 
 type C = Secp256K1Sha256;
 
-/// Contains five shares used during presigniture
-/// (k, a, b, d, e)
-#[derive(serde::Deserialize, serde::Serialize)]
-struct Shares([SerializableScalar<C>; 5]);
+/// The presignature protocol.
+///
+/// This is the first phase of performing a signature, in which we perform
+/// all the work we can do without yet knowing the message to be signed.
+///
+/// This work does depend on the private key though, and it's crucial
+/// that a presignature is never reused.
+pub fn presign(
+    participants: &[Participant],
+    me: Participant,
+    args: PresignArguments,
+) -> Result<impl Protocol<Output = PresignOutput>, InitializationError> {
+    if participants.len() < 2 {
+        return Err(InitializationError::BadParameters(format!(
+            "participant count cannot be less than 2, found: {}",
+            participants.len()
+        )));
+    };
 
-impl Shares {
-    /// Constructs a new Shares out of five polynomials
-    pub(crate) fn new(polynomials: [Polynomial; 5], p: Participant) -> Result<Self, ProtocolError> {
-        // iterate over the polynomials and map them
-        let shares = polynomials
-            .iter()
-            .map(|poly| poly.eval_at_participant(p))
-            .collect::<Result<Vec<_>, _>>()?
-            .try_into()
-            .map_err(|_| ProtocolError::Other("Unable to build Shares".to_string()))?;
-        Ok(Shares(shares))
+    if args.threshold > participants.len() {
+        return Err(InitializationError::BadParameters(
+            "threshold must be less than or equals to participant count".to_string(),
+        ));
     }
 
-    /// Returns k element
-    pub(crate) fn k(&self) -> Scalar {
-        self.0[0].0
+    if 2 * args.threshold + 1 > participants.len() {
+        return Err(InitializationError::BadParameters(
+            "2*threshold+1 must be less than or equals to participant count".to_string(),
+        ));
     }
 
-    /// Returns a element
-    pub(crate) fn a(&self) -> Scalar {
-        self.0[1].0
-    }
+    let participants = ParticipantList::new(participants).ok_or_else(|| {
+        InitializationError::BadParameters("participant list cannot contain duplicates".to_string())
+    })?;
 
-    /// Returns b element
-    pub(crate) fn b(&self) -> Scalar {
-        self.0[2].0
-    }
+    if !participants.contains(me) {
+        return Err(InitializationError::BadParameters(
+            "Presign participant list does not contain me".to_string(),
+        ));
+    };
 
-    /// Returns d element
-    pub(crate) fn d(&self) -> Scalar {
-        self.0[3].0
-    }
-
-    /// Returns e element
-    pub(crate) fn e(&self) -> Scalar {
-        self.0[4].0
-    }
-
-    /// Adds two sets of shares together respectively and puts the result back into self
-    pub(crate) fn add_shares(&mut self, shares: &Self) {
-        for i in 0..self.0.len() {
-            self.0[i].0 += shares.0[i].0;
-        }
-    }
-}
-
-/// Generates a secret polynomial where the constant term is zero
-fn zero_secret_polynomial(degree: usize, rng: &mut OsRng) -> Result<Polynomial, ProtocolError> {
-    let secret = Secp256K1ScalarField::zero();
-    Polynomial::generate_polynomial(Some(secret), degree, rng)
+    let ctx = Comms::new();
+    let fut = do_presign(ctx.shared_channel(), participants, me, args);
+    Ok(make_protocol(ctx, fut))
 }
 
 /// /!\ Warning: the threshold in this scheme is the exactly the
@@ -219,50 +208,61 @@ async fn do_presign(
     })
 }
 
-/// The presignature protocol.
-///
-/// This is the first phase of performing a signature, in which we perform
-/// all the work we can do without yet knowing the message to be signed.
-///
-/// This work does depend on the private key though, and it's crucial
-/// that a presignature is never reused.
-pub fn presign(
-    participants: &[Participant],
-    me: Participant,
-    args: PresignArguments,
-) -> Result<impl Protocol<Output = PresignOutput>, InitializationError> {
-    if participants.len() < 2 {
-        return Err(InitializationError::BadParameters(format!(
-            "participant count cannot be less than 2, found: {}",
-            participants.len()
-        )));
-    };
+/// Generates a secret polynomial where the constant term is zero
+fn zero_secret_polynomial(degree: usize, rng: &mut OsRng) -> Result<Polynomial, ProtocolError> {
+    let secret = Secp256K1ScalarField::zero();
+    Polynomial::generate_polynomial(Some(secret), degree, rng)
+}
 
-    if args.threshold > participants.len() {
-        return Err(InitializationError::BadParameters(
-            "threshold must be less than or equals to participant count".to_string(),
-        ));
+/// Contains five shares used during presigniture
+/// (k, a, b, d, e)
+#[derive(serde::Deserialize, serde::Serialize)]
+struct Shares([SerializableScalar<C>; 5]);
+
+impl Shares {
+    /// Constructs a new Shares out of five polynomials
+    pub(crate) fn new(polynomials: [Polynomial; 5], p: Participant) -> Result<Self, ProtocolError> {
+        // iterate over the polynomials and map them
+        let shares = polynomials
+            .iter()
+            .map(|poly| poly.eval_at_participant(p))
+            .collect::<Result<Vec<_>, _>>()?
+            .try_into()
+            .map_err(|_| ProtocolError::Other("Unable to build Shares".to_string()))?;
+        Ok(Shares(shares))
     }
 
-    if 2 * args.threshold + 1 > participants.len() {
-        return Err(InitializationError::BadParameters(
-            "2*threshold+1 must be less than or equals to participant count".to_string(),
-        ));
+    /// Returns k element
+    pub(crate) fn k(&self) -> Scalar {
+        self.0[0].0
     }
 
-    let participants = ParticipantList::new(participants).ok_or_else(|| {
-        InitializationError::BadParameters("participant list cannot contain duplicates".to_string())
-    })?;
+    /// Returns a element
+    pub(crate) fn a(&self) -> Scalar {
+        self.0[1].0
+    }
 
-    if !participants.contains(me) {
-        return Err(InitializationError::BadParameters(
-            "Presign participant list does not contain me".to_string(),
-        ));
-    };
+    /// Returns b element
+    pub(crate) fn b(&self) -> Scalar {
+        self.0[2].0
+    }
 
-    let ctx = Comms::new();
-    let fut = do_presign(ctx.shared_channel(), participants, me, args);
-    Ok(make_protocol(ctx, fut))
+    /// Returns d element
+    pub(crate) fn d(&self) -> Scalar {
+        self.0[3].0
+    }
+
+    /// Returns e element
+    pub(crate) fn e(&self) -> Scalar {
+        self.0[4].0
+    }
+
+    /// Adds two sets of shares together respectively and puts the result back into self
+    pub(crate) fn add_shares(&mut self, shares: &Self) {
+        for i in 0..self.0.len() {
+            self.0[i].0 += shares.0[i].0;
+        }
+    }
 }
 
 #[cfg(test)]

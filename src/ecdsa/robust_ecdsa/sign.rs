@@ -15,6 +15,42 @@ use crate::{
 };
 type C = Secp256K1Sha256;
 
+pub fn sign(
+    participants: &[Participant],
+    me: Participant,
+    public_key: AffinePoint,
+    presignature: PresignOutput,
+    msg_hash: Scalar,
+) -> Result<impl Protocol<Output = FullSignature>, InitializationError> {
+    if participants.len() < 2 {
+        return Err(InitializationError::BadParameters(format!(
+            "participant count cannot be < 2, found: {}",
+            participants.len()
+        )));
+    };
+
+    let participants = ParticipantList::new(participants).ok_or_else(|| {
+        InitializationError::BadParameters("participant list cannot contain duplicates".to_string())
+    })?;
+
+    if !participants.contains(me) {
+        return Err(InitializationError::BadParameters(
+            "participant list does not contain me".to_string(),
+        ));
+    };
+
+    let ctx = Comms::new();
+    let fut = do_sign(
+        ctx.shared_channel(),
+        participants,
+        me,
+        public_key,
+        presignature,
+        msg_hash,
+    );
+    Ok(make_protocol(ctx, fut))
+}
+
 async fn do_sign(
     mut chan: SharedChannel,
     participants: ParticipantList,
@@ -73,42 +109,6 @@ async fn do_sign(
     };
 
     Ok(sig)
-}
-
-pub fn sign(
-    participants: &[Participant],
-    me: Participant,
-    public_key: AffinePoint,
-    presignature: PresignOutput,
-    msg_hash: Scalar,
-) -> Result<impl Protocol<Output = FullSignature>, InitializationError> {
-    if participants.len() < 2 {
-        return Err(InitializationError::BadParameters(format!(
-            "participant count cannot be < 2, found: {}",
-            participants.len()
-        )));
-    };
-
-    let participants = ParticipantList::new(participants).ok_or_else(|| {
-        InitializationError::BadParameters("participant list cannot contain duplicates".to_string())
-    })?;
-
-    if !participants.contains(me) {
-        return Err(InitializationError::BadParameters(
-            "participant list does not contain me".to_string(),
-        ));
-    };
-
-    let ctx = Comms::new();
-    let fut = do_sign(
-        ctx.shared_channel(),
-        participants,
-        me,
-        public_key,
-        presignature,
-        msg_hash,
-    );
-    Ok(make_protocol(ctx, fut))
 }
 
 #[cfg(test)]
