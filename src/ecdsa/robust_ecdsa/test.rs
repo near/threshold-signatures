@@ -8,7 +8,6 @@ use crate::protocol::{errors::InitializationError, run_protocol, Participant, Pr
 use crate::test::{assert_public_key_invariant, run_keygen, run_reshare};
 use crate::test::{generate_participants, generate_participants_with_random_ids};
 
-#[cfg(test)]
 fn sign_box(
     participants: &[Participant],
     me: Participant,
@@ -20,7 +19,6 @@ fn sign_box(
         .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = FullSignature>>)
 }
 
-#[cfg(test)]
 pub fn run_presign(
     participants: Vec<(Participant, KeygenOutput)>,
     max_malicious: usize,
