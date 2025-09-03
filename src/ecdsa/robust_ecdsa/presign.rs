@@ -44,7 +44,19 @@ pub fn presign(
         ));
     }
 
-    if 2 * args.threshold + 1 > participants.len() {
+    // if 2 * args.threshold + 1 > participants.len()
+    // this complex way prevents overflowing
+    if args
+        .threshold
+        .saturating_mul(2)
+        .checked_add(1)
+        .ok_or_else(|| {
+            InitializationError::BadParameters(
+                "2*threshold+1 must be less than usize::MAX".to_string(),
+            )
+        })?
+        > participants.len()
+    {
         return Err(InitializationError::BadParameters(
             "2*threshold+1 must be less than or equals to participant count".to_string(),
         ));
