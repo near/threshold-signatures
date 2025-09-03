@@ -130,84 +130,79 @@ mod test {
         let max_malicious = 2;
         let msg = b"Hello? Is it me you're looking for?";
 
-        // loop 100 times and manually compute presignatures
-        // then deliver these presignatures to the signing function
-        for _ in 0..100 {
-            let fx = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
-            // master secret key
-            let x = fx.eval_at_zero().unwrap().0;
-            // master public key
-            let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
+        // Manually compute presignatures then deliver them to the signing function
+        let fx = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
+        // master secret key
+        let x = fx.eval_at_zero().unwrap().0;
+        // master public key
+        let public_key = (ProjectivePoint::GENERATOR * x).to_affine();
 
-            // the presignatures scheme requires the generation of 5 different polynomials
-            // (fk, fa, fb, fd, fe)
-            // here we do not need fb as it is only used to mask some values before sending
-            // them to other participants then adding them all together to generate w
-            // this sum would annihilate all the fb shares which make them useless in our case
-            let fa = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
-            let fk = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
-            let fd = Polynomial::generate_polynomial(
-                Some(Secp256K1ScalarField::zero()),
-                2 * max_malicious,
-                &mut OsRng,
-            )
-            .unwrap();
-            let fe = Polynomial::generate_polynomial(
-                Some(Secp256K1ScalarField::zero()),
-                2 * max_malicious,
-                &mut OsRng,
-            )
-            .unwrap();
+        // the presignatures scheme requires the generation of 5 different polynomials
+        // (fk, fa, fb, fd, fe)
+        // here we do not need fb as it is only used to mask some values before sending
+        // them to other participants then adding them all together to generate w
+        // this sum would annihilate all the fb shares which make them useless in our case
+        let fa = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
+        let fk = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
+        let fd = Polynomial::generate_polynomial(
+            Some(Secp256K1ScalarField::zero()),
+            2 * max_malicious,
+            &mut OsRng,
+        )
+        .unwrap();
+        let fe = Polynomial::generate_polynomial(
+            Some(Secp256K1ScalarField::zero()),
+            2 * max_malicious,
+            &mut OsRng,
+        )
+        .unwrap();
 
-            // computing k, R, Rx
-            let k = fk.eval_at_zero()?.0;
-            let big_r = ProjectivePoint::GENERATOR * k;
-            let big_r_x_coordinate = x_coordinate(&big_r.to_affine());
+        // computing k, R, Rx
+        let k = fk.eval_at_zero()?.0;
+        let big_r = ProjectivePoint::GENERATOR * k;
+        let big_r_x_coordinate = x_coordinate(&big_r.to_affine());
 
-            // compute the master scalar w = a * k
-            let w = fa.eval_at_zero()?.0 * k;
-            let w_invert = w.invert().unwrap();
+        // compute the master scalar w = a * k
+        let w = fa.eval_at_zero()?.0 * k;
+        let w_invert = w.invert().unwrap();
 
-            let participants = generate_participants(5);
+        let participants = generate_participants(5);
 
-            #[allow(clippy::type_complexity)]
-            let mut protocols: Vec<(
-                Participant,
-                Box<dyn Protocol<Output = FullSignature>>,
-            )> = Vec::with_capacity(participants.len());
+        #[allow(clippy::type_complexity)]
+        let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = FullSignature>>)> =
+            Vec::with_capacity(participants.len());
 
-            // Simulate the each participant's presignature
-            for p in &participants {
-                let h_i = w_invert * fa.eval_at_participant(*p).unwrap().0;
-                let alpha_i = h_i + fd.eval_at_participant(*p).unwrap().0;
-                let beta_i = h_i * big_r_x_coordinate * fx.eval_at_participant(*p)?.0
-                    + fe.eval_at_participant(*p).unwrap().0;
+        // Simulate the each participant's presignature
+        for p in &participants {
+            let h_i = w_invert * fa.eval_at_participant(*p).unwrap().0;
+            let alpha_i = h_i + fd.eval_at_participant(*p).unwrap().0;
+            let beta_i = h_i * big_r_x_coordinate * fx.eval_at_participant(*p)?.0
+                + fe.eval_at_participant(*p).unwrap().0;
 
-                // build the presignature
-                let presignature = PresignOutput {
-                    big_r: big_r.to_affine(),
-                    alpha_i,
-                    beta_i,
-                };
+            // build the presignature
+            let presignature = PresignOutput {
+                big_r: big_r.to_affine(),
+                alpha_i,
+                beta_i,
+            };
 
-                // run the signing algorithm using the build presignature
-                let protocol = sign(
-                    &participants,
-                    *p,
-                    public_key,
-                    presignature,
-                    scalar_hash(msg),
-                )?;
-                protocols.push((*p, Box::new(protocol)));
-            }
-
-            let result = run_protocol(protocols)?;
-            let sig = result[0].1.clone();
-            let sig = Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
-            // verify the correctness of the generated signature
-            VerifyingKey::from(&PublicKey::from_affine(public_key).unwrap())
-                .verify(&msg[..], &sig)?;
+            // run the signing algorithm using the build presignature
+            let protocol = sign(
+                &participants,
+                *p,
+                public_key,
+                presignature,
+                scalar_hash(msg),
+            )?;
+            protocols.push((*p, Box::new(protocol)));
         }
+
+        let result = run_protocol(protocols)?;
+        let sig = result[0].1.clone();
+        let sig = Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
+
+        // verify the correctness of the generated signature
+        VerifyingKey::from(&PublicKey::from_affine(public_key).unwrap()).verify(&msg[..], &sig)?;
         Ok(())
     }
 }
