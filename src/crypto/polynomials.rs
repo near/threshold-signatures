@@ -1389,4 +1389,44 @@ mod test {
             duration_batch
         );
     }
+
+    #[test]
+    fn benchmark_inversion() {
+        use std::time::Instant;
+
+        let num_inversions = 100;
+        let values: Vec<Scalar<C>> = (0..num_inversions)
+            .map(|_| Secp256K1ScalarField::random(&mut OsRng))
+            .collect();
+
+        // Benchmark individual inversions
+        let start_individual = Instant::now();
+        let individual_inverses: Vec<Scalar<C>> = values
+            .iter()
+            .map(|v| <<Secp256K1Sha256 as frost_core::Ciphersuite>::Group as Group>::Field::invert(v).unwrap())
+            .collect();
+        let duration_individual = start_individual.elapsed();
+
+        // Benchmark batch inversion
+        let start_batch = Instant::now();
+        let batch_inverses = batch_invert::<C>(&values).unwrap();
+        let duration_batch = start_batch.elapsed();
+
+        // Verify that the results are the same
+        for (a, b) in individual_inverses.iter().zip(batch_inverses.iter()) {
+            assert_eq!(a, b);
+        }
+
+        println!();
+        println!(
+            "Individual inversions for {} values: {:?}",
+            num_inversions, duration_individual
+        );
+        println!(
+            "Batch inversion for {} values:      {:?}",
+            num_inversions, duration_batch
+        );
+
+        assert!(duration_batch < duration_individual);
+    }
 }
