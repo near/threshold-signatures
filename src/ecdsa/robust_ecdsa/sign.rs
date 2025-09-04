@@ -202,8 +202,7 @@ mod test {
         let sig = Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
 
         // verify the correctness of the generated signature
-        VerifyingKey::from(&PublicKey::from_affine(public_key).unwrap())
-                        .verify(&msg[..], &sig)?;
+        VerifyingKey::from(&PublicKey::from_affine(public_key).unwrap()).verify(&msg[..], &sig)?;
         Ok(())
     }
 }
