@@ -609,8 +609,7 @@ pub fn batch_invert<C: Ciphersuite>(values: &[Scalar<C>]) -> Result<Vec<Scalar<C
     // Compute individual inverses usin suffix products
     let mut inverted = vec![<C::Group as Group>::Field::one(); values.len()];
     for i in (1..values.len()).rev() {
-        let prev_prod = products[i - 1];
-        inverted[i] = prev_prod * inv_last;
+        inverted[i] = products[i - 1] * inv_last;
         inv_last = inv_last * values[i];
     }
     inverted[0] = inv_last;
