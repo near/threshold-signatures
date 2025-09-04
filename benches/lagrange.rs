@@ -12,8 +12,8 @@ type C = Secp256K1Sha256;
 fn bench_lagrange_computation(c: &mut Criterion) {
     let mut group = c.benchmark_group("Lagrange Computation");
 
-    for degree in [10, 100].iter() {
-        let participants = (0..=1_000)
+    for degree in [1, 100, 1_000].iter() {
+        let participants = (0..*degree + 1)
             .map(|i| Participant::from(i as u32))
             .collect::<Vec<_>>();
         let ids = participants
@@ -65,4 +65,30 @@ fn bench_lagrange_computation(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_lagrange_computation,);
+fn bench_inversion_vs_multiplication(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Inversion vs Multiplication");
+
+    group.bench_function("single_inversion", |b| {
+        b.iter(|| {
+            let value_to_invert = Secp256K1ScalarField::random(&mut OsRng);
+            black_box(value_to_invert.invert().unwrap());
+        });
+    });
+
+    group.bench_function("three_multiplications", |b| {
+        b.iter(|| {
+            let a = Secp256K1ScalarField::random(&mut OsRng);
+            let b = Secp256K1ScalarField::random(&mut OsRng);
+            let c = Secp256K1ScalarField::random(&mut OsRng);
+            black_box(a * b * c);
+        });
+    });
+
+    group.finish();
+}
+
+criterion_group!(
+    benches,
+    bench_lagrange_computation,
+    bench_inversion_vs_multiplication
+);
