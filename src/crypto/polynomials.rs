@@ -564,14 +564,14 @@ pub fn batch_compute_lagrange_coefficients<C: Ciphersuite>(
     } else {
         // General case: x != 0
         let mut full_numerator = <C::Group as Group>::Field::one();
-        let mut x_minus_xis = Vec::with_capacity(n);
+        let mut x_minus_xi_vec = Vec::with_capacity(n);
         for x_i in points_set.iter() {
             let x_minus_xi = *x - *x_i;
             full_numerator = full_numerator * x_minus_xi;
-            x_minus_xis.push(x_minus_xi);
+            x_minus_xi_vec.push(x_minus_xi);
         }
-        let inv_x_minus_xis = batch_invert::<C>(&x_minus_xis)?;
-        (full_numerator, inv_x_minus_xis)
+        let inv_x_minus_xi_vec = batch_invert::<C>(&x_minus_xi_vec)?;
+        (full_numerator, inv_x_minus_xi_vec)
     };
 
     // Compute final Lagrange coefficients
