@@ -1,9 +1,12 @@
-use serde::{Deserialize, Serialize};
+pub mod presign;
+pub mod sign;
+#[cfg(test)]
+mod test;
 
 use crate::ecdsa::{AffinePoint, KeygenOutput, Scalar};
+use serde::{Deserialize, Serialize};
 
-/// The arguments needed to create a presignature.
-#[derive(Debug, Clone)]
+/// The necessary inputs for the creation of a presignature.
 pub struct PresignArguments {
     /// The output of key generation, i.e. our share of the secret key, and the public key package.
     /// This is of type KeygenOutput<Secp256K1Sha256> from Frost implementation
@@ -12,8 +15,8 @@ pub struct PresignArguments {
     pub threshold: usize,
 }
 
-// The output of the presigning protocol.
-/// Contains the signature precomputed parts performed
+/// The output of the presigning protocol.
+/// Contains the signature precomputed elements
 /// independently of the message
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PresignOutput {
@@ -24,8 +27,3 @@ pub struct PresignOutput {
     pub alpha_i: Scalar,
     pub beta_i: Scalar,
 }
-
-pub mod presign;
-pub mod sign;
-#[cfg(test)]
-mod test;

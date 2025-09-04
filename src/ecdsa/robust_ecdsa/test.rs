@@ -2,13 +2,12 @@ use std::error::Error;
 
 use super::{presign::presign, sign::sign, PresignArguments, PresignOutput};
 
-use crate::test::{assert_public_key_invariant, run_keygen, run_refresh, run_reshare};
-
 use crate::ecdsa::{test::run_sign, AffinePoint, FullSignature, KeygenOutput, Scalar};
-use crate::protocol::{run_protocol, InitializationError, Participant, Protocol};
-use crate::test::{generate_participants, generate_random_participants};
 
-#[cfg(test)]
+use crate::protocol::{errors::InitializationError, run_protocol, Participant, Protocol};
+use crate::test::{assert_public_key_invariant, run_keygen, run_reshare, run_refresh};
+use crate::test::{generate_participants, generate_participants_with_random_ids};
+
 fn sign_box(
     participants: &[Participant],
     me: Participant,
@@ -20,12 +19,10 @@ fn sign_box(
         .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = FullSignature>>)
 }
 
-#[cfg(test)]
 pub fn run_presign(
     participants: Vec<(Participant, KeygenOutput)>,
     max_malicious: usize,
 ) -> Vec<(Participant, PresignOutput)> {
-    #[allow(clippy::type_complexity)]
     let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)> =
         Vec::with_capacity(participants.len());
 
@@ -73,6 +70,7 @@ fn test_refresh() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
+/// Tests the resharing protocol when more participants are added to the pool
 fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants(11);
 
@@ -120,6 +118,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
+/// Tests the resharing protocol when participants are kicked out of the pool
 fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants(5);
 
@@ -192,7 +191,7 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
 #[test]
 fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     let participants_count = 7;
-    let participants = generate_random_participants(participants_count);
+    let participants = generate_participants_with_random_ids(participants_count);
     let max_malicious = 3;
 
     let mut keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;

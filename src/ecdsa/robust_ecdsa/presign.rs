@@ -1,4 +1,3 @@
-use elliptic_curve::point::AffineCoordinates;
 use frost_core::serialization::SerializableScalar;
 use frost_secp256k1::{Group, Secp256K1Group};
 use rand_core::OsRng;
@@ -6,22 +5,76 @@ use rand_core::OsRng;
 use super::{PresignArguments, PresignOutput};
 use crate::{
     ecdsa::{
-        CoefficientCommitment, Field, Polynomial, PolynomialCommitment, Scalar,
-        Secp256K1ScalarField, Secp256K1Sha256, SigningShare,
+        x_coordinate, CoefficientCommitment, Field, Polynomial, PolynomialCommitment, Scalar,
+        Secp256K1ScalarField, Secp256K1Sha256,
     },
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     protocol::{
+        errors::{InitializationError, ProtocolError},
         internal::{make_protocol, Comms, SharedChannel},
-        InitializationError, Participant, Protocol, ProtocolError,
+        Participant, Protocol,
     },
+    SigningShare,
 };
 
 type C = Secp256K1Sha256;
 
-/// Generates a secret polynomial where the constant term is zero
-fn zero_secret_polynomial(degree: usize, rng: &mut OsRng) -> Result<Polynomial, ProtocolError> {
-    let secret = Secp256K1ScalarField::zero();
-    Polynomial::generate_polynomial(Some(secret), degree, rng)
+/// The presignature protocol.
+///
+/// This is the first phase of performing a signature, in which we perform
+/// all the work we can do without yet knowing the message to be signed.
+///
+/// This work does depend on the private key though, and it's crucial
+/// that a presignature is never reused.
+pub fn presign(
+    participants: &[Participant],
+    me: Participant,
+    args: PresignArguments,
+) -> Result<impl Protocol<Output = PresignOutput>, InitializationError> {
+    if participants.len() < 2 {
+        return Err(InitializationError::BadParameters(format!(
+            "participant count cannot be less than 2, found: {}",
+            participants.len()
+        )));
+    };
+
+    if args.threshold > participants.len() {
+        return Err(InitializationError::BadParameters(
+            "threshold must be less than or equals to participant count".to_string(),
+        ));
+    }
+
+    // if 2 * args.threshold + 1 > participants.len()
+    // this complex way prevents overflowing
+    if args
+        .threshold
+        .saturating_mul(2)
+        .checked_add(1)
+        .ok_or_else(|| {
+            InitializationError::BadParameters(
+                "2*threshold+1 must be less than usize::MAX".to_string(),
+            )
+        })?
+        > participants.len()
+    {
+        return Err(InitializationError::BadParameters(
+            "2*threshold+1 must be less than or equals to participant count".to_string(),
+        ));
+    }
+
+    let participants = ParticipantList::new(participants).ok_or_else(|| {
+        InitializationError::BadParameters("participant list cannot contain duplicates".to_string())
+    })?;
+
+    if !participants.contains(me) {
+        return Err(InitializationError::BadParameters(
+            "Presign participant list does not contain me".to_string(),
+        ));
+    };
+
+    let ctx = Comms::new();
+    let fut = do_presign(ctx.shared_channel(), participants, me, args);
+    Ok(make_protocol(ctx, fut))
 }
 
 /// /!\ Warning: the threshold in this scheme is the exactly the
@@ -54,46 +107,38 @@ async fn do_presign(
         let package = polynomials
             .iter()
             .map(|poly| poly.eval_at_participant(p))
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>, _>>()?;
 
         // send the evaluation privately to participant p
-        chan.send_private(wait_round_0, p, &package);
+        chan.send_private(wait_round_0, p, &package)?;
     }
 
     // Evaluate my secret shares for my polynomials
-    let shares = polynomials
-        .iter()
-        .map(|poly| poly.eval_at_participant(me))
-        .collect::<Vec<_>>();
-
-    // Extract the shares into a vec of scalars
-    let mut shares: Vec<Scalar> = shares.iter().map(|signing_share| signing_share.0).collect();
+    let mut shares = Shares::new(polynomials, me)?;
 
     // Round 1
     // Receive evaluations from all participants
     let mut seen = ParticipantCounter::new(&participants);
     seen.put(me);
     while !seen.full() {
-        let (from, package): (_, [SerializableScalar<C>; 5]) = chan.recv(wait_round_0).await?;
+        let (from, package): (_, Shares) = chan.recv(wait_round_0).await?;
         if !seen.put(from) {
             continue;
         }
 
-        // calculate the respective sum of the received different shares from each participant
-        for i in 0..shares.len() {
-            shares[i] += package[i].0;
-        }
+        // calculate the respective sum of the different shares received from each participant
+        shares.add_shares(&package);
     }
 
     // Compute R_me = g^{k_me}
-    let big_r_me = CoefficientCommitment::new(Secp256K1Group::generator() * shares[0]);
+    let big_r_me = CoefficientCommitment::new(Secp256K1Group::generator() * shares.k());
 
     // Compute w_me = a_me * k_me + b_me
-    let w_me = shares[1] * shares[0] + shares[2];
+    let w_me = shares.a() * shares.k() + shares.b();
 
     // Send and receive
     let wait_round_1 = chan.next_waitpoint();
-    chan.send_many(wait_round_1, &(&big_r_me, &SigningShare::new(w_me)));
+    chan.send_many(wait_round_1, &(&big_r_me, &SigningShare::<C>::new(w_me)))?;
 
     // Store the sent items
     let mut signingshares_map = ParticipantMap::new(&participants);
@@ -103,7 +148,7 @@ async fn do_presign(
 
     // Receive and interpolate
     while !signingshares_map.full() {
-        let (from, (big_r_p, w_p)): (_, (_, SigningShare)) = chan.recv(wait_round_1).await?;
+        let (from, (big_r_p, w_p)): (_, (_, SigningShare<C>)) = chan.recv(wait_round_1).await?;
         // collect big_r_p and w_p in maps that will be later ordered
         // if the sender has already sent elements then put will return immediately
         signingshares_map.put(from, SerializableScalar(w_p.to_scalar()));
@@ -163,10 +208,10 @@ async fn do_presign(
     {
         // Round 2
         // Compute W_me = R^{a_me}
-        let big_w_me = CoefficientCommitment::new(big_r.value() * shares[1]);
+        let big_w_me = CoefficientCommitment::new(big_r.value() * shares.a());
         // Send W_me
         let wait_round_active = chan.next_waitpoint();
-        chan.send_many(wait_round_active, &big_w_me);
+        chan.send_many(wait_round_active, &big_w_me)?;
 
         // Receive W_i
         let mut wshares_map = ParticipantMap::new(&participants);
@@ -206,16 +251,14 @@ async fn do_presign(
     }
 
     // w is non-zero due to previous check and so I can unwrap safely
-    let h_me = w.0.invert().unwrap() * shares[1];
+    let h_me = w.0.invert().unwrap() * shares.a();
 
     // Some extra computation is pushed in this offline phase
-    let alpha_me = h_me + shares[3];
+    let alpha_me = h_me + shares.d();
 
-    let big_r_x_coordinate: [u8; 32] = big_r.value().to_affine().x().into();
-    let big_r_x_coordinate = <Secp256K1ScalarField as Field>::deserialize(&big_r_x_coordinate)
-        .map_err(|_| ProtocolError::ErrorReducingBytesToScalar)?;
+    let big_r_x_coordinate = x_coordinate(&big_r.value().to_affine());
     let x_me = args.keygen_out.private_share.to_scalar();
-    let beta_me = h_me * big_r_x_coordinate * x_me + shares[4];
+    let beta_me = h_me * big_r_x_coordinate * x_me + shares.e();
 
     Ok(PresignOutput {
         big_r: big_r.value().to_affine(),
@@ -224,50 +267,61 @@ async fn do_presign(
     })
 }
 
-/// The presignature protocol.
-///
-/// This is the first phase of performing a signature, in which we perform
-/// all the work we can do without yet knowing the message to be signed.
-///
-/// This work does depend on the private key though, and it's crucial
-/// that a presignature is never reused.
-pub fn presign(
-    participants: &[Participant],
-    me: Participant,
-    args: PresignArguments,
-) -> Result<impl Protocol<Output = PresignOutput>, InitializationError> {
-    if participants.len() < 2 {
-        return Err(InitializationError::BadParameters(format!(
-            "participant count cannot be less than 2, found: {}",
-            participants.len()
-        )));
-    };
+/// Generates a secret polynomial where the constant term is zero
+fn zero_secret_polynomial(degree: usize, rng: &mut OsRng) -> Result<Polynomial, ProtocolError> {
+    let secret = Secp256K1ScalarField::zero();
+    Polynomial::generate_polynomial(Some(secret), degree, rng)
+}
 
-    if args.threshold > participants.len() {
-        return Err(InitializationError::BadParameters(
-            "threshold must be less than or equals to participant count".to_string(),
-        ));
+/// Contains five shares used during presigniture
+/// (k, a, b, d, e)
+#[derive(serde::Deserialize, serde::Serialize)]
+struct Shares([SerializableScalar<C>; 5]);
+
+impl Shares {
+    /// Constructs a new Shares out of five polynomials
+    pub(crate) fn new(polynomials: [Polynomial; 5], p: Participant) -> Result<Self, ProtocolError> {
+        // iterate over the polynomials and map them
+        let shares = polynomials
+            .iter()
+            .map(|poly| poly.eval_at_participant(p))
+            .collect::<Result<Vec<_>, _>>()?
+            .try_into()
+            .map_err(|_| ProtocolError::Other("Unable to build Shares".to_string()))?;
+        Ok(Shares(shares))
     }
 
-    if 2 * args.threshold + 1 > participants.len() {
-        return Err(InitializationError::BadParameters(
-            "2*threshold+1 must be less than or equals to participant count".to_string(),
-        ));
+    /// Returns k element
+    pub(crate) fn k(&self) -> Scalar {
+        self.0[0].0
     }
 
-    let participants = ParticipantList::new(participants).ok_or_else(|| {
-        InitializationError::BadParameters("participant list cannot contain duplicates".to_string())
-    })?;
+    /// Returns a element
+    pub(crate) fn a(&self) -> Scalar {
+        self.0[1].0
+    }
 
-    if !participants.contains(me) {
-        return Err(InitializationError::BadParameters(
-            "Presign participant list does not contain me".to_string(),
-        ));
-    };
+    /// Returns b element
+    pub(crate) fn b(&self) -> Scalar {
+        self.0[2].0
+    }
 
-    let ctx = Comms::new();
-    let fut = do_presign(ctx.shared_channel(), participants, me, args);
-    Ok(make_protocol(ctx, fut))
+    /// Returns d element
+    pub(crate) fn d(&self) -> Scalar {
+        self.0[3].0
+    }
+
+    /// Returns e element
+    pub(crate) fn e(&self) -> Scalar {
+        self.0[4].0
+    }
+
+    /// Adds two sets of shares together respectively and puts the result back into self
+    pub(crate) fn add_shares(&mut self, shares: &Self) {
+        for i in 0..self.0.len() {
+            self.0[i].0 += shares.0[i].0;
+        }
+    }
 }
 
 #[cfg(test)]
@@ -289,15 +343,14 @@ mod test {
         let max_malicious = 2;
 
         let f = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
-        let big_x = ProjectivePoint::GENERATOR * f.eval_at_zero().0;
+        let big_x = ProjectivePoint::GENERATOR * f.eval_at_zero().unwrap().0;
 
-        #[allow(clippy::type_complexity)]
         let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)> =
             Vec::with_capacity(participants.len());
 
         for p in &participants {
             // simulating the key packages for each participant
-            let private_share = f.eval_at_participant(*p);
+            let private_share = f.eval_at_participant(*p).unwrap();
             let verifying_key = VerifyingKey::new(big_x);
             let public_key_package = PublicKeyPackage::new(BTreeMap::new(), verifying_key);
             let keygen_out = KeygenOutput {
@@ -312,9 +365,8 @@ mod test {
                     keygen_out,
                     threshold: max_malicious,
                 },
-            );
-            assert!(protocol.is_ok());
-            let protocol = protocol.unwrap();
+            )
+            .unwrap();
             protocols.push((*p, Box::new(protocol)));
         }
 
