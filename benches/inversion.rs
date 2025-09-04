@@ -1,7 +1,8 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, Criterion};
 use frost_core::{Field, Group};
 use frost_secp256k1::{Secp256K1ScalarField, Secp256K1Sha256};
 use rand_core::OsRng;
+use std::hint::black_box;
 use threshold_signatures::batch_invert;
 
 fn bench_inversion(c: &mut Criterion) {
@@ -16,20 +17,19 @@ fn bench_inversion(c: &mut Criterion) {
 
     group.bench_function("individual inversion", |b| {
         b.iter(|| {
-            values
+            black_box(values
                 .iter()
                 .map(|v| {
                     <<Secp256K1Sha256 as frost_core::Ciphersuite>::Group as Group>::Field::invert(v)
                         .unwrap()
                 })
-                .collect::<Vec<_>>()
+                .collect::<Vec<_>>())
         })
     });
 
     group.bench_function("batch inversion", |b| {
-        b.iter(|| batch_invert::<Secp256K1Sha256>(&values).unwrap())
+        b.iter(|| black_box(batch_invert::<Secp256K1Sha256>(&values).unwrap()))
     });
 }
 
 criterion_group!(benches, bench_inversion);
-criterion_main!(benches);

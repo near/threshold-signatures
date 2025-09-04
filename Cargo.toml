@@ -50,5 +50,5 @@ zeroize = "1.8.1"
 criterion = "0.7.0"
 
 [[bench]]
-name = "inversion"
+name = "main"
 harness = false

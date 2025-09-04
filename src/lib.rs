@@ -1,6 +1,8 @@
 mod crypto;
 // For benchmark
-pub use crypto::polynomials::batch_invert;
+pub use crypto::polynomials::{
+    batch_compute_lagrange_coefficients, batch_invert, compute_lagrange_coefficient,
+};
 mod generic_dkg;
 mod participants;
 
