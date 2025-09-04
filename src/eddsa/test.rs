@@ -1,5 +1,5 @@
 use crate::crypto::hash::HashOutput;
-use crate::eddsa::{sign::sign, Signature, KeygenOutput};
+use crate::eddsa::{sign::sign, KeygenOutput, Signature};
 use crate::participants::ParticipantList;
 use crate::protocol::{run_protocol, Participant, Protocol};
 

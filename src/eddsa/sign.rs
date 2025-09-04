@@ -277,8 +277,9 @@ mod test {
     use crate::test::{assert_public_key_invariant, run_keygen, run_refresh, run_reshare};
     use std::error::Error;
 
-
-    fn assert_single_coordinator_result(data: Vec<(Participant, super::Signature)>) -> frost_ed25519::Signature {
+    fn assert_single_coordinator_result(
+        data: Vec<(Participant, super::Signature)>,
+    ) -> frost_ed25519::Signature {
         let mut signature = None;
         let count = data
             .iter()

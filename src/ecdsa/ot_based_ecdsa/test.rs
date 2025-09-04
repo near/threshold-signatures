@@ -4,7 +4,7 @@ use super::{
     triples::{test::deal, TriplePub, TripleShare},
     PresignArguments, PresignOutput,
 };
-use crate::ecdsa::{test::run_sign, AffinePoint, Signature, KeygenOutput, Scalar};
+use crate::ecdsa::{test::run_sign, AffinePoint, KeygenOutput, Scalar, Signature};
 use crate::protocol::{errors::InitializationError, run_protocol, Participant, Protocol};
 use crate::test::{assert_public_key_invariant, run_keygen, run_refresh, run_reshare};
 use crate::test::{generate_participants, generate_participants_with_random_ids};

@@ -3,7 +3,7 @@ use subtle::ConditionallySelectable;
 
 use super::PresignOutput;
 use crate::{
-    ecdsa::{x_coordinate, AffinePoint, Signature, Scalar, Secp256K1Sha256},
+    ecdsa::{x_coordinate, AffinePoint, Scalar, Secp256K1Sha256, Signature},
     participants::{ParticipantCounter, ParticipantList},
     protocol::{
         errors::{InitializationError, ProtocolError},

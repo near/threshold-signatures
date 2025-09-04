@@ -5,7 +5,7 @@ use subtle::ConditionallySelectable;
 
 use super::PresignOutput;
 use crate::{
-    ecdsa::{AffinePoint, Signature, Polynomial, Scalar, Secp256K1Sha256},
+    ecdsa::{AffinePoint, Polynomial, Scalar, Secp256K1Sha256, Signature},
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     protocol::{
         errors::{InitializationError, ProtocolError},
