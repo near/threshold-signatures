@@ -130,7 +130,7 @@ mod test {
         let msg = b"Hello? Is it me you're looking for?";
 
         // Manually compute presignatures then deliver them to the signing function
-        let fx = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
+        let fx = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng)?;
         // master secret key
         let x = fx.eval_at_zero()?.0;
         // master public key
@@ -141,20 +141,18 @@ mod test {
         // here we do not need fb as it is only used to mask some values before sending
         // them to other participants then adding them all together to generate w
         // this sum would annihilate all the fb shares which make them useless in our case
-        let fa = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
-        let fk = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
+        let fa = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng)?;
+        let fk = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng)?;
         let fd = Polynomial::generate_polynomial(
             Some(Secp256K1ScalarField::zero()),
             2 * max_malicious,
             &mut OsRng,
-        )
-        .unwrap();
+        )?;
         let fe = Polynomial::generate_polynomial(
             Some(Secp256K1ScalarField::zero()),
             2 * max_malicious,
             &mut OsRng,
-        )
-        .unwrap();
+        )?;
 
         // computing k, R, Rx
         let k = fk.eval_at_zero()?.0;

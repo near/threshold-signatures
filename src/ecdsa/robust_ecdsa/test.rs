@@ -35,7 +35,7 @@ pub fn run_sign(
 pub fn run_presign(
     participants: Vec<(Participant, KeygenOutput)>,
     max_malicious: usize,
-) -> Vec<(Participant, PresignOutput)> {
+) -> Result<Vec<(Participant, PresignOutput)>, Box<dyn Error>> {
     let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)> =
         Vec::with_capacity(participants.len());
 
@@ -49,13 +49,11 @@ pub fn run_presign(
                 keygen_out,
                 threshold: max_malicious,
             },
-        );
-        assert!(protocol.is_ok());
-        let protocol = protocol.unwrap();
+        )?;
         protocols.push((p, Box::new(protocol)));
     }
 
-    run_protocol(protocols).unwrap()
+    Ok(run_protocol(protocols)?)
 }
 
 #[test]
@@ -69,7 +67,7 @@ fn test_refresh() -> Result<(), Box<dyn Error>> {
     let key_packages = run_refresh(&participants, keys, threshold)?;
     let public_key = key_packages[0].1.public_key;
     assert_public_key_invariant(&key_packages);
-    let presign_result = run_presign(key_packages, max_malicious);
+    let presign_result = run_presign(key_packages, max_malicious)?;
 
     let msg = b"hello world";
     run_sign(presign_result, public_key.to_element(), msg)?;
@@ -111,7 +109,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
     let public_key = key_packages[0].1.public_key;
 
     // Presign
-    let mut presign_result = run_presign(key_packages, max_malicious);
+    let mut presign_result = run_presign(key_packages, max_malicious)?;
     presign_result.sort_by_key(|(p, _)| *p);
 
     let msg = b"hello world";
@@ -151,7 +149,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     let public_key = key_packages[0].1.public_key;
 
     // Presign
-    let mut presign_result = run_presign(key_packages, max_malicious);
+    let mut presign_result = run_presign(key_packages, max_malicious)?;
     presign_result.sort_by_key(|(p, _)| *p);
 
     let msg = b"hello world";
@@ -172,7 +170,7 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
     assert_eq!(keygen_result[0].1.public_key, keygen_result[1].1.public_key);
     assert_eq!(keygen_result[1].1.public_key, keygen_result[2].1.public_key);
 
-    let mut presign_result = run_presign(keygen_result, max_malicious);
+    let mut presign_result = run_presign(keygen_result, max_malicious)?;
     presign_result.sort_by_key(|(p, _)| *p);
 
     let msg = b"hello world";
@@ -194,7 +192,7 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     assert_eq!(keygen_result[0].1.public_key, keygen_result[1].1.public_key);
     assert_eq!(keygen_result[1].1.public_key, keygen_result[2].1.public_key);
 
-    let mut presign_result = run_presign(keygen_result, max_malicious);
+    let mut presign_result = run_presign(keygen_result, max_malicious)?;
     presign_result.sort_by_key(|(p, _)| *p);
 
     let msg = b"hello world";

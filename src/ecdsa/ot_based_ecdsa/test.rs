@@ -42,7 +42,7 @@ pub fn run_presign(
     pub0: &TriplePub,
     pub1: &TriplePub,
     threshold: usize,
-) -> Vec<(Participant, PresignOutput)> {
+) -> Result<Vec<(Participant, PresignOutput)>, Box<dyn Error>> {
     assert!(participants.len() == shares0.len());
     assert!(participants.len() == shares1.len());
 
@@ -67,13 +67,12 @@ pub fn run_presign(
                 keygen_out,
                 threshold,
             },
-        );
-        assert!(protocol.is_ok());
-        let protocol = protocol.unwrap();
+        )
+        .unwrap();
         protocols.push((p, Box::new(protocol)));
     }
 
-    run_protocol(protocols).unwrap()
+    Ok(run_protocol(protocols)?)
 }
 
 #[test]
@@ -88,11 +87,11 @@ fn test_refresh() -> Result<(), Box<dyn Error>> {
     key_packages.sort_by_key(|(p, _)| *p);
     let public_key = key_packages[0].1.public_key;
     assert_public_key_invariant(&key_packages);
-    let (pub0, shares0) = deal(&mut OsRng, &participants, threshold).unwrap();
-    let (pub1, shares1) = deal(&mut OsRng, &participants, threshold).unwrap();
+    let (pub0, shares0) = deal(&mut OsRng, &participants, threshold)?;
+    let (pub1, shares1) = deal(&mut OsRng, &participants, threshold)?;
 
     // Presign
-    let mut presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, threshold);
+    let mut presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, threshold)?;
     presign_result.sort_by_key(|(p, _)| *p);
 
     let msg = b"hello world";
@@ -130,12 +129,12 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
 
     let public_key = key_packages[0].1.public_key;
     // Prepare triples
-    let (pub0, shares0) = deal(&mut OsRng, &new_participant, new_threshold).unwrap();
-    let (pub1, shares1) = deal(&mut OsRng, &new_participant, new_threshold).unwrap();
+    let (pub0, shares0) = deal(&mut OsRng, &new_participant, new_threshold)?;
+    let (pub1, shares1) = deal(&mut OsRng, &new_participant, new_threshold)?;
 
     // Presign
     let mut presign_result =
-        run_presign(key_packages, shares0, shares1, &pub0, &pub1, new_threshold);
+        run_presign(key_packages, shares0, shares1, &pub0, &pub1, new_threshold)?;
     presign_result.sort_by_key(|(p, _)| *p);
 
     let msg = b"hello world";
@@ -171,12 +170,12 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
 
     let public_key = key_packages[0].1.public_key;
     // Prepare triples
-    let (pub0, shares0) = deal(&mut OsRng, &new_participant, new_threshold).unwrap();
-    let (pub1, shares1) = deal(&mut OsRng, &new_participant, new_threshold).unwrap();
+    let (pub0, shares0) = deal(&mut OsRng, &new_participant, new_threshold)?;
+    let (pub1, shares1) = deal(&mut OsRng, &new_participant, new_threshold)?;
 
     // Presign
     let mut presign_result =
-        run_presign(key_packages, shares0, shares1, &pub0, &pub1, new_threshold);
+        run_presign(key_packages, shares0, shares1, &pub0, &pub1, new_threshold)?;
     presign_result.sort_by_key(|(p, _)| *p);
 
     let msg = b"hello world";
@@ -198,10 +197,10 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
     assert_eq!(keygen_result[0].1.public_key, keygen_result[1].1.public_key);
     assert_eq!(keygen_result[1].1.public_key, keygen_result[2].1.public_key);
 
-    let (pub0, shares0) = deal(&mut OsRng, &participants, threshold).unwrap();
-    let (pub1, shares1) = deal(&mut OsRng, &participants, threshold).unwrap();
+    let (pub0, shares0) = deal(&mut OsRng, &participants, threshold)?;
+    let (pub1, shares1) = deal(&mut OsRng, &participants, threshold)?;
 
-    let mut presign_result = run_presign(keygen_result, shares0, shares1, &pub0, &pub1, threshold);
+    let mut presign_result = run_presign(keygen_result, shares0, shares1, &pub0, &pub1, threshold)?;
     presign_result.sort_by_key(|(p, _)| *p);
 
     let msg = b"hello world";
@@ -224,10 +223,10 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     assert_eq!(keygen_result[0].1.public_key, keygen_result[1].1.public_key);
     assert_eq!(keygen_result[1].1.public_key, keygen_result[2].1.public_key);
 
-    let (pub0, shares0) = deal(&mut OsRng, &participants, threshold).unwrap();
-    let (pub1, shares1) = deal(&mut OsRng, &participants, threshold).unwrap();
+    let (pub0, shares0) = deal(&mut OsRng, &participants, threshold)?;
+    let (pub1, shares1) = deal(&mut OsRng, &participants, threshold)?;
 
-    let mut presign_result = run_presign(keygen_result, shares0, shares1, &pub0, &pub1, threshold);
+    let mut presign_result = run_presign(keygen_result, shares0, shares1, &pub0, &pub1, threshold)?;
     presign_result.sort_by_key(|(p, _)| *p);
 
     let msg = b"hello world";
