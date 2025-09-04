@@ -1,4 +1,6 @@
 mod crypto;
+// For benchmark
+pub use crypto::polynomials::batch_invert;
 mod generic_dkg;
 mod participants;
 
