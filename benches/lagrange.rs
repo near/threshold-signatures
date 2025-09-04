@@ -13,7 +13,7 @@ fn bench_lagrange_computation(c: &mut Criterion) {
     let mut group = c.benchmark_group("Lagrange Computation");
 
     for degree in [10, 100].iter() {
-        let participants = (0..*degree + 1)
+        let participants = (0..=1_000)
             .map(|i| Participant::from(i as u32))
             .collect::<Vec<_>>();
         let ids = participants
