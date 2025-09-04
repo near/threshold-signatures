@@ -437,9 +437,9 @@ pub fn batch_compute_lagrange_coefficients<C: Ciphersuite>(
     }
 
     let zero = <C::Group as Group>::Field::zero();
-    let x_val = x.unwrap_or(&zero);
+    let x = x.unwrap_or(&zero);
 
-    if let Some(k) = points_set.iter().position(|&p| p == *x_val) {
+    if let Some(k) = points_set.iter().position(|&p| p == *x) {
         let mut coeffs = vec![SerializableScalar(<C::Group as Group>::Field::zero()); n];
         coeffs[k] = SerializableScalar(<C::Group as Group>::Field::one());
         return Ok(coeffs);
@@ -462,7 +462,7 @@ pub fn batch_compute_lagrange_coefficients<C: Ciphersuite>(
     let mut full_numerator = <C::Group as Group>::Field::one();
     let mut x_minus_xis = Vec::with_capacity(n);
     for x_i in points_set.iter() {
-        let x_minus_xi = *x_val - *x_i;
+        let x_minus_xi = *x - *x_i;
         full_numerator = full_numerator * x_minus_xi;
         x_minus_xis.push(x_minus_xi);
     }
