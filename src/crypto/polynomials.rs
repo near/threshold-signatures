@@ -626,13 +626,6 @@ mod test {
     use rand_core::{OsRng, RngCore};
     type C = Secp256K1Sha256;
 
-    // Helper constants for convenience
-    fn field_constants<C: frost_core::Ciphersuite>() -> (Scalar<C>, Scalar<C>) {
-        let zero = <C::Group as Group>::Field::zero();
-        let one = <C::Group as Group>::Field::one();
-        (zero, one)
-    }
-
     #[test]
     fn abort_no_polynomial() {
         let poly = Polynomial::<C>::new(vec![]);
@@ -904,7 +897,6 @@ mod test {
 
     #[test]
     fn test_eval_interpolation_x_zero() {
-        let (zero, _) = field_constants::<C>();
         let degree = 5;
         let participants = (1..=degree + 1)
             .map(|i| Participant::from(i as u32))
@@ -918,7 +910,7 @@ mod test {
             .collect();
 
         // x = 0
-        let point_zero = Some(zero);
+        let point_zero = Some(Secp256K1ScalarField::zero());
         let interpolation_zero =
             Polynomial::<C>::eval_interpolation(&ids, &shares, point_zero.as_ref()).unwrap();
 
@@ -1019,7 +1011,6 @@ mod test {
 
     #[test]
     fn test_eval_exponent_interpolation_x_zero() {
-        let (zero, _) = field_constants::<C>();
         let degree = 5;
         let poly = Polynomial::<C>::generate_polynomial(None, degree, &mut OsRng)
             .expect("Polynomial generation should succeed");
@@ -1036,7 +1027,7 @@ mod test {
             .collect();
 
         // x = 0
-        let point_zero = Some(zero);
+        let point_zero = Some(Secp256K1ScalarField::zero());
         let interpolation_zero = PolynomialCommitment::<C>::eval_exponent_interpolation(
             &ids,
             &shares,
@@ -1167,10 +1158,8 @@ mod test {
         }
     }
 
-    /// Tests batch Lagrange computation specifically when x = 0
     #[test]
     fn test_batch_lagrange_x_zero() {
-        let (zero, one) = field_constants::<C>();
         let degree = 5;
         let participants = (1..=degree + 1)
             .map(|i| Participant::from(i as u32))
@@ -1179,7 +1168,7 @@ mod test {
         let ids: Vec<_> = participants.iter().map(|p| p.scalar::<C>()).collect();
 
         // Avoid zero in points_set to trigger the x = 0 branch
-        let point = Some(zero);
+        let point = Some(Secp256K1ScalarField::zero());
 
         // Compute sequentially
         let mut lagrange_seq = Vec::new();
@@ -1193,9 +1182,9 @@ mod test {
 
         // Apply deferred sign (-1)^(n-1) manually
         let sign = if (ids.len() - 1) % 2 == 0 {
-            one
+            Secp256K1ScalarField::one()
         } else {
-            zero - one
+            Secp256K1ScalarField::zero() - Secp256K1ScalarField::one()
         };
         let lagrange_batch_signed: Vec<_> = lagrange_batch
             .into_iter()
@@ -1210,16 +1199,19 @@ mod test {
 
     #[test]
     fn test_batch_edge_cases_errors() {
-        let (zero, _) = field_constants::<C>();
         let points = vec![
             Participant::from(1u32).scalar::<C>(),
             Participant::from(1u32).scalar::<C>(), // duplicate
         ];
-        let result = batch_compute_lagrange_coefficients::<C>(&points, Some(&zero));
+        let result =
+            batch_compute_lagrange_coefficients::<C>(&points, Some(&Secp256K1ScalarField::zero()));
         assert!(result.is_err());
 
         let points_single = vec![Participant::from(1u32).scalar::<C>()];
-        let result = batch_compute_lagrange_coefficients::<C>(&points_single, Some(&zero));
+        let result = batch_compute_lagrange_coefficients::<C>(
+            &points_single,
+            Some(&Secp256K1ScalarField::zero()),
+        );
         assert!(result.is_err());
     }
 
@@ -1257,7 +1249,6 @@ mod test {
 
     #[test]
     fn test_lagrange_computation_x_zero() {
-        let (zero, _) = field_constants::<C>();
         let degree = 10;
         let participants = (1..=degree + 1) // avoid zero in points_set to prevent triggering Kronecker delta case
             .map(|i| Participant::from(i as u32))
@@ -1268,7 +1259,7 @@ mod test {
             .collect::<Vec<_>>();
 
         // x = 0
-        let point = Some(zero);
+        let point = Some(Secp256K1ScalarField::zero());
 
         // Sequential computation
         let mut lagrange_coefficients_seq = Vec::new();
@@ -1335,7 +1326,6 @@ mod test {
 
     #[test]
     fn benchmark_lagrange_computation_x_zero() {
-        let (zero, _) = field_constants::<C>();
         use std::time::Instant;
 
         let degree = 100;
@@ -1348,7 +1338,7 @@ mod test {
             .collect::<Vec<_>>();
 
         // x = 0
-        let point = Some(zero);
+        let point = Some(Secp256K1ScalarField::zero());
 
         // Sequential benchmark
         let start_seq = Instant::now();
