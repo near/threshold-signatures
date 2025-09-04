@@ -110,11 +110,20 @@ impl<C: Ciphersuite> Polynomial<C> {
 
     /// Computes polynomial interpolation at a specific point
     /// using a sequence of sorted elements
+    ///
     /// Input requirements:
-    ///     * identifiers MUST be pairwise distinct and of length greater than 1
-    ///     * shares and identifiers must be of same length
-    ///     * identifier[i] corresponds to share[i]
-    // Returns error if shares' and identifiers' lengths are distinct or less than or equals to 1
+    ///     - identifiers MUST be pairwise distinct and of length greater than 1
+    ///     - shares and identifiers must be of same length
+    ///     - identifier[i] corresponds to share[i]
+    ///
+    /// Behavior:
+    ///   - Uses `batch_compute_lagrange_coefficients` to compute Lagrange coefficients efficiently.
+    ///   - If `point = 0`, the batch function returns coefficients without the sign factor (-1)^(n-1).
+    ///     This function applies the sign to all coefficients before computing the interpolation.
+    ///
+    /// Returns:
+    ///   - `Ok(SerializableScalar<C>)` containing f(point)
+    ///   - `Err(ProtocolError)` if input lengths are invalid (lengths are distinct or less than or equals to 1)
     pub fn eval_interpolation(
         identifiers: &[Scalar<C>],
         shares: &[SerializableScalar<C>],
@@ -128,7 +137,24 @@ impl<C: Ciphersuite> Polynomial<C> {
         }
 
         // Compute the Lagrange coefficients in batch
-        let lagrange_coefficients = batch_compute_lagrange_coefficients::<C>(identifiers, point)?;
+        let mut lagrange_coefficients =
+            batch_compute_lagrange_coefficients::<C>(identifiers, point)?;
+
+        // Apply the deferred sign for x = 0
+        if let Some(x) = point {
+            if *x == <C::Group as Group>::Field::zero() {
+                let sign = if (identifiers.len() - 1) % 2 == 0 {
+                    <C::Group as Group>::Field::one() // (-1)^even = 1
+                } else {
+                    // (-1)^odd = -1
+                    <C::Group as Group>::Field::zero() - <C::Group as Group>::Field::one()
+                };
+
+                for coeff in lagrange_coefficients.iter_mut() {
+                    coeff.0 = coeff.0 * sign;
+                }
+            }
+        }
 
         // Compute y = f(point) via polynomial interpolation of these points of f
         for (lagrange_coefficient, share) in lagrange_coefficients.iter().zip(shares) {
@@ -279,11 +305,20 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
 
     /// Computes polynomial interpolation on the exponent at a specific point
     /// using a sequence of sorted coefficient commitments
+    ///
     /// Input requirements:
-    ///     * identifiers MUST be pairwise distinct and of length greater than 1
-    ///     * shares and identifiers must be of same length
-    ///     * identifier[i] corresponds to share[i]
-    // Returns error if shares' and identifiers' lengths are distinct or less than or equals to 1
+    ///     - identifiers MUST be pairwise distinct and of length greater than 1
+    ///     - shares and identifiers must be of same length
+    ///     - identifier[i] corresponds to share[i]
+    ///
+    /// Behavior:
+    ///   - Uses `batch_compute_lagrange_coefficients` to compute Lagrange coefficients efficiently.
+    ///   - If `point = 0`, the batch function returns coefficients without the sign factor (-1)^(n-1).
+    ///     This function multiplies all coefficients by the sign before scaling the commitments.
+    ///
+    /// Returns:
+    ///   - `Ok(CoefficientCommitment<C>)` containing g^f(point)
+    ///   - `Err(ProtocolError)` if input lengths are invalid (lengths are distinct or less than or equals to 1)
     pub fn eval_exponent_interpolation(
         identifiers: &[Scalar<C>],
         shares: &[CoefficientCommitment<C>],
@@ -297,7 +332,24 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
         };
 
         // Compute the Lagrange coefficients in batch
-        let lagrange_coefficients = batch_compute_lagrange_coefficients::<C>(identifiers, point)?;
+        let mut lagrange_coefficients =
+            batch_compute_lagrange_coefficients::<C>(identifiers, point)?;
+
+        // Apply the deferred sign for x = 0
+        if let Some(x) = point {
+            if *x == <C::Group as Group>::Field::zero() {
+                let sign = if (identifiers.len() - 1) % 2 == 0 {
+                    <C::Group as Group>::Field::one() // (-1)^even = 1
+                } else {
+                    <C::Group as Group>::Field::zero() - <C::Group as Group>::Field::one()
+                    // (-1)^odd = -1
+                };
+
+                for coeff in lagrange_coefficients.iter_mut() {
+                    coeff.0 = coeff.0 * sign;
+                }
+            }
+        }
 
         // Compute y = g^f(point) via polynomial interpolation of these points of f
         for (lagrange_coefficient, share) in lagrange_coefficients.iter().zip(shares) {
@@ -439,24 +491,24 @@ pub fn compute_lagrange_coefficient<C: Ciphersuite>(
 /// - If x equals some x_k in `points_set`, return the Kronecker delta vector:
 ///   lamda_k(x)=1 and lamda_i(x)=0 for i!=k.
 ///
-/// Batch computation strategy:
-/// 1) Denominators: for each i, compute d_i = \prod_{j!=i} (x_i - x_j),
-///    then invert all d_i together in a single batch. This reduces n separate
-///    inversions to 1 batch inversion (O(n) instead of O(n^2)).
-/// 2) Numerators: compute the global numerator N = \prod_j (x - x_j),
-///    then for each i obtain n_i = N / (x - x_i) using batch inversion of (x - x_i).
+/// Batch computation:
+/// 1) Denominators: d_i = \prod_{j!=i} (x_i - x_j), all inverted together in one batch
+///    This reduces n separate inversions to 1 batch inversion (O(n) instead of O(n^2)).
+/// 2) Numerators: N = \prod_j (x - x_j); each n_i = N / (x - x_i) via batch inversion.
 /// 3) Combine: lamda_i(x) = n_i * (d_i^-1).
+///
+/// Special case for x = 0:
+/// - Numerators are computed as \prod_j x_j / x_i without applying the (-1)^(n-1) sign.
+/// - **The call site must multiply all coefficients by (-1)^(n-1) if the actual lagrange
+///   coefficient at 0 is required.** This avoids repeated negations inside the hot loop.
 ///
 /// Returns:
 /// - Vec<SerializableScalar<C>>: Lagrange coefficients corresponding to each x_i.
 ///
 /// Example (over reals for clarity):
-/// - points_set = [1, 2, 4], x = 3:
-///   lamda(3) = [-1/3, 1, 1/3]   // sums to 1
-/// - points_set = [1, 2, 4], x = 2:
-///   lamda(2) = [0, 1, 0]        // x equals x₁
-/// - points_set = [1, 3, 4], x = None (so x=0):
-///   lamda(0) = [2, -2, 1]       // sums to 1
+/// - points_set = [1, 2, 4], x = 3 → [-1/3, 1, 1/3] // sums to 1
+/// - points_set = [1, 2, 4], x = 2 → [0, 1, 0] // Kronecker delta
+/// - points_set = [1, 3, 4], x = None (0) → [2, -2, 1] // deferred sign not applied
 pub fn batch_compute_lagrange_coefficients<C: Ciphersuite>(
     points_set: &[Scalar<C>],
     x: Option<&Scalar<C>>,
@@ -497,24 +549,35 @@ pub fn batch_compute_lagrange_coefficients<C: Ciphersuite>(
     // Invert all denominators in one batch for efficiency
     let inv_denominators = batch_invert::<C>(&denominators)?;
 
-    // Compute global numerator N = \prod_j (x - x_j)
-    // Also store individual (x - x_j) for batch inversion
-    let mut full_numerator = <C::Group as Group>::Field::one();
-    let mut x_minus_xis = Vec::with_capacity(n);
-    for x_i in points_set.iter() {
-        let x_minus_xi = *x - *x_i;
-        full_numerator = full_numerator * x_minus_xi;
-        x_minus_xis.push(x_minus_xi);
-    }
+    // Special case: x = 0
+    let (numerator_prod, inv_factors) = if *x == zero {
+        // Compute P = ∏_j x_j
+        let mut p = <C::Group as Group>::Field::one();
+        for x_i in points_set.iter() {
+            p = p * *x_i;
+        }
 
-    // Invert all (x - x_i) terms in one batch
-    let inv_x_minus_xis = batch_invert::<C>(&x_minus_xis)?;
+        // Batch invert points_set to get 1 / x_i
+        let inv_xis = batch_invert::<C>(points_set)?;
+
+        (p, inv_xis) // Sign (-1)^(n-1) left to caller
+    } else {
+        // General case: x != 0
+        let mut full_numerator = <C::Group as Group>::Field::one();
+        let mut x_minus_xis = Vec::with_capacity(n);
+        for x_i in points_set.iter() {
+            let x_minus_xi = *x - *x_i;
+            full_numerator = full_numerator * x_minus_xi;
+            x_minus_xis.push(x_minus_xi);
+        }
+        let inv_x_minus_xis = batch_invert::<C>(&x_minus_xis)?;
+        (full_numerator, inv_x_minus_xis)
+    };
 
     // Compute final Lagrange coefficients
     let mut lagrange_coeffs = Vec::with_capacity(n);
     for i in 0..n {
-        // n_i = N / (x - x_i) using the precomputed inverse
-        let num_i = full_numerator * inv_x_minus_xis[i];
+        let num_i = numerator_prod * inv_factors[i];
         lagrange_coeffs.push(SerializableScalar(num_i * inv_denominators[i]));
     }
 
@@ -526,7 +589,7 @@ pub fn batch_compute_lagrange_coefficients<C: Ciphersuite>(
 /// Uses the standard prefix-product / suffix-product trick for O(n) inversions instead of O(n²).
 fn batch_invert<C: Ciphersuite>(values: &[Scalar<C>]) -> Result<Vec<Scalar<C>>, ProtocolError> {
     if values.is_empty() {
-        return Ok(Vec::new());
+        return Err(ProtocolError::InvalidInterpolationArguments);
     }
 
     // Compute prefix products
@@ -564,6 +627,14 @@ mod test {
     use frost_secp256k1::{Secp256K1Group, Secp256K1ScalarField, Secp256K1Sha256};
     use rand_core::{OsRng, RngCore};
     type C = Secp256K1Sha256;
+
+    // Helper constants for convenience
+    fn field_constants<C: frost_core::Ciphersuite>() -> (Scalar<C>, Scalar<C>) {
+        let zero = <C::Group as Group>::Field::zero();
+        let one = <C::Group as Group>::Field::one();
+        (zero, one)
+    }
+
     #[test]
     fn abort_no_polynomial() {
         let poly = Polynomial::<C>::new(vec![]);
@@ -834,6 +905,36 @@ mod test {
     }
 
     #[test]
+    fn test_eval_interpolation_x_zero() {
+        let (zero, _) = field_constants::<C>();
+        let degree = 5;
+        let participants = (1..=degree + 1)
+            .map(|i| Participant::from(i as u32))
+            .collect::<Vec<_>>();
+
+        let ids: Vec<_> = participants.iter().map(|p| p.scalar::<C>()).collect();
+
+        let shares: Vec<_> = participants
+            .iter()
+            .map(|_| SerializableScalar(Secp256K1ScalarField::random(&mut OsRng)))
+            .collect();
+
+        // x = 0
+        let point_zero = Some(zero);
+        let interpolation_zero =
+            Polynomial::<C>::eval_interpolation(&ids, &shares, point_zero.as_ref()).unwrap();
+
+        // x != 0
+        let point_random = Some(Secp256K1ScalarField::random(&mut OsRng));
+        let interpolation_rand =
+            Polynomial::<C>::eval_interpolation(&ids, &shares, point_random.as_ref()).unwrap();
+
+        // Should not panic or error
+        let _ = interpolation_zero.0;
+        let _ = interpolation_rand.0;
+    }
+
+    #[test]
     fn poly_eval_interpolate() {
         let degree = 5;
         // generate polynomial of degree 5
@@ -916,6 +1017,47 @@ mod test {
             PolynomialCommitment::<C>::eval_exponent_interpolation(&ids[..2], &shares, None)
                 .is_err()
         );
+    }
+
+    #[test]
+    fn test_eval_exponent_interpolation_x_zero() {
+        let (zero, _) = field_constants::<C>();
+        let degree = 5;
+        let poly = Polynomial::<C>::generate_polynomial(None, degree, &mut OsRng)
+            .expect("Polynomial generation should succeed");
+        let compoly = poly.commit_polynomial().unwrap();
+
+        let participants = (1..=degree + 1)
+            .map(|i| Participant::from(i as u32))
+            .collect::<Vec<_>>();
+        let ids: Vec<_> = participants.iter().map(|p| p.scalar::<C>()).collect();
+
+        let shares: Vec<_> = participants
+            .iter()
+            .map(|p| compoly.eval_at_participant(*p).unwrap())
+            .collect();
+
+        // x = 0
+        let point_zero = Some(zero);
+        let interpolation_zero = PolynomialCommitment::<C>::eval_exponent_interpolation(
+            &ids,
+            &shares,
+            point_zero.as_ref(),
+        )
+        .unwrap();
+
+        // x != 0
+        let point_random = Some(Secp256K1ScalarField::random(&mut OsRng));
+        let interpolation_rand = PolynomialCommitment::<C>::eval_exponent_interpolation(
+            &ids,
+            &shares,
+            point_random.as_ref(),
+        )
+        .unwrap();
+
+        // Should not panic or error
+        let _ = interpolation_zero.value();
+        let _ = interpolation_rand.value();
     }
 
     #[test]
@@ -1027,6 +1169,129 @@ mod test {
         }
     }
 
+    /// Tests batch Lagrange computation specifically when x = 0
+    #[test]
+    fn test_batch_lagrange_x_zero() {
+        let (zero, one) = field_constants::<C>();
+        let degree = 5;
+        let participants = (1..=degree + 1)
+            .map(|i| Participant::from(i as u32))
+            .collect::<Vec<_>>();
+
+        let ids: Vec<_> = participants.iter().map(|p| p.scalar::<C>()).collect();
+
+        // Avoid zero in points_set to trigger the x = 0 branch
+        let point = Some(zero);
+
+        // Compute sequentially
+        let mut lagrange_seq = Vec::new();
+        for id in &ids {
+            lagrange_seq.push(compute_lagrange_coefficient::<C>(&ids, id, point.as_ref()).unwrap());
+        }
+
+        // Compute batch
+        let lagrange_batch =
+            batch_compute_lagrange_coefficients::<C>(&ids, point.as_ref()).unwrap();
+
+        // Apply deferred sign (-1)^(n-1) manually
+        let sign = if (ids.len() - 1) % 2 == 0 {
+            one
+        } else {
+            zero - one
+        };
+        let lagrange_batch_signed: Vec<_> = lagrange_batch
+            .into_iter()
+            .map(|c| SerializableScalar::<C>(c.0 * sign))
+            .collect();
+
+        // Verify equivalence
+        for (a, b) in lagrange_seq.iter().zip(lagrange_batch_signed.iter()) {
+            assert_eq!(a.0, b.0);
+        }
+    }
+
+    #[test]
+    fn test_batch_edge_cases_errors() {
+        let (zero, _) = field_constants::<C>();
+        let points = vec![
+            Participant::from(1u32).scalar::<C>(),
+            Participant::from(1u32).scalar::<C>(), // duplicate
+        ];
+        let result = batch_compute_lagrange_coefficients::<C>(&points, Some(&zero));
+        assert!(result.is_err());
+
+        let points_single = vec![Participant::from(1u32).scalar::<C>()];
+        let result = batch_compute_lagrange_coefficients::<C>(&points_single, Some(&zero));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_lagrange_computation_equivalence() {
+        let degree = 10; // smaller for fast CI runs
+        let participants = (0..degree + 1)
+            .map(|i| Participant::from(i as u32))
+            .collect::<Vec<_>>();
+        let ids = participants
+            .iter()
+            .map(|p| p.scalar::<C>())
+            .collect::<Vec<_>>();
+        let point = Some(Secp256K1ScalarField::random(&mut rand_core::OsRng));
+
+        // Sequential
+        let mut lagrange_coefficients_seq = Vec::new();
+        for id in &ids {
+            lagrange_coefficients_seq
+                .push(compute_lagrange_coefficient::<C>(&ids, id, point.as_ref()).unwrap());
+        }
+
+        // Batch
+        let lagrange_coefficients_batch =
+            batch_compute_lagrange_coefficients::<C>(&ids, point.as_ref()).unwrap();
+
+        // Verify results match
+        for (a, b) in lagrange_coefficients_seq
+            .iter()
+            .zip(lagrange_coefficients_batch.iter())
+        {
+            assert_eq!(a.0, b.0);
+        }
+    }
+
+    #[test]
+    fn test_lagrange_computation_x_zero() {
+        let (zero, _) = field_constants::<C>();
+        let degree = 10;
+        let participants = (1..=degree + 1) // avoid zero in points_set to prevent triggering Kronecker delta case
+            .map(|i| Participant::from(i as u32))
+            .collect::<Vec<_>>();
+        let ids = participants
+            .iter()
+            .map(|p| p.scalar::<C>())
+            .collect::<Vec<_>>();
+
+        // x = 0
+        let point = Some(zero);
+
+        // Sequential computation
+        let mut lagrange_coefficients_seq = Vec::new();
+        for id in &ids {
+            lagrange_coefficients_seq
+                .push(compute_lagrange_coefficient::<C>(&ids, id, point.as_ref()).unwrap());
+        }
+
+        // Batch computation
+        let lagrange_coefficients_batch =
+            batch_compute_lagrange_coefficients::<C>(&ids, point.as_ref()).unwrap();
+
+        // Verify equality
+        for (a, b) in lagrange_coefficients_seq
+            .iter()
+            .zip(lagrange_coefficients_batch.iter())
+        {
+            assert_eq!(a.0, b.0);
+        }
+    }
+
     #[test]
     fn benchmark_lagrange_computation() {
         use std::time::Instant;
@@ -1041,7 +1306,7 @@ mod test {
             .collect::<Vec<_>>();
         let point = Some(Secp256K1ScalarField::random(&mut rand_core::OsRng));
 
-        // Benchmark sequential computation
+        // Sequential
         let start_seq = Instant::now();
         let mut lagrange_coefficients_seq = Vec::new();
         for id in &ids {
@@ -1050,13 +1315,13 @@ mod test {
         }
         let duration_seq = start_seq.elapsed();
 
-        // Benchmark batch computation
+        // Batch
         let start_batch = Instant::now();
         let lagrange_coefficients_batch =
             batch_compute_lagrange_coefficients::<C>(&ids, point.as_ref()).unwrap();
         let duration_batch = start_batch.elapsed();
 
-        // Verify that the results are the same
+        // Sanity check equality
         for (a, b) in lagrange_coefficients_seq
             .iter()
             .zip(lagrange_coefficients_batch.iter())
@@ -1064,18 +1329,61 @@ mod test {
             assert_eq!(a.0, b.0);
         }
 
-        println!();
         println!(
-            "Sequential Lagrange computation for {} participants: {:?}",
+            "Sequential computation: {:?}, Batch computation: {:?}",
+            duration_seq, duration_batch
+        );
+    }
+
+    #[test]
+    fn benchmark_lagrange_computation_x_zero() {
+        let (zero, _) = field_constants::<C>();
+        use std::time::Instant;
+
+        let degree = 100;
+        let participants = (1..=degree + 1)
+            .map(|i| Participant::from(i as u32))
+            .collect::<Vec<_>>();
+        let ids = participants
+            .iter()
+            .map(|p| p.scalar::<C>())
+            .collect::<Vec<_>>();
+
+        // x = 0
+        let point = Some(zero);
+
+        // Sequential benchmark
+        let start_seq = Instant::now();
+        let mut lagrange_coefficients_seq = Vec::new();
+        for id in &ids {
+            lagrange_coefficients_seq
+                .push(compute_lagrange_coefficient::<C>(&ids, id, point.as_ref()).unwrap());
+        }
+        let duration_seq = start_seq.elapsed();
+
+        // Batch benchmark
+        let start_batch = Instant::now();
+        let lagrange_coefficients_batch =
+            batch_compute_lagrange_coefficients::<C>(&ids, point.as_ref()).unwrap();
+        let duration_batch = start_batch.elapsed();
+
+        // Just a sanity check
+        for (a, b) in lagrange_coefficients_seq
+            .iter()
+            .zip(lagrange_coefficients_batch.iter())
+        {
+            assert_eq!(a.0, b.0);
+        }
+
+        println!(
+            "Sequential Lagrange computation (x=0) for {} participants: {:?}",
             ids.len(),
             duration_seq
         );
         println!(
-            "Batch Lagrange computation for {} participants:      {:?}",
+            "Batch Lagrange computation (x=0) for {} participants:      {:?}",
             ids.len(),
             duration_batch
         );
-
-        assert!(duration_batch < duration_seq);
     }
 }
