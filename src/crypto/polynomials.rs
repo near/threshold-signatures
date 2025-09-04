@@ -577,6 +577,9 @@ pub fn batch_compute_lagrange_coefficients<C: Ciphersuite>(
     // Compute final Lagrange coefficients
     let mut lagrange_coeffs = Vec::with_capacity(n);
     for i in 0..n {
+        // For each i, compute the numerator n_i = N / (x - x_i), where N = Prod_j (x - x_j).
+        // This is done by multiplying the total product `numerator_prod` by the pre-computed
+        // inverse of the term `(x - x_i)` (or `x_i` if x is zero).
         let num_i = numerator_prod * inv_factors[i];
         lagrange_coeffs.push(SerializableScalar(num_i * inv_denominators[i]));
     }
