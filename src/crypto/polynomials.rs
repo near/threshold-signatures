@@ -595,15 +595,11 @@ pub fn batch_invert<C: Ciphersuite>(values: &[Scalar<C>]) -> Result<Vec<Scalar<C
         return Err(ProtocolError::InvalidInterpolationArguments);
     }
 
-    // Compute prefix products
-    let mut products = vec![<C::Group as Group>::Field::one(); values.len()];
+    let mut products: Vec<Scalar<C>> = Vec::with_capacity(values.len());
     let mut acc = <C::Group as Group>::Field::one();
-    for (i, v) in values.iter().enumerate() {
-        if *v == <C::Group as Group>::Field::zero() {
-            return Err(ProtocolError::InvalidInterpolationArguments);
-        }
+    for v in values {
         acc = acc * *v;
-        products[i] = acc;
+        products.push(acc);
     }
 
     // Invert the total product
