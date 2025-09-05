@@ -72,6 +72,7 @@ The inputs to this phase are:
 4) Two public triples commitments $(A, B, C)$ and $(K, D, E)$
 resp. associated to the (master) Beaver triples $(a, b, c)$ and $(k, d, e)$
 
+*Note: neither $d_i$ nor $C$ are actually used in the algorithm.*
 
 
 **Round 1:**
@@ -79,7 +80,7 @@ resp. associated to the (master) Beaver triples $(a, b, c)$ and $(k, d, e)$
 1. Each $P_i$ linearizes their shares, setting:
 $$
 \begin{aligned}
-(k'_i, d_i, e_i) &\gets \lambda(\mathcal{P}_1)_i \cdot (k_i, d_i, e_i)\cr
+(k'_i, \_, e_i) &\gets \lambda(\mathcal{P}_1)_i \cdot (k_i, \_ , e_i)\cr
 (a'_i, b'_i, c'_i) &\gets \lambda(\mathcal{P}_1)_i \cdot (a_i, b_i, c_i)\cr
 x'_i &\gets \lambda(\mathcal{P}_1)_i \cdot x_i\cr
 \end{aligned}

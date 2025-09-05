@@ -55,15 +55,9 @@ pub fn presign(
     };
 
     let ctx = Comms::new();
-    let fut = do_presign(
-        ctx.shared_channel(),
-        participants,
-        me,
-        args,
-    );
+    let fut = do_presign(ctx.shared_channel(), participants, me, args);
     Ok(make_protocol(ctx, fut))
 }
-
 
 async fn do_presign(
     mut chan: SharedChannel,
@@ -71,6 +65,7 @@ async fn do_presign(
     me: Participant,
     args: PresignArguments,
 ) -> Result<PresignOutput, ProtocolError> {
+    // Round 1
     // Extracting triples private variables (ai, bi, ci)
     let a_i = args.triple1.0.a;
     let b_i = args.triple1.0.b;
@@ -108,15 +103,7 @@ async fn do_presign(
     let wait0 = chan.next_waitpoint();
     chan.send_many(wait0, &e_i)?;
 
-    // Spec 1.9
-    let alpha_i: Scalar = k_prime_i + a_prime_i;
-    let beta_i: Scalar = x_prime_i + b_prime_i;
-
-    // Spec 1.10
-    let wait1 = chan.next_waitpoint();
-    chan.send_many(wait1, &(alpha_i, beta_i))?;
-
-    // Spec 2.1 and 2.2
+    // Receive ej and compute e = SUM_j ej
     let mut e = e_i;
     let mut seen = ParticipantCounter::new(&participants);
     seen.put(me);
@@ -135,14 +122,25 @@ async fn do_presign(
         e += e_j;
     }
 
-    // Spec 2.3
+    // E =?= e*G
     if big_e != (ProjectivePoint::GENERATOR * e).to_affine() {
         return Err(ProtocolError::AssertionFailed(
             "received incorrect shares of kd".to_string(),
         ));
     }
 
-    // Spec 2.4 and 2.5
+    // Round 2
+    // alphai = ki' + ai'
+    let alpha_i: Scalar = k_prime_i + a_prime_i;
+    // betai = xi' + bi'
+    let beta_i: Scalar = x_prime_i + b_prime_i;
+
+    // Send alphai and betai
+    let wait1 = chan.next_waitpoint();
+    chan.send_many(wait1, &(alpha_i, beta_i))?;
+
+    // Receive and compute alpha = SUM_j alphaj
+    // Receive and compute beta = SUM_j betaj
     let mut alpha = alpha_i;
     let mut beta = beta_i;
     seen.clear();
@@ -156,7 +154,8 @@ async fn do_presign(
         beta += beta_j;
     }
 
-    // Spec 2.6
+    // alpha*G =?= K + A
+    // beta*G =?= X + B
     if (ProjectivePoint::GENERATOR * alpha != big_k + big_a)
         || (ProjectivePoint::GENERATOR * beta != big_x + big_b)
     {
@@ -165,13 +164,13 @@ async fn do_presign(
         ));
     }
 
-    // Spec 2.7
+    // Compute R = 1/e * D
     let e_inv: Option<Scalar> = e.invert().into();
     let e_inv =
         e_inv.ok_or_else(|| ProtocolError::AssertionFailed("failed to invert kd".to_string()))?;
     let big_r = (big_d * e_inv).into();
 
-    // Spec 2.8
+    // sigmai = alpha*xi - beta*ai + ci
     let sigma_i = alpha * private_share - (beta * a_i - c_i);
 
     Ok(PresignOutput {
