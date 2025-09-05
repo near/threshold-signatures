@@ -19,8 +19,6 @@ type Secp256 = Secp256K1Sha256;
 pub fn presign(
     participants: &[Participant],
     me: Participant,
-    bt_participants: &[Participant],
-    bt_id: Participant,
     args: PresignArguments,
 ) -> Result<impl Protocol<Output = PresignOutput>, InitializationError> {
     if participants.len() < 2 {
@@ -50,9 +48,6 @@ pub fn presign(
     let participants =
         ParticipantList::new(participants).ok_or(InitializationError::DuplicateParticipants)?;
 
-    let all_bt_ids =
-        ParticipantList::new(bt_participants).ok_or(InitializationError::DuplicateParticipants)?;
-
     if !participants.contains(me) {
         return Err(InitializationError::BadParameters(
             "participant list does not contain me".to_string(),
@@ -60,14 +55,7 @@ pub fn presign(
     };
 
     let ctx = Comms::new();
-    let fut = do_presign(
-        ctx.shared_channel(),
-        participants,
-        me,
-        all_bt_ids,
-        bt_id,
-        args,
-    );
+    let fut = do_presign(ctx.shared_channel(), participants, me, args);
     Ok(make_protocol(ctx, fut))
 }
 
@@ -75,8 +63,6 @@ async fn do_presign(
     mut chan: SharedChannel,
     participants: ParticipantList,
     me: Participant,
-    bt_participants: ParticipantList,
-    bt_id: Participant,
     args: PresignArguments,
 ) -> Result<PresignOutput, ProtocolError> {
     // Spec 1.2 + 1.3
@@ -231,8 +217,6 @@ mod test {
             };
 
             let protocol = presign(
-                &participants[..3],
-                *p,
                 &participants[..3],
                 *p,
                 PresignArguments {
