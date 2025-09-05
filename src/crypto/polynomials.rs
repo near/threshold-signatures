@@ -110,20 +110,11 @@ impl<C: Ciphersuite> Polynomial<C> {
 
     /// Computes polynomial interpolation at a specific point
     /// using a sequence of sorted elements
-    ///
     /// Input requirements:
-    ///     - identifiers MUST be pairwise distinct and of length greater than 1
-    ///     - shares and identifiers must be of same length
-    ///     - identifier[i] corresponds to share[i]
-    ///
-    /// Behavior:
-    ///   - Uses `batch_compute_lagrange_coefficients` to compute Lagrange coefficients efficiently.
-    ///   - If `point = 0`, the batch function returns coefficients without the sign factor (-1)^(n-1).
-    ///     This function applies the sign to all coefficients before computing the interpolation.
-    ///
-    /// Returns:
-    ///   - `Ok(SerializableScalar<C>)` containing f(point)
-    ///   - `Err(ProtocolError)` if input lengths are invalid (lengths are distinct or less than or equals to 1)
+    ///     * identifiers MUST be pairwise distinct and of length greater than 1
+    ///     * shares and identifiers must be of same length
+    ///     * identifier[i] corresponds to share[i]
+    // Returns error if shares' and identifiers' lengths are distinct or less than or equals to 1
     pub fn eval_interpolation(
         identifiers: &[Scalar<C>],
         shares: &[SerializableScalar<C>],
@@ -137,24 +128,7 @@ impl<C: Ciphersuite> Polynomial<C> {
         }
 
         // Compute the Lagrange coefficients in batch
-        let mut lagrange_coefficients =
-            batch_compute_lagrange_coefficients::<C>(identifiers, point)?;
-
-        // Apply the deferred sign for x = 0
-        if let Some(x) = point {
-            if *x == <C::Group as Group>::Field::zero() {
-                let sign = if (identifiers.len() - 1) % 2 == 0 {
-                    <C::Group as Group>::Field::one() // (-1)^even = 1
-                } else {
-                    // (-1)^odd = -1
-                    <C::Group as Group>::Field::zero() - <C::Group as Group>::Field::one()
-                };
-
-                for coeff in lagrange_coefficients.iter_mut() {
-                    coeff.0 = coeff.0 * sign;
-                }
-            }
-        }
+        let lagrange_coefficients = batch_compute_lagrange_coefficients::<C>(identifiers, point)?;
 
         // Compute y = f(point) via polynomial interpolation of these points of f
         for (lagrange_coefficient, share) in lagrange_coefficients.iter().zip(shares) {
@@ -305,20 +279,11 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
 
     /// Computes polynomial interpolation on the exponent at a specific point
     /// using a sequence of sorted coefficient commitments
-    ///
     /// Input requirements:
-    ///     - identifiers MUST be pairwise distinct and of length greater than 1
-    ///     - shares and identifiers must be of same length
-    ///     - identifier[i] corresponds to share[i]
-    ///
-    /// Behavior:
-    ///   - Uses `batch_compute_lagrange_coefficients` to compute Lagrange coefficients efficiently.
-    ///   - If `point = 0`, the batch function returns coefficients without the sign factor (-1)^(n-1).
-    ///     This function multiplies all coefficients by the sign before scaling the commitments.
-    ///
-    /// Returns:
-    ///   - `Ok(CoefficientCommitment<C>)` containing g^f(point)
-    ///   - `Err(ProtocolError)` if input lengths are invalid (lengths are distinct or less than or equals to 1)
+    ///     * identifiers MUST be pairwise distinct and of length greater than 1
+    ///     * shares and identifiers must be of same length
+    ///     * identifier[i] corresponds to share[i]
+    // Returns error if shares' and identifiers' lengths are distinct or less than or equals to 1
     pub fn eval_exponent_interpolation(
         identifiers: &[Scalar<C>],
         shares: &[CoefficientCommitment<C>],
@@ -332,24 +297,7 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
         };
 
         // Compute the Lagrange coefficients in batch
-        let mut lagrange_coefficients =
-            batch_compute_lagrange_coefficients::<C>(identifiers, point)?;
-
-        // Apply the deferred sign for x = 0
-        if let Some(x) = point {
-            if *x == <C::Group as Group>::Field::zero() {
-                let sign = if (identifiers.len() - 1) % 2 == 0 {
-                    <C::Group as Group>::Field::one() // (-1)^even = 1
-                } else {
-                    <C::Group as Group>::Field::zero() - <C::Group as Group>::Field::one()
-                    // (-1)^odd = -1
-                };
-
-                for coeff in lagrange_coefficients.iter_mut() {
-                    coeff.0 = coeff.0 * sign;
-                }
-            }
-        }
+        let lagrange_coefficients = batch_compute_lagrange_coefficients::<C>(identifiers, point)?;
 
         // Compute y = g^f(point) via polynomial interpolation of these points of f
         for (lagrange_coefficient, share) in lagrange_coefficients.iter().zip(shares) {
@@ -491,24 +439,24 @@ pub fn compute_lagrange_coefficient<C: Ciphersuite>(
 /// - If x equals some x_k in `points_set`, return the Kronecker delta vector:
 ///   lamda_k(x)=1 and lamda_i(x)=0 for i!=k.
 ///
-/// Batch computation:
-/// 1) Denominators: d_i = \prod_{j!=i} (x_i - x_j), all inverted together in one batch
-///    This reduces n separate inversions to 1 batch inversion (O(n) instead of O(n^2)).
-/// 2) Numerators: N = \prod_j (x - x_j); each n_i = N / (x - x_i) via batch inversion.
+/// Batch computation strategy:
+/// 1) Denominators: for each i, compute d_i = \prod_{j!=i} (x_i - x_j),
+///    then invert all d_i together in a single batch. This reduces n separate
+///    inversions to 1 batch inversion (O(n) instead of O(n^2)).
+/// 2) Numerators: compute the global numerator N = \prod_j (x - x_j),
+///    then for each i obtain n_i = N / (x - x_i) using batch inversion of (x - x_i).
 /// 3) Combine: lamda_i(x) = n_i * (d_i^-1).
-///
-/// Special case for x = 0:
-/// - Numerators are computed as \prod_j x_j / x_i without applying the (-1)^(n-1) sign.
-/// - **The call site must multiply all coefficients by (-1)^(n-1) if the actual lagrange
-///   coefficient at 0 is required.** This avoids repeated negations inside the hot loop.
 ///
 /// Returns:
 /// - Vec<SerializableScalar<C>>: Lagrange coefficients corresponding to each x_i.
 ///
 /// Example (over reals for clarity):
-/// - points_set = [1, 2, 4], x = 3 → [-1/3, 1, 1/3] // sums to 1
-/// - points_set = [1, 2, 4], x = 2 → [0, 1, 0] // Kronecker delta
-/// - points_set = [1, 3, 4], x = None (0) → [2, -2, 1] // deferred sign not applied
+/// - points_set = [1, 2, 4], x = 3:
+///   lamda(3) = [-1/3, 1, 1/3]   // sums to 1
+/// - points_set = [1, 2, 4], x = 2:
+///   lamda(2) = [0, 1, 0]        // x equals x₁
+/// - points_set = [1, 3, 4], x = None (so x=0):
+///   lamda(0) = [2, -2, 1]       // sums to 1
 pub fn batch_compute_lagrange_coefficients<C: Ciphersuite>(
     points_set: &[Scalar<C>],
     x: Option<&Scalar<C>>,
