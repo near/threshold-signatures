@@ -370,7 +370,7 @@ impl<'de, C: Ciphersuite> Deserialize<'de> for PolynomialCommitment<C> {
 
 /// Computes the Lagrange coefficient (a.k.a. Lagrange basis polynomial)
 /// evaluated at point x.
-/// lamda_i(x) = \prod_j (x - x_j)/(x_i - x_j)  where j != i
+/// lambda_i(x) = \prod_j (x - x_j)/(x_i - x_j)  where j != i
 /// Note: if `x` is None then consider it as 0.
 /// Note: `x_j` are elements in `point_set`
 /// Note: if `x_i` is not in `point_set` then return an error
@@ -421,14 +421,14 @@ pub fn compute_lagrange_coefficient<C: Ciphersuite>(
     Ok(SerializableScalar(num * den))
 }
 
-/// Computes all Lagrange basis coefficients lamda_i(x) for the nodes in `points_set`,
+/// Computes all Lagrange basis coefficients lambda_i(x) for the nodes in `points_set`,
 /// evaluated at a single point `x`, using batch operations to reduce field inversions.
 ///
 /// Lagrange coefficient definition:
-///   lamda_i(x) = \prod_{j!=i} (x - x_j) / (x_i - x_j)
+///   lambda_i(x) = \prod_{j!=i} (x - x_j) / (x_i - x_j)
 ///
 /// Inputs:
-/// - `points_set` = {x₀, x₁, …, xₙ₋₁}. Each lamda_i corresponds to xᵢ ∈ `points_set`.
+/// - `points_set` = {x₀, x₁, …, xₙ₋₁}. Each lambda_i corresponds to xᵢ ∈ `points_set`.
 /// - `x`: the evaluation point. If `None`, it is treated as 0.
 ///
 /// Requirements:
@@ -437,7 +437,7 @@ pub fn compute_lagrange_coefficient<C: Ciphersuite>(
 ///
 /// Early exit:
 /// - If x equals some x_k in `points_set`, return the Kronecker delta vector:
-///   lamda_k(x)=1 and lamda_i(x)=0 for i!=k.
+///   lambda_k(x)=1 and lambda_i(x)=0 for i!=k.
 ///
 /// Batch computation strategy:
 /// 1) Denominators: for each i, compute d_i = \prod_{j!=i} (x_i - x_j),
@@ -445,18 +445,18 @@ pub fn compute_lagrange_coefficient<C: Ciphersuite>(
 ///    inversions to 1 batch inversion (O(n) instead of O(n^2)).
 /// 2) Numerators: compute the global numerator N = \prod_j (x - x_j),
 ///    then for each i obtain n_i = N / (x - x_i) using batch inversion of (x - x_i).
-/// 3) Combine: lamda_i(x) = n_i * (d_i^-1).
+/// 3) Combine: lambda_i(x) = n_i * (d_i^-1).
 ///
 /// Returns:
 /// - Vec<SerializableScalar<C>>: Lagrange coefficients corresponding to each x_i.
 ///
 /// Example (over reals for clarity):
 /// - points_set = [1, 2, 4], x = 3:
-///   lamda(3) = [-1/3, 1, 1/3]   // sums to 1
+///   lambda(3) = [-1/3, 1, 1/3]   // sums to 1
 /// - points_set = [1, 2, 4], x = 2:
-///   lamda(2) = [0, 1, 0]        // x equals x₁
+///   lambda(2) = [0, 1, 0]        // x equals x₁
 /// - points_set = [1, 3, 4], x = None (so x=0):
-///   lamda(0) = [2, -2, 1]       // sums to 1
+///   lambda(0) = [2, -2, 1]       // sums to 1
 pub fn batch_compute_lagrange_coefficients<C: Ciphersuite>(
     points_set: &[Scalar<C>],
     x: Option<&Scalar<C>>,
@@ -478,8 +478,8 @@ pub fn batch_compute_lagrange_coefficients<C: Ciphersuite>(
     }
 
     // Compute denominators d_i = \prod_{j!=i} (x_i - x_j) for each point x_i in points_set.
-    // This corresponds to the denominator of the Lagrange basis polynomial lamda_i(x):
-    //    lamda_i(x) = prod_{j!=i} (x - x_j) / (x_i - x_j)
+    // This corresponds to the denominator of the Lagrange basis polynomial lambda_i(x):
+    //    lambda_i(x) = prod_{j!=i} (x - x_j) / (x_i - x_j)
     // By computing all d_i here, we can invert them in a single batch later, which
     // is much faster than inverting each individually.
     let mut denominators = Vec::with_capacity(n);
