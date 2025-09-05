@@ -212,15 +212,12 @@ pub fn sign(
     message: Vec<u8>,
 ) -> Result<impl Protocol<Output = SignatureOutput>, InitializationError> {
     if participants.len() < 2 {
-        return Err(InitializationError::BadParameters(format!(
-            "participant count cannot be < 2, found: {}",
-            participants.len()
-        )));
+        return Err(InitializationError::NotEnoughParticipants {
+            participants: participants.len() as u32,
+        });
     };
     let Some(participants) = ParticipantList::new(participants) else {
-        return Err(InitializationError::BadParameters(
-            "Participants list contains duplicates".to_string(),
-        ));
+        return Err(InitializationError::DuplicateParticipants);
     };
 
     // ensure my presence in the participant list
