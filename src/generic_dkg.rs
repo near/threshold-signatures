@@ -545,9 +545,10 @@ pub(crate) fn assert_keygen_invariants(
 
     // ensure my presence in the participant list
     if !participants.contains(me) {
-        return Err(InitializationError::BadParameters(format!(
-            "participant list must contain {me:?}"
-        )));
+        return Err(InitializationError::MissingParticipant {
+            role: "self",
+            participant: me,
+        });
     };
     Ok(participants)
 }
@@ -611,9 +612,10 @@ pub(crate) fn reshare_assertions<C: Ciphersuite>(
         ParticipantList::new(participants).ok_or(InitializationError::DuplicateParticipants)?;
 
     if !participants.contains(me) {
-        return Err(InitializationError::BadParameters(format!(
-            "participant list must contain {me:?}"
-        )));
+        return Err(InitializationError::MissingParticipant {
+            role: "self",
+            participant: me,
+        });
     }
 
     let old_participants =

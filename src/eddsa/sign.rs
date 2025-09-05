@@ -228,9 +228,10 @@ pub fn sign(
     };
     // ensure the coordinator is a participant
     if !participants.contains(coordinator) {
-        return Err(InitializationError::BadParameters(format!(
-            "participant list must contain coordinator {coordinator:?}"
-        )));
+        return Err(InitializationError::MissingParticipant {
+            role: "coordinator",
+            participant: coordinator,
+        });
     };
 
     let comms = Comms::new();

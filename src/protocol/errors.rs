@@ -75,6 +75,11 @@ impl From<Box<dyn error::Error + Send + Sync>> for ProtocolError {
 pub enum InitializationError {
     #[error("bad parameters: {0}")]
     BadParameters(String),
+    #[error("participant list must contain {role}: {participant:?}")]
+    MissingParticipant {
+        role: &'static str,
+        participant: Participant,
+    },
     #[error("participant list cannot contain duplicates")]
     DuplicateParticipants,
     #[error("Participant count cannot be < 2, found: {participants}")]
