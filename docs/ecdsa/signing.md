@@ -99,26 +99,25 @@ x'_i &\gets \lambda(\mathcal{P}_1)_i \cdot x_i\cr
 $$
 
 4. $\star$ Each $P_i$ sends $e_i$ to every other party.
-5. Each $P_i$ sets:
 
+5. $\bullet$ Each $P_i$ waits to receive $e_j$ from each other $P_j$.
+6. Each $P_i$ sets $e \gets \sum_j e_j$.
+7. $\blacktriangle$ Each $P_i$ *asserts* that $e \cdot G = E$.
+
+**Round 2:**
+
+1. Each $P_i$ sets:
 $$
 \begin{aligned}
 &\alpha_i \gets k'_i + a'_i\cr
 &\beta_i \gets x'_i + b'_i\cr
 \end{aligned}
 $$
+2. $\star$ Each $P_i$ sends $\alpha_i$ and $\beta_i$ to every other party.
 
-6. $\star$ Each $P_i$ sends $\alpha_i$ and $\beta_i$ to every other party.
-
-**Round 2:**
-
-1. $\bullet$ Each $P_i$ waits to receive $e_j$ from each other $P_j$.
-2. Each $P_i$ sets $e \gets \sum_j e_j$.
-3. $\blacktriangle$ Each $P_i$ *asserts* that $e \cdot G = E$.
-4. $\bullet$ Each $P_i$ waits to receive $\alpha_j$ and $\text{xb}_j$ from from every other party $P_j$.
-5. Each $P_i$ sets $\alpha \gets \sum_j \alpha_j$ and $\beta \gets \sum_j \beta_j$.
-6. $\blacktriangle$ Each $P_i$ asserts that:
-
+3. $\bullet$ Each $P_i$ waits to receive $\alpha_j$ and $\text{xb}_j$ from from every other party $P_j$.
+4. Each $P_i$ sets $\alpha \gets \sum_j \alpha_j$ and $\beta \gets \sum_j \beta_j$.
+5. $\blacktriangle$ Each $P_i$ asserts that:
 $$
 \begin{aligned}
 \alpha \cdot G &= K + A\quad \text{(in fact $\alpha = \sum_j \alpha_j =  \sum_j (k'_i + a'_i) = k + a$)}\cr
@@ -126,8 +125,8 @@ $$
 \end{aligned}
 $$
 
-7. Each $P_i$ sets: $R \gets \frac{1}{e} \cdot D$. (Recall that Beaver triple $(k,d,e)$ is computed s.t. $e = k\cdot d$ )
-8. Each $P_i$ sets $\sigma_i \gets \alpha \cdot x_i - \beta \cdot a_i + c_i$, which is already threshold shared.
+6. Each $P_i$ sets: $R \gets \frac{1}{e} \cdot D$. (Recall that Beaver triple $(k,d,e)$ is computed s.t. $e = k\cdot d$ )
+7. Each $P_i$ sets $\sigma_i \gets \alpha \cdot x_i - \beta \cdot a_i + c_i$, which is already threshold shared.
 
 **Output:**
 The output is the presignature $(R, k_i, \sigma_i)$
@@ -155,7 +154,6 @@ The inputs to this phase are:
 3. Each $P_i$ sets $s_i \gets h \cdot k_i + R_x \cdot \sigma_i$ where $R_x$ is the x coordinate of $R$
 4. $\star$ Each $P_i$ sends $s_i$ to every other party.
 
-**Round 2:**
 
 1. $\bullet$ Each $P_i$ waits to receive $s_j$ from every other party.
 2. Each $P_i$ sets $s \gets \sum_{j \in [N]} s_j$.
