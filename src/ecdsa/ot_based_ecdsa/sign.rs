@@ -59,22 +59,22 @@ async fn do_sign(
     presignature: PresignOutput,
     msg_hash: Scalar,
 ) -> Result<FullSignature, ProtocolError> {
-    // Spec 1.1
+    // Linearize ki
     let lambda = participants.lagrange::<Secp256K1Sha256>(me)?;
     let k_i = lambda * presignature.k;
 
-    // Spec 1.2
+    // Linearize sigmai
     let sigma_i = lambda * presignature.sigma;
 
-    // Spec 1.3
+    // Compute si = h * ki + Rx * sigmai
     let r = x_coordinate(&presignature.big_r);
     let s_i = msg_hash * k_i + r * sigma_i;
 
-    // Spec 1.4
+    // Send si
     let wait0 = chan.next_waitpoint();
     chan.send_many(wait0, &s_i)?;
 
-    // Spec 2.1 + 2.2
+    // Receive sj
     let mut seen = ParticipantCounter::new(&participants);
     let mut s = s_i;
     seen.put(me);
