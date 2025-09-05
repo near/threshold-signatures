@@ -12,6 +12,45 @@ use crate::{
     },
 };
 
+/// The signature protocol, allowing us to use a presignature to sign a message.
+///
+/// **WARNING** You must absolutely hash an actual message before passing it to
+/// this function. Allowing the signing of arbitrary scalars *is* a security risk,
+/// and this function only tolerates this risk to allow for genericity.
+pub fn sign(
+    participants: &[Participant],
+    me: Participant,
+    public_key: AffinePoint,
+    presignature: PresignOutput,
+    msg_hash: Scalar,
+) -> Result<impl Protocol<Output = FullSignature>, InitializationError> {
+    if participants.len() < 2 {
+        return Err(InitializationError::NotEnoughParticipants {
+            participants: participants.len() as u32,
+        });
+    };
+
+    let participants =
+        ParticipantList::new(participants).ok_or(InitializationError::DuplicateParticipants)?;
+
+    if !participants.contains(me) {
+        return Err(InitializationError::BadParameters(
+            "participant list does not contain me".to_string(),
+        ));
+    };
+
+    let ctx = Comms::new();
+    let fut = do_sign(
+        ctx.shared_channel(),
+        participants,
+        me,
+        public_key,
+        presignature,
+        msg_hash,
+    );
+    Ok(make_protocol(ctx, fut))
+}
+
 async fn do_sign(
     mut chan: SharedChannel,
     participants: ParticipantList,
@@ -63,45 +102,6 @@ async fn do_sign(
 
     // Spec 2.4
     Ok(sig)
-}
-
-/// The signature protocol, allowing us to use a presignature to sign a message.
-///
-/// **WARNING** You must absolutely hash an actual message before passing it to
-/// this function. Allowing the signing of arbitrary scalars *is* a security risk,
-/// and this function only tolerates this risk to allow for genericity.
-pub fn sign(
-    participants: &[Participant],
-    me: Participant,
-    public_key: AffinePoint,
-    presignature: PresignOutput,
-    msg_hash: Scalar,
-) -> Result<impl Protocol<Output = FullSignature>, InitializationError> {
-    if participants.len() < 2 {
-        return Err(InitializationError::NotEnoughParticipants {
-            participants: participants.len() as u32,
-        });
-    };
-
-    let participants =
-        ParticipantList::new(participants).ok_or(InitializationError::DuplicateParticipants)?;
-
-    if !participants.contains(me) {
-        return Err(InitializationError::BadParameters(
-            "participant list does not contain me".to_string(),
-        ));
-    };
-
-    let ctx = Comms::new();
-    let fut = do_sign(
-        ctx.shared_channel(),
-        participants,
-        me,
-        public_key,
-        presignature,
-        msg_hash,
-    );
-    Ok(make_protocol(ctx, fut))
 }
 
 #[cfg(test)]
