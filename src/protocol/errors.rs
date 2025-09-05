@@ -73,7 +73,7 @@ impl From<Box<dyn error::Error + Send + Sync>> for ProtocolError {
 /// These are usually more recoverable than other protocol errors.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum InitializationError {
-    #[error("bad parameter: {0}")]
+    #[error("bad parameters: {0}")]
     BadParameters(String),
     #[error("participant list must contain {role}: {participant:?}")]
     MissingParticipant {
