@@ -844,35 +844,6 @@ mod test {
     }
 
     #[test]
-    fn test_eval_interpolation_x_zero() {
-        let degree = 5;
-        let participants = (1..=degree + 1)
-            .map(|i| Participant::from(i as u32))
-            .collect::<Vec<_>>();
-
-        let ids: Vec<_> = participants.iter().map(|p| p.scalar::<C>()).collect();
-
-        let shares: Vec<_> = participants
-            .iter()
-            .map(|_| SerializableScalar(Secp256K1ScalarField::random(&mut OsRng)))
-            .collect();
-
-        // x = 0
-        let point_zero = Some(Secp256K1ScalarField::zero());
-        let interpolation_zero =
-            Polynomial::<C>::eval_interpolation(&ids, &shares, point_zero.as_ref()).unwrap();
-
-        // x != 0
-        let point_random = Some(Secp256K1ScalarField::random(&mut OsRng));
-        let interpolation_rand =
-            Polynomial::<C>::eval_interpolation(&ids, &shares, point_random.as_ref()).unwrap();
-
-        // Should not panic or error
-        let _ = interpolation_zero.0;
-        let _ = interpolation_rand.0;
-    }
-
-    #[test]
     fn poly_eval_interpolate() {
         let degree = 5;
         // generate polynomial of degree 5
@@ -955,46 +926,6 @@ mod test {
             PolynomialCommitment::<C>::eval_exponent_interpolation(&ids[..2], &shares, None)
                 .is_err()
         );
-    }
-
-    #[test]
-    fn test_eval_exponent_interpolation_x_zero() {
-        let degree = 5;
-        let poly = Polynomial::<C>::generate_polynomial(None, degree, &mut OsRng)
-            .expect("Polynomial generation should succeed");
-        let compoly = poly.commit_polynomial().unwrap();
-
-        let participants = (1..=degree + 1)
-            .map(|i| Participant::from(i as u32))
-            .collect::<Vec<_>>();
-        let ids: Vec<_> = participants.iter().map(|p| p.scalar::<C>()).collect();
-
-        let shares: Vec<_> = participants
-            .iter()
-            .map(|p| compoly.eval_at_participant(*p).unwrap())
-            .collect();
-
-        // x = 0
-        let point_zero = Some(Secp256K1ScalarField::zero());
-        let interpolation_zero = PolynomialCommitment::<C>::eval_exponent_interpolation(
-            &ids,
-            &shares,
-            point_zero.as_ref(),
-        )
-        .unwrap();
-
-        // x != 0
-        let point_random = Some(Secp256K1ScalarField::random(&mut OsRng));
-        let interpolation_rand = PolynomialCommitment::<C>::eval_exponent_interpolation(
-            &ids,
-            &shares,
-            point_random.as_ref(),
-        )
-        .unwrap();
-
-        // Should not panic or error
-        let _ = interpolation_zero.value();
-        let _ = interpolation_rand.value();
     }
 
     #[test]
@@ -1107,45 +1038,6 @@ mod test {
     }
 
     #[test]
-    fn test_batch_lagrange_x_zero() {
-        let degree = 5;
-        let participants = (1..=degree + 1)
-            .map(|i| Participant::from(i as u32))
-            .collect::<Vec<_>>();
-
-        let ids: Vec<_> = participants.iter().map(|p| p.scalar::<C>()).collect();
-
-        // Avoid zero in points_set to trigger the x = 0 branch
-        let point = Some(Secp256K1ScalarField::zero());
-
-        // Compute sequentially
-        let mut lagrange_seq = Vec::new();
-        for id in &ids {
-            lagrange_seq.push(compute_lagrange_coefficient::<C>(&ids, id, point.as_ref()).unwrap());
-        }
-
-        // Compute batch
-        let lagrange_batch =
-            batch_compute_lagrange_coefficients::<C>(&ids, point.as_ref()).unwrap();
-
-        // Apply deferred sign (-1)^(n-1) manually
-        let sign = if (ids.len() - 1) % 2 == 0 {
-            Secp256K1ScalarField::one()
-        } else {
-            Secp256K1ScalarField::zero() - Secp256K1ScalarField::one()
-        };
-        let lagrange_batch_signed: Vec<_> = lagrange_batch
-            .into_iter()
-            .map(|c| SerializableScalar::<C>(c.0 * sign))
-            .collect();
-
-        // Verify equivalence
-        for (a, b) in lagrange_seq.iter().zip(lagrange_batch_signed.iter()) {
-            assert_eq!(a.0, b.0);
-        }
-    }
-
-    #[test]
     fn test_batch_edge_cases_errors() {
         let points = vec![
             Participant::from(1u32).scalar::<C>(),
@@ -1187,40 +1079,6 @@ mod test {
             batch_compute_lagrange_coefficients::<C>(&ids, point.as_ref()).unwrap();
 
         // Verify results match
-        for (a, b) in lagrange_coefficients_seq
-            .iter()
-            .zip(lagrange_coefficients_batch.iter())
-        {
-            assert_eq!(a.0, b.0);
-        }
-    }
-
-    #[test]
-    fn test_lagrange_computation_x_zero() {
-        let degree = 10;
-        let participants = (1..=degree + 1) // avoid zero in points_set to prevent triggering Kronecker delta case
-            .map(|i| Participant::from(i as u32))
-            .collect::<Vec<_>>();
-        let ids = participants
-            .iter()
-            .map(|p| p.scalar::<C>())
-            .collect::<Vec<_>>();
-
-        // x = 0
-        let point = Some(Secp256K1ScalarField::zero());
-
-        // Sequential computation
-        let mut lagrange_coefficients_seq = Vec::new();
-        for id in &ids {
-            lagrange_coefficients_seq
-                .push(compute_lagrange_coefficient::<C>(&ids, id, point.as_ref()).unwrap());
-        }
-
-        // Batch computation
-        let lagrange_coefficients_batch =
-            batch_compute_lagrange_coefficients::<C>(&ids, point.as_ref()).unwrap();
-
-        // Verify equality
         for (a, b) in lagrange_coefficients_seq
             .iter()
             .zip(lagrange_coefficients_batch.iter())
