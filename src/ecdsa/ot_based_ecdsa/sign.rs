@@ -12,59 +12,6 @@ use crate::{
     },
 };
 
-async fn do_sign(
-    mut chan: SharedChannel,
-    participants: ParticipantList,
-    me: Participant,
-    public_key: AffinePoint,
-    presignature: PresignOutput,
-    msg_hash: Scalar,
-) -> Result<FullSignature, ProtocolError> {
-    // Spec 1.1
-    let lambda = participants.lagrange::<Secp256K1Sha256>(me)?;
-    let k_i = lambda * presignature.k;
-
-    // Spec 1.2
-    let sigma_i = lambda * presignature.sigma;
-
-    // Spec 1.3
-    let r = x_coordinate(&presignature.big_r);
-    let s_i = msg_hash * k_i + r * sigma_i;
-
-    // Spec 1.4
-    let wait0 = chan.next_waitpoint();
-    chan.send_many(wait0, &s_i)?;
-
-    // Spec 2.1 + 2.2
-    let mut seen = ParticipantCounter::new(&participants);
-    let mut s = s_i;
-    seen.put(me);
-    while !seen.full() {
-        let (from, s_j): (_, Scalar) = chan.recv(wait0).await?;
-        if !seen.put(from) {
-            continue;
-        }
-        s += s_j
-    }
-
-    // Spec 2.3
-    // Optionally, normalize s
-    s.conditional_assign(&(-s), s.is_high());
-
-    let sig = FullSignature {
-        big_r: presignature.big_r,
-        s,
-    };
-    if !sig.verify(&public_key, &msg_hash) {
-        return Err(ProtocolError::AssertionFailed(
-            "signature failed to verify".to_string(),
-        ));
-    }
-
-    // Spec 2.4
-    Ok(sig)
-}
-
 /// The signature protocol, allowing us to use a presignature to sign a message.
 ///
 /// **WARNING** You must absolutely hash an actual message before passing it to
@@ -102,6 +49,59 @@ pub fn sign(
         msg_hash,
     );
     Ok(make_protocol(ctx, fut))
+}
+
+async fn do_sign(
+    mut chan: SharedChannel,
+    participants: ParticipantList,
+    me: Participant,
+    public_key: AffinePoint,
+    presignature: PresignOutput,
+    msg_hash: Scalar,
+) -> Result<FullSignature, ProtocolError> {
+    // Linearize ki
+    let lambda = participants.lagrange::<Secp256K1Sha256>(me)?;
+    let k_i = lambda * presignature.k;
+
+    // Linearize sigmai
+    let sigma_i = lambda * presignature.sigma;
+
+    // Compute si = h * ki + Rx * sigmai
+    let r = x_coordinate(&presignature.big_r);
+    let s_i = msg_hash * k_i + r * sigma_i;
+
+    // Send si
+    let wait0 = chan.next_waitpoint();
+    chan.send_many(wait0, &s_i)?;
+
+    // Receive sj
+    let mut seen = ParticipantCounter::new(&participants);
+    let mut s = s_i;
+    seen.put(me);
+    while !seen.full() {
+        let (from, s_j): (_, Scalar) = chan.recv(wait0).await?;
+        if !seen.put(from) {
+            continue;
+        }
+        s += s_j
+    }
+
+    // Spec 2.3
+    // Optionally, normalize s
+    s.conditional_assign(&(-s), s.is_high());
+
+    let sig = FullSignature {
+        big_r: presignature.big_r,
+        s,
+    };
+    if !sig.verify(&public_key, &msg_hash) {
+        return Err(ProtocolError::AssertionFailed(
+            "signature failed to verify".to_string(),
+        ));
+    }
+
+    // Spec 2.4
+    Ok(sig)
 }
 
 #[cfg(test)]
