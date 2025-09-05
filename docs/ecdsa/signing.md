@@ -155,10 +155,11 @@ The inputs to this phase are:
 4. $\star$ Each $P_i$ sends $s_i$ to every other party.
 
 
-1. $\bullet$ Each $P_i$ waits to receive $s_j$ from every other party.
-2. Each $P_i$ sets $s \gets \sum_{j \in [N]} s_j$.
-3. $\blacktriangle$ Each $P_i$ *asserts* that $(R, s)$ is a valid ECDSA signature for $m$.
-4. Each $P_i$ outputs $(R, s)$.
+5. $\bullet$ Each $P_i$ waits to receive $s_j$ from every other party.
+6. Each $P_i$ sets $s \gets \sum_{j \in [N]} s_j$.
+7. Normalize $s = s \mod q$ where $s\in\{0~..~q-1\}$
+7. $\blacktriangle$ Each $P_i$ asserts that $(R, s)$ is a valid ECDSA signature for $m$.
+8. Each $P_i$ outputs $(R, s)$.
 
 **Output**
 

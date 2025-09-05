@@ -96,9 +96,11 @@ async fn do_sign(
             "signature part s cannot be zero".to_string(),
         ))
     }
-    // Normalize s
+
+    // normalize s
     s.conditional_assign(&(-s), s.is_high());
 
+    // create the signature and verify it
     let big_r = presignature.big_r;
     let sig = FullSignature { big_r, s };
 
