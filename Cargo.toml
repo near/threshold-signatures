@@ -30,3 +30,8 @@ smol = "2.0.2"
 subtle = "2.5.0"
 thiserror = "2.0.16"
 zeroize = "1.8.1"
+
+
+[features]
+default = ["actively_secure_ecdsa"]
+actively_secure_ecdsa = []
