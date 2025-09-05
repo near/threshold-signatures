@@ -9,6 +9,68 @@ use crate::protocol::{
 
 type Secp256 = Secp256K1Sha256;
 
+/// The presignature protocol.
+///
+/// This is the first phase of performing a signature, in which we perform
+/// all the work we can do without yet knowing the message to be signed.
+///
+/// This work does depend on the private key though, and it's crucial
+/// that a presignature is never reused.
+pub fn presign(
+    participants: &[Participant],
+    me: Participant,
+    bt_participants: &[Participant],
+    bt_id: Participant,
+    args: PresignArguments,
+) -> Result<impl Protocol<Output = PresignOutput>, InitializationError> {
+    if participants.len() < 2 {
+        return Err(InitializationError::NotEnoughParticipants {
+            participants: participants.len() as u32,
+        });
+    };
+    // Spec 1.1
+    if args.threshold > participants.len() {
+        return Err(InitializationError::ThresholdTooLarge {
+            threshold: args.threshold as u32,
+            max: participants.len() as u32,
+        });
+    }
+
+    // NOTE: We omit the check that the new participant set was present for
+    // the triple generation, because presumably they need to have been present
+    // in order to have shares.
+
+    // Also check that we have enough participants to reconstruct shares.
+    if args.threshold != args.triple0.1.threshold || args.threshold != args.triple1.1.threshold {
+        return Err(InitializationError::BadParameters(
+            "New threshold must match the threshold of both triples".to_string(),
+        ));
+    }
+
+    let participants =
+        ParticipantList::new(participants).ok_or(InitializationError::DuplicateParticipants)?;
+
+    let all_bt_ids =
+        ParticipantList::new(bt_participants).ok_or(InitializationError::DuplicateParticipants)?;
+
+    if !participants.contains(me) {
+        return Err(InitializationError::BadParameters(
+            "participant list does not contain me".to_string(),
+        ));
+    };
+
+    let ctx = Comms::new();
+    let fut = do_presign(
+        ctx.shared_channel(),
+        participants,
+        me,
+        all_bt_ids,
+        bt_id,
+        args,
+    );
+    Ok(make_protocol(ctx, fut))
+}
+
 async fn do_presign(
     mut chan: SharedChannel,
     participants: ParticipantList,
@@ -119,68 +181,6 @@ async fn do_presign(
         k: k_i * lambda_diff,
         sigma: sigma_i,
     })
-}
-
-/// The presignature protocol.
-///
-/// This is the first phase of performing a signature, in which we perform
-/// all the work we can do without yet knowing the message to be signed.
-///
-/// This work does depend on the private key though, and it's crucial
-/// that a presignature is never reused.
-pub fn presign(
-    participants: &[Participant],
-    me: Participant,
-    bt_participants: &[Participant],
-    bt_id: Participant,
-    args: PresignArguments,
-) -> Result<impl Protocol<Output = PresignOutput>, InitializationError> {
-    if participants.len() < 2 {
-        return Err(InitializationError::NotEnoughParticipants {
-            participants: participants.len() as u32,
-        });
-    };
-    // Spec 1.1
-    if args.threshold > participants.len() {
-        return Err(InitializationError::ThresholdTooLarge {
-            threshold: args.threshold as u32,
-            max: participants.len() as u32,
-        });
-    }
-
-    // NOTE: We omit the check that the new participant set was present for
-    // the triple generation, because presumably they need to have been present
-    // in order to have shares.
-
-    // Also check that we have enough participants to reconstruct shares.
-    if args.threshold != args.triple0.1.threshold || args.threshold != args.triple1.1.threshold {
-        return Err(InitializationError::BadParameters(
-            "New threshold must match the threshold of both triples".to_string(),
-        ));
-    }
-
-    let participants =
-        ParticipantList::new(participants).ok_or(InitializationError::DuplicateParticipants)?;
-
-    let all_bt_ids =
-        ParticipantList::new(bt_participants).ok_or(InitializationError::DuplicateParticipants)?;
-
-    if !participants.contains(me) {
-        return Err(InitializationError::BadParameters(
-            "participant list does not contain me".to_string(),
-        ));
-    };
-
-    let ctx = Comms::new();
-    let fut = do_presign(
-        ctx.shared_channel(),
-        participants,
-        me,
-        all_bt_ids,
-        bt_id,
-        args,
-    );
-    Ok(make_protocol(ctx, fut))
 }
 
 #[cfg(test)]
