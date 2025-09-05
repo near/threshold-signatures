@@ -65,52 +65,52 @@ async fn do_presign(
     me: Participant,
     args: PresignArguments,
 ) -> Result<PresignOutput, ProtocolError> {
-    // Spec 1.2 + 1.3
-    let big_k: ProjectivePoint = args.triple0.1.big_a.into();
-
-    let big_d = args.triple0.1.big_b;
-    let big_kd = args.triple0.1.big_c;
-
-    let big_a: ProjectivePoint = args.triple1.1.big_a.into();
-    let big_b: ProjectivePoint = args.triple1.1.big_b.into();
-
-    let sk_lambda = participants.lagrange::<Secp256>(me)?;
-    let bt_lambda = bt_participants.lagrange::<Secp256>(bt_id)?;
-
-    let k_i = args.triple0.0.a;
-    let k_prime_i = bt_lambda * k_i;
-    let kd_i: Scalar = bt_lambda * args.triple0.0.c; // if this is zero, then the broadcast kdi is also zero.
-
+    // Round 1
+    // Extracting triples private variables (ai, bi, ci)
     let a_i = args.triple1.0.a;
     let b_i = args.triple1.0.b;
     let c_i = args.triple1.0.c;
-    let a_prime_i = bt_lambda * a_i;
-    let b_prime_i = bt_lambda * b_i;
+
+    // Extracting triples public variables (A, B, _)
+    // notice C is not used
+    let big_a: ProjectivePoint = args.triple1.1.big_a.into();
+    let big_b: ProjectivePoint = args.triple1.1.big_b.into();
+
+    // Extracting triples private variables (ki, _, ei)
+    // notice di is not used
+    let k_i = args.triple0.0.a;
+    let e_i = args.triple0.0.c;
+
+    // Extracting triples public variables (K, D, E)
+    let big_k: ProjectivePoint = args.triple0.1.big_a.into();
+    let big_d = args.triple0.1.big_b;
+    let big_e = args.triple0.1.big_c;
+
+    // linearize ki ei ai bi ci xi
+    let lambda_me = participants.lagrange::<Secp256>(me)?;
+
+    let k_prime_i = lambda_me * k_i;
+    let e_i: Scalar = lambda_me * e_i;
+
+    let a_prime_i = lambda_me * a_i;
+    let b_prime_i = lambda_me * b_i;
 
     let big_x: ProjectivePoint = args.keygen_out.public_key.to_element();
     let private_share = args.keygen_out.private_share.to_scalar();
-    let x_prime_i = sk_lambda * private_share;
+    let x_prime_i = lambda_me * private_share;
 
-    // Spec 1.4
+    // Send ei
     let wait0 = chan.next_waitpoint();
-    chan.send_many(wait0, &kd_i)?;
+    chan.send_many(wait0, &e_i)?;
 
-    // Spec 1.9
-    let ka_i: Scalar = k_prime_i + a_prime_i;
-    let xb_i: Scalar = x_prime_i + b_prime_i;
-
-    // Spec 1.10
-    let wait1 = chan.next_waitpoint();
-    chan.send_many(wait1, &(ka_i, xb_i))?;
-
-    // Spec 2.1 and 2.2
-    let mut kd = kd_i;
+    // Receive ej and compute e = SUM_j ej
+    let mut e = e_i;
     let mut seen = ParticipantCounter::new(&participants);
     seen.put(me);
     while !seen.full() {
-        let (from, kd_j): (_, Scalar) = chan.recv(wait0).await?;
+        let (from, e_j): (_, Scalar) = chan.recv(wait0).await?;
 
-        if kd_j.is_zero().into() {
+        if e_j.is_zero().into() {
             return Err(ProtocolError::AssertionFailed(
                 "Received zero share of kd, indicating a triple wasn't available.".to_string(),
             ));
@@ -119,52 +119,63 @@ async fn do_presign(
         if !seen.put(from) {
             continue;
         }
-        kd += kd_j;
+        e += e_j;
     }
 
-    // Spec 2.3
-    if big_kd != (ProjectivePoint::GENERATOR * kd).to_affine() {
+    // E =?= e*G
+    if big_e != (ProjectivePoint::GENERATOR * e).to_affine() {
         return Err(ProtocolError::AssertionFailed(
             "received incorrect shares of kd".to_string(),
         ));
     }
 
-    // Spec 2.4 and 2.5
-    let mut ka = ka_i;
-    let mut xb = xb_i;
+    // Round 2
+    // alphai = ki' + ai'
+    let alpha_i: Scalar = k_prime_i + a_prime_i;
+    // betai = xi' + bi'
+    let beta_i: Scalar = x_prime_i + b_prime_i;
+
+    // Send alphai and betai
+    let wait1 = chan.next_waitpoint();
+    chan.send_many(wait1, &(alpha_i, beta_i))?;
+
+    // Receive and compute alpha = SUM_j alphaj
+    // Receive and compute beta = SUM_j betaj
+    let mut alpha = alpha_i;
+    let mut beta = beta_i;
     seen.clear();
     seen.put(me);
     while !seen.full() {
-        let (from, (ka_j, xb_j)): (_, (Scalar, Scalar)) = chan.recv(wait1).await?;
+        let (from, (alpha_j, beta_j)): (_, (Scalar, Scalar)) = chan.recv(wait1).await?;
         if !seen.put(from) {
             continue;
         }
-        ka += ka_j;
-        xb += xb_j;
+        alpha += alpha_j;
+        beta += beta_j;
     }
 
-    // Spec 2.6
-    if (ProjectivePoint::GENERATOR * ka != big_k + big_a)
-        || (ProjectivePoint::GENERATOR * xb != big_x + big_b)
+    // alpha*G =?= K + A
+    // beta*G =?= X + B
+    if (ProjectivePoint::GENERATOR * alpha != big_k + big_a)
+        || (ProjectivePoint::GENERATOR * beta != big_x + big_b)
     {
         return Err(ProtocolError::AssertionFailed(
             "received incorrect shares of additive triple phase.".to_string(),
         ));
     }
 
-    // Spec 2.7
-    let kd_inv: Option<Scalar> = kd.invert().into();
-    let kd_inv =
-        kd_inv.ok_or_else(|| ProtocolError::AssertionFailed("failed to invert kd".to_string()))?;
-    let big_r = (big_d * kd_inv).into();
+    // Compute R = 1/e * D
+    let e_inv: Option<Scalar> = e.invert().into();
+    let e_inv =
+        e_inv.ok_or_else(|| ProtocolError::AssertionFailed("failed to invert kd".to_string()))?;
+    let big_r = (big_d * e_inv).into();
 
-    // Spec 2.8
-    let lambda_diff = bt_lambda * sk_lambda.invert().expect("to invert sk_lambda");
-    let sigma_i = ka * private_share - (xb * a_i - c_i) * lambda_diff;
+    // sigmai = alpha*xi - beta*ai + ci
+    let sigma_i = alpha * private_share - (beta * a_i - c_i);
 
     Ok(PresignOutput {
         big_r,
-        k: k_i * lambda_diff,
+        k: k_i,
         sigma: sigma_i,
     })
 }
