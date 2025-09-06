@@ -11,7 +11,7 @@
 use std::sync::Arc;
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash, PartialOrd, Ord)]
-pub struct AppId(std::sync::Arc<[u8]>);
+pub struct AppId(Arc<[u8]>);
 
 impl From<Vec<u8>> for AppId {
     fn from(id: Vec<u8>) -> Self {
@@ -20,7 +20,7 @@ impl From<Vec<u8>> for AppId {
 }
 
 impl AppId {
-    pub fn new(id: impl Into<std::sync::Arc<[u8]>>) -> Self {
+    pub fn new(id: impl Into<Arc<[u8]>>) -> Self {
         Self(id.into())
     }
 
@@ -28,7 +28,7 @@ impl AppId {
         &self.0
     }
 
-    pub fn into_bytes(self) -> std::sync::Arc<[u8]> {
+    pub fn into_bytes(self) -> Arc<[u8]> {
         self.0
     }
 }
