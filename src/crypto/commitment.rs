@@ -4,11 +4,8 @@ use sha2::{Digest, Sha256};
 
 use crate::protocol::errors::ProtocolError;
 
+use super::constants::{COMMIT_LEN, NEAR_COMMIT_LABEL, START_LABEL};
 use super::random::Randomness;
-
-const COMMIT_LABEL: &[u8] = b"Near threshold signature commitment";
-const COMMIT_LEN: usize = 32;
-const START_LABEL: &[u8] = b"start data";
 
 /// Represents a commitment to some value.
 ///
@@ -23,7 +20,7 @@ impl Commitment {
     /// SHA256(COMMIT_LABEL || randomness || START_LABEL || msgpack(value))
     fn compute<T: Serialize>(val: &T, r: &Randomness) -> Result<Self, ProtocolError> {
         let mut hasher = Sha256::new();
-        hasher.update(COMMIT_LABEL);
+        hasher.update(NEAR_COMMIT_LABEL);
         hasher.update(r.as_ref());
         hasher.update(START_LABEL);
         rmp_serde::encode::write(&mut hasher, val).map_err(|_| ProtocolError::ErrorEncoding)?;

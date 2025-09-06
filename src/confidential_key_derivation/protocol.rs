@@ -1,6 +1,7 @@
 use crate::confidential_key_derivation::{
     CKDCoordinatorOutput, CKDOutput, CoefficientCommitment, SigningShare, VerifyingKey,
 };
+use crate::crypto::constants::NEAR_CKD_DOMAIN;
 use crate::participants::{ParticipantCounter, ParticipantList};
 use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
 use crate::protocol::{errors::InitializationError, errors::ProtocolError, Participant, Protocol};
@@ -16,12 +17,10 @@ use k256::{
     Secp256k1,
 };
 
-const DOMAIN: &[u8] = b"NEAR CURVE_XOF:SHAKE-256_SSWU_RO_";
-
 fn hash2curve(app_id: &[u8]) -> Result<ProjectivePoint, ProtocolError> {
     let hash = <Secp256k1 as GroupDigest>::hash_from_bytes::<ExpandMsgXof<sha3::Shake256>>(
         &[app_id],
-        &[DOMAIN],
+        &[NEAR_CKD_DOMAIN],
     )
     .map_err(|_| ProtocolError::ZeroScalar)?;
     Ok(hash)

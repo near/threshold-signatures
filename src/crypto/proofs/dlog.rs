@@ -1,6 +1,11 @@
 use crate::{
     crypto::{
         ciphersuite::{Ciphersuite, Element},
+        constants::{
+            NEAR_DLOG_CHALLENGE_LABEL,
+            NEAR_DLOG_COMMITMENT_LABEL,
+            NEAR_DLOG_STATEMENT_LABEL,
+        },
         proofs::strobe_transcript::TranscriptRng,
     },
     protocol::errors::ProtocolError,
@@ -10,12 +15,6 @@ use frost_core::{serialization::SerializableScalar, Group};
 use super::strobe_transcript::Transcript;
 use rand_core::CryptoRngCore;
 
-/// The label we use for hashing the statement.
-const STATEMENT_LABEL: &[u8] = b"dlog proof statement";
-/// The label we use for hashing the first prover message.
-const COMMITMENT_LABEL: &[u8] = b"dlog proof commitment";
-/// The label we use for generating the challenge.
-const CHALLENGE_LABEL: &[u8] = b"dlog proof challenge";
 /// A string used to extend an encoding
 const ENCODE_LABEL_STATEMENT: &[u8] = b"statement:";
 /// A string used to extend an encoding
@@ -69,14 +68,14 @@ pub fn prove<C: Ciphersuite>(
     statement: Statement<'_, C>,
     witness: Witness<C>,
 ) -> Result<Proof<C>, ProtocolError> {
-    transcript.message(STATEMENT_LABEL, &statement.encode()?);
+    transcript.message(NEAR_DLOG_STATEMENT_LABEL, &statement.encode()?);
 
     let (k, big_k) = <C>::generate_nonce(rng);
 
     // Create a serialization of big_k
     let ser = C::Group::serialize(&big_k).map_err(|_| ProtocolError::IdentityElement)?;
-    transcript.message(COMMITMENT_LABEL, ser.as_ref());
-    let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
+    transcript.message(NEAR_DLOG_COMMITMENT_LABEL, ser.as_ref());
+    let mut rng = transcript.challenge_then_build_rng(NEAR_DLOG_CHALLENGE_LABEL);
     let e = frost_core::random_nonzero::<C, _>(&mut rng);
 
     let s = k + e * witness.x.0;
@@ -93,7 +92,7 @@ pub fn verify<C: Ciphersuite>(
     statement: Statement<'_, C>,
     proof: &Proof<C>,
 ) -> Result<bool, ProtocolError> {
-    transcript.message(STATEMENT_LABEL, &statement.encode()?);
+    transcript.message(NEAR_DLOG_STATEMENT_LABEL, &statement.encode()?);
 
     let big_k = C::Group::generator() * proof.s.0 - *statement.public * proof.e.0;
 
@@ -101,8 +100,8 @@ pub fn verify<C: Ciphersuite>(
     // Raises error if the big_k turned out to be the identity element
     let ser = C::Group::serialize(&big_k).map_err(|_| ProtocolError::IdentityElement)?;
 
-    transcript.message(COMMITMENT_LABEL, ser.as_ref());
-    let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
+    transcript.message(NEAR_DLOG_COMMITMENT_LABEL, ser.as_ref());
+    let mut rng = transcript.challenge_then_build_rng(NEAR_DLOG_CHALLENGE_LABEL);
     let e = frost_core::random_nonzero::<C, TranscriptRng>(&mut rng);
 
     Ok(e == proof.e.0)

@@ -1,8 +1,8 @@
 use zeroize::Zeroize;
 
-use super::strobe::Strobe128;
+use crate::crypto::constants::MERLIN_PROTOCOL_LABEL;
 
-pub const MERLIN_PROTOCOL_LABEL: &[u8] = b"Mini-Merlin";
+use super::strobe::Strobe128;
 
 fn encode_usize_as_u32(x: usize) -> [u8; 4] {
     use byteorder::{ByteOrder, LittleEndian};
