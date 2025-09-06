@@ -101,7 +101,6 @@ async fn do_ckd_coordinator(
 /// a coordinator and a normal participant.
 /// Depending on whether the current participant is a coordinator or not,
 /// runs the signature protocol as either a participant or a coordinator.
-
 pub fn ckd(
     participants: &[Participant],
     coordinator: Participant,
