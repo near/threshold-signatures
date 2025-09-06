@@ -9,8 +9,10 @@ use crate::{
     protocol::{errors::ProtocolError, internal::PrivateChannel},
 };
 
-use crate::ecdsa::ot_based_ecdsa::triples::bits::{BitMatrix, BitVector, SquareBitMatrix, SEC_PARAM_8};
 use crate::crypto::constants::SECURITY_PARAMETER;
+use crate::ecdsa::ot_based_ecdsa::triples::bits::{
+    BitMatrix, BitVector, SquareBitMatrix, SEC_PARAM_8,
+};
 
 fn hash(
     i: usize,

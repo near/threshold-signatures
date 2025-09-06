@@ -13,11 +13,11 @@ use crate::{
     },
 };
 
+use crate::crypto::constants::SECURITY_PARAMETER;
 use crate::ecdsa::ot_based_ecdsa::triples::{
     bits::{BitMatrix, BitVector, ChoiceVector, DoubleBitVector, SquareBitMatrix},
     correlated_ot_extension::{correlated_ot_receiver, correlated_ot_sender, CorrelatedOtParams},
 };
-use crate::crypto::constants::SECURITY_PARAMETER;
 
 use elliptic_curve::ops::Reduce;
 

@@ -1,3 +1,4 @@
+use crate::crypto::constants::{NEAR_PRG_CTX, SECURITY_PARAMETER};
 use auto_ops::impl_op_ex;
 use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
@@ -5,10 +6,7 @@ use sha3::{
     digest::{ExtendableOutput, Update, XofReader},
     Shake256,
 };
-use crate::crypto::constants::NEAR_PRG_CTX;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
-
-use crate::crypto::constants::SECURITY_PARAMETER;
 
 pub const SEC_PARAM_64: usize = SECURITY_PARAMETER.div_ceil(64);
 pub const SEC_PARAM_8: usize = SECURITY_PARAMETER.div_ceil(8);

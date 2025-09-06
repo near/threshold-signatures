@@ -2,9 +2,7 @@ use crate::{
     crypto::{
         ciphersuite::{Ciphersuite, Element},
         constants::{
-            NEAR_DLOG_CHALLENGE_LABEL,
-            NEAR_DLOG_COMMITMENT_LABEL,
-            NEAR_DLOG_STATEMENT_LABEL,
+            NEAR_DLOG_CHALLENGE_LABEL, NEAR_DLOG_COMMITMENT_LABEL, NEAR_DLOG_STATEMENT_LABEL,
         },
         proofs::strobe_transcript::TranscriptRng,
     },

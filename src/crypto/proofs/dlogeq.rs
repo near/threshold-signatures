@@ -4,9 +4,7 @@ use crate::{
     crypto::{
         ciphersuite::{Ciphersuite, Element},
         constants::{
-            NEAR_DLOGEQ_CHALLENGE_LABEL,
-            NEAR_DLOGEQ_COMMITMENT_LABEL,
-            NEAR_DLOGEQ_STATEMENT_LABEL,
+            NEAR_DLOGEQ_CHALLENGE_LABEL, NEAR_DLOGEQ_COMMITMENT_LABEL, NEAR_DLOGEQ_STATEMENT_LABEL,
         },
     },
     protocol::errors::ProtocolError,

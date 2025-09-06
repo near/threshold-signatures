@@ -1,3 +1,4 @@
+use crate::crypto::constants::{BITS, SECURITY_PARAMETER};
 use crate::{
     crypto::hash::{hash, HashOutput},
     ecdsa::Scalar,
@@ -9,7 +10,6 @@ use crate::{
     },
 };
 use std::sync::Arc;
-use crate::crypto::constants::{BITS, SECURITY_PARAMETER};
 
 use super::{
     batch_random_ot::{batch_random_ot_receiver, batch_random_ot_sender},
