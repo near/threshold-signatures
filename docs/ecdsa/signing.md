@@ -72,7 +72,7 @@ The inputs to this phase are:
 4) Two public triples commitments $(A, B, C)$ and $(K, D, E)$
 resp. associated to the (master) Beaver triples $(a, b, c)$ and $(k, d, e)$
 
-*Note: neither* $d_i$ nor $C$ are actually used in the algorithm.*
+*Note: neither* $d_i$ *nor* $C$ *are actually used in the algorithm.*
 
 
 **Round 1:**
