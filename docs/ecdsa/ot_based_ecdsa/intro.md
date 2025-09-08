@@ -6,14 +6,6 @@ These docs provide a lower level description of the protocols used in Cait-Sith.
 
 Describes how the different protocols fit together.
 
-## [Proofs](./proofs.md)
-
-Describes the conventions around transcripts and ZK Proofs.
-
-## [Key Generation](./key-generation.md)
-
-This describes the distributed key generation protocol.
-
 ## [Triples](./triples.md)
 
 This describes the triple generation protocol: a pre-processing phase
