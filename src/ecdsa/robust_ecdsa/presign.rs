@@ -170,20 +170,21 @@ async fn do_presign(
         .into_vec_or_none()
         .ok_or(ProtocolError::InvalidInterpolationArguments)?;
 
-    #[cfg(feature = "actively_secure_ecdsa")]
+    #[cfg(feature = "actively_secure_robust_ecdsa")]
     {
+        // Round 2
         // check that the exponent interpolations match what has been received
         for i in threshold + 1..identifiers.len() {
             let p = &identifiers[i];
             // exponent interpolation for (R0, .., Rt; i)
-            let big_r_j = PolynomialCommitment::eval_exponent_interpolation(
+            let big_r_i = PolynomialCommitment::eval_exponent_interpolation(
                 &identifiers[..threshold + 1],
                 &verifying_shares[..threshold + 1],
                 Some(p),
             )?;
 
             // check the interpolated R values match the received ones
-            if big_r_j != verifying_shares[i] {
+            if big_r_i != verifying_shares[i] {
                 return Err(ProtocolError::AssertionFailed(
                     "Exponent interpolation check failed.".to_string(),
                 ));
@@ -204,9 +205,17 @@ async fn do_presign(
         return Err(ProtocolError::IdentityElement);
     }
 
-    #[cfg(feature = "actively_secure_ecdsa")]
+    // polynomial interpolation of w
+    let w = Polynomial::eval_interpolation(&identifiers, &signingshares, None)?;
+
+    // check w is non-zero
+    if w.0.is_zero().into() {
+        return Err(ProtocolError::ZeroScalar);
+    }
+
+    #[cfg(feature = "actively_secure_robust_ecdsa")]
     {
-        // Round 2
+        // Still in Round 2
         // Compute W_me = R^{a_me}
         let big_w_me = CoefficientCommitment::new(big_r.value() * shares.a());
         // Send W_me
@@ -228,26 +237,33 @@ async fn do_presign(
         for i in threshold + 1..identifiers.len() {
             let p = &identifiers[i];
             // exponent interpolation for (W0, .., Wt; i)
-            let big_w_j = PolynomialCommitment::eval_exponent_interpolation(
+            let big_w_i = PolynomialCommitment::eval_exponent_interpolation(
                 &identifiers[..threshold + 1],
                 &wshares[..threshold + 1],
                 Some(p),
             )?;
             // check the interpolated W values match the received ones
-            if big_w_j != wshares[i] {
+            if big_w_i != wshares[i] {
                 return Err(ProtocolError::AssertionFailed(
                     "Exponent interpolation check failed.".to_string(),
                 ));
             }
         }
-    }
-
-    // polynomial interpolation of w
-    let w = Polynomial::eval_interpolation(&identifiers, &signingshares, None)?;
-
-    // check w is non-zero
-    if w.0.is_zero().into() {
-        return Err(ProtocolError::ZeroScalar);
+        // compute W as exponent interpolation for (W0, .., Wt; 0)
+        let big_w = PolynomialCommitment::eval_exponent_interpolation(
+            &identifiers[..threshold + 1],
+            &wshares[..threshold + 1],
+            None,
+        )?;
+        // check W == g^w
+        if big_w
+            .value()
+            .ne(&(<Secp256K1Group as Group>::generator() * w.0))
+        {
+            return Err(ProtocolError::AssertionFailed(
+                "Exponent interpolation check failed.".to_string(),
+            ));
+        }
     }
 
     // w is non-zero due to previous check and so I can unwrap safely
