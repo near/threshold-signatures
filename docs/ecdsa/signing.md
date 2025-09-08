@@ -78,6 +78,7 @@ resp. associated to the (master) Beaver triples $(a, b, c)$ and $(k, d, e)$
 **Round 1:**
 
 1. Each $P_i$ linearizes their shares, setting:
+
 $$
 \begin{aligned}
 (k'_i, \_, e_i) &\gets \lambda(\mathcal{P}_1)_i \cdot (k_i, \_ , e_i)\cr
@@ -85,6 +86,7 @@ $$
 x'_i &\gets \lambda(\mathcal{P}_1)_i \cdot x_i\cr
 \end{aligned}
 $$
+
 2. $\star$ Each $P_i$ sends $e_i$ to every other party.
 3. $\bullet$ Each $P_i$ waits to receive $e_j$ from each other $P_j$.
 4. Each $P_i$ sets $e \gets \sum_j e_j$.
@@ -93,17 +95,20 @@ $$
 **Round 2:**
 
 1. Each $P_i$ sets:
+
 $$
 \begin{aligned}
 &\alpha_i \gets k'_i + a'_i\cr
 &\beta_i \gets x'_i + b'_i\cr
 \end{aligned}
 $$
+
 2. $\star$ Each $P_i$ sends $\alpha_i$ and $\beta_i$ to every other party.
 
 3. $\bullet$ Each $P_i$ waits to receive $\alpha_j$ and $\text{xb}_j$ from from every other party $P_j$.
 4. Each $P_i$ sets $\alpha \gets \sum_j \alpha_j$ and $\beta \gets \sum_j \beta_j$.
 5. $\blacktriangle$ Each $P_i$ asserts that:
+
 $$
 \begin{aligned}
 \alpha \cdot G &= K + A\quad \text{(in fact $\alpha = \sum_j \alpha_j =  \sum_j (k'_i + a'_i) = k + a$)}\cr
