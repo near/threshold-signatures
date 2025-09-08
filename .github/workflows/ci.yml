@@ -56,6 +56,8 @@ jobs:
           cache-all-crates: true
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Install cargo-nextest
+        run: cargo install cargo-nextest
       - name: Generate code coverage
         run: cargo llvm-cov nextest --release --all-features --workspace --codecov --output-path codecov.json
       - name: Upload coverage to Codecov
