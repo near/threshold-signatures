@@ -13,8 +13,6 @@ jobs:
   ci-tests:
     name: "Run tests"
     runs-on: warp-ubuntu-2204-x64-8x
-    env:
-      CARGO_TERM_COLOR: always
     timeout-minutes: 60
     permissions:
       contents: read
@@ -44,12 +42,10 @@ jobs:
 
       - name: Run cargo-nextest
         run: cargo nextest run --release --locked --all-features
-  
+
   ci-coverage:
     name: Coverage
     runs-on: warp-ubuntu-2204-x64-8x
-    env:
-      CARGO_TERM_COLOR: always
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -61,10 +57,10 @@ jobs:
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
       - name: Generate code coverage
-        run: cargo llvm-cov --release --all-features --workspace --codecov --output-path codecov.json
+        run: cargo llvm-cov nextest --release --all-features --workspace --codecov --output-path codecov.json
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
-          # token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: codecov.json
           fail_ci_if_error: false
