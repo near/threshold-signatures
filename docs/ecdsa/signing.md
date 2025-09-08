@@ -72,7 +72,7 @@ The inputs to this phase are:
 4) Two public triples commitments $(A, B, C)$ and $(K, D, E)$
 resp. associated to the (master) Beaver triples $(a, b, c)$ and $(k, d, e)$
 
-*Note: neither $d_i$ nor $C$ are actually used in the algorithm.*
+*Note: neither* $d_i$ nor $C$ are actually used in the algorithm.*
 
 
 **Round 1:**
@@ -148,7 +148,7 @@ The inputs to this phase are:
 
 5. $\bullet$ Each $P_i$ waits to receive $s_j$ from every other party.
 6. Each $P_i$ sets $s \gets \sum_{j \in [N]} s_j$.
-7. Normalize $s = s \mod q$ where $s\in\{0~..~q-1\}$
+7. Normalize $s \gets s \mod q$ where $s\in\\{0~..~q-1\\}$
 7. $\blacktriangle$ Each $P_i$ asserts that $(R, s)$ is a valid ECDSA signature for $m$.
 8. Each $P_i$ outputs $(R, s)$.
 
