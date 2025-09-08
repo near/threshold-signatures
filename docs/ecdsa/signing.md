@@ -105,7 +105,7 @@ $$
 
 2. $\star$ Each $P_i$ sends $\alpha_i$ and $\beta_i$ to every other party.
 
-3. $\bullet$ Each $P_i$ waits to receive $\alpha_j$ and $\text{xb}_j$ from from every other party $P_j$.
+3. $\bullet$ Each $P_i$ waits to receive $\alpha_j$ and $\beta_j$ from from every other party $P_j$.
 4. Each $P_i$ sets $\alpha \gets \sum_j \alpha_j$ and $\beta \gets \sum_j \beta_j$.
 5. $\blacktriangle$ Each $P_i$ asserts that:
 
