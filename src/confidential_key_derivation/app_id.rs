@@ -51,6 +51,20 @@ impl AsRef<[u8]> for AppId {
     }
 }
 
+impl std::ops::Deref for AppId {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::borrow::Borrow<[u8]> for AppId {
+    fn borrow(&self) -> &[u8] {
+        &self.0
+    }
+}
+
 impl std::fmt::Display for AppId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", hex::encode(self.as_bytes()))
@@ -162,5 +176,28 @@ mod tests {
         let invalid_json = "{ invalid json }";
         let result: Result<AppId, _> = serde_json::from_str(invalid_json);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_deref_and_borrow() {
+        let bytes = vec![0x01, 0x02, 0x03];
+        let app_id = AppId::new(bytes.clone());
+
+        // Test Deref
+        assert_eq!(&*app_id, bytes.as_slice());
+        assert_eq!(app_id.len(), 3); // accessing slice method through Deref
+
+        // Test Borrow
+        use std::borrow::Borrow;
+        let borrowed: &[u8] = app_id.borrow();
+        assert_eq!(borrowed, bytes.as_slice());
+
+        // Test in a hash map context
+        use std::collections::HashMap;
+        let mut map = HashMap::new();
+        map.insert(app_id.clone(), "value");
+
+        // Can look up with &[u8] because of Borrow implementation
+        assert_eq!(map.get(bytes.as_slice()), Some(&"value"));
     }
 }
