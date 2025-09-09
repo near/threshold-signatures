@@ -1483,6 +1483,7 @@ dependencies = [
  "frost-ed25519",
  "frost-secp256k1",
  "futures",
+ "hex",
  "itertools 0.14.0",
  "k256",
  "keccak",

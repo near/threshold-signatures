@@ -39,6 +39,12 @@ impl AsRef<[u8]> for AppId {
     }
 }
 
+impl std::fmt::Display for AppId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", hex::encode(self.as_bytes()))
+    }
+}
+
 pub mod protocol;
 
 use frost_secp256k1::{keys::SigningShare, Secp256K1Sha256, VerifyingKey};
@@ -89,3 +95,15 @@ impl CKDCoordinatorOutput {
 
 /// None for participants and Some for coordinator
 pub type CKDOutput = Option<CKDCoordinatorOutput>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_app_id_display() {
+        let test_bytes = vec![0xDE, 0xAD, 0xBE, 0xEF];
+        let app_id = AppId::new(test_bytes);
+        assert_eq!(app_id.to_string(), "deadbeef");
+    }
+}
