@@ -23,14 +23,14 @@ pub fn presign(
 ) -> Result<impl Protocol<Output = PresignOutput>, InitializationError> {
     if participants.len() < 2 {
         return Err(InitializationError::NotEnoughParticipants {
-            participants: participants.len() as u32,
+            participants: participants.len(),
         });
     };
     // Spec 1.1
     if args.threshold > participants.len() {
         return Err(InitializationError::ThresholdTooLarge {
-            threshold: args.threshold as u32,
-            max: participants.len() as u32,
+            threshold: args.threshold,
+            max: participants.len(),
         });
     }
 

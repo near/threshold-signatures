@@ -26,7 +26,7 @@ pub fn sign(
 ) -> Result<impl Protocol<Output = FullSignature>, InitializationError> {
     if participants.len() < 2 {
         return Err(InitializationError::NotEnoughParticipants {
-            participants: participants.len() as u32,
+            participants: participants.len(),
         });
     };
 
