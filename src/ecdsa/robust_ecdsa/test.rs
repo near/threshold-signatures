@@ -5,7 +5,6 @@ use super::{presign::presign, sign::sign, PresignArguments, PresignOutput};
 use crate::crypto::hash::test::scalar_hash_secp256k1;
 use crate::ecdsa::{Element, KeygenOutput, Secp256K1Sha256, Signature};
 use crate::protocol::{run_protocol, Participant, Protocol};
-
 use crate::test::{
     assert_public_key_invariant, generate_participants, generate_participants_with_random_ids,
     run_keygen, run_refresh, run_reshare,
