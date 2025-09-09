@@ -1087,7 +1087,57 @@ mod test {
     }
 
     #[test]
-    fn test_eval_exponent_interpolation_against_interpolation_times_g() -> Result<(), ProtocolError>{
+    fn test_eval_exponent_interpolation_against_interpolation_times_g_at_none() -> Result<(), ProtocolError>{
+        for participants in 2..20{
+            for degree in 1..participants{
+                let participants = generate_participants(participants);
+
+                let ids = participants
+                    .iter()
+                    .map(|p| p.scalar::<C>())
+                    .collect::<Vec<_>>();
+
+                // generate polynomial
+                let poly = Polynomial::<C>::generate_polynomial(None, degree, &mut OsRng)
+                    .expect("Generation must not fail with overwhealming probability");
+
+                // build all the shares
+                let shares = participants
+                    .iter()
+                    .map(|p| poly.eval_at_participant(*p).unwrap())
+                    .collect::<Vec<_>>();
+
+                let compoly = poly.commit_polynomial().unwrap();
+
+                // build all commited shares
+                let com_shares = participants
+                    .iter()
+                    .map(|p| compoly.eval_at_participant(*p).unwrap())
+                    .collect::<Vec<_>>();
+
+
+                // use only degree + 1 shares to evaluate exponent
+                let exponent_eval = PolynomialCommitment::eval_exponent_interpolation(
+                    &ids[..degree + 1],
+                    &com_shares[..degree + 1],
+                    None,
+                )?;
+
+                // use all to evaluate the share
+                let eval = Polynomial::eval_interpolation(
+                    &ids,
+                    &shares,
+                    None,
+                )?;
+
+                assert_eq!(exponent_eval.value(), <C as frost_core::Ciphersuite>::Group::generator() * eval.0);
+            }
+        }
+
+        Ok(())
+    }
+    #[test]
+    fn test_eval_exponent_interpolation_against_interpolation_times_g_at_some() -> Result<(), ProtocolError>{
         for participants in 2..20{
             for degree in 1..participants{
                 let participants = generate_participants(participants);
