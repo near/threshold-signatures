@@ -87,6 +87,7 @@ async fn do_presign(
     let big_e = args.triple0.1.big_c;
 
     // linearize ki ei ai bi ci xi
+    // Spec 1.1
     let lambda_me = participants.lagrange::<Secp256>(me)?;
 
     let k_prime_i = lambda_me * k_i;
@@ -100,10 +101,12 @@ async fn do_presign(
     let x_prime_i = lambda_me * private_share;
 
     // Send ei
+    // Spec 1.2
     let wait0 = chan.next_waitpoint();
     chan.send_many(wait0, &e_i)?;
 
     // Receive ej and compute e = SUM_j ej
+    // Spec 1.3
     let mut e = e_i;
     let mut seen = ParticipantCounter::new(&participants);
     seen.put(me);
@@ -119,10 +122,12 @@ async fn do_presign(
         if !seen.put(from) {
             continue;
         }
+        // Spec 1.4
         e += e_j;
     }
 
     // E =?= e*G
+    // Spec 1.5
     if big_e != (ProjectivePoint::GENERATOR * e).to_affine() {
         return Err(ProtocolError::AssertionFailed(
             "received incorrect shares of kd".to_string(),
@@ -131,16 +136,19 @@ async fn do_presign(
 
     // Round 2
     // alphai = ki' + ai'
+    // Spec 2.1
     let alpha_i: Scalar = k_prime_i + a_prime_i;
     // betai = xi' + bi'
     let beta_i: Scalar = x_prime_i + b_prime_i;
 
     // Send alphai and betai
+    // Spec 2.2
     let wait1 = chan.next_waitpoint();
     chan.send_many(wait1, &(alpha_i, beta_i))?;
 
     // Receive and compute alpha = SUM_j alphaj
     // Receive and compute beta = SUM_j betaj
+    // Spec 2.3
     let mut alpha = alpha_i;
     let mut beta = beta_i;
     seen.clear();
@@ -150,12 +158,14 @@ async fn do_presign(
         if !seen.put(from) {
             continue;
         }
+        // Spec 2.4
         alpha += alpha_j;
         beta += beta_j;
     }
 
     // alpha*G =?= K + A
     // beta*G =?= X + B
+    // Spec 2.5
     if (ProjectivePoint::GENERATOR * alpha != big_k + big_a)
         || (ProjectivePoint::GENERATOR * beta != big_x + big_b)
     {
@@ -165,12 +175,14 @@ async fn do_presign(
     }
 
     // Compute R = 1/e * D
+    // Spec 2.6
     let e_inv: Option<Scalar> = e.invert().into();
     let e_inv =
         e_inv.ok_or_else(|| ProtocolError::AssertionFailed("failed to invert kd".to_string()))?;
     let big_r = (big_d * e_inv).into();
 
     // sigmai = alpha*xi - beta*ai + ci
+    // Spec 2.7
     let sigma_i = alpha * private_share - (beta * a_i - c_i);
 
     Ok(PresignOutput {

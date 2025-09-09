@@ -59,22 +59,28 @@ async fn do_sign(
     presignature: PresignOutput,
     msg_hash: Scalar,
 ) -> Result<FullSignature, ProtocolError> {
+    // Round 1
     // Linearize ki
+    // Spec 1.1
     let lambda = participants.lagrange::<Secp256K1Sha256>(me)?;
     let k_i = lambda * presignature.k;
 
     // Linearize sigmai
+    // Spec 1.2
     let sigma_i = lambda * presignature.sigma;
 
     // Compute si = h * ki + Rx * sigmai
+    // Spec 1.3
     let r = x_coordinate(&presignature.big_r);
     let s_i = msg_hash * k_i + r * sigma_i;
 
     // Send si
+    // Spec 1.4
     let wait0 = chan.next_waitpoint();
     chan.send_many(wait0, &s_i)?;
 
     // Receive sj
+    // Spec 1.5
     let mut seen = ParticipantCounter::new(&participants);
     let mut s = s_i;
     seen.put(me);
@@ -83,24 +89,26 @@ async fn do_sign(
         if !seen.put(from) {
             continue;
         }
+        // Spec 1.6
         s += s_j
     }
 
-    // Spec 2.3
-    // Optionally, normalize s
+    // Normalize s
+    // Spec 1.7
     s.conditional_assign(&(-s), s.is_high());
 
     let sig = FullSignature {
         big_r: presignature.big_r,
         s,
     };
+
+    // Spec 1.8
     if !sig.verify(&public_key, &msg_hash) {
         return Err(ProtocolError::AssertionFailed(
             "signature failed to verify".to_string(),
         ));
     }
 
-    // Spec 2.4
     Ok(sig)
 }
 
