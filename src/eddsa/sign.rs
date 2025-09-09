@@ -211,7 +211,7 @@ pub fn sign(
 ) -> Result<impl Protocol<Output = Signature>, InitializationError> {
     if participants.len() < 2 {
         return Err(InitializationError::NotEnoughParticipants {
-            participants: participants.len() as u32,
+            participants: participants.len(),
         });
     };
     let Some(participants) = ParticipantList::new(participants) else {
