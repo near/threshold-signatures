@@ -38,7 +38,7 @@ impl<'de> Deserialize<'de> for AppId {
 
 impl From<Vec<u8>> for AppId {
     fn from(id: Vec<u8>) -> Self {
-        Self(id.into_boxed_slice().into())
+        Self(Arc::from(id))
     }
 }
 
