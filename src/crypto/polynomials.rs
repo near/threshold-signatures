@@ -499,16 +499,19 @@ pub fn batch_compute_lagrange_coefficients<C: Ciphersuite>(
 
     // Special case: x = 0
     let (numerator_prod, inv_factors) = if *x == zero {
-        // Compute P = ∏_j x_j
+        // Compute P = ∏_j (-1)* *x_j
         let mut p = <C::Group as Group>::Field::one();
         for x_i in points_set.iter() {
             p = p * *x_i;
         }
 
+        // For constant time computation always compute minus_p
+        let minus_p = zero - p;
+
         // Batch invert points_set to get 1 / x_i
         let inv_xis = batch_invert::<C>(points_set)?;
-
-        (p, inv_xis) // Sign (-1)^(n-1) left to caller
+        // Return the proper numerator based on the number of elements
+        (if n % 2 == 0 { minus_p } else { p }, inv_xis)
     } else {
         // General case: x != 0
         let mut full_numerator = <C::Group as Group>::Field::one();
