@@ -119,8 +119,8 @@ $$
 6. Each $P_i$ sets: $R \gets \frac{1}{e} \cdot D$. (Recall that Beaver triple $(k,d,e)$ is computed s.t. $e = k\cdot d$ )
 7. Each $P_i$ sets $\sigma_i \gets \alpha \cdot x_i - \beta \cdot a_i + c_i$, which is already threshold shared.
 
-**Output:**
-The output is the presignature $(R, k_i, \sigma_i)$
+**Output:** The presignature $(R, k_i, \sigma_i)$
+
 # 4 Signing
 
 The inputs to this phase are:
@@ -150,9 +150,6 @@ The inputs to this phase are:
 6. Each $P_i$ sets $s \gets \sum_{j \in [N]} s_j$.
 7. Perform the low-S normalization, i.e. $s \gets -s $ if $s\in\\{\frac{q}{2}..~q-1\\}$
 7. $\blacktriangle$ Each $P_i$ asserts that $(R, s)$ is a valid ECDSA signature for $m$.
-8. Each $P_i$ outputs $(R, s)$.
 
-**Output**
-
-The pair $(R, s)$ is the signature.
+**Output:** the signature $(R, s)$.
 
