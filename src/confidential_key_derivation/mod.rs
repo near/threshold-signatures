@@ -8,11 +8,12 @@
 //!
 //! For more details, refer to the `confidential_key_derivation.md` document in the `docs` folder.
 
+pub mod protocol;
+
 use borsh::{BorshDeserialize, BorshSerialize};
 use frost_secp256k1::{keys::SigningShare, Secp256K1Sha256, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-pub mod protocol;
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash, PartialOrd, Ord)]
 pub struct AppId(Arc<[u8]>);
