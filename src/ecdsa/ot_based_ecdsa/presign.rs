@@ -244,8 +244,7 @@ mod test {
                     keygen_out,
                     threshold,
                 },
-            )
-            .unwrap();
+            )?;
             protocols.push((*p, Box::new(protocol)));
         }
 
