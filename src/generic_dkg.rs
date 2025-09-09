@@ -534,7 +534,7 @@ pub(crate) fn assert_keygen_invariants(
     // validate threshold
     if threshold > participants.len() {
         return Err(InitializationError::ThresholdTooLarge {
-            threshold: threshold,
+            threshold,
             max: participants.len(),
         });
     }
@@ -603,7 +603,7 @@ pub(crate) fn reshare_assertions<C: Ciphersuite>(
     };
     if threshold > participants.len() {
         return Err(InitializationError::ThresholdTooLarge {
-            threshold: threshold,
+            threshold,
             max: participants.len(),
         });
     }

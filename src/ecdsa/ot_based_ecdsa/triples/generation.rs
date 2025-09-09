@@ -1116,7 +1116,7 @@ pub fn generate_triple(
     // Spec 1.1
     if threshold > participants.len() {
         return Err(InitializationError::ThresholdTooLarge {
-            threshold: threshold,
+            threshold,
             max: participants.len(),
         });
     }
@@ -1143,7 +1143,7 @@ pub fn generate_triple_many<const N: usize>(
     // Spec 1.1
     if threshold > participants.len() {
         return Err(InitializationError::ThresholdTooLarge {
-            threshold: threshold,
+            threshold,
             max: participants.len(),
         });
     }
