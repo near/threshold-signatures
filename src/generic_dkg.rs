@@ -604,7 +604,7 @@ pub(crate) fn reshare_assertions<C: Ciphersuite>(
     if threshold > participants.len() {
         return Err(InitializationError::ThresholdTooLarge {
             threshold: threshold,
-            max: participants.len() ,
+            max: participants.len(),
         });
     }
 

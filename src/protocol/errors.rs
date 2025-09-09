@@ -89,7 +89,10 @@ pub enum InitializationError {
     NotEnoughParticipants { participants: usize },
 
     #[error("not enough intersecting old/new participants ({participants}) to reconstruct private key for resharing with threshold bigger than old threshold ({threshold})")]
-    NotEnoughParticipantsForThreshold { threshold: usize, participants: usize },
+    NotEnoughParticipantsForThreshold {
+        threshold: usize,
+        participants: usize,
+    },
 
     #[error("threshold {threshold} is too small, it must be at least {min}")]
     ThresholdTooSmall { threshold: usize, min: usize },
