@@ -428,7 +428,7 @@ pub fn compute_lagrange_coefficient<C: Ciphersuite>(
 ///   lambda_i(x) = \prod_{j!=i} (x - x_j) / (x_i - x_j)
 ///
 /// Inputs:
-/// - `points_set` = {x₀, x₁, …, xₙ₋₁}. Each lambda_i corresponds to xᵢ ∈ `points_set`.
+/// - `points_set` = {x_0, x_1, …}. Each lambda_i corresponds to x_i ∈ `points_set`.
 /// - `x`: the evaluation point. If `None`, it is treated as 0.
 ///
 /// Requirements:
@@ -499,7 +499,7 @@ pub fn batch_compute_lagrange_coefficients<C: Ciphersuite>(
 
     // Special case: x = 0
     let (numerator_prod, inv_factors) = if *x == zero {
-        // Compute P = ∏_j (-1)* *x_j
+        // Compute P = \prod_j (-1)* *x_j
         let mut p = <C::Group as Group>::Field::one();
         for x_i in points_set.iter() {
             p = p * *x_i;
