@@ -1,3 +1,44 @@
+//! Confidential Key Derivation (CKD) protocol.
+//!
+//! This module provides the implementation of the Confidential Key Derivation (CKD) protocol,
+//! which allows a client to derive a unique key for a specific application without revealing
+//! the application identifier to the key derivation service.
+//!
+//! The protocol is based on a combination of Oblivious Transfer (OT) and Diffie-Hellman key exchange.
+//!
+//! For more details, refer to the `confidential_key_derivation.md` document in the `docs` folder.
+
+use std::sync::Arc;
+
+#[derive(Clone, PartialEq, Eq, Debug, Hash, PartialOrd, Ord)]
+pub struct AppId(std::sync::Arc<[u8]>);
+
+impl From<Vec<u8>> for AppId {
+    fn from(id: Vec<u8>) -> Self {
+        Self(id.into_boxed_slice().into())
+    }
+}
+
+impl AppId {
+    pub fn new(id: impl Into<std::sync::Arc<[u8]>>) -> Self {
+        Self(id.into())
+    }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+
+    pub fn into_bytes(self) -> std::sync::Arc<[u8]> {
+        self.0
+    }
+}
+
+impl AsRef<[u8]> for AppId {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
 pub mod protocol;
 
 use frost_secp256k1::{keys::SigningShare, Secp256K1Sha256, VerifyingKey};
