@@ -255,6 +255,7 @@ async fn do_presign(
             &wshares[..threshold + 1],
             None,
         )?;
+
         // check W == g^w
         if big_w
             .value()

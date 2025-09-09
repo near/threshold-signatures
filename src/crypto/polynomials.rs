@@ -870,9 +870,8 @@ mod test {
             // create arbitrary point
             let point = Secp256K1ScalarField::random(&mut OsRng);
             // interpolate on this point
-            let interpolation =
-                Polynomial::eval_interpolation(&scalars, &shares, Some(&point))
-                    .expect("Interpolation has the correct inputs");
+            let interpolation = Polynomial::eval_interpolation(&scalars, &shares, Some(&point))
+                .expect("Interpolation has the correct inputs");
             // evaluate the polynomial on the point
             let evaluation = poly.eval_at_point(point).unwrap();
 
@@ -1061,7 +1060,7 @@ mod test {
     #[test]
     fn test_lagrange_computation_equivalence() {
         let degree = 10;
-        let participants = generate_participants(degree+1);
+        let participants = generate_participants(degree + 1);
 
         let ids = participants
             .iter()
@@ -1090,9 +1089,10 @@ mod test {
     }
 
     #[test]
-    fn test_eval_exponent_interpolation_against_interpolation_times_g_at_none() -> Result<(), ProtocolError>{
-        for participants in 2..20{
-            for degree in 1..participants{
+    fn test_eval_exponent_interpolation_against_interpolation_times_g_at_none(
+    ) -> Result<(), ProtocolError> {
+        for participants in 2..20 {
+            for degree in 1..participants {
                 let participants = generate_participants(participants);
 
                 let ids = participants
@@ -1118,7 +1118,6 @@ mod test {
                     .map(|p| compoly.eval_at_participant(*p).unwrap())
                     .collect::<Vec<_>>();
 
-
                 // use only degree + 1 shares to evaluate exponent
                 let exponent_eval = PolynomialCommitment::eval_exponent_interpolation(
                     &ids[..degree + 1],
@@ -1127,22 +1126,23 @@ mod test {
                 )?;
 
                 // use all to evaluate the share
-                let eval = Polynomial::eval_interpolation(
-                    &ids,
-                    &shares,
-                    None,
-                )?;
+                let eval = Polynomial::eval_interpolation(&ids, &shares, None)?;
 
-                assert_eq!(exponent_eval.value(), <C as frost_core::Ciphersuite>::Group::generator() * eval.0);
+                println!("{participants:?} {degree:?}");
+                assert_eq!(
+                    exponent_eval.value(),
+                    <C as frost_core::Ciphersuite>::Group::generator() * eval.0
+                );
             }
         }
 
         Ok(())
     }
     #[test]
-    fn test_eval_exponent_interpolation_against_interpolation_times_g_at_some() -> Result<(), ProtocolError>{
-        for participants in 2..20{
-            for degree in 1..participants{
+    fn test_eval_exponent_interpolation_against_interpolation_times_g_at_some(
+    ) -> Result<(), ProtocolError> {
+        for participants in 2..20 {
+            for degree in 1..participants {
                 let participants = generate_participants(participants);
 
                 let ids = participants
@@ -1178,13 +1178,12 @@ mod test {
                 )?;
 
                 // use all to evaluate the share
-                let eval = Polynomial::eval_interpolation(
-                    &ids,
-                    &shares,
-                    point.as_ref(),
-                )?;
+                let eval = Polynomial::eval_interpolation(&ids, &shares, point.as_ref())?;
 
-                assert_eq!(exponent_eval.value(), <C as frost_core::Ciphersuite>::Group::generator() * eval.0);
+                assert_eq!(
+                    exponent_eval.value(),
+                    <C as frost_core::Ciphersuite>::Group::generator() * eval.0
+                );
             }
         }
 
