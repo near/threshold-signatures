@@ -31,6 +31,18 @@ impl From<Vec<u8>> for AppId {
     }
 }
 
+impl<'a> From<&'a [u8]> for AppId {
+    fn from(id: &'a [u8]) -> Self {
+        Self(Arc::from(id))
+    }
+}
+
+impl<'a, const N: usize> From<&'a [u8; N]> for AppId {
+    fn from(id: &'a [u8; N]) -> Self {
+        Self(Arc::from(&id[..]))
+    }
+}
+
 impl AppId {
     pub fn new(id: impl AsRef<[u8]>) -> Self {
         Self(Arc::from(id.as_ref()))

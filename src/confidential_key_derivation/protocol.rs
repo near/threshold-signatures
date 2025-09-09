@@ -211,7 +211,7 @@ mod test {
         let msk = f.eval_at_zero()?;
 
         // Create the app necessary items
-        let app_id = AppId::from(b"Near App".to_vec());
+        let app_id = AppId::from(b"Near App");
         let (app_sk, app_pk) = Secp256K1Sha256::generate_nonce(&mut OsRng);
         let app_pk = VerifyingKey::new(app_pk);
 
@@ -284,7 +284,7 @@ mod test {
         let app_pk = VerifyingKey::new(app_pk);
         let f = Polynomial::<Secp256K1Sha256>::generate_polynomial(None, 2, &mut OsRng).unwrap();
         let private_share = SigningShare::new(f.eval_at_participant(me).unwrap().0);
-        let app_id = AppId::from(b"test".to_vec());
+        let app_id = AppId::from(b"test");
 
         let result = ckd(
             &participants,
