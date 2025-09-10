@@ -58,6 +58,7 @@ Before committing code, developers should ensure all checks pass. This helps pre
 cargo check
 cargo clippy --all-features --all-targets --locked
 cargo fmt -- --check
+cargo nextest run --release --all-features --all-targets --locked
 ```
 
 Or, if using `cargo-make` (`cargo install cargo-make`):
