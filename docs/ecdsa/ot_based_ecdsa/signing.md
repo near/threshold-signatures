@@ -1,10 +1,10 @@
 This document specifies the signing protocol.
-The protocol is split into two main phases, a pre-signing phase
+The protocol is split into two phases, a pre-signing phase and a signing phase.
 
 *Note: Due to the complexity of generating presignatures using multiplicative triples, this protocol shifts from the signing formulae stated in [Preliminaries](../preliminaries.md) and computes $R$ as in $R\gets \frac{1}{k}\cdot G$ and $s$ as in $s \gets k (H(m) + rx)$. These formulae do not require changes to be done on the verifier's end*
 
 
-# 3 Presigning
+# Presigning
 
 In this phase, a set of parties $\mathcal{P}_ 1 \subseteq \mathcal{P}_ 0$
 of size $N_1 \geq t$ wishes to generate a threshold $t' = t$ sharing
@@ -67,7 +67,7 @@ $$
 
 **Output:** The presignature $(R, k_i, \sigma_i)$
 
-# 4 Signing
+# Signing
 In this phase, a set of parties $\mathcal{P}_2 \subseteq \mathcal{P}_ 1$
 of size $N_2 \geq t$ wishes to generate an ECDSA signature.
 
