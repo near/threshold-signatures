@@ -4,6 +4,7 @@ The protocol is split into two phases, a pre-signing phase and a signing phase.
 *Note that We slightly modify the original scheme and push parts of the computation done on the signing phase to the presigning phase to improve the performance of the former phase. Additionally, the authors assume the message is an input to the first round, but their proof does not require it until the last round.
 We highlight in red the difference between our scheme and the original one.*
 
+### Note: the threshold $t = \#malicious\_parties$
 
 # Presigning
 
@@ -15,38 +16,48 @@ The inputs to this phase are:
 
 1) The secret key share $x_i$.
 
-
 **Round 1:**
 
-Generate a random secret sharing of a scalar [k],
-Each party samples a random degree t polynomial fk_i (where the group nonce k = SUM fk_i(0)).
-Generate a second random secret sharing of a scalar [a]
-Similarly, each party samples a degree t random polynomial fa_i (where a = SUM fa_i(0)).
-Compute [b] = ZSS(2t), a zero secret sharing of degree 2t
-Compute [d] = ZSS(2t), a zero secret sharing of degree 2t
-Compute [e] = ZSS(2t), a zero secret sharing of degree 2t
-[Output of Round 0]
-Privately send all other parties their share (k_ij, a_ij, b_ij, d_ij, e_ij)
-	We use notation fa_i(j) := a_ij and analogously for the rest of the terms.
+1. Each $P_i$ generates two random degree $t$ polynomials $f_{k_i}$ and $f_{a_i}$
+2. Each $P_i$ generates three random degree $2t$ polynomials $f_{b_i}$, $f_{d_i}$, and $f_{e_i}$ and set their constant terms to zero.
+3. $\textcolor{red}{\star}$ Each $P_i$ **privately** sends
+$(k_{ij}, a_{ij}, b_{ij}, d_{ij}, e_{ij})$ to every other party $P_j$ such that:
+
+$$
+k_{ij} \gets f_{k_i}(j) \qquad
+a_{ij} \gets f_{a_i}(j) \qquad
+b_{ij} \gets f_{b_i}(j) \qquad
+d_{ij} \gets f_{d_i}(j) \qquad
+e_{ij} \gets f_{e_i}(j)
+$$
 
 **Round 2:**
 
-Compute 	k_i = SUM_j k_ij	 a_i = SUM_j a_ij
-			b_i = SUM_j b_ij	 d_i = SUM_j d_ij	e_i = SUM_j e_ij;
-In this step, each party sums shares received from all other parties.
+1. $\bullet$ Each $P_i$ waits to receive $(k_{ji}, a_{ji}, b_{ji}, d_{ji}, e_{ji})$ from each other $P_j$.
+2. Each $P_i$ sums the shares received from the other participants:
 
-Compute R_i = g^{k_i}
-      9. Compute [w] = [a][k]
-Each party computes w_i = a_i * k_i + b_i, where b_i is a blinding factor due to the fact that a_i * k_i is not necessarily random
-     10. [Output of Round 1] Send (in the clear) R_i, w_i,
+$$
+k_i \gets \sum_j k_{ji} \qquad
+a_i \gets \sum_j a_{ji} \qquad
+b_i \gets \sum_j b_{ji} \qquad
+d_i \gets \sum_j d_{ji} \qquad
+e_i \gets \sum_j e_{ji}
+$$
 
-Round 2 (Offline): Computational overhead: Requires one poly interpolation and (n-t)  exponent interpolations
-11. For j from t+2 … n:
-Check ExponentInterpolation(R1, … ,R_{t+1}; j) =?=  Rj
-13. Compute R = ExponentInterpolation(R1,.., R_{t+1}; 0)
-Abort if R =?= Identity
-            14. Compute W_i = R^{a_i}
-15. [Output of Round 2] Send (in the clear) W_i
+3. Each $P_i$ computes $R_i = g^{k_i}$
+4. Each $P_i$ computes $w_i = a_i * k_i + b_i \quad$ ($b_i$ being a blinding factor for $a_i * k_i$)
+5. $\star$ Each $P_i$ sends $(R_i, w_i)$ to every other party.
+
+**Round 3:**
+
+1. $\bullet$ Each $P_i$ waits to receive $(R_i, w_i)$ from each other $P_j$.
+2. $\blacktriangle$ Each $P_i$ *asserts* that:
+$ \forall j \in \\{t+2.. n\\}$,\quad ExponentInterpolation(R1, … ,R_{t+1}; j) =  R_j$
+3. Compute $R \gets ExponentInterpolation(R1,.., R_{t+1}; 0)$
+5. $\blacktriangle$ Each $P_i$ *asserts* that $R \neq Identity$
+5. Compute $W_i = R^{a_i}$
+6. $\star$ Each $P_i$ sends $W_i$ to every other party.
+
 
 Round 2.5: Computational overhead: Requires one poly interpolation and (n-t)  exponent interpolations
 16. For j from t+2 … n:
@@ -103,14 +114,13 @@ The inputs to this phase are:
 **Output:** the signature $(R, s)$.
 
 
-
-
-
-
 ## Differences with [[DJNPO20](https://eprint.iacr.org/2020/501)]
 
 Rerandomization,
 
+Linearization
+
+Coordinator
 
 The original paper pushes parts of the presignature computations in the previous lines to the signing round. We do not do so to reduce the computation time in the online phase
 
