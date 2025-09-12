@@ -1,8 +1,7 @@
 This document specifies the signing protocol described in [[DJNPO20](https://eprint.iacr.org/2020/501)].
 The protocol is split into two phases, a pre-signing phase and a signing phase.
 
-*Note that We slightly modify the original scheme and push parts of the computation done on the signing phase to the presigning phase to improve the performance of the former phase. Additionally, the authors assume the message is an input to the first round, but their proof does not require it until the last round.
-We highlight in red the difference between our scheme and the original one.*
+*Note that We slightly modify the original scheme and push parts of the computation done on the signing phase to the presigning phase to improve the performance of the former phase. Additionally, the authors assume the message is an input to the first round, but their proof does not require it until the last round.*
 
 ### Note: the threshold $t = \#malicious\_parties$
 
