@@ -92,12 +92,10 @@ The inputs to this phase are:
 2. Each $P_i$ linearizes their share of $\sigma$, setting $\sigma_i \gets \lambda(\mathcal{P}_2)_i \cdot \sigma_i$.
 3. Each $P_i$ sets $s_i \gets h \cdot k_i + R_x \cdot \sigma_i$ where $R_x$ is the x coordinate of $R$
 4. $\star$ Each $P_i$ sends $s_i$ to every other party.
-
-
 5. $\bullet$ Each $P_i$ waits to receive $s_j$ from every other party.
 6. Each $P_i$ sets $s \gets \sum_{j \in [N]} s_j$.
 7. Perform the low-S normalization, i.e. $s \gets -s $ if $s\in\\{\frac{q}{2}..~q-1\\}$
-7. $\blacktriangle$ Each $P_i$ asserts that $(R, s)$ is a valid ECDSA signature for $m$.
+8. $\blacktriangle$ Each $P_i$ asserts that $(R, s)$ is a valid ECDSA signature for $h$.
 
 **Output:** the signature $(R, s)$.
 
