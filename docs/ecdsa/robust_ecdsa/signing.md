@@ -68,7 +68,7 @@ $\forall j \in \\{t+2.. n\\},\quad \mathsf{ExponentInterpolation}(W_1, \ldots W_
 14. Each $P_i$ computes $\alpha_i \gets c_i+d_i$
 15. Each $P_i$ computes $\beta_i \gets c_i \cdot R_\mathsf{x} \cdot x_i + e_i$ where $R_\mathsf{x}$ is the x coordinate of $R$.
 
-**Output:** the presignature $(R, \alpha_i, \beta_i)$.
+**Output:** the presignature $(R, \alpha_i, \beta_i, k_i)$.
 
 # Signing
 
@@ -76,7 +76,7 @@ In this phase, a set of parties $\mathcal{P}_2 \subseteq \mathcal{P}_ 1$
 of size $N_2 > t$ wishes to generate an ECDSA signature.
 
 The inputs to this phase are:
-1) The presignature $(R, \alpha_i, \beta_i)$,
+1) The presignature $(R, \alpha_i, \beta_i, k_i)$,
 2) The public key $X$
 3) A "fresh" public source of entropy $\rho$
 4) A tweak $\epsilon$ used during key derivation
@@ -89,7 +89,6 @@ The inputs to this phase are:
 
     * $R  \gets R^\delta$
     * $\alpha_i \gets (\alpha_i + \epsilon \cdot k_i) \cdot \delta^{-1}$
-    * $\beta_i \gets (\beta_i + \epsilon \cdot k_i) \cdot \delta^{-1}$
 
 **Round 1:**
 
@@ -104,7 +103,9 @@ The inputs to this phase are:
 **Output:** the signature $(R, s)$.
 
 
-## Differences with [[DJNPO20](https://eprint.iacr.org/2020/501)]
+<!-- ## Differences with [[DJNPO20](https://eprint.iacr.org/2020/501)]
+
+
 
 Rerandomization,
 
@@ -119,4 +120,4 @@ The original paper performs si = hi(m + r*xi) + ci where ci = m*di + ei
 But we thought it is better to perform the following (computation-wise):
 si = hi * m  + r*xi*hi + m*di + ei
    = m* (hi+di) + (r*xi*hi  + ei)
-   = m * alpha_i + beta_i
+   = m * alpha_i + beta_i -->
