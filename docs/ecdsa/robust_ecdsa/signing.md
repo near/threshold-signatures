@@ -12,7 +12,7 @@ In this phase, a set of parties $\mathcal{P}_ 1 \subseteq \mathcal{P}_ 0$
 of size $N_1 \geq t$ wishes to generate a threshold $t' = t$ sharing
 of a pre-signature.
 
-The inputs to this phase are:
+The input to this phase is:
 
 1) The secret key share $x_i$.
 
@@ -45,7 +45,7 @@ e_i \gets \sum_j e_{ji}
 $$
 
 3. Each $P_i$ computes $R_i = g^{k_i}$
-4. Each $P_i$ computes $w_i = a_i * k_i + b_i \quad$ ($b_i$ being a blinding factor for $a_i * k_i$)
+4. Each $P_i$ computes $w_i = a_i \cdot k_i + b_i \quad$ ($b_i$ being a blinding factor for $a_i \cdot k_i$)
 5. $\star$ Each $P_i$ sends $(R_i, w_i)$ to every other party.
 
 **Round 3:**
@@ -64,16 +64,16 @@ $\forall j \in \\{t+2.. n\\},\quad \mathsf{ExponentInterpolation}(W_1, \ldots W_
 10. $\blacktriangle$ Each $P_i$ *asserts* that $W = w\cdot G$
 11. Each $P_i$ performs polynomial interpolation of degree $2t$ to derive $w$ as in $w \gets \sum_i \lambda(\mathcal{P}_1)_i \cdot w_i$.
 12. $\blacktriangle$ Each $P_i$ *asserts* that $w \neq 0$.
-13. Each $P_i$ computes $h_i \gets a_i \cdot w^{-1}$
-14. Each $P_i$ computes $\alpha_i \gets h_i+d_i$
-15. Each $P_i$ computes $\beta_i \gets h_i \cdot R_\mathsf{x} \cdot x_i + e_i$ where $R_\mathsf{x}$ is the x coordinate of $R$.
+13. Each $P_i$ computes $c_i \gets a_i \cdot w^{-1}$
+14. Each $P_i$ computes $\alpha_i \gets c_i+d_i$
+15. Each $P_i$ computes $\beta_i \gets c_i \cdot R_\mathsf{x} \cdot x_i + e_i$ where $R_\mathsf{x}$ is the x coordinate of $R$.
 
 **Output:** the presignature $(R, \alpha_i, \beta_i)$.
 
 # Signing
 
 In this phase, a set of parties $\mathcal{P}_2 \subseteq \mathcal{P}_ 1$
-of size $N_2 \geq t$ wishes to generate an ECDSA signature.
+of size $N_2 > t$ wishes to generate an ECDSA signature.
 
 The inputs to this phase are:
 1) The presignature $(R, \alpha_i, \beta_i)$,
@@ -84,15 +84,12 @@ The inputs to this phase are:
 
 **Rerandomization & Key Derivation:**
 
-???????????????????????????????????????????????????????
 1. Each $P_i$ derives a randomness $\delta = \mathsf{HKDF}(X, h, R, \rho)$
 2. Each $P_i$ rerandomizes the following elements:
 
     * $R  \gets R^\delta$
-    * $\sigma_i \gets (\sigma_i + \epsilon \cdot k_i) \cdot \delta^{-1}$
-    * $k_i \gets k_i \cdot \delta^{-1}$
-
-???????????????????????????????????????????????????????
+    * $\alpha_i \gets (\alpha_i + \epsilon \cdot k_i) \cdot \delta^{-1}$
+    * $\beta_i \gets (\beta_i + \epsilon \cdot k_i) \cdot \delta^{-1}$
 
 **Round 1:**
 
