@@ -61,3 +61,8 @@ bincode = { version = "2.0.1", features = ["serde"] }
 [[bench]]
 name = "main"
 harness = false
+
+[patch.crates-io]
+frost-core = { path = "../patched-crates/frost/frost-core" }
+frost-ed25519 = { path = "../patched-crates/frost/frost-ed25519" }
+frost-secp256k1 = { path = "../patched-crates/frost/frost-secp256k1" }
