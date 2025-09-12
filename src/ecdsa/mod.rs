@@ -71,6 +71,8 @@ impl Signature {
 #[cfg(test)]
 #[allow(non_snake_case)]
 mod test_verify {
+    use crate::test::MockCryptoRng;
+
     use super::*;
 
     use elliptic_curve::ops::{Invert, LinearCombination, Reduce};
@@ -121,7 +123,8 @@ mod test_verify {
     #[test]
     fn keygen_output__should_be_serializable() {
         // Given
-        let signing_key = FrostSigningKey::<C>::new(&mut OsRng); //TODO Seed
+        let mut rng = MockCryptoRng::new([1; 8]);
+        let signing_key = FrostSigningKey::<C>::new(&mut rng);
 
         let keygen_output = KeygenOutput {
             private_share: SigningShare::<C>::new(Scalar::ONE),
@@ -133,6 +136,9 @@ mod test_verify {
             serde_json::to_string(&keygen_output).expect("should be able to serialize output");
 
         // Then
-        assert_eq!(serialized_keygen_output, "");
+        assert_eq!(
+            serialized_keygen_output,
+            "{\"private_share\":\"0000000000000000000000000000000000000000000000000000000000000001\",\"public_key\":\"031b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f\"}"
+        );
     }
 }

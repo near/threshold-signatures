@@ -684,6 +684,7 @@ dependencies = [
  "frost-rerandomized",
  "k256",
  "rand_core 0.6.4",
+ "serde",
  "sha2",
 ]
 
