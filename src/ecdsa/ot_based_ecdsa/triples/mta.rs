@@ -27,7 +27,7 @@ impl MTAScalars {
 }
 
 /// The sender for multiplicative to additive conversion.
-pub async fn mta_sender(
+pub(crate) async fn mta_sender(
     mut chan: PrivateChannel,
     v: Vec<(Scalar, Scalar)>,
     a: Scalar,
@@ -72,11 +72,12 @@ pub async fn mta_sender(
 }
 
 /// The receiver for multiplicative to additive conversion.
-pub async fn mta_receiver(
+pub(crate) async fn mta_receiver(
     mut chan: PrivateChannel,
     tv: Vec<(Choice, Scalar)>,
     b: Scalar,
 ) -> Result<Scalar, ProtocolError> {
+    let rng = &mut OsRng;
     let size = tv.len();
 
     // Step 3
@@ -94,7 +95,7 @@ pub async fn mta_receiver(
 
     // Step 4
     let mut seed = [0u8; 32];
-    OsRng.fill_bytes(&mut seed);
+    rng.fill_bytes(&mut seed);
     let mut prng = TranscriptRng::new(&seed);
     let chi: Vec<Scalar> = (1..size)
         .map(|_| <<Secp256 as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut prng))

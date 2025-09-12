@@ -6,7 +6,7 @@ use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
 use crate::protocol::{errors::InitializationError, errors::ProtocolError, Participant, Protocol};
 
 use frost_core::Ciphersuite;
-use rand_core::OsRng;
+use rand_core::{CryptoRngCore, OsRng};
 
 use frost_secp256k1::Secp256K1Sha256;
 
@@ -27,6 +27,7 @@ fn hash2curve(app_id: &AppId) -> Result<ProjectivePoint, ProtocolError> {
     Ok(hash)
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn do_ckd_participant(
     mut chan: SharedChannel,
     participants: ParticipantList,
@@ -35,9 +36,10 @@ async fn do_ckd_participant(
     private_share: SigningShare,
     app_id: &AppId,
     app_pk: VerifyingKey,
+    rng: &mut impl CryptoRngCore,
 ) -> Result<CKDOutput, ProtocolError> {
     // y <- ZZq* , Y <- y * G
-    let (y, big_y) = Secp256K1Sha256::generate_nonce(&mut OsRng);
+    let (y, big_y) = Secp256K1Sha256::generate_nonce(rng);
     // H(app_id) when H is a random oracle
     let hash_point = hash2curve(app_id)?;
     // S <- x . H(app_id)
@@ -63,9 +65,10 @@ async fn do_ckd_coordinator(
     private_share: SigningShare,
     app_id: &AppId,
     app_pk: VerifyingKey,
+    rng: &mut impl CryptoRngCore,
 ) -> Result<CKDOutput, ProtocolError> {
     // y <- ZZq* , Y <- y * G
-    let (y, big_y) = Secp256K1Sha256::generate_nonce(&mut OsRng);
+    let (y, big_y) = Secp256K1Sha256::generate_nonce(rng);
     // H(app_id) when H is a random oracle
     let hash_point = hash2curve(app_id)?;
     // S <- x . H(app_id)
@@ -162,7 +165,16 @@ async fn run_ckd_protocol(
     app_pk: VerifyingKey,
 ) -> Result<CKDOutput, ProtocolError> {
     if me == coordinator {
-        do_ckd_coordinator(chan, participants, me, private_share, &app_id, app_pk).await
+        do_ckd_coordinator(
+            chan,
+            participants,
+            me,
+            private_share,
+            &app_id,
+            app_pk,
+            &mut OsRng,
+        )
+        .await
     } else {
         do_ckd_participant(
             chan,
@@ -172,6 +184,7 @@ async fn run_ckd_protocol(
             private_share,
             &app_id,
             app_pk,
+            &mut OsRng,
         )
         .await
     }
