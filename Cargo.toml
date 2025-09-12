@@ -14,18 +14,15 @@ digest = "0.10.7"
 ecdsa = { version = "0.16.8", features = ["digest", "hazmat"] }
 elliptic-curve = { version = "0.13.5", features = ["serde"] }
 frost-core = { version = "2.1.0", default-features = false, features = [
-  "serde",
   "serialization",
   "std",
   "internals",
 ] }
 frost-ed25519 = { version = "2.1.0", default-features = false, features = [
-  "serde",
   "serialization",
   "std",
 ] }
 frost-secp256k1 = { version = "2.1.0", default-features = false, features = [
-  "serde",
   "serialization",
   "std",
 ] }
@@ -65,7 +62,3 @@ bincode = { version = "2.0.1", features = ["serde"] }
 name = "main"
 harness = false
 
-#[patch.crates-io]
-#frost-core = { path = "../patched-crates/frost/frost-core" }
-#frost-ed25519 = { path = "../patched-crates/frost/frost-ed25519" }
-#frost-secp256k1 = { path = "../patched-crates/frost/frost-secp256k1" }
