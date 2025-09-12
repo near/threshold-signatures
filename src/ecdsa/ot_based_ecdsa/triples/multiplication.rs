@@ -20,7 +20,7 @@ use super::{
 };
 use std::collections::VecDeque;
 
-pub async fn multiplication_sender(
+pub(crate) async fn multiplication_sender(
     chan: PrivateChannel,
     sid: &[u8],
     a_i: &Scalar,
@@ -53,7 +53,7 @@ pub async fn multiplication_sender(
     Ok(gamma0? + gamma1?)
 }
 
-pub async fn multiplication_receiver(
+pub(crate) async fn multiplication_receiver(
     chan: PrivateChannel,
     sid: &[u8],
     a_i: &Scalar,
@@ -86,7 +86,7 @@ pub async fn multiplication_receiver(
     Ok(gamma0? + gamma1?)
 }
 
-pub async fn multiplication(
+pub(crate) async fn multiplication(
     comms: Comms,
     sid: HashOutput,
     participants: ParticipantList,

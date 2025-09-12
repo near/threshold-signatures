@@ -59,17 +59,17 @@ async fn do_generation(
     me: Participant,
     threshold: usize,
 ) -> Result<TripleGenerationOutput, ProtocolError> {
-    let mut rng = OsRng;
+    let rng = &mut OsRng;
     let mut chan = comms.shared_channel();
     let mut transcript = create_transcript(&participants, threshold)?;
 
     // Spec 1.2
-    let e = Polynomial::generate_polynomial(None, threshold - 1, &mut rng)?;
-    let f = Polynomial::generate_polynomial(None, threshold - 1, &mut rng)?;
+    let e = Polynomial::generate_polynomial(None, threshold - 1, rng)?;
+    let f = Polynomial::generate_polynomial(None, threshold - 1, rng)?;
     // Spec 1.3
     // We will generate a poly of degree threshold - 2 then later extend it with identity.
     // This is to prevent serialization from failing
-    let mut l = Polynomial::generate_polynomial(None, threshold - 2, &mut rng)?;
+    let mut l = Polynomial::generate_polynomial(None, threshold - 2, rng)?;
 
     // Spec 1.4
     let big_e_i = e.commit_polynomial()?;
@@ -77,7 +77,7 @@ async fn do_generation(
     let big_l_i = l.commit_polynomial()?;
 
     // Spec 1.5
-    let (my_commitment, my_randomizer) = commit(&mut rng, &(&big_e_i, &big_f_i, &big_l_i))
+    let (my_commitment, my_randomizer) = commit(rng, &(&big_e_i, &big_f_i, &big_l_i))
         .map_err(|_| ProtocolError::PointSerialization)?;
 
     // Spec 1.6
@@ -135,7 +135,7 @@ async fn do_generation(
             x: e.eval_at_zero()?,
         };
         let my_phi_proof0 = dlog::prove(
-            &mut rng,
+            rng,
             &mut transcript.fork(b"dlog0", &me.bytes()),
             statement0,
             witness0,
@@ -147,7 +147,7 @@ async fn do_generation(
             x: f.eval_at_zero()?,
         };
         let my_phi_proof1 = dlog::prove(
-            &mut rng,
+            rng,
             &mut transcript.fork(b"dlog1", &me.bytes()),
             statement1,
             witness1,
@@ -317,7 +317,7 @@ async fn do_generation(
             x: e.eval_at_zero()?,
         };
         let my_phi_proof = dlogeq::prove(
-            &mut rng,
+            rng,
             &mut transcript.fork(b"dlogeq0", &me.bytes()),
             statement,
             witness,
@@ -394,7 +394,7 @@ async fn do_generation(
         x: SerializableScalar::<C>(l0),
     };
     let my_phi_proof = dlog::prove(
-        &mut rng,
+        rng,
         &mut transcript.fork(b"dlog2", &me.bytes()),
         statement,
         witness,

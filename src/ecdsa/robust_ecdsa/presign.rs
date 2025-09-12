@@ -1,6 +1,6 @@
 use frost_core::serialization::SerializableScalar;
 use frost_secp256k1::{Group, Secp256K1Group};
-use rand_core::OsRng;
+use rand_core::{CryptoRngCore, OsRng};
 
 use super::{PresignArguments, PresignOutput};
 use crate::{
@@ -87,16 +87,16 @@ async fn do_presign(
 ) -> Result<PresignOutput, ProtocolError> {
     let threshold = args.threshold;
     // Round 0
-    let mut rng = OsRng;
+    let rng = &mut OsRng;
 
     let polynomials = [
         // degree t random secret shares where t is the max number of malicious parties
-        Polynomial::generate_polynomial(None, threshold, &mut rng)?, // fk
-        Polynomial::generate_polynomial(None, threshold, &mut rng)?, // fa
+        Polynomial::generate_polynomial(None, threshold, rng)?, // fk
+        Polynomial::generate_polynomial(None, threshold, rng)?, // fa
         // degree 2t zero secret shares where t is the max number of malicious parties
-        zero_secret_polynomial(2 * threshold, &mut rng)?, // fb
-        zero_secret_polynomial(2 * threshold, &mut rng)?, // fd
-        zero_secret_polynomial(2 * threshold, &mut rng)?, // fe
+        zero_secret_polynomial(2 * threshold, rng)?, // fb
+        zero_secret_polynomial(2 * threshold, rng)?, // fd
+        zero_secret_polynomial(2 * threshold, rng)?, // fe
     ];
 
     // send polynomial evaluations to participants
@@ -285,7 +285,10 @@ async fn do_presign(
 }
 
 /// Generates a secret polynomial where the constant term is zero
-fn zero_secret_polynomial(degree: usize, rng: &mut OsRng) -> Result<Polynomial, ProtocolError> {
+fn zero_secret_polynomial(
+    degree: usize,
+    rng: &mut impl CryptoRngCore,
+) -> Result<Polynomial, ProtocolError> {
     let secret = Secp256K1ScalarField::zero();
     Polynomial::generate_polynomial(Some(secret), degree, rng)
 }

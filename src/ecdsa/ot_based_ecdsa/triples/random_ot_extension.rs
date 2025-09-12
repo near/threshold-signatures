@@ -60,12 +60,13 @@ pub type RandomOTExtensionSenderOut = Vec<(Scalar, Scalar)>;
 /// The result that the receiver gets.
 pub type RandomOTExtensionReceiverOut = Vec<(Choice, Scalar)>;
 
-pub async fn random_ot_extension_sender(
+pub(crate) async fn random_ot_extension_sender(
     mut chan: PrivateChannel,
     params: RandomOtExtensionParams<'_>,
     delta: BitVector,
     k: &SquareBitMatrix,
 ) -> Result<RandomOTExtensionSenderOut, ProtocolError> {
+    let rng = &mut OsRng;
     let adjusted_size = adjust_size(params.batch_size);
 
     // Step 2
@@ -82,7 +83,7 @@ pub async fn random_ot_extension_sender(
 
     // Step 5
     let mut seed = [0u8; 32];
-    OsRng.fill_bytes(&mut seed);
+    rng.fill_bytes(&mut seed);
     let wait0 = chan.next_waitpoint();
     chan.send(wait0, &seed)?;
 
@@ -130,16 +131,17 @@ pub async fn random_ot_extension_sender(
     Ok(out)
 }
 
-pub async fn random_ot_extension_receiver(
+pub(crate) async fn random_ot_extension_receiver(
     mut chan: PrivateChannel,
     params: RandomOtExtensionParams<'_>,
     k0: &SquareBitMatrix,
     k1: &SquareBitMatrix,
 ) -> Result<RandomOTExtensionReceiverOut, ProtocolError> {
+    let rng = &mut OsRng;
     let adjusted_size = adjust_size(params.batch_size);
 
     // Step 1
-    let b = ChoiceVector::random(&mut OsRng, adjusted_size);
+    let b = ChoiceVector::random(rng, adjusted_size);
     let x: BitMatrix = b
         .bits()
         .map(|b_i| BitVector::conditional_select(&BitVector::zero(), &!BitVector::zero(), b_i))
