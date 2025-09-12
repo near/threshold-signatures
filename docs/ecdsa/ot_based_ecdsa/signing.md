@@ -3,7 +3,7 @@ The protocol is split into two phases, a pre-signing phase and a signing phase.
 
 *Note: Due to the complexity of generating presignatures using multiplicative triples, this protocol shifts from the signing formulae stated in [Preliminaries](../preliminaries.md) and computes $R$ as in $R\gets \frac{1}{k}\cdot G$ and $s$ as in $s \gets k (H(m) + rx)$. These formulae do not require changes to be done on the verifier's end*
 
-### Note: the threshold $t = \#malicious\_parties + 1$
+### Note: the threshold $t = number\_malicious\_parties + 1$
 
 # Presigning
 
@@ -80,7 +80,7 @@ The inputs to this phase are:
 5) The message hash $h= H(m)$
 
 **Rerandomization & Key Derivation:**
-1. Each $P_i$ derives a randomness $\delta = \mathsf{HKDF}(X, h, R, \rho)$
+1. Each $P_i$ derives a randomness $\delta \gets \mathsf{HKDF}(X, h, R, \rho)$
 2. Each $P_i$ rerandomizes the following elements:
 
     * $R  \gets R^\delta$

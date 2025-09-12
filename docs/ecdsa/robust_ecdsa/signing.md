@@ -3,7 +3,7 @@ The protocol is split into two phases, a pre-signing phase and a signing phase.
 
 *Note that We slightly modify the original scheme and push parts of the computation done on the signing phase to the presigning phase to improve the performance of the former phase. Additionally, the authors assume the message is an input to the first round, but their proof does not require it until the last round.*
 
-### Note: the threshold $t = \#malicious\_parties$
+### Note: the threshold $t = number\_malicious\_parties$
 
 # Presigning
 
@@ -83,7 +83,7 @@ The inputs to this phase are:
 
 **Rerandomization & Key Derivation:**
 
-1. Each $P_i$ derives a randomness $\delta = \mathsf{HKDF}(X, h, R, \rho)$
+1. Each $P_i$ derives a randomness $\delta \gets \mathsf{HKDF}(X, h, R, \rho)$
 2. Each $P_i$ rerandomizes the following elements:
 
     * $R  \gets R^\delta$
@@ -91,7 +91,7 @@ The inputs to this phase are:
 
 **Round 1:**
 
-1. Each $P_i$ computes its signature share $s_i = \alpha_i * h + \beta_i$
+1. Each $P_i$ computes its signature share $s_i \gets \alpha_i * h + \beta_i$
 2. $\star$ Each $P_i$ sends $s_i$ to every other party.
 3. $\bullet$ Each $P_i$ waits to receive $s_j$ from every other party.
 4. Each $P_i$ sums the received elements $s \gets \sum_j \lambda(\mathcal{P}_2)_j \cdot s_j$.
