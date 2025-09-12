@@ -52,28 +52,21 @@ $$
 
 1. $\bullet$ Each $P_i$ waits to receive $(R_i, w_i)$ from each other $P_j$.
 2. $\blacktriangle$ Each $P_i$ *asserts* that:
-$ \forall j \in \\{t+2.. n\\}$,\quad ExponentInterpolation(R1, … ,R_{t+1}; j) =  R_j$
-3. Compute $R \gets ExponentInterpolation(R1,.., R_{t+1}; 0)$
-5. $\blacktriangle$ Each $P_i$ *asserts* that $R \neq Identity$
-5. Compute $W_i = R^{a_i}$
+$\forall j \in \\{t+2.. n\\},\quad \mathsf{ExponentInterpolation}(R_1, \ldots R_{t+1}; j) =  R_j$
+3. Each $P_i$ computes $R \gets \mathsf{ExponentInterpolation}(R_1, \ldots R_{t+1}; 0)$
+4. $\blacktriangle$ Each $P_i$ *asserts* that $R \neq Identity$
+5. Each $P_i$ computes $W_i \gets R^{a_i}$
 6. $\star$ Each $P_i$ sends $W_i$ to every other party.
-
-
-Round 2.5: Computational overhead: Requires one poly interpolation and (n-t)  exponent interpolations
-16. For j from t+2 … n:
-Check ExponentInterpolation(W1, … ,W_{t+1}; j) =?=  Wj
-17. Compute W = ExponentInterpolation(W1, …, W_{t+1})
-Check W =?= g^w
-      	18. Derive w
-Each party performs polynomial interpolation (of degree 2t) to derive w as in w = interpolate(w_1,..,w_2t+1; 0) := \SUM_i w_i lambda_i .
-In the paper, this operation is defined as the protocol w ← WMULOPEN([a], [k]; [b]).
-“W” stands for weak, since any misbehaving party that deviates from the protocol can cause the protocol to output an invalid “w.” The authors then define a consistency check to ensure that the correct w is output. However, in the honest but curious setting, we can omit this check.
-Abort if w =?= 0
-      	19. Each party can then compute [k^-1] locally as [a] * w^-1
-Let h_i be each party’s share of [k^-1] e.g. h_i = a_i * w^{-1}
-     	20. Compute Rx = x-coordinate(R)
-21. Let alpha_i = h_i+d_i
-22. Let beta_i = h_i * Rx * x_i + e_i
+7. $\bullet$ Each $P_i$ waits to receive $W_j$ from every other party.
+8. $\blacktriangle$ Each $P_i$ *asserts* that:
+$\forall j \in \\{t+2.. n\\},\quad \mathsf{ExponentInterpolation}(W_1, \ldots W_{t+1}; j) =  W_j$
+9. Each $P_i$ computes $W \gets \mathsf{ExponentInterpolation}(W_1, \ldots W_{t+1}; 0)$
+10. $\blacktriangle$ Each $P_i$ *asserts* that $W = w\cdot G$
+11. Each $P_i$ performs polynomial interpolation of degree $2t$ to derive $w$ as in $w \gets \sum_i \lambda(\mathcal{P}_1)_i \cdot w_i$.
+12. $\blacktriangle$ Each $P_i$ *asserts* that $w \neq 0$.
+13. Each $P_i$ computes $h_i \gets a_i \cdot w^{-1}$
+14. Each $P_i$ computes $\alpha_i \gets h_i+d_i$
+15. Each $P_i$ computes $\beta_i \gets h_i \cdot R_\mathsf{x} \cdot x_i + e_i$ where $R_\mathsf{x}$ is the x coordinate of $R$.
 
 **Output:** the presignature $(R, \alpha_i, \beta_i)$.
 
@@ -106,7 +99,7 @@ The inputs to this phase are:
 1. Each $P_i$ computes its signature share $s_i = \alpha_i * h + \beta_i$
 2. $\star$ Each $P_i$ sends $s_i$ to every other party.
 3. $\bullet$ Each $P_i$ waits to receive $s_j$ from every other party.
-4. Each $P_i$ sets $s \gets \sum_{j \in [N]} \lambda(\mathcal{P}_2)_j \cdot s_j$.
+4. Each $P_i$ sums the received elements $s \gets \sum_j \lambda(\mathcal{P}_2)_j \cdot s_j$.
 5. $\blacktriangle$ Each $P_i$ *asserts* that $s\neq 0$
 6. Perform the low-S normalization, i.e. $s \gets -s $ if $s\in\\{\frac{q}{2}..~q-1\\}$
 7. $\blacktriangle$ Each $P_i$ asserts that $(R, s)$ is a valid ECDSA signature for $h$.
