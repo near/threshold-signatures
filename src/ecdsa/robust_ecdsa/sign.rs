@@ -91,10 +91,10 @@ async fn do_sign(
     // interpolate s
     let mut s = Polynomial::eval_interpolation(&identifiers, &sshares, None)?.0;
     // raise error if s is zero
-    if s == <<<C as frost_core::Ciphersuite>::Group as frost_core::Group>::Field as frost_core::Field>::zero(){
+    if s.is_zero().into() {
         return Err(ProtocolError::AssertionFailed(
             "signature part s cannot be zero".to_string(),
-        ))
+        ));
     }
     // Normalize s
     s.conditional_assign(&(-s), s.is_high());

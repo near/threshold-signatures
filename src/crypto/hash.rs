@@ -1,6 +1,7 @@
 use crate::protocol::errors::ProtocolError;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use subtle::{Choice, ConstantTimeEq};
 
 const HASH_LABEL: &[u8] = b"Near threshold signature generic hash";
 const HASH_LEN: usize = 32;
@@ -12,6 +13,12 @@ pub struct HashOutput([u8; HASH_LEN]);
 impl AsRef<[u8]> for HashOutput {
     fn as_ref(&self) -> &[u8] {
         &self.0
+    }
+}
+
+impl ConstantTimeEq for HashOutput {
+    fn ct_eq(&self, other: &Self) -> Choice {
+        self.0.ct_eq(&other.0)
     }
 }
 
