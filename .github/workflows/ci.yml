@@ -47,7 +47,7 @@ jobs:
         run: cargo nextest run --release --locked --all-features
 
       - name: Run cargo test debug
-        run: cargo test
+        run: cargo test --locked --all-features --all-targets
 
   ci-coverage:
     name: Coverage
