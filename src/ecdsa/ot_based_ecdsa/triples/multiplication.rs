@@ -217,7 +217,6 @@ mod test {
 
     use crate::{
         crypto::hash::hash,
-        ecdsa::ot_based_ecdsa::triples::multiplication::multiplication_many,
         participants::ParticipantList,
         protocol::{
             errors::ProtocolError, internal::make_protocol, run_protocol, Participant, Protocol,
@@ -226,7 +225,7 @@ mod test {
     };
 
     use super::multiplication;
-    // use crate::ecdsa::ot_based_ecdsa::triples::multiplication::multiplication_many;
+    use crate::ecdsa::ot_based_ecdsa::triples::multiplication::multiplication_many;
     use crate::protocol::internal::Comms;
 
     #[test]

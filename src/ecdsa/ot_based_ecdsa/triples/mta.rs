@@ -39,12 +39,8 @@ pub(crate) async fn mta_sender(
     a: Scalar,
     delta: Vec<Scalar>,
 ) -> Result<Scalar, ProtocolError> {
-    // let size = v.len();
-
     // Step 1
-    // let delta: Vec<_> = (0..size)
-    //     .map(|_| <<Secp256 as frost_core::Ciphersuite>::Group as Group>::Field::random(rng))
-    //     .collect();
+    // `delta` is computed in `mta_sender_random_helper`
 
     // Step 2
     let c: MTAScalars = MTAScalars(
@@ -107,8 +103,7 @@ pub(crate) async fn mta_receiver(
         .map(|((t_i, v_i), (c0_i, c1_i))| Scalar::conditional_select(&c0_i.0, &c1_i.0, *t_i) - v_i);
 
     // Step 4
-    // let mut seed = [0u8; 32];
-    // rng.fill_bytes(&mut seed);
+    // `seed` generated in `mta_receiver_random_helper`
     let mut prng = TranscriptRng::new(&seed);
     let chi: Vec<Scalar> = (1..size)
         .map(|_| <<Secp256 as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut prng))

@@ -56,7 +56,7 @@ pub type RandomOTExtensionSenderOut = Vec<(Scalar, Scalar)>;
 /// The result that the receiver gets.
 pub type RandomOTExtensionReceiverOut = Vec<(Choice, Scalar)>;
 
-pub(crate) async fn random_ot_extension_sender(
+pub async fn random_ot_extension_sender(
     mut chan: PrivateChannel,
     params: RandomOtExtensionParams<'_>,
     delta: BitVector,
@@ -127,7 +127,7 @@ pub(crate) async fn random_ot_extension_sender(
     Ok(out)
 }
 
-pub(crate) async fn random_ot_extension_receiver(
+pub async fn random_ot_extension_receiver(
     mut chan: PrivateChannel,
     params: RandomOtExtensionParams<'_>,
     k0: &SquareBitMatrix,
