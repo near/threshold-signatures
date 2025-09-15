@@ -2,20 +2,23 @@
 pub mod dkg_ecdsa;
 pub mod ot_based_ecdsa;
 pub mod robust_ecdsa;
+use hkdf::Hkdf;
 
 use elliptic_curve::{
     bigint::U256,
     ops::{Invert, Reduce},
     point::AffineCoordinates,
+    sec1::ToEncodedPoint,
+    PrimeField,
 };
 
 use frost_secp256k1::{Field, Group, Secp256K1Group, Secp256K1ScalarField, Secp256K1Sha256};
 use k256::{AffinePoint, ProjectivePoint};
 
 use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat};
+use crate::participants::ParticipantList;
 
 pub type KeygenOutput = crate::KeygenOutput<Secp256K1Sha256>;
-
 pub type Scalar = <Secp256K1ScalarField as Field>::Scalar;
 pub type Element = <Secp256K1Group as Group>::Element;
 pub type CoefficientCommitment = frost_core::keys::CoefficientCommitment<Secp256K1Sha256>;
@@ -68,24 +71,100 @@ impl Signature {
     }
 }
 
+/// The following salt is picked by hashing with sha256
+/// "NEAR 6.4478$ 7:20pm CEST 2024-11-24"
+/// Based on [Krawczyk10] paper:
+/// ``[...] in most applications the extractor key (or salt) can be used
+/// repeatedly with many (independent) samples from the same source [...]''
+const SALT: [u8; 32] = [
+    0x32, 0x8a, 0x47, 0xc2, 0xb8, 0x79, 0x44, 0x45, 0x25, 0x5c, 0x16, 0x47, 0x60, 0x8d, 0xf5, 0xdb,
+    0x85, 0xc6, 0x8b, 0xb0, 0xe7, 0x17, 0x0a, 0xbe, 0xc5, 0x34, 0xdf, 0x27, 0x64, 0xa4, 0x58, 0x31,
+];
+
+/// Derives a random string from the public key, message hash, presignature R,
+/// set of participants and the entropy.
+///
+/// Outputs a random string computed as HKDF(entropy, pk, hash, R, participants)
+///
+/// *** Warning ***
+/// Following [GS21] https://eprint.iacr.org/2021/1330.pdf, the entropy string
+/// should be freshly generated and unpredictable previous to calling this function
+pub fn derive_randomness(
+    pk: &AffinePoint,
+    msg_hash: &Scalar,
+    big_r: &AffinePoint,
+    participants: &ParticipantList,
+    entropy: [u8; 32],
+) -> Scalar {
+    // create a string containing (pk, msg_hash, big_r, sorted(participants))
+    let pk_encoded_point = pk.to_encoded_point(true);
+    let encoded_pk: &[u8] = pk_encoded_point.as_bytes();
+    let encoded_msg_hash: &[u8] = &msg_hash.to_bytes()[..];
+    let big_r_encoded_point = big_r.to_encoded_point(true);
+    let encoded_big_r: &[u8] = big_r_encoded_point.as_bytes();
+
+    // concatenate all the bytes
+    let mut concatenation = Vec::new();
+    concatenation.extend_from_slice(encoded_pk);
+    concatenation.extend_from_slice(encoded_msg_hash);
+    concatenation.extend_from_slice(encoded_big_r);
+    // Append each ParticipantId's
+    for participant in participants.participants() {
+        concatenation.extend_from_slice(&participant.bytes());
+    }
+
+    // initiate hkdf with the salt and with some `good' entropy
+    let hk = Hkdf::<sha3::Sha3_256>::new(Some(&SALT), &entropy);
+
+    let mut delta: Scalar = Scalar::ZERO;
+    // If the randomness created is 0 then we want to generate a new randomness
+    while bool::from(delta.is_zero()) {
+        // Generate randomization out of HKDF(entropy, pk, msg_hash, big_r, participants, nonce)
+        // where entropy is a public but unpredictable random string
+        // the nonce is a succession of appended ones of growing length depending on the number of times
+        // we enter into this loop
+        let mut okm = [0u8; 32];
+
+        // append an extra 0 at the end of the concatenation everytime delta hits zero
+        concatenation.extend_from_slice(&[0u8, 1]);
+        hk.expand(&concatenation, &mut okm).unwrap();
+
+        // derive the randomness delta
+        delta = Scalar::from_repr(okm.into()).unwrap_or(
+            // if delta falls outside the field
+            // probability is negligible: in the order of 1/2^224
+            Scalar::ZERO,
+        )
+    }
+    delta
+}
+
+/// Derives a public key from a tweak and a master public key: tweak.G + X
+pub fn derive_public_key(public_key: AffinePoint, tweak: Scalar) -> AffinePoint {
+    (AffinePoint::GENERATOR * tweak + public_key).to_affine()
+}
+
 #[cfg(test)]
 #[allow(non_snake_case)]
 mod test_verify {
     use crate::test::MockCryptoRng;
 
     use super::*;
-
+    use crate::test::generate_participants_with_random_ids;
     use elliptic_curve::ops::{Invert, LinearCombination, Reduce};
-    use frost_core::keys::SigningShare;
-    use frost_core::SigningKey as FrostSigningKey;
-    use frost_core::VerifyingKey as FrostVerifyingKey;
+
+    use frost_core::{
+        keys::SigningShare, Ciphersuite, SigningKey as FrostSigningKey,
+        VerifyingKey as FrostVerifyingKey,
+    };
+
     use k256::{
         ecdsa::{signature::Verifier, SigningKey, VerifyingKey},
         ProjectivePoint, Scalar, Secp256k1,
     };
-    use rand_core::OsRng;
+    use rand::prelude::SliceRandom;
+    use rand_core::{OsRng, RngCore};
     use sha2::{digest::FixedOutput, Digest, Sha256};
-
     type C = Secp256K1Sha256;
 
     #[test]
@@ -140,5 +219,130 @@ mod test_verify {
             serialized_keygen_output,
             "{\"private_share\":\"0000000000000000000000000000000000000000000000000000000000000001\",\"public_key\":\"031b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f\"}"
         );
+    }
+
+    // Outputs pk, R,  hash, participants, entropy, randomness
+    fn compute_random_outputs(
+        num_participants: usize,
+    ) -> (
+        AffinePoint,
+        AffinePoint,
+        Scalar,
+        ParticipantList,
+        [u8; 32],
+        Scalar,
+    ) {
+        let sk = SigningKey::random(&mut OsRng);
+        let pk = *VerifyingKey::from(sk).as_affine();
+        let (_, big_r) = <C>::generate_nonce(&mut OsRng);
+
+        let msg_hash = Scalar::generate_vartime(&mut OsRng);
+        // Generate unique ten ParticipantId values
+        let participants = generate_participants_with_random_ids(num_participants);
+        let participants = ParticipantList::new(&participants).unwrap();
+
+        let mut entropy: [u8; 32] = [0u8; 32];
+        OsRng.fill_bytes(&mut entropy);
+
+        let delta = derive_randomness(&pk, &msg_hash, &big_r.to_affine(), &participants, entropy);
+
+        (
+            pk,
+            big_r.to_affine(),
+            msg_hash,
+            participants,
+            entropy,
+            delta,
+        )
+    }
+
+    #[test]
+    fn test_different_pk() {
+        let num_participants = 10;
+        let (_, big_r, msg_hash, participants, entropy, delta) =
+            compute_random_outputs(num_participants);
+        // different pk
+        let (_, pk_prime) = <C>::generate_nonce(&mut OsRng);
+
+        let delta_prime = derive_randomness(
+            &pk_prime.to_affine(),
+            &msg_hash,
+            &big_r,
+            &participants,
+            entropy,
+        );
+        assert!(delta != delta_prime);
+    }
+
+    #[test]
+    fn test_different_msg_hash() {
+        let num_participants = 10;
+        let (pk, big_r, _, participants, entropy, delta) = compute_random_outputs(num_participants);
+
+        // different msg_hash
+        let msg_hash_prime = Scalar::generate_vartime(&mut OsRng);
+        let delta_prime = derive_randomness(&pk, &msg_hash_prime, &big_r, &participants, entropy);
+
+        assert!(delta != delta_prime);
+    }
+
+    #[test]
+    fn test_different_big_r() {
+        let num_participants = 10;
+        let (pk, _, msg_hash, participants, entropy, delta) =
+            compute_random_outputs(num_participants);
+        // different big_r
+        let (_, big_r_prime) = <C>::generate_nonce(&mut OsRng);
+        let delta_prime = derive_randomness(
+            &pk,
+            &msg_hash,
+            &big_r_prime.to_affine(),
+            &participants,
+            entropy,
+        );
+        assert!(delta != delta_prime);
+    }
+
+    #[test]
+    fn test_different_participants() {
+        let num_participants = 10;
+        let (pk, big_r, msg_hash, _, entropy, delta) = compute_random_outputs(num_participants);
+        // different participants set
+        let participants = generate_participants_with_random_ids(num_participants);
+        let participants = ParticipantList::new(&participants).unwrap();
+
+        let delta_prime = derive_randomness(&pk, &msg_hash, &big_r, &participants, entropy);
+        assert!(delta != delta_prime);
+    }
+
+    #[test]
+    fn test_different_entropy() {
+        let num_participants = 10;
+        let (pk, big_r, msg_hash, participants, _, delta) =
+            compute_random_outputs(num_participants);
+
+        // different entropy
+        let mut entropy: [u8; 32] = [0u8; 32];
+        OsRng.fill_bytes(&mut entropy);
+
+        let delta_prime = derive_randomness(&pk, &msg_hash, &big_r, &participants, entropy);
+        assert!(delta != delta_prime);
+    }
+
+    // Test that with different order of participants, the randomness is the same.
+    #[test]
+    fn test_same_randomness() {
+        let num_participants = 10;
+        let (pk, big_r, msg_hash, participants, entropy, delta) =
+            compute_random_outputs(num_participants);
+
+        let mut rng = rand::rng();
+        // reshuffle
+        let mut participants = participants.participants().to_vec();
+        participants.shuffle(&mut rng);
+        let participants = ParticipantList::new(&participants).unwrap();
+
+        let delta_prime = derive_randomness(&pk, &msg_hash, &big_r, &participants, entropy);
+        assert!(delta == delta_prime);
     }
 }
