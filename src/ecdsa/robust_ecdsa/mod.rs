@@ -3,7 +3,10 @@ pub mod sign;
 #[cfg(test)]
 mod test;
 
-use crate::ecdsa::{AffinePoint, KeygenOutput, Scalar};
+use crate::{
+    ecdsa::{AffinePoint, KeygenOutput, Scalar},
+    // Tweak,
+};
 use serde::{Deserialize, Serialize};
 
 /// The necessary inputs for the creation of a presignature.
@@ -41,4 +44,6 @@ pub struct RerandomizedPresignOutput {
     beta_i: Scalar,
 }
 
-// Add deriving the public key
+// impl RerandomizedPresignOutput {
+//     pub fn new(presignature: PresignOutput, tweak: Tweak) -> Self {}
+// }
