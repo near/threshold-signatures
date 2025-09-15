@@ -1,6 +1,6 @@
 use frost_core::serialization::SerializableScalar;
 use frost_secp256k1::{Group, Secp256K1Group};
-use rand_core::{CryptoRngCore, OsRng};
+use rand_core::CryptoRngCore;
 
 use super::{PresignArguments, PresignOutput};
 use crate::{
@@ -30,6 +30,7 @@ pub fn presign(
     participants: &[Participant],
     me: Participant,
     args: PresignArguments,
+    rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = PresignOutput>, InitializationError> {
     if participants.len() < 2 {
         return Err(InitializationError::BadParameters(format!(
@@ -73,7 +74,7 @@ pub fn presign(
     };
 
     let ctx = Comms::new();
-    let fut = do_presign(ctx.shared_channel(), participants, me, args);
+    let fut = do_presign(ctx.shared_channel(), participants, me, args, rng);
     Ok(make_protocol(ctx, fut))
 }
 
@@ -84,10 +85,11 @@ async fn do_presign(
     participants: ParticipantList,
     me: Participant,
     args: PresignArguments,
+    mut rng: impl CryptoRngCore,
 ) -> Result<PresignOutput, ProtocolError> {
+    let rng = &mut rng;
     let threshold = args.threshold;
     // Round 0
-    let rng = &mut OsRng;
 
     let polynomials = [
         // degree t random secret shares where t is the max number of malicious parties
@@ -386,6 +388,7 @@ mod test {
                     keygen_out,
                     threshold: max_malicious,
                 },
+                OsRng,
             )
             .unwrap();
             protocols.push((*p, Box::new(protocol)));

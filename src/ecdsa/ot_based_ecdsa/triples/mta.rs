@@ -1,5 +1,5 @@
 use frost_core::{serialization::SerializableScalar, Field, Group};
-use rand_core::{OsRng, RngCore};
+use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
 use std::slice::Iter;
 use subtle::{Choice, ConditionallySelectable};
@@ -26,18 +26,25 @@ impl MTAScalars {
     }
 }
 
+pub(crate) fn mta_sender_random_helper(size: usize, rng: &mut impl CryptoRngCore) -> Vec<Scalar> {
+    (0..size)
+        .map(|_| <<Secp256 as frost_core::Ciphersuite>::Group as Group>::Field::random(rng))
+        .collect()
+}
+
 /// The sender for multiplicative to additive conversion.
 pub(crate) async fn mta_sender(
     mut chan: PrivateChannel,
     v: Vec<(Scalar, Scalar)>,
     a: Scalar,
+    delta: Vec<Scalar>,
 ) -> Result<Scalar, ProtocolError> {
-    let size = v.len();
+    // let size = v.len();
 
     // Step 1
-    let delta: Vec<_> = (0..size)
-        .map(|_| <<Secp256 as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut OsRng))
-        .collect();
+    // let delta: Vec<_> = (0..size)
+    //     .map(|_| <<Secp256 as frost_core::Ciphersuite>::Group as Group>::Field::random(rng))
+    //     .collect();
 
     // Step 2
     let c: MTAScalars = MTAScalars(
@@ -71,13 +78,19 @@ pub(crate) async fn mta_sender(
     Ok(-alpha)
 }
 
+pub(crate) fn mta_receiver_random_helper(rng: &mut impl CryptoRngCore) -> [u8; 32] {
+    let mut seed = [0u8; 32];
+    rng.fill_bytes(&mut seed);
+    seed
+}
+
 /// The receiver for multiplicative to additive conversion.
 pub(crate) async fn mta_receiver(
     mut chan: PrivateChannel,
     tv: Vec<(Choice, Scalar)>,
     b: Scalar,
+    seed: [u8; 32],
 ) -> Result<Scalar, ProtocolError> {
-    let rng = &mut OsRng;
     let size = tv.len();
 
     // Step 3
@@ -94,8 +107,8 @@ pub(crate) async fn mta_receiver(
         .map(|((t_i, v_i), (c0_i, c1_i))| Scalar::conditional_select(&c0_i.0, &c1_i.0, *t_i) - v_i);
 
     // Step 4
-    let mut seed = [0u8; 32];
-    rng.fill_bytes(&mut seed);
+    // let mut seed = [0u8; 32];
+    // rng.fill_bytes(&mut seed);
     let mut prng = TranscriptRng::new(&seed);
     let chi: Vec<Scalar> = (1..size)
         .map(|_| <<Secp256 as frost_core::Ciphersuite>::Group as Group>::Field::random(&mut prng))
@@ -128,10 +141,10 @@ mod test {
     use crate::ecdsa::ot_based_ecdsa::triples::constants::{BITS, SECURITY_PARAMETER};
     use crate::protocol::internal::Comms;
     use k256::Scalar;
-    use rand_core::RngCore;
+    use rand_core::{OsRng, RngCore};
 
     use crate::protocol::{
-        errors::ProtocolError, internal::make_protocol, run_two_party_protocol, Participant,
+        errors::ProtocolError, internal::make_protocol, test::run_two_party_protocol, Participant,
     };
 
     /// Run the multiplicative to additive protocol
@@ -147,11 +160,14 @@ mod test {
         run_two_party_protocol(
             s,
             r,
-            &mut make_protocol(ctx_s.clone(), mta_sender(ctx_s.private_channel(s, r), v, a)),
-            &mut make_protocol(
-                ctx_r.clone(),
-                mta_receiver(ctx_r.private_channel(r, s), tv, b),
-            ),
+            &mut make_protocol(ctx_s.clone(), {
+                let delta = mta_sender_random_helper(v.len(), &mut OsRng);
+                mta_sender(ctx_s.private_channel(s, r), v, a, delta)
+            }),
+            &mut make_protocol(ctx_r.clone(), {
+                let seed = mta_receiver_random_helper(&mut OsRng);
+                mta_receiver(ctx_r.private_channel(r, s), tv, b, seed)
+            }),
         )
     }
 

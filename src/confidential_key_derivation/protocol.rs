@@ -6,7 +6,7 @@ use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
 use crate::protocol::{errors::InitializationError, errors::ProtocolError, Participant, Protocol};
 
 use frost_core::Ciphersuite;
-use rand_core::{CryptoRngCore, OsRng};
+use rand_core::CryptoRngCore;
 
 use frost_secp256k1::Secp256K1Sha256;
 
@@ -111,6 +111,7 @@ pub fn ckd(
     private_share: SigningShare,
     app_id: impl Into<AppId>,
     app_pk: VerifyingKey,
+    rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = CKDOutput>, InitializationError> {
     // not enough participants
     if participants.len() < 2 {
@@ -149,12 +150,14 @@ pub fn ckd(
         private_share,
         app_id.into(),
         app_pk,
+        rng,
     );
     Ok(make_protocol(comms, fut))
 }
 
 /// Depending on whether the current participant is a coordinator or not,
 /// runs the ckd protocol as either a participant or a coordinator.
+#[allow(clippy::too_many_arguments)]
 async fn run_ckd_protocol(
     chan: SharedChannel,
     coordinator: Participant,
@@ -163,6 +166,7 @@ async fn run_ckd_protocol(
     private_share: SigningShare,
     app_id: AppId,
     app_pk: VerifyingKey,
+    mut rng: impl CryptoRngCore,
 ) -> Result<CKDOutput, ProtocolError> {
     if me == coordinator {
         do_ckd_coordinator(
@@ -172,7 +176,7 @@ async fn run_ckd_protocol(
             private_share,
             &app_id,
             app_pk,
-            &mut OsRng,
+            &mut rng,
         )
         .await
     } else {
@@ -184,7 +188,7 @@ async fn run_ckd_protocol(
             private_share,
             &app_id,
             app_pk,
-            &mut OsRng,
+            &mut rng,
         )
         .await
     }
@@ -197,7 +201,7 @@ mod test {
     use crate::protocol::run_protocol;
     use std::error::Error;
 
-    use rand_core::RngCore;
+    use rand_core::{OsRng, RngCore};
 
     #[test]
     fn test_hash2curve() -> Result<(), Box<dyn Error>> {
@@ -254,6 +258,7 @@ mod test {
                 private_share,
                 app_id.clone(),
                 app_pk,
+                OsRng,
             )?;
 
             protocols.push((*p, Box::new(protocol)));
@@ -306,6 +311,7 @@ mod test {
             private_share,
             app_id,
             app_pk,
+            OsRng,
         );
         match result {
             Ok(_) => panic!("Expected an error, but got Ok"),

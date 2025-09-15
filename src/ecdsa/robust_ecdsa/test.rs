@@ -50,6 +50,7 @@ pub fn run_presign(
                 keygen_out,
                 threshold: max_malicious,
             },
+            OsRng,
         )?;
         protocols.push((p, Box::new(protocol)));
     }

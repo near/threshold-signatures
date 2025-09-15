@@ -19,7 +19,7 @@ use frost_core::keys::{
 use frost_core::{
     Challenge, Element, Error, Field, Group, Scalar, Signature, SigningKey, VerifyingKey,
 };
-use rand_core::{CryptoRngCore, OsRng};
+use rand_core::CryptoRngCore;
 use std::ops::Index;
 
 /// This function prevents calling keyshare function with inproper inputs
@@ -512,12 +512,14 @@ pub(crate) async fn do_keygen<C: Ciphersuite>(
     participants: ParticipantList,
     me: Participant,
     threshold: usize,
+    mut rng: impl CryptoRngCore,
 ) -> Result<KeygenOutput<C>, ProtocolError> {
+    let rng = &mut rng;
     // pick share at random
-    let secret = SigningKey::<C>::new(&mut OsRng).to_scalar();
+    let secret = SigningKey::<C>::new(rng).to_scalar();
     // call keyshare
     let keygen_output =
-        do_keyshare::<C>(chan, participants, me, threshold, secret, None, &mut OsRng).await?;
+        do_keyshare::<C>(chan, participants, me, threshold, secret, None, rng).await?;
     Ok(keygen_output)
 }
 
@@ -558,6 +560,7 @@ pub(crate) fn assert_keygen_invariants(
 }
 
 /// reshares the keyshares between the parties and allows changing the threshold
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn do_reshare<C: Ciphersuite>(
     chan: SharedChannel,
     participants: ParticipantList,
@@ -566,6 +569,7 @@ pub(crate) async fn do_reshare<C: Ciphersuite>(
     old_signing_key: Option<SigningShare<C>>,
     old_public_key: VerifyingKey<C>,
     old_participants: ParticipantList,
+    mut rng: impl CryptoRngCore,
 ) -> Result<KeygenOutput<C>, ProtocolError> {
     let intersection = old_participants.intersection(&participants);
     // either extract the share and linearize it or set it to zero
@@ -586,7 +590,7 @@ pub(crate) async fn do_reshare<C: Ciphersuite>(
         old_threshold,
         secret,
         old_reshare_package,
-        &mut OsRng,
+        &mut rng,
     )
     .await?;
 

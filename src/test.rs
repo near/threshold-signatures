@@ -1,7 +1,7 @@
 // This module provides generic functions to be used
 // in the implemented schemes testing cases
 
-use rand_core::{CryptoRng, CryptoRngCore, RngCore};
+use rand_core::{CryptoRng, CryptoRngCore, OsRng, RngCore};
 use std::error::Error;
 
 use crate::protocol::{errors::InitializationError, run_protocol, Participant, Protocol};
@@ -46,7 +46,7 @@ where
     let mut protocols: GenProtocol<C> = Vec::with_capacity(participants.len());
 
     for p in participants {
-        let protocol = keygen::<C>(participants, *p, threshold)?;
+        let protocol = keygen::<C>(participants, *p, threshold, OsRng)?;
         protocols.push((*p, Box::new(protocol)));
     }
 
@@ -75,6 +75,7 @@ where
             participants,
             threshold,
             *p,
+            OsRng,
         )?;
         protocols.push((*p, Box::new(protocol)));
     }
@@ -126,6 +127,7 @@ where
             &new_participants,
             new_threshold,
             *p,
+            OsRng,
         )?;
         protocols.push((*p, Box::new(protocol)));
     }

@@ -1,16 +1,12 @@
 use elliptic_curve::bigint::U512;
-use rand_core::{OsRng, RngCore};
+use rand_core::{CryptoRngCore, RngCore};
 use sha2::{Digest, Sha256};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 use crate::{
     crypto::proofs::strobe_transcript::TranscriptRng,
     ecdsa::Scalar,
-    protocol::{
-        errors::ProtocolError,
-        internal::{make_protocol, Comms, PrivateChannel},
-        run_two_party_protocol, Participant,
-    },
+    protocol::{errors::ProtocolError, internal::PrivateChannel},
 };
 
 use super::{
@@ -65,8 +61,8 @@ pub(crate) async fn random_ot_extension_sender(
     params: RandomOtExtensionParams<'_>,
     delta: BitVector,
     k: &SquareBitMatrix,
+    rng: &mut impl CryptoRngCore,
 ) -> Result<RandomOTExtensionSenderOut, ProtocolError> {
-    let rng = &mut OsRng;
     let adjusted_size = adjust_size(params.batch_size);
 
     // Step 2
@@ -136,8 +132,8 @@ pub(crate) async fn random_ot_extension_receiver(
     params: RandomOtExtensionParams<'_>,
     k0: &SquareBitMatrix,
     k1: &SquareBitMatrix,
+    rng: &mut impl CryptoRngCore,
 ) -> Result<RandomOTExtensionReceiverOut, ProtocolError> {
-    let rng = &mut OsRng;
     let adjusted_size = adjust_size(params.batch_size);
 
     // Step 1
@@ -201,51 +197,71 @@ pub(crate) async fn random_ot_extension_receiver(
     Ok(out)
 }
 
-/// Run the random OT protocol between two parties.
-#[allow(dead_code)]
-fn run_random_ot(
-    (delta, k): (BitVector, SquareBitMatrix),
-    (k0, k1): (SquareBitMatrix, SquareBitMatrix),
-    sid: Vec<u8>,
-    batch_size: usize,
-) -> Result<(RandomOTExtensionSenderOut, RandomOTExtensionReceiverOut), ProtocolError> {
-    let s = Participant::from(0u32);
-    let r = Participant::from(1u32);
-    let comms_s = Comms::new();
-    let comms_r = Comms::new();
-
-    let sid_s = sid.clone();
-    let sid_r = sid.clone();
-
-    run_two_party_protocol(
-        s,
-        r,
-        &mut make_protocol(comms_s.clone(), async move {
-            let params = RandomOtExtensionParams {
-                sid: &sid_s,
-                batch_size,
-            };
-            random_ot_extension_sender(comms_s.private_channel(s, r), params, delta, &k).await
-        }),
-        &mut make_protocol(comms_r.clone(), async move {
-            let params = RandomOtExtensionParams {
-                sid: &sid_r,
-                batch_size,
-            };
-            random_ot_extension_receiver(comms_r.private_channel(r, s), params, &k0, &k1).await
-        }),
-    )
-}
-
 #[cfg(test)]
 mod test {
     use crate::{
-        ecdsa::ot_based_ecdsa::triples::test::run_batch_random_ot, protocol::errors::ProtocolError,
+        ecdsa::ot_based_ecdsa::triples::test::run_batch_random_ot,
+        protocol::{
+            errors::ProtocolError,
+            internal::{make_protocol, Comms},
+            test::run_two_party_protocol,
+            Participant,
+        },
     };
 
     use super::*;
 
     use k256::Scalar;
+    use rand_core::OsRng;
+
+    /// Run the random OT protocol between two parties
+    fn run_random_ot(
+        (delta, k): (BitVector, SquareBitMatrix),
+        (k0, k1): (SquareBitMatrix, SquareBitMatrix),
+        sid: Vec<u8>,
+        batch_size: usize,
+    ) -> Result<(RandomOTExtensionSenderOut, RandomOTExtensionReceiverOut), ProtocolError> {
+        let s = Participant::from(0u32);
+        let r = Participant::from(1u32);
+        let comms_s = Comms::new();
+        let comms_r = Comms::new();
+
+        let sid_s = sid.clone();
+        let sid_r = sid.clone();
+
+        run_two_party_protocol(
+            s,
+            r,
+            &mut make_protocol(comms_s.clone(), async move {
+                let params = RandomOtExtensionParams {
+                    sid: &sid_s,
+                    batch_size,
+                };
+                random_ot_extension_sender(
+                    comms_s.private_channel(s, r),
+                    params,
+                    delta,
+                    &k,
+                    &mut OsRng,
+                )
+                .await
+            }),
+            &mut make_protocol(comms_r.clone(), async move {
+                let params = RandomOtExtensionParams {
+                    sid: &sid_r,
+                    batch_size,
+                };
+                random_ot_extension_receiver(
+                    comms_r.private_channel(r, s),
+                    params,
+                    &k0,
+                    &k1,
+                    &mut OsRng,
+                )
+                .await
+            }),
+        )
+    }
 
     #[test]
     fn test_random_ot() -> Result<(), ProtocolError> {
