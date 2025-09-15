@@ -483,22 +483,22 @@ where
     // If x exactly equals some x_i, return Kronecker delta vector
     // This is done in constant time by iterating through all elements
     // and accumulating a Choice without short-circuiting.
-    let mut k_index_val = CtOption::new(0u32, Choice::from(0u8)); // Initialize as CtOption::none() effectively
+    let mut kronecker_index = CtOption::new(0u32, Choice::from(0u8)); // Initialize as CtOption::none() effectively
 
     for (i, p) in points_set.iter().enumerate() {
         let is_equal = p.ct_eq(x);
         // If is_equal is true, select 'i', otherwise keep the current k_index_val
-        k_index_val = CtOption::conditional_select(
-            &k_index_val,
+        kronecker_index = CtOption::conditional_select(
+            &kronecker_index,
             &CtOption::new(i as u32, is_equal),
             is_equal,
         );
     }
 
-    if k_index_val.is_some().into() {
-        let k_index = k_index_val.unwrap() as usize;
+    if kronecker_index.is_some().into() {
+        let kronecker_index_value = kronecker_index.unwrap() as usize;
         let mut coeffs = vec![SerializableScalar(<C::Group as Group>::Field::zero()); n];
-        coeffs[k_index] = SerializableScalar(<C::Group as Group>::Field::one());
+        coeffs[kronecker_index_value] = SerializableScalar(<C::Group as Group>::Field::one());
         return Ok(coeffs);
     }
 
