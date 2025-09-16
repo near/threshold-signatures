@@ -47,9 +47,9 @@ pub struct RerandomizedPresignOutput {
 
 impl RerandomizedPresignOutput {
     pub fn new(
-        presignature: PresignOutput,
-        tweak: Tweak,
-        args: RerandomizationArguments,
+        presignature: &PresignOutput,
+        tweak: &Tweak,
+        args: &RerandomizationArguments,
     ) -> Result<Self, ProtocolError> {
         if presignature.big_r != *args.big_r {
             return Err(ProtocolError::IncompatibleRerandomizationInputs);
