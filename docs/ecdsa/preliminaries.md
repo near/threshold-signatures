@@ -25,7 +25,7 @@ $$
 \end{aligned}
 $$
 
-Signing takes the secret key and a message $m \in \{0, 1\}^*$ as input and output the signature:
+Signing takes the secret key and a message $m \in \\{0, 1\\}^*$ as input and output the signature:
 
 $$
 \begin{aligned}
