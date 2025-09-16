@@ -17,16 +17,25 @@ use rand_core::OsRng;
 use std::error::Error;
 
 /// Runs signing by calling the generic run_sign function from crate::test
-pub fn run_sign(
-    participants_presign: Vec<(Participant, RerandomizedPresignOutput)>,
+pub fn run_sign_without_rerandomization(
+    participants_presign: Vec<(Participant, PresignOutput)>,
     public_key: Element,
     msg: &[u8],
 ) -> Result<Vec<(Participant, Signature)>, Box<dyn Error>> {
     // hash the message into secp256k1 field
     let msg_hash = scalar_hash_secp256k1(msg);
+    let rerand_participants_presign = participants_presign
+        .iter()
+        .map(|(p, presig)| {
+            (
+                *p,
+                RerandomizedPresignOutput::new_without_rerandomization(presig),
+            )
+        })
+        .collect::<Vec<_>>();
     // run sign instanciation with the necessary arguments
     crate::test::run_sign::<Secp256K1Sha256, _, _, _>(
-        participants_presign,
+        rerand_participants_presign,
         public_key,
         msg_hash,
         |participants, me, pk, presignature, msg_hash| {
@@ -44,7 +53,7 @@ pub fn run_presign(
     pub0: &TriplePub,
     pub1: &TriplePub,
     threshold: usize,
-) -> Result<Vec<(Participant, RerandomizedPresignOutput)>, Box<dyn Error>> {
+) -> Result<Vec<(Participant, PresignOutput)>, Box<dyn Error>> {
     assert!(participants.len() == shares0.len());
     assert!(participants.len() == shares1.len());
 
@@ -72,17 +81,7 @@ pub fn run_presign(
         protocols.push((p, Box::new(protocol)));
     }
 
-    let result_presig = run_protocol(protocols)?;
-    let mut result = result_presig
-        .iter()
-        .map(|(p, presig)| {
-            (
-                *p,
-                RerandomizedPresignOutput::new_without_rerandomization(presig),
-            )
-        })
-        .collect::<Vec<_>>();
-
+    let mut result = run_protocol(protocols)?;
     result.sort_by_key(|(p, _)| *p);
     Ok(result)
 }
@@ -106,8 +105,7 @@ fn test_refresh() -> Result<(), Box<dyn Error>> {
 
     let msg = b"hello world";
     // internally verifies the signature's validity
-    run_sign(presign_result, public_key.to_element(), msg)?;
-
+    run_sign_without_rerandomization(presign_result, public_key.to_element(), msg)?;
     Ok(())
 }
 
@@ -145,9 +143,8 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
     let presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, new_threshold)?;
 
     let msg = b"hello world";
-
     // internally verifies the signature's validity
-    run_sign(presign_result, public_key.to_element(), msg)?;
+    run_sign_without_rerandomization(presign_result, public_key.to_element(), msg)?;
     Ok(())
 }
 
@@ -183,9 +180,8 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     let presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, new_threshold)?;
 
     let msg = b"hello world";
-
     // internally verifies the signature's validity
-    run_sign(presign_result, public_key.to_element(), msg)?;
+    run_sign_without_rerandomization(presign_result, public_key.to_element(), msg)?;
     Ok(())
 }
 
@@ -205,9 +201,8 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
     let presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, threshold)?;
 
     let msg = b"hello world";
-
     // internally verifies the signature's validity
-    run_sign(presign_result, public_key.to_element(), msg)?;
+    run_sign_without_rerandomization(presign_result, public_key.to_element(), msg)?;
     Ok(())
 }
 
@@ -228,8 +223,7 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     let presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, threshold)?;
 
     let msg = b"hello world";
-
     // internally verifies the signature's validity
-    run_sign(presign_result, public_key.to_element(), msg)?;
+    run_sign_without_rerandomization(presign_result, public_key.to_element(), msg)?;
     Ok(())
 }
