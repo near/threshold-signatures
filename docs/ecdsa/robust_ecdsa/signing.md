@@ -1,14 +1,14 @@
 This document specifies the signing protocol described in [[DJNPO20](https://eprint.iacr.org/2020/501)].
 The protocol is split into two phases, a pre-signing phase and a signing phase.
 
-*Note that We slightly modify the original scheme and push parts of the computation done on the signing phase to the presigning phase to improve the performance of the former phase. Additionally, the authors assume the message is an input to the first round, but their proof does not require it until the last round.*
+*Note that we slightly modify the original scheme and push parts of the computation done on the signing phase to the presigning phase to improve the performance of the former phase. Additionally, the authors assume the message is an input to the first round, but their proof does not require it until the last round.*
 
 ### Note: the threshold $t =$ *number_malicious_parties*
 
 # Presigning
 
 In this phase, a set of parties $\mathcal{P}_1 \subseteq \mathcal{P}_0$
-of size $N_1 \geq t$ wishes to generate a threshold $t' = t$ sharing
+of size $N_1 \geq 2t +1$ wishes to generate a threshold $t' = t + 1$ sharing
 of a pre-signature.
 
 The input to this phase is:
@@ -114,6 +114,7 @@ Coordinator
 
 The original paper pushes parts of the presignature computations in the previous lines to the signing round. We do not do so to reduce the computation time in the online phase
 
+Raw Hashes
 
 The original paper performs si = hi(m + r*xi) + ci where ci = m*di + ei
 But we thought it is better to perform the following (computation-wise):
