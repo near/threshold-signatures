@@ -7,7 +7,7 @@ The protocol is split into two phases, a pre-signing phase and a signing phase.
 
 # Presigning
 
-In this phase, a set of parties $\mathcal{P}_ 1 \subseteq \mathcal{P}_ 0$
+In this phase, a set of parties $\mathcal{P}_1 \subseteq \mathcal{P}_0$
 of size $N_1 \geq t$ wishes to generate a threshold $t' = t$ sharing
 of a pre-signature.
 
