@@ -95,7 +95,7 @@ The inputs to this phase are:
 4. $\star$ Each $P_i$ sends $s_i$ to every other party.
 5. $\bullet$ Each $P_i$ waits to receive $s_j$ from every other party.
 6. Each $P_i$ sums the received elements $s \gets \sum_j s_j$.
-7. Perform the low-S normalization, i.e. $s \gets -s $ if $s\in\\{\frac{q}{2}..~q-1\\}$
+7. Perform the low-S normalization, i.e. $s \gets -s$ if $s\in\\{\frac{q}{2}..~q-1\\}$
 8. $\blacktriangle$ Each $P_i$ asserts that $(R, s)$ is a valid ECDSA signature for $h$.
 
 **Output:** the signature $(R, s)$.
