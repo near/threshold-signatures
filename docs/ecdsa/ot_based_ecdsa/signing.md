@@ -1,7 +1,7 @@
 This document specifies the signing protocol.
 The protocol is split into two phases, a pre-signing phase and a signing phase.
 
-*Note: Due to the complexity of generating presignatures using multiplicative triples, this protocol shifts from the signing formulae stated in [Preliminaries](../preliminaries.md) and computes $R$ as in $R\gets \frac{1}{k}\cdot G$ and $s$ as in $s \gets k (H(m) + rx)$. These formulae do not require changes to be done on the verifier's end*
+*Note: Due to the complexity of generating presignatures using multiplicative triples, this protocol shifts from the signing formulae stated in [Preliminaries](../preliminaries.md) and computes* $R$ *as in* $R\gets \frac{1}{k}\cdot G$ *and* $s$ *as in* $s \gets k (H(m) + rx)$*. These formulae do not require changes to be done on the verifier's end*
 
 ### Note: the threshold $t = number\_malicious\_parties + 1$
 
