@@ -41,7 +41,7 @@ $$
 $$
 
 *Note that we slightly deviate from ANS X9.62 specifications by returning
-the entire point $R$ instead of just $r$. This has absolutely no impact on the security
+the entire point* $R$ *instead of just* $r$*. This has absolutely no impact on the security
 but makes it easier for downstream implementations to massage
 the result signature into whatever format they need for compatability.*
 
