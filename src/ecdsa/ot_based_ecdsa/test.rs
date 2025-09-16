@@ -4,19 +4,21 @@ use super::{
     triples::{test::deal, TriplePub, TripleShare},
     PresignArguments, PresignOutput,
 };
-use crate::crypto::hash::test::scalar_hash_secp256k1;
 use crate::ecdsa::{Element, KeygenOutput, Secp256K1Sha256, Signature};
 use crate::protocol::{run_protocol, Participant, Protocol};
 use crate::test::{
     assert_public_key_invariant, generate_participants, generate_participants_with_random_ids,
     run_keygen, run_refresh, run_reshare,
 };
+use crate::{
+    crypto::hash::test::scalar_hash_secp256k1, ecdsa::ot_based_ecdsa::RerandomizedPresignOutput,
+};
 use rand_core::OsRng;
 use std::error::Error;
 
 /// Runs signing by calling the generic run_sign function from crate::test
 pub fn run_sign(
-    participants_presign: Vec<(Participant, PresignOutput)>,
+    participants_presign: Vec<(Participant, RerandomizedPresignOutput)>,
     public_key: Element,
     msg: &[u8],
 ) -> Result<Vec<(Participant, Signature)>, Box<dyn Error>> {
@@ -42,7 +44,7 @@ pub fn run_presign(
     pub0: &TriplePub,
     pub1: &TriplePub,
     threshold: usize,
-) -> Result<Vec<(Participant, PresignOutput)>, Box<dyn Error>> {
+) -> Result<Vec<(Participant, RerandomizedPresignOutput)>, Box<dyn Error>> {
     assert!(participants.len() == shares0.len());
     assert!(participants.len() == shares1.len());
 
@@ -70,7 +72,17 @@ pub fn run_presign(
         protocols.push((p, Box::new(protocol)));
     }
 
-    let mut result = run_protocol(protocols)?;
+    let result_presig = run_protocol(protocols)?;
+    let mut result = result_presig
+        .iter()
+        .map(|(p, presig)| {
+            (
+                *p,
+                RerandomizedPresignOutput::new_without_rerandomization(presig),
+            )
+        })
+        .collect::<Vec<_>>();
+
     result.sort_by_key(|(p, _)| *p);
     Ok(result)
 }

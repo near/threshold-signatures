@@ -279,9 +279,9 @@ async fn do_presign(
 
     Ok(PresignOutput {
         big_r: big_r.value().to_affine(),
-        alpha_i: alpha_me,
-        beta_i: beta_me,
-        k_i: shares.k(),
+        alpha: alpha_me,
+        beta: beta_me,
+        k: shares.k(),
     })
 }
 
