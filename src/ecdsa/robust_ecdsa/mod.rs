@@ -27,7 +27,8 @@ pub struct PresignOutput {
     pub big_r: AffinePoint,
 
     /// Our secret shares of the nonces.
-    pub k: Scalar,
+    pub c: Scalar,
+    pub e: Scalar,
     pub alpha: Scalar,
     pub beta: Scalar,
 }
@@ -41,6 +42,7 @@ pub struct RerandomizedPresignOutput {
     big_r: AffinePoint,
 
     /// Our rerandomized secret shares of the nonces.
+    e: Scalar,
     alpha: Scalar,
     beta: Scalar,
 }
@@ -55,25 +57,27 @@ impl RerandomizedPresignOutput {
             return Err(ProtocolError::IncompatibleRerandomizationInputs);
         }
         let delta = args.derive_randomness();
-        let inv_delta = delta.invert();
-        if inv_delta.is_none().into() {
-            return Err(ProtocolError::AssertionFailed(
-                "expected a non-zero randomness".to_string(),
-            ));
+        if delta.is_zero().into() {
+            return Err(ProtocolError::ZeroScalar);
         }
-        // cannot fail due to the previous check
-        let inv_delta = inv_delta.unwrap();
+
+        // cannot be zero due to the previous check
+        let inv_delta = delta.invert().unwrap();
 
         // delta . R
         let rerandomized_big_r = presignature.big_r * delta;
 
         // (alpha + tweak * k) * delta^{-1}
-        let rerandomized_alpha = (presignature.alpha + tweak.value() * presignature.k) * inv_delta;
+        let rerandomized_alpha = presignature.alpha * inv_delta;
+
+        // (beta + c*tweak) * delta^{-1}
+        let rerandomized_beta = (presignature.beta + presignature.c * tweak.value()) * inv_delta;
 
         Ok(RerandomizedPresignOutput {
             big_r: rerandomized_big_r.into(),
             alpha: rerandomized_alpha,
-            beta: presignature.beta,
+            beta: rerandomized_beta,
+            e: presignature.e,
         })
     }
 
@@ -85,6 +89,7 @@ impl RerandomizedPresignOutput {
             big_r: presignature.big_r,
             alpha: presignature.alpha,
             beta: presignature.beta,
+            e: presignature.e,
         }
     }
 }

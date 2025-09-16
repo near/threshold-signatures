@@ -5,8 +5,8 @@ use subtle::ConditionallySelectable;
 
 use crate::{
     ecdsa::{
-        robust_ecdsa::RerandomizedPresignOutput, AffinePoint, Polynomial, Scalar, Secp256K1Sha256,
-        Signature,
+        robust_ecdsa::RerandomizedPresignOutput, x_coordinate, AffinePoint, Polynomial, Scalar,
+        Secp256K1Sha256, Signature,
     },
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     protocol::{
@@ -61,7 +61,12 @@ async fn do_sign(
     presignature: RerandomizedPresignOutput,
     msg_hash: Scalar,
 ) -> Result<Signature, ProtocolError> {
-    let s_me = msg_hash * presignature.alpha + presignature.beta;
+    // (beta + tweak * k) * delta^{-1}
+    let big_r = presignature.big_r;
+    let big_r_x_coordinate = x_coordinate(&big_r);
+    let beta = presignature.beta * big_r_x_coordinate + presignature.e;
+
+    let s_me = msg_hash * presignature.alpha + beta;
     let s_me = SerializableScalar(s_me);
 
     let wait_round = chan.next_waitpoint();
@@ -101,7 +106,6 @@ async fn do_sign(
     // Normalize s
     s.conditional_assign(&(-s), s.is_high());
 
-    let big_r = presignature.big_r;
     let sig = Signature { big_r, s };
 
     if !sig.verify(&public_key, &msg_hash) {
@@ -128,15 +132,7 @@ mod test {
     };
     use crate::test::generate_participants;
 
-    type PresigSimulationOutput = (
-        Scalar,
-        Polynomial,
-        Polynomial,
-        Polynomial,
-        Polynomial,
-        ProjectivePoint,
-        Scalar,
-    );
+    type PresigSimulationOutput = (Scalar, Polynomial, Polynomial, Polynomial, ProjectivePoint);
 
     fn simulate_presignature(
         max_malicious: usize,
@@ -162,17 +158,16 @@ mod test {
         // computing k, R, Rx
         let k = fk.eval_at_zero()?.0;
         let big_r = ProjectivePoint::GENERATOR * k;
-        let big_r_x_coordinate = x_coordinate(&big_r.to_affine());
 
         // compute the master scalar w = a * k
         let w = fa.eval_at_zero()?.0 * k;
         let w_invert = w.invert().unwrap();
 
-        Ok((w_invert, fa, fd, fe, fk, big_r, big_r_x_coordinate))
+        Ok((w_invert, fa, fd, fe, big_r))
     }
 
     #[test]
-    fn test_sign_given_presignature() -> Result<(), Box<dyn Error>> {
+    fn test_sign_given_presignature_without_rerandomization() -> Result<(), Box<dyn Error>> {
         let max_malicious = 2;
         let msg = b"Hello? Is it me you're looking for?";
 
@@ -183,24 +178,23 @@ mod test {
         // master public key
         let public_key = ProjectivePoint::GENERATOR * x;
 
-        let (w_invert, fa, fd, fe, fk, big_r, big_r_x_coordinate) =
-            simulate_presignature(max_malicious)?;
+        let (w_invert, fa, fd, fe, big_r) = simulate_presignature(max_malicious)?;
         let participants = generate_participants(5);
 
         let mut participants_presign = Vec::new();
         // Simulate the each participant's presignature
         for p in &participants {
-            let h_i = w_invert * fa.eval_at_participant(*p)?.0;
-            let alpha = h_i + fd.eval_at_participant(*p)?.0;
-            let beta = h_i * big_r_x_coordinate * fx.eval_at_participant(*p)?.0
-                + fe.eval_at_participant(*p)?.0;
-            let k = fk.eval_at_participant(*p)?.0;
+            let c_i = w_invert * fa.eval_at_participant(*p)?.0;
+            let alpha = c_i + fd.eval_at_participant(*p)?.0;
+            let beta = c_i * fx.eval_at_participant(*p)?.0;
+            let e = fe.eval_at_participant(*p)?.0;
             // build the presignature
             let presignature = PresignOutput {
                 big_r: big_r.to_affine(),
                 alpha,
                 beta,
-                k,
+                e,
+                c: c_i,
             };
             participants_presign.push((*p, presignature));
         }
@@ -227,24 +221,23 @@ mod test {
         // master public key
         let public_key = frost_core::VerifyingKey::new(ProjectivePoint::GENERATOR * x);
 
-        let (w_invert, fa, fd, fe, fk, big_r, big_r_x_coordinate) =
-            simulate_presignature(max_malicious)?;
+        let (w_invert, fa, fd, fe, big_r) = simulate_presignature(max_malicious)?;
         let participants = generate_participants(5);
 
         let mut participants_presign = Vec::new();
         // Simulate the each participant's presignature
         for p in &participants {
-            let h_i = w_invert * fa.eval_at_participant(*p)?.0;
-            let alpha = h_i + fd.eval_at_participant(*p)?.0;
-            let beta = h_i * big_r_x_coordinate * fx.eval_at_participant(*p)?.0
-                + fe.eval_at_participant(*p)?.0;
-            let k = fk.eval_at_participant(*p)?.0;
+            let c_i = w_invert * fa.eval_at_participant(*p)?.0;
+            let alpha = c_i + fd.eval_at_participant(*p)?.0;
+            let beta = c_i * fx.eval_at_participant(*p)?.0;
+            let e = fe.eval_at_participant(*p)?.0;
             // build the presignature
             let presignature = PresignOutput {
                 big_r: big_r.to_affine(),
                 alpha,
                 beta,
-                k,
+                e,
+                c: c_i,
             };
             participants_presign.push((*p, presignature));
         }

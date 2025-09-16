@@ -63,14 +63,12 @@ impl RerandomizedPresignOutput {
             return Err(ProtocolError::IncompatibleRerandomizationInputs);
         }
         let delta = args.derive_randomness();
-        let inv_delta = delta.invert();
-        if inv_delta.is_none().into() {
-            return Err(ProtocolError::AssertionFailed(
-                "expected a non-zero randomness".to_string(),
-            ));
+        if delta.is_zero().into() {
+            return Err(ProtocolError::ZeroScalar);
         }
-        // cannot fail due to the previous check
-        let inv_delta = inv_delta.unwrap();
+
+        // cannot be zero due to the previous check
+        let inv_delta = delta.invert().unwrap();
 
         // delta . R
         let rerandomized_big_r = presignature.big_r * delta;
