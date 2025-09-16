@@ -65,9 +65,9 @@ $\forall j \in \\{t+2.. n\\},\quad \mathsf{ExponentInterpolation}(W_1, \ldots W_
 12. $\blacktriangle$ Each $P_i$ *asserts* that $w \neq 0$.
 13. Each $P_i$ computes $c_i \gets a_i \cdot w^{-1}$
 14. Each $P_i$ computes $\alpha_i \gets c_i+d_i$
-15. Each $P_i$ computes $\beta_i \gets c_i \cdot R_\mathsf{x} \cdot x_i + e_i$ where $R_\mathsf{x}$ is the x coordinate of $R$.
+15. Each $P_i$ computes $\beta_i \gets c_i \cdot x_i$.
 
-**Output:** the presignature $(R, \alpha_i, \beta_i, k_i)$.
+**Output:** the presignature $(R, \alpha_i, \beta_i, c_i, e_i)$.
 
 # Signing
 
@@ -75,7 +75,7 @@ In this phase, a set of parties $\mathcal{P}_2 \subseteq \mathcal{P}_1$
 of size $N_2 > t$ wishes to generate an ECDSA signature.
 
 The inputs to this phase are:
-1) The presignature $(R, \alpha_i, \beta_i, k_i)$,
+1) The presignature $(R, \alpha_i, \beta_i, c_i, e_i)$,
 2) The public key $X$
 3) A "fresh" public source of entropy $\rho$
 4) A tweak $\epsilon$ used during key derivation
@@ -87,11 +87,11 @@ The inputs to this phase are:
 2. Each $P_i$ rerandomizes the following elements:
 
     * $R  \gets R^\delta$
-    * $\alpha_i \gets (\alpha_i + \epsilon \cdot k_i) \cdot \delta^{-1}$
+    * $\alpha_i \gets \alpha_i \cdot \delta^{-1}$
+    * $\beta_i \gets \beta_i + c_i \cdot \epsilon \cdot \delta^{-1}$
 
 **Round 1:**
-
-1. Each $P_i$ computes its signature share $s_i \gets \alpha_i * h + \beta_i$
+1. Each $P_i$ computes its signature share $s_i \gets \alpha_i * h + \beta_i \cdot R_\mathsf{x} + e_i$ where $R_\mathsf{x}$ is the x coordinate of $R$.
 2. $\star$ Each $P_i$ sends $s_i$ to every other party.
 3. $\bullet$ Each $P_i$ waits to receive $s_j$ from every other party.
 4. Each $P_i$ sums the received elements $s \gets \sum_j \lambda(\mathcal{P}_2)_j \cdot s_j$.
