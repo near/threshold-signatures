@@ -69,7 +69,7 @@ $$
 **Output:** The presignature $(R, k_i, \sigma_i)$
 
 # Signing
-In this phase, a set of parties $\mathcal{P}_2 \subseteq \mathcal{P}_ 1$
+In this phase, a set of parties $\mathcal{P}_2 \subseteq \mathcal{P}_1$
 of size $N_2 \geq t$ wishes to generate an ECDSA signature.
 
 The inputs to this phase are:
