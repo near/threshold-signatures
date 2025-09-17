@@ -1,22 +1,32 @@
 mod crypto;
-// For benchmark
-pub use crypto::polynomials::{
-    batch_compute_lagrange_coefficients, batch_invert, compute_lagrange_coefficient,
-};
 mod generic_dkg;
 mod participants;
-
-pub mod protocol;
 
 pub mod confidential_key_derivation;
 pub mod ecdsa;
 pub mod eddsa;
+pub mod protocol;
+#[cfg(test)]
+mod test;
 
 pub use frost_core;
 pub use frost_ed25519;
 pub use frost_secp256k1;
-#[cfg(test)]
-mod test;
+// For benchmark
+pub use crypto::polynomials::{
+    batch_compute_lagrange_coefficients, batch_invert, compute_lagrange_coefficient,
+};
+
+use crypto::ciphersuite::Ciphersuite;
+use frost_core::{keys::SigningShare, Group, VerifyingKey};
+use serde::{Deserialize, Serialize};
+use std::marker::Send;
+
+use crate::generic_dkg::*;
+use crate::protocol::internal::{make_protocol, Comms};
+use crate::protocol::{errors::InitializationError, Participant, Protocol};
+
+type Scalar<C> = frost_core::Scalar<C>;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(bound = "C: Ciphersuite")]
@@ -24,6 +34,34 @@ mod test;
 pub struct KeygenOutput<C: Ciphersuite> {
     pub private_share: SigningShare<C>,
     pub public_key: VerifyingKey<C>,
+}
+
+/// This is a necessary element to be able to derive different keys
+/// from signing shares.
+/// We do not bind the user with the way to compute the inner scalar of the tweak
+pub struct Tweak<C: Ciphersuite>(Scalar<C>);
+
+impl<C: Ciphersuite> Tweak<C> {
+    pub fn new(tweak: Scalar<C>) -> Self {
+        Tweak(tweak)
+    }
+
+    /// Outputs the inner value of the tweak
+    pub fn value(&self) -> Scalar<C> {
+        self.0
+    }
+
+    /// Derives the signing share as x + tweak
+    pub fn derive_signing_share(&self, private_share: &SigningShare<C>) -> SigningShare<C> {
+        let derived_share = private_share.to_scalar() + self.value();
+        SigningShare::new(derived_share)
+    }
+
+    /// Derives the verifying key as X + tweak . G
+    pub fn derive_verifying_key(&self, public_key: &VerifyingKey<C>) -> VerifyingKey<C> {
+        let derived_share = public_key.to_element() + C::Group::generator() * self.value();
+        VerifyingKey::new(derived_share)
+    }
 }
 
 /// Generic key generation function agnostic of the curve
@@ -116,13 +154,3 @@ where
     );
     Ok(make_protocol(comms, fut))
 }
-
-// Libraries calls
-use crypto::ciphersuite::Ciphersuite;
-use frost_core::{keys::SigningShare, VerifyingKey};
-use serde::{Deserialize, Serialize};
-use std::marker::Send;
-
-use crate::generic_dkg::*;
-use crate::protocol::internal::{make_protocol, Comms};
-use crate::protocol::{errors::InitializationError, Participant, Protocol};
