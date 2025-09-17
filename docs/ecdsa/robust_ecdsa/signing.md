@@ -104,7 +104,6 @@ The inputs to this phase are:
 
 **Output:** the signature $(R, s)$.
 
-
 # Differences with [[DJNPO20](https://eprint.iacr.org/2020/501)]
 
 Our specification introduces several modifications to the original paper, aimed at enhancing performance, security, and compatibility. The key changes are:
