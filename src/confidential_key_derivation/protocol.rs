@@ -23,7 +23,7 @@ fn hash2curve(app_id: &AppId) -> Result<ProjectivePoint, ProtocolError> {
         &[app_id.as_ref()],
         &[DOMAIN],
     )
-    .map_err(|_| ProtocolError::ZeroScalar)?;
+    .map_err(|_| ProtocolError::HashingError)?;
     Ok(hash)
 }
 
@@ -123,9 +123,10 @@ pub fn ckd(
 
     // ensure my presence in the participant list
     if !participants.contains(me) {
-        return Err(InitializationError::BadParameters(format!(
-            "participant list must contain {me:?}"
-        )));
+        return Err(InitializationError::MissingParticipant {
+            role: "self",
+            participant: me,
+        });
     };
     // ensure the coordinator is a participant
     if !participants.contains(coordinator) {
