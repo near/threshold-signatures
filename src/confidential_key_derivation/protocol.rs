@@ -300,4 +300,95 @@ mod test {
             Err(err) => assert_eq!(err, InitializationError::DuplicateParticipants),
         }
     }
+
+    #[test]
+    fn test_ckd_not_enough_participants() {
+        let participants = vec![Participant::from(0u32)];
+        let coordinator = Participant::from(0u32);
+        let me = Participant::from(0u32);
+        let (_app_sk, app_pk) = Secp256K1Sha256::generate_nonce(&mut OsRng);
+        let app_pk = VerifyingKey::new(app_pk);
+        let f = Polynomial::<Secp256K1Sha256>::generate_polynomial(None, 2, &mut OsRng).unwrap();
+        let private_share = SigningShare::new(f.eval_at_participant(me).unwrap().0);
+        let app_id = AppId::from(b"test");
+
+        let result = ckd(
+            &participants,
+            coordinator,
+            me,
+            private_share,
+            app_id,
+            app_pk,
+        );
+        match result {
+            Ok(_) => panic!("Expected an error, but got Ok"),
+            Err(err) => assert_eq!(
+                err,
+                InitializationError::NotEnoughParticipants { participants: 1 }
+            ),
+        }
+    }
+
+    #[test]
+    fn test_ckd_me_not_in_participants() {
+        let participants = vec![Participant::from(0u32), Participant::from(1u32)];
+        let coordinator = Participant::from(0u32);
+        let me = Participant::from(2u32); // Me is not in the list
+        let (_app_sk, app_pk) = Secp256K1Sha256::generate_nonce(&mut OsRng);
+        let app_pk = VerifyingKey::new(app_pk);
+        let f = Polynomial::<Secp256K1Sha256>::generate_polynomial(None, 2, &mut OsRng).unwrap();
+        let private_share =
+            SigningShare::new(f.eval_at_participant(Participant::from(0u32)).unwrap().0);
+        let app_id = AppId::from(b"test");
+
+        let result = ckd(
+            &participants,
+            coordinator,
+            me,
+            private_share,
+            app_id,
+            app_pk,
+        );
+        match result {
+            Ok(_) => panic!("Expected an error, but got Ok"),
+            Err(err) => assert_eq!(
+                err,
+                InitializationError::MissingParticipant {
+                    role: "self",
+                    participant: me
+                }
+            ),
+        }
+    }
+
+    #[test]
+    fn test_ckd_coordinator_not_in_participants() {
+        let participants = vec![Participant::from(0u32), Participant::from(1u32)];
+        let coordinator = Participant::from(2u32); // Coordinator is not in the list
+        let me = Participant::from(0u32);
+        let (_app_sk, app_pk) = Secp256K1Sha256::generate_nonce(&mut OsRng);
+        let app_pk = VerifyingKey::new(app_pk);
+        let f = Polynomial::<Secp256K1Sha256>::generate_polynomial(None, 2, &mut OsRng).unwrap();
+        let private_share = SigningShare::new(f.eval_at_participant(me).unwrap().0);
+        let app_id = AppId::from(b"test");
+
+        let result = ckd(
+            &participants,
+            coordinator,
+            me,
+            private_share,
+            app_id,
+            app_pk,
+        );
+        match result {
+            Ok(_) => panic!("Expected an error, but got Ok"),
+            Err(err) => assert_eq!(
+                err,
+                InitializationError::MissingParticipant {
+                    role: "coordinator",
+                    participant: coordinator
+                }
+            ),
+        }
+    }
 }
