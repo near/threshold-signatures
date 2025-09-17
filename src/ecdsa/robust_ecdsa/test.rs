@@ -3,6 +3,7 @@ use std::error::Error;
 use super::{presign::presign, sign::sign, PresignArguments, PresignOutput};
 
 use crate::crypto::hash::test::scalar_hash_secp256k1;
+use crate::ecdsa::robust_ecdsa::RerandomizedPresignOutput;
 use crate::ecdsa::{Element, KeygenOutput, Secp256K1Sha256, Signature};
 use crate::protocol::{run_protocol, Participant, Protocol};
 use crate::test::{
@@ -11,7 +12,7 @@ use crate::test::{
 };
 
 /// Runs signing by calling the generic run_sign function from crate::test
-pub fn run_sign(
+pub fn run_sign_without_rerandomization(
     participants_presign: Vec<(Participant, PresignOutput)>,
     public_key: Element,
     msg: &[u8],
@@ -25,7 +26,9 @@ pub fn run_sign(
         msg_hash,
         |participants, me, pk, presignature, msg_hash| {
             let pk = pk.to_affine();
-            sign(participants, me, pk, presignature, msg_hash)
+            let rerand_presig =
+                RerandomizedPresignOutput::new_without_rerandomization(presignature);
+            sign(participants, me, pk, rerand_presig, msg_hash)
                 .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = Signature>>)
         },
     )
@@ -71,7 +74,7 @@ fn test_refresh() -> Result<(), Box<dyn Error>> {
     let presign_result = run_presign(key_packages, max_malicious)?;
 
     let msg = b"hello world";
-    run_sign(presign_result, public_key.to_element(), msg)?;
+    run_sign_without_rerandomization(presign_result, public_key.to_element(), msg)?;
 
     Ok(())
 }
@@ -111,8 +114,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
     let presign_result = run_presign(key_packages, max_malicious)?;
 
     let msg = b"hello world";
-
-    run_sign(presign_result, public_key.to_element(), msg)?;
+    run_sign_without_rerandomization(presign_result, public_key.to_element(), msg)?;
     Ok(())
 }
 
@@ -147,8 +149,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     let presign_result = run_presign(key_packages, max_malicious)?;
 
     let msg = b"hello world";
-
-    run_sign(presign_result, public_key.to_element(), msg)?;
+    run_sign_without_rerandomization(presign_result, public_key.to_element(), msg)?;
     Ok(())
 }
 
@@ -164,8 +165,7 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
     let presign_result = run_presign(keygen_result, max_malicious)?;
 
     let msg = b"hello world";
-
-    run_sign(presign_result, public_key.to_element(), msg)?;
+    run_sign_without_rerandomization(presign_result, public_key.to_element(), msg)?;
     Ok(())
 }
 
@@ -183,6 +183,6 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     let presign_result = run_presign(keygen_result, max_malicious)?;
 
     let msg = b"hello world";
-    run_sign(presign_result, public_key.to_element(), msg)?;
+    run_sign_without_rerandomization(presign_result, public_key.to_element(), msg)?;
     Ok(())
 }

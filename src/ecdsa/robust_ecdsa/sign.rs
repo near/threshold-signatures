@@ -3,9 +3,11 @@ use elliptic_curve::scalar::IsHigh;
 use frost_core::serialization::SerializableScalar;
 use subtle::ConditionallySelectable;
 
-use super::PresignOutput;
 use crate::{
-    ecdsa::{AffinePoint, Polynomial, Scalar, Secp256K1Sha256, Signature},
+    ecdsa::{
+        robust_ecdsa::RerandomizedPresignOutput, AffinePoint, Polynomial, Scalar, Secp256K1Sha256,
+        Signature,
+    },
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     protocol::{
         errors::{InitializationError, ProtocolError},
@@ -19,7 +21,7 @@ pub fn sign(
     participants: &[Participant],
     me: Participant,
     public_key: AffinePoint,
-    presignature: PresignOutput,
+    presignature: RerandomizedPresignOutput,
     msg_hash: Scalar,
 ) -> Result<impl Protocol<Output = Signature>, InitializationError> {
     if participants.len() < 2 {
@@ -56,7 +58,7 @@ async fn do_sign(
     participants: ParticipantList,
     me: Participant,
     public_key: AffinePoint,
-    presignature: PresignOutput,
+    presignature: RerandomizedPresignOutput,
     msg_hash: Scalar,
 ) -> Result<Signature, ProtocolError> {
     let s_me = msg_hash * presignature.alpha_i + presignature.beta_i;
@@ -120,7 +122,8 @@ mod test {
 
     use super::*;
     use crate::ecdsa::{
-        robust_ecdsa::test::run_sign, x_coordinate, Field, ProjectivePoint, Secp256K1ScalarField,
+        robust_ecdsa::test::run_sign_without_rerandomization, robust_ecdsa::PresignOutput,
+        x_coordinate, Field, ProjectivePoint, Secp256K1ScalarField,
     };
     use crate::test::generate_participants;
 
@@ -141,8 +144,8 @@ mod test {
         // here we do not need fb as it is only used to mask some values before sending
         // them to other participants then adding them all together to generate w
         // this sum would annihilate all the fb shares which make them useless in our case
-        let fa = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng)?;
         let fk = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng)?;
+        let fa = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng)?;
         let fd = Polynomial::generate_polynomial(
             Some(Secp256K1ScalarField::zero()),
             2 * max_malicious,
@@ -172,17 +175,18 @@ mod test {
             let alpha_i = h_i + fd.eval_at_participant(*p)?.0;
             let beta_i = h_i * big_r_x_coordinate * fx.eval_at_participant(*p)?.0
                 + fe.eval_at_participant(*p)?.0;
-
+            let k_i = fk.eval_at_participant(*p)?.0;
             // build the presignature
             let presignature = PresignOutput {
                 big_r: big_r.to_affine(),
                 alpha_i,
                 beta_i,
+                k_i,
             };
             participants_presign.push((*p, presignature));
         }
 
-        let result = run_sign(participants_presign, public_key, msg)?;
+        let result = run_sign_without_rerandomization(participants_presign, public_key, msg)?;
         let sig = result[0].1.clone();
         let sig = ecdsa::Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
 

@@ -287,6 +287,7 @@ async fn do_presign(
         big_r: big_r.value().to_affine(),
         alpha_i: alpha_me,
         beta_i: beta_me,
+        k_i: shares.k(),
     })
 }
 
