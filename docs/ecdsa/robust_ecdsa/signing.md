@@ -92,11 +92,12 @@ The inputs to this phase are:
 
 **Round 1:**
 1. Each $P_i$ computes its signature share $s_i \gets \alpha_i * h + \beta_i \cdot R_\mathsf{x} + e_i$ where $R_\mathsf{x}$ is the x coordinate of $R$.
+1. Each $P_i$ linearizes its signature share $s_i \gets \lambda(\mathcal{P}_2)_i s_i$.
 2. $\star$ Each $P_i$ sends $s_i$ **only to the coordinator**.
 
 **Round 1 (Coordinator):**
 3. $\bullet$ The coordinator waits to receive $s_j$ from every other party.
-4. The coordinator sums the received elements $s \gets \sum_j \lambda(\mathcal{P}_2)_j \cdot s_j$.
+4. The coordinator sums the received elements $s \gets \sum_j s_j$.
 5. $\blacktriangle$ The coordinator *asserts* that $s\neq 0$
 6. Perform the low-S normalization, i.e. $s \gets -s$ if $s\in\\{\frac{q}{2}..~q-1\\}$
 7. $\blacktriangle$ The coordinator asserts that $(R, s)$ is a valid ECDSA signature for $h$.
@@ -113,7 +114,7 @@ Our specification introduces several modifications to the original paper, aimed 
 3. Presignature rerandomization
 4. Outsourcing the message hash
 
-Changes (1) and (2) improve the overall performance of the scheme. Change (3) strengthens the scheme's security, while change (4) enhances compatibility with external systems that rely on this library for signing operations.
+Changes (1) and (2) improve the overall performance of the scheme, change (3) strengthens the scheme's overall security, and change (4) enhances compatibility with external systems that rely on this library for signing operations.
 
 ### Sign phase computation optimization
 We optimize the signing phase in two ways:
