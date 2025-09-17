@@ -120,7 +120,7 @@ impl<'a> RerandomizationArguments<'a> {
     /// set of participants and the entropy.
     ///
     /// Outputs a random string computed as HKDF(entropy, pk, hash, R, participants)
-    pub fn derive_randomness(self) -> Scalar {
+    pub fn derive_randomness(&self) -> Scalar {
         // create a string containing (pk, msg_hash, big_r, sorted(participants))
         let pk_encoded_point = self.pk.to_encoded_point(true);
         let encoded_pk: &[u8] = pk_encoded_point.as_bytes();
