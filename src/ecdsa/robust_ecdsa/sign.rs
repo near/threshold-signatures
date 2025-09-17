@@ -122,23 +122,25 @@ mod test {
 
     use super::*;
     use crate::ecdsa::{
-        robust_ecdsa::test::run_sign_without_rerandomization, robust_ecdsa::PresignOutput,
+        robust_ecdsa::test::{run_sign_with_rerandomization, run_sign_without_rerandomization},
+        robust_ecdsa::PresignOutput,
         x_coordinate, Field, ProjectivePoint, Secp256K1ScalarField,
     };
     use crate::test::generate_participants;
 
-    #[test]
-    fn test_sign_given_presignature() -> Result<(), Box<dyn Error>> {
-        let max_malicious = 2;
-        let msg = b"Hello? Is it me you're looking for?";
+    type PresigSimulationOutput = (
+        Scalar,
+        Polynomial,
+        Polynomial,
+        Polynomial,
+        Polynomial,
+        ProjectivePoint,
+        Scalar,
+    );
 
-        // Manually compute presignatures then deliver them to the signing function
-        let fx = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng)?;
-        // master secret key
-        let x = fx.eval_at_zero()?.0;
-        // master public key
-        let public_key = ProjectivePoint::GENERATOR * x;
-
+    fn simulate_presignature(
+        max_malicious: usize,
+    ) -> Result<PresigSimulationOutput, Box<dyn Error>> {
         // the presignatures scheme requires the generation of 5 different polynomials
         // (fk, fa, fb, fd, fe)
         // here we do not need fb as it is only used to mask some values before sending
@@ -166,6 +168,23 @@ mod test {
         let w = fa.eval_at_zero()?.0 * k;
         let w_invert = w.invert().unwrap();
 
+        Ok((w_invert, fa, fd, fe, fk, big_r, big_r_x_coordinate))
+    }
+
+    #[test]
+    fn test_sign_given_presignature() -> Result<(), Box<dyn Error>> {
+        let max_malicious = 2;
+        let msg = b"Hello? Is it me you're looking for?";
+
+        // Manually compute presignatures then deliver them to the signing function
+        let fx = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng)?;
+        // master secret key
+        let x = fx.eval_at_zero()?.0;
+        // master public key
+        let public_key = ProjectivePoint::GENERATOR * x;
+
+        let (w_invert, fa, fd, fe, fk, big_r, big_r_x_coordinate) =
+            simulate_presignature(max_malicious)?;
         let participants = generate_participants(5);
 
         let mut participants_presign = Vec::new();
@@ -189,6 +208,53 @@ mod test {
         let result = run_sign_without_rerandomization(participants_presign, public_key, msg)?;
         let sig = result[0].1.clone();
         let sig = ecdsa::Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
+
+        // verify the correctness of the generated signature
+        VerifyingKey::from(&PublicKey::from_affine(public_key.to_affine()).unwrap())
+            .verify(&msg[..], &sig)?;
+        Ok(())
+    }
+
+        #[test]
+    fn test_sign_given_presignature_with_rerandomization() -> Result<(), Box<dyn Error>> {
+        let max_malicious = 2;
+        let msg = b"Hello? Is it me you're looking for?";
+
+        // Manually compute presignatures then deliver them to the signing function
+        let fx = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng)?;
+        // master secret key
+        let x = fx.eval_at_zero()?.0;
+        // master public key
+        let public_key = frost_core::VerifyingKey::new(ProjectivePoint::GENERATOR * x);
+
+        let (w_invert, fa, fd, fe, fk, big_r, big_r_x_coordinate) =
+            simulate_presignature(max_malicious)?;
+        let participants = generate_participants(5);
+
+        let mut participants_presign = Vec::new();
+        // Simulate the each participant's presignature
+        for p in &participants {
+            let h_i = w_invert * fa.eval_at_participant(*p)?.0;
+            let alpha = h_i + fd.eval_at_participant(*p)?.0;
+            let beta = h_i * big_r_x_coordinate * fx.eval_at_participant(*p)?.0
+                + fe.eval_at_participant(*p)?.0;
+            let k = fk.eval_at_participant(*p)?.0;
+            // build the presignature
+            let presignature = PresignOutput {
+                big_r: big_r.to_affine(),
+                alpha,
+                beta,
+                k,
+            };
+            participants_presign.push((*p, presignature));
+        }
+
+        let (tweak, result) =
+            run_sign_with_rerandomization(participants_presign, public_key.to_element(), msg)?;
+        let sig = result[0].1.clone();
+        let sig = ecdsa::Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
+        // derive the public key
+        let public_key = tweak.derive_verifying_key(&public_key).to_element();
 
         // verify the correctness of the generated signature
         VerifyingKey::from(&PublicKey::from_affine(public_key.to_affine()).unwrap())
