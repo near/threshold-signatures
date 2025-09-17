@@ -92,32 +92,47 @@ The inputs to this phase are:
 
 **Round 1:**
 1. Each $P_i$ computes its signature share $s_i \gets \alpha_i * h + \beta_i \cdot R_\mathsf{x} + e_i$ where $R_\mathsf{x}$ is the x coordinate of $R$.
-2. $\star$ Each $P_i$ sends $s_i$ to every other party.
-3. $\bullet$ Each $P_i$ waits to receive $s_j$ from every other party.
-4. Each $P_i$ sums the received elements $s \gets \sum_j \lambda(\mathcal{P}_2)_j \cdot s_j$.
-5. $\blacktriangle$ Each $P_i$ *asserts* that $s\neq 0$
+2. $\star$ Each $P_i$ sends $s_i$ **only to the coordinator**.
+
+**Round 1 (Coordinator):**
+3. $\bullet$ The coordinator waits to receive $s_j$ from every other party.
+4. The coordinator sums the received elements $s \gets \sum_j \lambda(\mathcal{P}_2)_j \cdot s_j$.
+5. $\blacktriangle$ The coordinator *asserts* that $s\neq 0$
 6. Perform the low-S normalization, i.e. $s \gets -s$ if $s\in\\{\frac{q}{2}..~q-1\\}$
-7. $\blacktriangle$ Each $P_i$ asserts that $(R, s)$ is a valid ECDSA signature for $h$.
+7. $\blacktriangle$ The coordinator asserts that $(R, s)$ is a valid ECDSA signature for $h$.
 
 **Output:** the signature $(R, s)$.
 
 
-<!-- ## Differences with [[DJNPO20](https://eprint.iacr.org/2020/501)]
+# Differences with [[DJNPO20](https://eprint.iacr.org/2020/501)]
 
+Our specification introduces several modifications to the original paper, aimed at enhancing performance, security, and compatibility. The key changes are:
 
+1. Sign phase computation optimization
+2. Communication optimization
+3. Presignature rerandomization
+4. Outsourcing the message hash
 
-Rerandomization,
+Changes (1) and (2) improve the overall performance of the scheme. Change (3) strengthens the scheme's security, while change (4) enhances compatibility with external systems that rely on this library for signing operations.
 
-Linearization
+### Sign phase computation optimization
+We optimize the signing phase in two ways:
+1. We require from the sender to linearize the value $s_i$ before sending it.
+This amortizes the cost of computation for the receiver by $n-1$ lagrange coefficients computation and $n-1$ scalar multiplications.
+The receiver only has to sum up the received values.
 
-Coordinator
+2. We push part of the computation that happens in the signing phase in [[DJNPO20](https://eprint.iacr.org/2020/501)] to the presigning phase.
+This is represented for instance with steps 14 and 15 in round 3 of the presigning phase.
 
-The original paper pushes parts of the presignature computations in the previous lines to the signing round. We do not do so to reduce the computation time in the online phase
+### Communication optimization
+The original paper does not consider the existence of a coordinator and treats all the participants symmetrically.
+Such choice can overload the network with $O(n^2)$ messages. Instead, we make the Signing phase asymmetric and require
+that each of the parties would only send their shares to the coordinator which combines them in the corresponding way.
 
-Raw Hashes
+### Presignature rerandomization and key derivation
+Following the recommendation of [[GS21](https://eprint.iacr.org/2021/1330.pdf)] we rerandomize the presignature to make the Wagner attack practically infeasible.
+The key derivation is a feature that allows the holder of a secret key to derive multiple secret keys for different applications (e.g. an MPC node holding a secret key share that uses to derive several clients secret key shares).
+We leave the exercice to the reader to get convinced that the rerandomized scheme remains correct.
 
-The original paper performs si = hi(m + r*xi) + ci where ci = m*di + ei
-But we thought it is better to perform the following (computation-wise):
-si = hi * m  + r*xi*hi + m*di + ei
-   = m* (hi+di) + (r*xi*hi  + ei)
-   = m * alpha_i + beta_i -->
+### Outsourcing the message hash
+Giving the signing phase raw hashes as inputs instead of the original messages are extremely beneficial for many use cases, namely, where the signing nodes receive a hashed payload and are required to generate a signature that is valid for a "universal verifier". Note that such interface is quite common in cryptographic libraries and has been intensively studied for the non-distributed case in [[PR24](https://link.springer.com/chapter/10.1007/978-3-031-57718-5_10)] and [[R25](https://www.research-collection.ethz.ch/bitstream/handle/20.500.11850/729349/uploaded-version.pdf?sequence=1)].
