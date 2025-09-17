@@ -1,6 +1,6 @@
 //! This module wraps a signature generation functionality from `Frost` library
 //!  into `cait-sith::Protocol` representation.
-use super::{KeygenOutput, Signature};
+use super::{KeygenOutput, SignatureOption};
 use crate::participants::{ParticipantCounter, ParticipantList};
 use crate::protocol::errors::{InitializationError, ProtocolError};
 use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
@@ -48,7 +48,7 @@ async fn do_sign_coordinator(
     me: Participant,
     keygen_output: KeygenOutput,
     message: Vec<u8>,
-) -> Result<Signature, ProtocolError> {
+) -> Result<SignatureOption, ProtocolError> {
     let mut seen = ParticipantCounter::new(&participants);
     let mut rng = OsRng;
 
@@ -137,7 +137,7 @@ async fn do_sign_participant(
     coordinator: Participant,
     keygen_output: KeygenOutput,
     message: Vec<u8>,
-) -> Result<Signature, ProtocolError> {
+) -> Result<SignatureOption, ProtocolError> {
     let mut rng = OsRng;
     if coordinator == me {
         return Err(ProtocolError::AssertionFailed(
@@ -208,7 +208,7 @@ pub fn sign(
     coordinator: Participant,
     keygen_output: KeygenOutput,
     message: Vec<u8>,
-) -> Result<impl Protocol<Output = Signature>, InitializationError> {
+) -> Result<impl Protocol<Output = SignatureOption>, InitializationError> {
     if participants.len() < 2 {
         return Err(InitializationError::NotEnoughParticipants {
             participants: participants.len(),
@@ -254,7 +254,7 @@ async fn fut_wrapper(
     coordinator: Participant,
     keygen_output: KeygenOutput,
     message: Vec<u8>,
-) -> Result<Signature, ProtocolError> {
+) -> Result<SignatureOption, ProtocolError> {
     if me == coordinator {
         do_sign_coordinator(chan, participants, threshold, me, keygen_output, message).await
     } else {
@@ -276,7 +276,7 @@ mod test {
     use std::error::Error;
 
     fn assert_single_coordinator_result(
-        data: Vec<(Participant, super::Signature)>,
+        data: Vec<(Participant, super::SignatureOption)>,
     ) -> frost_ed25519::Signature {
         let mut signature = None;
         let count = data
