@@ -100,24 +100,3 @@ The inputs to this phase are:
 7. $\blacktriangle$ Each $P_i$ asserts that $(R, s)$ is a valid ECDSA signature for $h$.
 
 **Output:** the signature $(R, s)$.
-
-
-<!-- ## Differences with [[DJNPO20](https://eprint.iacr.org/2020/501)]
-
-
-
-Rerandomization,
-
-Linearization
-
-Coordinator
-
-The original paper pushes parts of the presignature computations in the previous lines to the signing round. We do not do so to reduce the computation time in the online phase
-
-Raw Hashes
-
-The original paper performs si = hi(m + r*xi) + ci where ci = m*di + ei
-But we thought it is better to perform the following (computation-wise):
-si = hi * m  + r*xi*hi + m*di + ei
-   = m* (hi+di) + (r*xi*hi  + ei)
-   = m * alpha_i + beta_i -->
