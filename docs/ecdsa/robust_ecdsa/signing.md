@@ -128,13 +128,13 @@ This is represented for instance with steps 14 and 15 in round 3 of the presigni
 
 ### Communication optimization
 The original paper does not consider the existence of a coordinator and treats all the participants symmetrically.
-Such choice can overload the network with $O(n^2)$ messages. Instead, we make the Signing phase asymmetric and require
+Such choice can overload the network with $O(n^2)$ messages. Instead, we make the signing phase asymmetric and require
 that each of the parties would only send their shares to the coordinator which combines them in the corresponding way.
 
 ### Presignature rerandomization and key derivation
-Following the recommendation of [[GS21](https://eprint.iacr.org/2021/1330.pdf)] we rerandomize the presignature to make the Wagner attack practically infeasible.
+Following [[GS21](https://eprint.iacr.org/2021/1330.pdf)]'s recommendation, we rerandomize the presignature to make the Wagner attack practically infeasible.
 The key derivation is a feature that allows the holder of a secret key to derive multiple secret keys for different applications (e.g. an MPC node holding a secret key share that uses to derive several clients secret key shares).
-We leave the exercice to the reader to get convinced that the rerandomized scheme remains correct.
+The scheme remains correct after this rerandomization and key derivation. We leave the proof as an exercice for the reader.
 
 ### Outsourcing the message hash
-Giving the signing phase raw hashes as inputs instead of the original messages are extremely beneficial for many use cases, namely, where the signing nodes receive a hashed payload and are required to generate a signature that is valid for a "universal verifier". Note that such interface is quite common in cryptographic libraries and has been intensively studied for the non-distributed case in [[PR24](https://link.springer.com/chapter/10.1007/978-3-031-57718-5_10)] and [[R25](https://www.research-collection.ethz.ch/bitstream/handle/20.500.11850/729349/uploaded-version.pdf?sequence=1)].
+Providing the signing phase with raw hashes as inputs instead of the original messages is beneficial for many use cases, e.g., the signing nodes receive a hashed payload and are required to generate a signature that is valid for a "universal verifier". Note that such API is quite common in cryptographic libraries and has been intensively studied for the non-distributed case in [[PR24](https://link.springer.com/chapter/10.1007/978-3-031-57718-5_10)] and [[R25](https://www.research-collection.ethz.ch/bitstream/handle/20.500.11850/729349/uploaded-version.pdf?sequence=1)].
