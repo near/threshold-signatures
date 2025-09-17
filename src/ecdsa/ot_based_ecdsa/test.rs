@@ -4,6 +4,10 @@ use super::{
     triples::{test::deal, TriplePub, TripleShare},
     PresignArguments, PresignOutput,
 };
+use crate::ecdsa::{
+    Element, KeygenOutput, ParticipantList, RerandomizationArguments, Secp256K1Sha256, Signature,
+    Tweak,
+};
 use crate::protocol::{run_protocol, Participant, Protocol};
 use crate::test::{
     assert_public_key_invariant, generate_participants, generate_participants_with_random_ids,
@@ -12,17 +16,12 @@ use crate::test::{
 use crate::{
     crypto::hash::test::scalar_hash_secp256k1, ecdsa::ot_based_ecdsa::RerandomizedPresignOutput,
 };
-use crate::{
-    ecdsa::{
-        Element, KeygenOutput, ParticipantList, RerandomizationArguments, Secp256K1Sha256,
-        Signature,
-    },
-    Tweak,
-};
+
 use rand_core::{OsRng, RngCore};
 use std::error::Error;
 
 /// Runs signing by calling the generic run_sign function from crate::test
+/// This signing does not rerandomize the presignatures and tests only the core protocol
 pub fn run_sign_without_rerandomization(
     participants_presign: Vec<(Participant, PresignOutput)>,
     public_key: Element,
@@ -52,7 +51,7 @@ pub fn run_sign_without_rerandomization(
     )
 }
 
-type SigWithRerand = (Tweak<Secp256K1Sha256>, Vec<(Participant, Signature)>);
+type SigWithRerand = (Tweak, Vec<(Participant, Signature)>);
 /// Runs signing by calling the generic run_sign function from crate::test
 /// This signing mimics what should happen in real world, i.e.,
 /// rerandomizing the presignatures
@@ -283,7 +282,6 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     run_sign_without_rerandomization(presign_result, public_key.to_element(), msg)?;
     Ok(())
 }
-
 
 #[test]
 fn test_e2e_random_identifiers_with_rerandomization() -> Result<(), Box<dyn Error>> {
