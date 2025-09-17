@@ -27,18 +27,3 @@ pub struct PresignOutput {
     pub alpha_i: Scalar,
     pub beta_i: Scalar,
 }
-
-/// The output of the presigning protocol.
-/// Contains the signature precomputed elements
-/// independently of the message
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RerandomizedPresignOutput {
-    /// The public nonce commitment.
-    big_r: AffinePoint,
-
-    /// Our secret shares of the nonces.
-    alpha_i: Scalar,
-    beta_i: Scalar,
-}
-
-// Add deriving the public key
