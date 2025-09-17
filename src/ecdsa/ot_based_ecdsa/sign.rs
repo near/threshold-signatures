@@ -114,10 +114,10 @@ async fn do_sign(
 
 #[cfg(test)]
 mod test {
-    use super::{x_coordinate, RerandomizedPresignOutput};
+    use super::x_coordinate;
     use crate::{
         ecdsa::{
-            ot_based_ecdsa::{test::run_sign, PresignOutput},
+            ot_based_ecdsa::{test::run_sign_without_rerandomization, PresignOutput},
             Polynomial,
         },
         test::generate_participants,
@@ -153,12 +153,10 @@ mod test {
                 k: g.eval_at_participant(*p)?.0,
                 sigma: h.eval_at_participant(*p)?.0,
             };
-            let presignature =
-                RerandomizedPresignOutput::new_without_rerandomization(&presignature);
             participants_presign.push((*p, presignature));
         }
 
-        let result = run_sign(participants_presign, public_key, msg)?;
+        let result = run_sign_without_rerandomization(participants_presign, public_key, msg)?;
         let sig = &result[0].1;
         let sig = ecdsa::Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
         VerifyingKey::from(&PublicKey::from_affine(public_key.to_affine())?).verify(msg, &sig)?;
