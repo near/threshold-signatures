@@ -27,9 +27,9 @@ pub struct PresignOutput {
     pub big_r: AffinePoint,
 
     /// Our secret shares of the nonces.
-    pub k_i: Scalar,
-    pub alpha_i: Scalar,
-    pub beta_i: Scalar,
+    pub k: Scalar,
+    pub alpha: Scalar,
+    pub beta: Scalar,
 }
 
 /// The output of the presigning protocol.
@@ -41,8 +41,8 @@ pub struct RerandomizedPresignOutput {
     big_r: AffinePoint,
 
     /// Our rerandomized secret shares of the nonces.
-    alpha_i: Scalar,
-    beta_i: Scalar,
+    alpha: Scalar,
+    beta: Scalar,
 }
 
 impl RerandomizedPresignOutput {
@@ -55,23 +55,25 @@ impl RerandomizedPresignOutput {
             return Err(ProtocolError::IncompatibleRerandomizationInputs);
         }
         let delta = args.derive_randomness();
-        let rerandomized_big_r = presignature.big_r * delta;
         let inv_delta = delta.invert();
         if inv_delta.is_none().into() {
             return Err(ProtocolError::AssertionFailed(
                 "expected a non-zero randomness".to_string(),
             ));
         }
-
         // cannot fail due to the previous check
         let inv_delta = inv_delta.unwrap();
 
-        let rerandomized_alpha_i =
-            (presignature.alpha_i + tweak.value() * presignature.k_i) * inv_delta;
+        // delta . R
+        let rerandomized_big_r = presignature.big_r * delta;
+
+        // (alpha + tweak * k) * delta^{-1}
+        let rerandomized_alpha = (presignature.alpha + tweak.value() * presignature.k) * inv_delta;
+
         Ok(RerandomizedPresignOutput {
             big_r: rerandomized_big_r.into(),
-            alpha_i: rerandomized_alpha_i,
-            beta_i: presignature.beta_i,
+            alpha: rerandomized_alpha,
+            beta: presignature.beta,
         })
     }
 
@@ -81,8 +83,8 @@ impl RerandomizedPresignOutput {
     pub fn new_without_rerandomization(presignature: PresignOutput) -> Self {
         RerandomizedPresignOutput {
             big_r: presignature.big_r,
-            alpha_i: presignature.alpha_i,
-            beta_i: presignature.beta_i,
+            alpha: presignature.alpha,
+            beta: presignature.beta,
         }
     }
 }

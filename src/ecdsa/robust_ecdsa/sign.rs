@@ -61,7 +61,7 @@ async fn do_sign(
     presignature: RerandomizedPresignOutput,
     msg_hash: Scalar,
 ) -> Result<Signature, ProtocolError> {
-    let s_me = msg_hash * presignature.alpha_i + presignature.beta_i;
+    let s_me = msg_hash * presignature.alpha + presignature.beta;
     let s_me = SerializableScalar(s_me);
 
     let wait_round = chan.next_waitpoint();
@@ -172,16 +172,16 @@ mod test {
         // Simulate the each participant's presignature
         for p in &participants {
             let h_i = w_invert * fa.eval_at_participant(*p)?.0;
-            let alpha_i = h_i + fd.eval_at_participant(*p)?.0;
-            let beta_i = h_i * big_r_x_coordinate * fx.eval_at_participant(*p)?.0
+            let alpha = h_i + fd.eval_at_participant(*p)?.0;
+            let beta = h_i * big_r_x_coordinate * fx.eval_at_participant(*p)?.0
                 + fe.eval_at_participant(*p)?.0;
-            let k_i = fk.eval_at_participant(*p)?.0;
+            let k = fk.eval_at_participant(*p)?.0;
             // build the presignature
             let presignature = PresignOutput {
                 big_r: big_r.to_affine(),
-                alpha_i,
-                beta_i,
-                k_i,
+                alpha,
+                beta,
+                k,
             };
             participants_presign.push((*p, presignature));
         }
