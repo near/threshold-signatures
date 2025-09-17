@@ -18,12 +18,42 @@ pub use frost_secp256k1;
 #[cfg(test)]
 mod test;
 
+type Scalar<C> = frost_core::Scalar<C>;
+
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(bound = "C: Ciphersuite")]
 /// Generic type of key pairs
 pub struct KeygenOutput<C: Ciphersuite> {
     pub private_share: SigningShare<C>,
     pub public_key: VerifyingKey<C>,
+}
+
+/// This is a necessary element to be able to derive different keys
+/// from signing shares.
+/// We do not bind the user with the way to compute the inner scalar of the tweak
+pub struct Tweak<C: Ciphersuite>(Scalar<C>);
+
+impl<C: Ciphersuite> Tweak<C> {
+    pub fn new(tweak: Scalar<C>) -> Self {
+        Tweak(tweak)
+    }
+
+    /// Outputs the inner value of the tweak
+    pub fn value(&self) -> Scalar<C> {
+        self.0
+    }
+
+    /// Derives the signing share
+    pub fn derive_signing_share(&self, private_share: &SigningShare<C>) -> SigningShare<C> {
+        let derived_share = private_share.to_scalar() + self.value();
+        SigningShare::new(derived_share)
+    }
+
+    /// Derives the verifying key
+    pub fn derive_verifying_key(&self, public_key: &VerifyingKey<C>) -> VerifyingKey<C> {
+        let derived_share = public_key.to_element() + C::Group::generator() * self.value();
+        VerifyingKey::new(derived_share)
+    }
 }
 
 /// Generic key generation function agnostic of the curve
@@ -119,7 +149,7 @@ where
 
 // Libraries calls
 use crypto::ciphersuite::Ciphersuite;
-use frost_core::{keys::SigningShare, VerifyingKey};
+use frost_core::{keys::SigningShare, Group, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use std::marker::Send;
 
