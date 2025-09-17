@@ -283,3 +283,26 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     run_sign_without_rerandomization(presign_result, public_key.to_element(), msg)?;
     Ok(())
 }
+
+
+#[test]
+fn test_e2e_random_identifiers_with_rerandomization() -> Result<(), Box<dyn Error>> {
+    let participants_count = 3;
+    let participants = generate_participants_with_random_ids(participants_count);
+    let threshold = 3;
+
+    let key_packages = run_keygen(&participants.clone(), threshold)?;
+    assert_public_key_invariant(&key_packages);
+
+    let public_key = key_packages[0].1.public_key;
+
+    let (pub0, shares0) = deal(&mut OsRng, &participants, threshold)?;
+    let (pub1, shares1) = deal(&mut OsRng, &participants, threshold)?;
+
+    let presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, threshold)?;
+
+    let msg = b"hello world";
+    // internally verifies the signature's validity
+    run_sign_with_rerandomization(presign_result, public_key.to_element(), msg)?;
+    Ok(())
+}
