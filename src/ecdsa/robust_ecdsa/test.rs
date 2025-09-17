@@ -243,3 +243,21 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     run_sign_without_rerandomization(presign_result, public_key.to_element(), msg)?;
     Ok(())
 }
+
+#[test]
+fn test_e2e_random_identifiers_with_rerandomization() -> Result<(), Box<dyn Error>> {
+    let participants_count = 7;
+    let participants = generate_participants_with_random_ids(participants_count);
+    let max_malicious = 3;
+
+    let keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;
+    assert_public_key_invariant(&keygen_result);
+
+    let public_key = keygen_result[0].1.public_key;
+    assert_public_key_invariant(&keygen_result);
+    let presign_result = run_presign(keygen_result, max_malicious)?;
+
+    let msg = b"hello world";
+    run_sign_with_rerandomization(presign_result, public_key.to_element(), msg)?;
+    Ok(())
+}
