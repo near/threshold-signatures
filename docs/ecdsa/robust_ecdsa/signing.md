@@ -136,3 +136,4 @@ The scheme remains correct after this rerandomization and key derivation. We lea
 
 ### Outsourcing the message hash
 Providing the signing phase with raw hashes as inputs instead of the original messages is beneficial for many use cases, e.g., the signing nodes receive a hashed payload and are required to generate a signature that is valid for a "universal verifier". Note that such API is quite common in cryptographic libraries and has been intensively studied for the non-distributed case in [[PR24](https://link.springer.com/chapter/10.1007/978-3-031-57718-5_10)] and [[R25](https://www.research-collection.ethz.ch/bitstream/handle/20.500.11850/729349/uploaded-version.pdf?sequence=1)].
+As for this scheme, the proof can be adapted with raw hashes.
