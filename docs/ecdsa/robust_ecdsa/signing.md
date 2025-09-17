@@ -88,7 +88,7 @@ The inputs to this phase are:
 
     * $R  \gets R^\delta$
     * $\alpha_i \gets \alpha_i \cdot \delta^{-1}$
-    * $\beta_i \gets \beta_i + c_i \cdot \epsilon \cdot \delta^{-1}$
+    * $\beta_i \gets (\beta_i + c_i \cdot \epsilon) \cdot \delta^{-1}$
 
 **Round 1:**
 1. Each $P_i$ computes its signature share $s_i \gets \alpha_i * h + \beta_i \cdot R_\mathsf{x} + e_i$ where $R_\mathsf{x}$ is the x coordinate of $R$.
