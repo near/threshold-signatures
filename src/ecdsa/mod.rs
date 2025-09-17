@@ -266,22 +266,9 @@ mod test_verify {
         let mut entropy: [u8; 32] = [0u8; 32];
         OsRng.fill_bytes(&mut entropy);
 
-        let args = RerandomizationArguments::new(
-            &pk,
-            &msg_hash,
-            &big_r,
-            &participants,
-            entropy
-        );
+        let args = RerandomizationArguments::new(&pk, &msg_hash, &big_r, &participants, entropy);
         let delta = args.derive_randomness();
-        (
-            pk,
-            big_r,
-            msg_hash,
-            participants,
-            entropy,
-            delta,
-        )
+        (pk, big_r, msg_hash, participants, entropy, delta)
     }
 
     #[test]
@@ -292,13 +279,7 @@ mod test_verify {
         // different pk
         let (_, pk) = <C>::generate_nonce(&mut OsRng);
         let pk = pk.to_affine();
-        let args = RerandomizationArguments::new(
-            &pk,
-            &msg_hash,
-            &big_r,
-            &participants,
-            entropy
-        );
+        let args = RerandomizationArguments::new(&pk, &msg_hash, &big_r, &participants, entropy);
         let delta_prime = args.derive_randomness();
         assert!(delta != delta_prime);
     }
@@ -309,13 +290,7 @@ mod test_verify {
         let (pk, big_r, _, participants, entropy, delta) = compute_random_outputs(num_participants);
         let msg_hash = Scalar::generate_vartime(&mut OsRng);
         // different msg_hash
-        let args = RerandomizationArguments::new(
-            &pk,
-            &msg_hash,
-            &big_r,
-            &participants,
-            entropy
-        );
+        let args = RerandomizationArguments::new(&pk, &msg_hash, &big_r, &participants, entropy);
         let delta_prime = args.derive_randomness();
         assert!(delta != delta_prime);
     }
@@ -328,13 +303,7 @@ mod test_verify {
         // different big_r
         let (_, big_r) = <C>::generate_nonce(&mut OsRng);
         let big_r = big_r.to_affine();
-        let args = RerandomizationArguments::new(
-            &pk,
-            &msg_hash,
-            &big_r,
-            &participants,
-            entropy
-        );
+        let args = RerandomizationArguments::new(&pk, &msg_hash, &big_r, &participants, entropy);
         let delta_prime = args.derive_randomness();
         assert!(delta != delta_prime);
     }
@@ -346,13 +315,7 @@ mod test_verify {
         // different participants set
         let participants = generate_participants_with_random_ids(num_participants);
         let participants = ParticipantList::new(&participants).unwrap();
-        let args = RerandomizationArguments::new(
-            &pk,
-            &msg_hash,
-            &big_r,
-            &participants,
-            entropy
-        );
+        let args = RerandomizationArguments::new(&pk, &msg_hash, &big_r, &participants, entropy);
         let delta_prime = args.derive_randomness();
         assert!(delta != delta_prime);
     }
@@ -366,13 +329,7 @@ mod test_verify {
         // different entropy
         let mut entropy: [u8; 32] = [0u8; 32];
         OsRng.fill_bytes(&mut entropy);
-        let args = RerandomizationArguments::new(
-            &pk,
-            &msg_hash,
-            &big_r,
-            &participants,
-            entropy
-        );
+        let args = RerandomizationArguments::new(&pk, &msg_hash, &big_r, &participants, entropy);
         let delta_prime = args.derive_randomness();
         assert!(delta != delta_prime);
     }
@@ -389,13 +346,7 @@ mod test_verify {
         let mut participants = participants.participants().to_vec();
         participants.shuffle(&mut rng);
         let participants = ParticipantList::new(&participants).unwrap();
-        let args = RerandomizationArguments::new(
-            &pk,
-            &msg_hash,
-            &big_r,
-            &participants,
-            entropy
-        );
+        let args = RerandomizationArguments::new(&pk, &msg_hash, &big_r, &participants, entropy);
         let delta_prime = args.derive_randomness();
         assert!(delta == delta_prime);
     }
