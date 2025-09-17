@@ -209,7 +209,7 @@ mod test {
         Ok(())
     }
 
-        #[test]
+    #[test]
     fn test_sign_given_presignature_with_rerandomization() -> Result<(), Box<dyn Error>> {
         let max_malicious = 2;
         let msg = b"Hello? Is it me you're looking for?";
@@ -270,8 +270,10 @@ mod test {
                     *p,
                     PresignOutput {
                         big_r: ProjectivePoint::IDENTITY.to_affine(),
-                        alpha_i: Secp256K1ScalarField::zero(),
-                        beta_i: Secp256K1ScalarField::zero(),
+                        alpha: Secp256K1ScalarField::zero(),
+                        beta: Secp256K1ScalarField::zero(),
+                        c: Secp256K1ScalarField::zero(),
+                        e: Secp256K1ScalarField::zero(),
                     },
                 )
             })
@@ -280,7 +282,11 @@ mod test {
         let public_key = ProjectivePoint::IDENTITY;
         let msg = [0u8; 32]; // arbitrary zero message
 
-        let result = crate::ecdsa::robust_ecdsa::test::run_sign(presignatures, public_key, &msg);
+        let result = crate::ecdsa::robust_ecdsa::test::run_sign_without_rerandomization(
+            presignatures,
+            public_key,
+            &msg,
+        );
 
         match result {
             Ok(_) => panic!("expected failure, got success"),
