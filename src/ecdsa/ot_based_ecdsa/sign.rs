@@ -1,7 +1,7 @@
 use elliptic_curve::scalar::IsHigh;
 use subtle::ConditionallySelectable;
 
-use super::PresignOutput;
+use super::RerandomizedPresignOutput;
 use crate::{
     ecdsa::{x_coordinate, AffinePoint, Scalar, Secp256K1Sha256, Signature},
     participants::{ParticipantCounter, ParticipantList},
@@ -21,7 +21,7 @@ pub fn sign(
     participants: &[Participant],
     me: Participant,
     public_key: AffinePoint,
-    presignature: PresignOutput,
+    presignature: RerandomizedPresignOutput,
     msg_hash: Scalar,
 ) -> Result<impl Protocol<Output = Signature>, InitializationError> {
     if participants.len() < 2 {
@@ -56,7 +56,7 @@ async fn do_sign(
     participants: ParticipantList,
     me: Participant,
     public_key: AffinePoint,
-    presignature: PresignOutput,
+    presignature: RerandomizedPresignOutput,
     msg_hash: Scalar,
 ) -> Result<Signature, ProtocolError> {
     // Round 1
@@ -114,9 +114,13 @@ async fn do_sign(
 
 #[cfg(test)]
 mod test {
-    use super::{x_coordinate, PresignOutput};
+    use super::{x_coordinate, RerandomizedPresignOutput};
     use crate::{
-        ecdsa::ot_based_ecdsa::test::run_sign, ecdsa::Polynomial, test::generate_participants,
+        ecdsa::{
+            ot_based_ecdsa::{test::run_sign, PresignOutput},
+            Polynomial,
+        },
+        test::generate_participants,
     };
     use k256::{ecdsa::signature::Verifier, ecdsa::VerifyingKey, ProjectivePoint, PublicKey};
     use rand_core::OsRng;
@@ -134,7 +138,7 @@ mod test {
         let g = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng)?;
 
         let k = g.eval_at_zero()?.0;
-        let big_k = (ProjectivePoint::GENERATOR * k.invert().unwrap()).to_affine();
+        let big_r = (ProjectivePoint::GENERATOR * k.invert().unwrap()).to_affine();
 
         let sigma = k * x;
 
@@ -145,10 +149,12 @@ mod test {
         let mut participants_presign = Vec::new();
         for p in &participants {
             let presignature = PresignOutput {
-                big_r: big_k,
+                big_r,
                 k: g.eval_at_participant(*p)?.0,
                 sigma: h.eval_at_participant(*p)?.0,
             };
+            let presignature =
+                RerandomizedPresignOutput::new_without_rerandomization(&presignature);
             participants_presign.push((*p, presignature));
         }
 
