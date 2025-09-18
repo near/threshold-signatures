@@ -49,14 +49,14 @@ pub(crate) fn x_coordinate(point: &AffinePoint) -> Scalar {
 ///
 /// This signature supports all variants by containing big_r entirely
 #[derive(Clone)]
-pub struct Signature {
+pub struct SignatureCore {
     /// This is the entire first point.
     pub big_r: AffinePoint,
     /// This is the second scalar, normalized to be in the lower range.
     pub s: Scalar,
 }
 
-impl Signature {
+impl SignatureCore {
     #[must_use]
     // This verification tests the signature including whether s has been normalized
     pub fn verify(&self, public_key: &AffinePoint, msg_hash: &Scalar) -> bool {
@@ -73,7 +73,7 @@ impl Signature {
 }
 
 /// None for participants and Some for coordinator
-pub type SignatureOption = Option<Signature>;
+pub type Signature = Option<SignatureCore>;
 
 /// The arguments used to derive randomness used for presignature rerandomization.
 /// Presignature rerandomization has been thoroughly described in
@@ -213,7 +213,7 @@ mod test_verify {
         let big_r =
             ProjectivePoint::lincomb(&ProjectivePoint::GENERATOR, &u1, &pk, &u2).to_affine();
 
-        let full_sig = Signature {
+        let full_sig = SignatureCore {
             big_r,
             s: *s.as_ref(),
         };

@@ -6,12 +6,12 @@ use super::{
 };
 use crate::ecdsa::{
     Element, KeygenOutput, ParticipantList, RerandomizationArguments, Secp256K1Sha256, Signature,
-    Tweak,
+    SignatureCore, Tweak,
 };
 use crate::protocol::{run_protocol, Participant, Protocol};
 use crate::test::{
     assert_public_key_invariant, generate_participants, generate_participants_with_random_ids,
-    run_keygen, run_refresh, run_reshare,
+    one_coordinator_output, run_keygen, run_refresh, run_reshare,
 };
 use crate::{
     crypto::hash::test::scalar_hash_secp256k1, ecdsa::ot_based_ecdsa::RerandomizedPresignOutput,
@@ -26,7 +26,7 @@ pub fn run_sign_without_rerandomization(
     participants_presign: Vec<(Participant, PresignOutput)>,
     public_key: Element,
     msg: &[u8],
-) -> Result<Vec<(Participant, Signature)>, Box<dyn Error>> {
+) -> Result<(Participant, SignatureCore), Box<dyn Error>> {
     // hash the message into secp256k1 field
     let msg_hash = scalar_hash_secp256k1(msg);
     let rerand_participants_presign = participants_presign
@@ -38,20 +38,28 @@ pub fn run_sign_without_rerandomization(
             )
         })
         .collect::<Vec<_>>();
+
+    // choose a coordinator at random
+    let index = OsRng.next_u32() % participants_presign.len() as u32;
+    let coordinator = participants_presign[index as usize].0;
+
     // run sign instanciation with the necessary arguments
-    crate::test::run_sign::<Secp256K1Sha256, _, _, _>(
+    let result = crate::test::run_sign::<Secp256K1Sha256, _, _, _>(
         rerand_participants_presign,
+        coordinator,
         public_key,
         msg_hash,
-        |participants, me, pk, presignature, msg_hash| {
+        |participants, coordinator, me, pk, presignature, msg_hash| {
             let pk = pk.to_affine();
-            sign(participants, me, pk, presignature, msg_hash)
+            sign(participants, coordinator, me, pk, presignature, msg_hash)
                 .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = Signature>>)
         },
-    )
+    )?;
+    // test one single some for the coordinator
+    let signature = one_coordinator_output(result, coordinator)?;
+    Ok((coordinator, signature))
 }
 
-type SigWithRerand = (Tweak, Vec<(Participant, Signature)>);
 /// Runs signing by calling the generic run_sign function from crate::test
 /// This signing mimics what should happen in real world, i.e.,
 /// rerandomizing the presignatures
@@ -59,7 +67,7 @@ pub fn run_sign_with_rerandomization(
     participants_presign: Vec<(Participant, PresignOutput)>,
     public_key: Element,
     msg: &[u8],
-) -> Result<SigWithRerand, Box<dyn Error>> {
+) -> Result<(Tweak, Participant, SignatureCore), Box<dyn Error>> {
     // hash the message into secp256k1 field
     let msg_hash = scalar_hash_secp256k1(msg);
 
@@ -88,18 +96,27 @@ pub fn run_sign_with_rerandomization(
             RerandomizedPresignOutput::new(presig, &tweak, &rerand_args).map(|out| (*p, out))
         })
         .collect::<Result<_, _>>()?;
+
+    // choose a coordinator at random
+    let index = OsRng.next_u32() % participants_presign.len() as u32;
+    let coordinator = participants_presign[index as usize].0;
+
     // run sign instanciation with the necessary arguments
-    let vec = crate::test::run_sign::<Secp256K1Sha256, _, _, _>(
+    let result = crate::test::run_sign::<Secp256K1Sha256, _, _, _>(
         rerand_participants_presign,
+        coordinator,
         derived_pk,
         msg_hash,
-        |participants, me, pk, presignature, msg_hash| {
+        |participants, coordinator, me, pk, presignature, msg_hash| {
             let pk = pk.to_affine();
-            sign(participants, me, pk, presignature, msg_hash)
+            sign(participants, coordinator, me, pk, presignature, msg_hash)
                 .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = Signature>>)
         },
     )?;
-    Ok((tweak, vec))
+
+    // test one single some for the coordinator
+    let signature = one_coordinator_output(result, coordinator)?;
+    Ok((tweak, coordinator, signature))
 }
 
 pub fn run_presign(
