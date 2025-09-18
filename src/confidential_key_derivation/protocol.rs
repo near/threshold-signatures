@@ -121,12 +121,14 @@ pub fn ckd(
         return Err(InitializationError::DuplicateParticipants);
     };
 
-    // ensure my presence in the participant list
+    // ensure the coordinator is a participant
     if !participants.contains(me) {
-        return Err(InitializationError::BadParameters(format!(
-            "participant list must contain {me:?}"
-        )));
+        return Err(InitializationError::MissingParticipant {
+            role: "me",
+            participant: me,
+        });
     };
+
     // ensure the coordinator is a participant
     if !participants.contains(coordinator) {
         return Err(InitializationError::MissingParticipant {

@@ -28,20 +28,20 @@ pub fn sign(
     msg_hash: Scalar,
 ) -> Result<impl Protocol<Output = SignatureOption>, InitializationError> {
     if participants.len() < 2 {
-        return Err(InitializationError::BadParameters(format!(
-            "participant count cannot be < 2, found: {}",
-            participants.len()
-        )));
+        return Err(InitializationError::NotEnoughParticipants {
+            participants: participants.len(),
+        });
     };
 
-    let participants = ParticipantList::new(participants).ok_or_else(|| {
-        InitializationError::BadParameters("participant list cannot contain duplicates".to_string())
-    })?;
+    let participants =
+        ParticipantList::new(participants).ok_or(InitializationError::DuplicateParticipants)?;
 
+    // ensure the coordinator is a participant
     if !participants.contains(me) {
-        return Err(InitializationError::BadParameters(
-            "participant list does not contain me".to_string(),
-        ));
+        return Err(InitializationError::MissingParticipant {
+            role: "me",
+            participant: me,
+        });
     };
 
     // ensure the coordinator is a participant
@@ -251,8 +251,7 @@ mod test {
             participants_presign.push((*p, presignature));
         }
 
-        let result = run_sign_without_rerandomization(participants_presign, public_key, msg)?;
-        let sig = result.1.clone();
+        let (_, sig) = run_sign_without_rerandomization(participants_presign, public_key, msg)?;
         let sig = ecdsa::Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
 
         // verify the correctness of the generated signature
