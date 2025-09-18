@@ -31,7 +31,7 @@ pub fn run_sign_without_rerandomization(
     let coordinator = participants_presign[index as usize].0;
 
     // run sign instanciation with the necessary arguments
-    let result = crate::test::run_asymmetric_sign::<Secp256K1Sha256, _, _, _>(
+    let result = crate::test::run_sign::<Secp256K1Sha256, _, _, _>(
         participants_presign,
         coordinator,
         public_key,
@@ -92,7 +92,7 @@ pub fn run_sign_with_rerandomization(
     let coordinator = participants_presign[index as usize].0;
 
     // run sign instanciation with the necessary arguments
-    let result = crate::test::run_asymmetric_sign::<Secp256K1Sha256, _, _, _>(
+    let result = crate::test::run_sign::<Secp256K1Sha256, _, _, _>(
         rerand_participants_presign,
         coordinator,
         derived_pk,
