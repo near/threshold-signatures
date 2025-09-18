@@ -6,7 +6,7 @@ use super::{
 };
 use crate::ecdsa::{
     Element, KeygenOutput, ParticipantList, RerandomizationArguments, Secp256K1Sha256, Signature,
-    Tweak,
+    SignatureCore, Tweak,
 };
 use crate::protocol::{run_protocol, Participant, Protocol};
 use crate::test::{
@@ -26,7 +26,7 @@ pub fn run_sign_without_rerandomization(
     participants_presign: Vec<(Participant, PresignOutput)>,
     public_key: Element,
     msg: &[u8],
-) -> Result<Vec<(Participant, Signature)>, Box<dyn Error>> {
+) -> Result<(Participant, SignatureCore), Box<dyn Error>> {
     // hash the message into secp256k1 field
     let msg_hash = scalar_hash_secp256k1(msg);
     let rerand_participants_presign = participants_presign
@@ -51,7 +51,6 @@ pub fn run_sign_without_rerandomization(
     )
 }
 
-type SigWithRerand = (Tweak, Vec<(Participant, Signature)>);
 /// Runs signing by calling the generic run_sign function from crate::test
 /// This signing mimics what should happen in real world, i.e.,
 /// rerandomizing the presignatures
@@ -59,7 +58,7 @@ pub fn run_sign_with_rerandomization(
     participants_presign: Vec<(Participant, PresignOutput)>,
     public_key: Element,
     msg: &[u8],
-) -> Result<SigWithRerand, Box<dyn Error>> {
+) -> Result<(Tweak, Participant, SignatureCore), Box<dyn Error>> {
     // hash the message into secp256k1 field
     let msg_hash = scalar_hash_secp256k1(msg);
 

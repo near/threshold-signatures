@@ -6,7 +6,7 @@ use crate::crypto::hash::test::scalar_hash_secp256k1;
 use crate::ecdsa::robust_ecdsa::RerandomizedPresignOutput;
 use crate::ecdsa::{
     Element, KeygenOutput, ParticipantList, RerandomizationArguments, Secp256K1Sha256, Signature,
-    SignatureOption, Tweak,
+    SignatureCore, Tweak,
 };
 use crate::protocol::{run_protocol, Participant, Protocol};
 use crate::test::{
@@ -22,7 +22,7 @@ pub fn run_sign_without_rerandomization(
     participants_presign: Vec<(Participant, PresignOutput)>,
     public_key: Element,
     msg: &[u8],
-) -> Result<(Participant, Signature), Box<dyn Error>> {
+) -> Result<(Participant, SignatureCore), Box<dyn Error>> {
     // hash the message into secp256k1 field
     let msg_hash = scalar_hash_secp256k1(msg);
 
@@ -41,7 +41,7 @@ pub fn run_sign_without_rerandomization(
             let rerand_presig =
                 RerandomizedPresignOutput::new_without_rerandomization(presignature);
             sign(participants, coordinator, me, pk, rerand_presig, msg_hash)
-                .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
+                .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = Signature>>)
         },
     )?;
     // test one single some for the coordinator
@@ -50,7 +50,6 @@ pub fn run_sign_without_rerandomization(
     Ok((coordinator, signature))
 }
 
-type SigWithRerand = (Tweak, Participant, Signature);
 /// Runs signing by calling the generic run_sign function from crate::test
 /// This signing mimics what should happen in real world, i.e.,
 /// rerandomizing the presignatures
@@ -58,7 +57,7 @@ pub fn run_sign_with_rerandomization(
     participants_presign: Vec<(Participant, PresignOutput)>,
     public_key: Element,
     msg: &[u8],
-) -> Result<SigWithRerand, Box<dyn Error>> {
+) -> Result<(Tweak, Participant, SignatureCore), Box<dyn Error>> {
     // hash the message into secp256k1 field
     let msg_hash = scalar_hash_secp256k1(msg);
 
@@ -101,7 +100,7 @@ pub fn run_sign_with_rerandomization(
         |participants, coordinator, me, pk, presignature, msg_hash| {
             let pk = pk.to_affine();
             sign(participants, coordinator, me, pk, presignature, msg_hash)
-                .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
+                .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = Signature>>)
         },
     )?;
     // test one single some for the coordinator

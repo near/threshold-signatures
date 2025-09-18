@@ -6,7 +6,7 @@ use subtle::ConditionallySelectable;
 use crate::{
     ecdsa::{
         robust_ecdsa::RerandomizedPresignOutput, x_coordinate, AffinePoint, Polynomial, Scalar,
-        Secp256K1Sha256, Signature, SignatureOption,
+        Secp256K1Sha256, Signature, SignatureCore,
     },
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     protocol::{
@@ -26,7 +26,7 @@ pub fn sign(
     public_key: AffinePoint,
     presignature: RerandomizedPresignOutput,
     msg_hash: Scalar,
-) -> Result<impl Protocol<Output = SignatureOption>, InitializationError> {
+) -> Result<impl Protocol<Output = Signature>, InitializationError> {
     if participants.len() < 2 {
         return Err(InitializationError::NotEnoughParticipants {
             participants: participants.len(),
@@ -73,7 +73,7 @@ async fn do_sign_participant(
     // me: Participant,
     presignature: RerandomizedPresignOutput,
     msg_hash: Scalar,
-) -> Result<SignatureOption, ProtocolError> {
+) -> Result<Signature, ProtocolError> {
     // (beta + tweak * k) * delta^{-1}
     let big_r = presignature.big_r;
     let big_r_x_coordinate = x_coordinate(&big_r);
@@ -96,7 +96,7 @@ async fn do_sign_coordinator(
     public_key: AffinePoint,
     presignature: RerandomizedPresignOutput,
     msg_hash: Scalar,
-) -> Result<SignatureOption, ProtocolError> {
+) -> Result<Signature, ProtocolError> {
     // (beta + tweak * k) * delta^{-1}
     let big_r = presignature.big_r;
     let big_r_x_coordinate = x_coordinate(&big_r);
@@ -141,7 +141,7 @@ async fn do_sign_coordinator(
     // Normalize s
     s.conditional_assign(&(-s), s.is_high());
 
-    let sig = Signature { big_r, s };
+    let sig = SignatureCore { big_r, s };
 
     if !sig.verify(&public_key, &msg_hash) {
         return Err(ProtocolError::AssertionFailed(
@@ -161,7 +161,7 @@ async fn fut_wrapper(
     public_key: AffinePoint,
     presignature: RerandomizedPresignOutput,
     msg_hash: Scalar,
-) -> Result<SignatureOption, ProtocolError> {
+) -> Result<Signature, ProtocolError> {
     if me == coordinator {
         do_sign_coordinator(chan, participants, me, public_key, presignature, msg_hash).await
     } else {

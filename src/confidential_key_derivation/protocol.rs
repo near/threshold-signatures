@@ -1,5 +1,5 @@
 use crate::confidential_key_derivation::{
-    AppId, CKDCoordinatorOutput, CKDOutput, CoefficientCommitment, SigningShare, VerifyingKey,
+    AppId, CKDOutput, CKDOutputCore, CoefficientCommitment, SigningShare, VerifyingKey,
 };
 use crate::participants::{ParticipantCounter, ParticipantList};
 use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
@@ -92,7 +92,7 @@ async fn do_ckd_coordinator(
         norm_big_y += big_y.value();
         norm_big_c += big_c.value();
     }
-    let ckd_output = CKDCoordinatorOutput::new(norm_big_y, norm_big_c);
+    let ckd_output = CKDOutputCore::new(norm_big_y, norm_big_c);
     Ok(Some(ckd_output))
 }
 
