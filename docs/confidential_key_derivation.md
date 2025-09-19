@@ -81,6 +81,9 @@ $\texttt{RTMR2}$, $\texttt{RTMR3}$, *event_log* and *report_data*
   \cdot λ_n`$, where $λ_i$ are
   the coefficients of the
   [Lagrange polynomial](https://en.wikipedia.org/wiki/Lagrange_polynomial).
+- $`\texttt{PK} = \texttt{msk} \cdot G`$: the master public key of the MPC
+  network. This is public information that can be obtained by querying a method
+  in the MPC contract
 - $`s`$: the key obtained by *app* as a result of the CKD
 
 ## Requirements
@@ -143,15 +146,43 @@ contract.
     - $`y_i  \gets^{\$} \mathbb{Z}_q`$
     - $`Y_i \gets y_i \cdot G`$
     - $`S_i = x_i \cdot H(\texttt{app\_id})`$
+    - $`T_i = x_i \cdot A`$
     - $`C_i =  S_i + y_i \cdot A`$
-  - Node $`i`$ sends $`(λ_i \cdot Y_i, λ_i \cdot C_i)`$ to the *MPC network*
-    coordinator
+    - $`D_i = T_i + y_i \cdot A`$
+  - Node $`i`$ sends $`(λ_i \cdot Y_i, λ_i \cdot C_i, λ_i \cdot D_i)`$ to the
+    *MPC network* coordinator
   - The coordinator adds the received pairs together:
     - $`Y \gets λ_1 \cdot Y_1 + \ldots + λ_n \cdot Y_n`$
     - $`C \gets λ_1 \cdot C_1 + \ldots + λ_n \cdot C_n = λ_1 \cdot S_1 + \ldots +
     λ_n \cdot S_n + ({y_1 \cdot λ_1 + \ldots + y_n \cdot λ_n }) \cdot A =
     \texttt{msk} \cdot H(\texttt{app\_id}) + a \cdot Y`$
-    - $`\texttt{es} \gets (Y, C) `$
+    - $`D \gets λ_1 \cdot D_1 + \ldots + λ_n \cdot D_n = λ_1 \cdot T_1 + \ldots +
+    λ_n \cdot T_n + ({y_1 \cdot λ_1 + \ldots + y_n \cdot λ_n }) \cdot A =
+    \texttt{msk} \cdot A + a \cdot Y`$
+    - $`\texttt{es} \gets (Y, C, D) `$
   - Coordinator sends $`\texttt{es}`$ to *app* on-chain
-- *app* obtains $`\texttt{es} = (Y, C)`$ and computes $`s \gets C + (- a) \cdot
-    Y = \texttt{msk} \cdot H(\texttt{app\_id})`$
+- *app* obtains $`\texttt{es} = (Y, C, D)`$, and checks if
+  $`D + (- a) \cdot Y == a \cdot PK`$. If yes,
+  $`s \gets C + (- a) \cdot Y = \texttt{msk} \cdot H(\texttt{app\_id})`$, else discard
+  the values obtained, as they key might be compromised.
+
+## Analysis of possible attack vectors
+
+The purpose of this section is to evaluate several simplified attack vectors and
+give evidence of why the system remains secure in each case.
+
+### The coordinator and the app are corrupt
+
+- Secrecy of $`\texttt{msk}`$
+
+### The coordinator is corrupt
+
+- Secrecy of $`\texttt{msk}`$: contained in [the first case](#the-coordinator-and-the-app-are-corrupt)
+- Secrecy of $`s`$
+
+### The app is corrupt
+
+- Secrecy of $`\texttt{msk}`$: contained in [the first case](#the-coordinator-and-the-app-are-corrupt)
+
+- Secrecy of other app's confidential key
+  $`s' = \texttt{msk} \cdot H(\texttt{app\_id'})`$
