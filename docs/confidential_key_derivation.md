@@ -146,9 +146,8 @@ contract.
     - $`y_i  \gets^{\$} \mathbb{Z}_q`$
     - $`Y_i \gets y_i \cdot G`$
     - $`S_i = x_i \cdot H(\texttt{app\_id})`$
-    - $`T_i = x_i \cdot A`$
     - $`C_i =  S_i + y_i \cdot A`$
-    - $`D_i = T_i + y_i \cdot A`$
+    - $`D_i = (x_i + y_i) \cdot A`$
   - Node $`i`$ sends $`(λ_i \cdot Y_i, λ_i \cdot C_i, λ_i \cdot D_i)`$ to the
     *MPC network* coordinator
   - The coordinator adds the received pairs together:
@@ -156,8 +155,7 @@ contract.
     - $`C \gets λ_1 \cdot C_1 + \ldots + λ_n \cdot C_n = λ_1 \cdot S_1 + \ldots +
     λ_n \cdot S_n + ({y_1 \cdot λ_1 + \ldots + y_n \cdot λ_n }) \cdot A =
     \texttt{msk} \cdot H(\texttt{app\_id}) + a \cdot Y`$
-    - $`D \gets λ_1 \cdot D_1 + \ldots + λ_n \cdot D_n = λ_1 \cdot T_1 + \ldots +
-    λ_n \cdot T_n + ({y_1 \cdot λ_1 + \ldots + y_n \cdot λ_n }) \cdot A =
+    - $`D \gets λ_1 \cdot D_1 + \ldots + λ_n \cdot D_n =  (x_1 \cdot λ_1 + \ldots + x_n \cdot λ_n) \cdot A + ({y_1 \cdot λ_1 + \ldots + y_n \cdot λ_n }) \cdot A =
     \texttt{msk} \cdot A + a \cdot Y`$
     - $`\texttt{es} \gets (Y, C, D) `$
   - Coordinator sends $`\texttt{es}`$ to *app* on-chain
