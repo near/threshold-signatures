@@ -82,12 +82,10 @@ async fn do_ckd_coordinator(
     let hash_point = hash2curve(app_id)?;
     // S <- x . H(app_id)
     let big_s = hash_point * private_share.to_scalar();
-    // T <- x . A
-    let big_t = app_pk.to_element() * private_share.to_scalar();
     // C <- S + y . A
     let big_c = big_s + app_pk.to_element() * y;
-    // D <- T + y . A
-    let big_d = big_t + app_pk.to_element() * y;
+    // D <- (x + y) . A
+    let big_d = app_pk.to_element() * (y + private_share.to_scalar());
     // Compute  λi := λi(0)
     let lambda_i = participants.lagrange::<Secp256K1Sha256>(me)?;
     // Normalize Y and C into  (λi . Y , λi . C)
