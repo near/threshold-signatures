@@ -44,16 +44,25 @@ async fn do_ckd_participant(
     let hash_point = hash2curve(app_id)?;
     // S <- x . H(app_id)
     let big_s = hash_point * private_share.to_scalar();
+    // T <- x . A
+    let big_t = app_pk.to_element() * private_share.to_scalar();
     // C <- S + y . A
     let big_c = big_s + app_pk.to_element() * y;
+    // D <- T + y . A
+    let big_d = big_t + app_pk.to_element() * y;
     // Compute  λi := λi(0)
     let lambda_i = participants.lagrange::<Secp256K1Sha256>(me)?;
     // Normalize Y and C into  (λi . Y , λi . C)
     let norm_big_y = CoefficientCommitment::new(big_y * lambda_i);
     let norm_big_c = CoefficientCommitment::new(big_c * lambda_i);
+    let norm_big_d = CoefficientCommitment::new(big_d * lambda_i);
 
     let waitpoint = chan.next_waitpoint();
-    chan.send_private(waitpoint, coordinator, &(norm_big_y, norm_big_c))?;
+    chan.send_private(
+        waitpoint,
+        coordinator,
+        &(norm_big_y, norm_big_c, norm_big_d),
+    )?;
 
     Ok(None)
 }
@@ -73,13 +82,18 @@ async fn do_ckd_coordinator(
     let hash_point = hash2curve(app_id)?;
     // S <- x . H(app_id)
     let big_s = hash_point * private_share.to_scalar();
+    // T <- x . A
+    let big_t = app_pk.to_element() * private_share.to_scalar();
     // C <- S + y . A
     let big_c = big_s + app_pk.to_element() * y;
+    // D <- T + y . A
+    let big_d = big_t + app_pk.to_element() * y;
     // Compute  λi := λi(0)
     let lambda_i = participants.lagrange::<Secp256K1Sha256>(me)?;
     // Normalize Y and C into  (λi . Y , λi . C)
     let mut norm_big_y = big_y * lambda_i;
     let mut norm_big_c = big_c * lambda_i;
+    let mut norm_big_d = big_d * lambda_i;
 
     // Receive everyone's inputs and add them together
     let mut seen = ParticipantCounter::new(&participants);
@@ -87,15 +101,22 @@ async fn do_ckd_coordinator(
 
     seen.put(me);
     while !seen.full() {
-        let (from, (big_y, big_c)): (_, (CoefficientCommitment, CoefficientCommitment)) =
-            chan.recv(waitpoint).await?;
+        let (from, (big_y, big_c, big_d)): (
+            _,
+            (
+                CoefficientCommitment,
+                CoefficientCommitment,
+                CoefficientCommitment,
+            ),
+        ) = chan.recv(waitpoint).await?;
         if !seen.put(from) {
             continue;
         }
         norm_big_y += big_y.value();
         norm_big_c += big_c.value();
+        norm_big_d += big_d.value();
     }
-    let ckd_output = CKDCoordinatorOutput::new(norm_big_y, norm_big_c);
+    let ckd_output = CKDCoordinatorOutput::new(norm_big_y, norm_big_c, norm_big_d);
     Ok(Some(ckd_output))
 }
 
@@ -202,6 +223,8 @@ mod test {
     use crate::protocol::run_protocol;
     use std::error::Error;
 
+    use frost_core::Group;
+    use frost_secp256k1::Secp256K1Group;
     use rand_core::{OsRng, RngCore};
 
     #[test]
@@ -227,6 +250,8 @@ mod test {
 
         // Create the threshold signer's master secret key
         let msk = f.eval_at_zero()?;
+
+        let pk = Secp256K1Group::generator() * msk.0;
 
         // Create the app necessary items
         let app_id = AppId::from(b"Near App");
@@ -278,6 +303,9 @@ mod test {
             some_iter.next().is_none(),
             "More than one Some(CKDCoordinatorOutput)"
         );
+
+        // verify D - a . Y == a . PK
+        assert!(ckd.verify(app_sk, CoefficientCommitment::new(pk)));
 
         // compute msk . H(app_id)
         let confidential_key = ckd.unmask(app_sk);

@@ -32,13 +32,15 @@ pub(crate) type Scalar = frost_core::Scalar<Secp256K1Sha256>;
 pub struct CKDCoordinatorOutput {
     big_y: CoefficientCommitment,
     big_c: CoefficientCommitment,
+    big_d: CoefficientCommitment,
 }
 
 impl CKDCoordinatorOutput {
-    pub fn new(big_y: Element, big_c: Element) -> Self {
+    pub fn new(big_y: Element, big_c: Element, big_d: Element) -> Self {
         CKDCoordinatorOutput {
             big_y: CoefficientCommitment::new(big_y),
             big_c: CoefficientCommitment::new(big_c),
+            big_d: CoefficientCommitment::new(big_d),
         }
     }
 
@@ -52,8 +54,19 @@ impl CKDCoordinatorOutput {
         self.big_c
     }
 
+    /// Outputs big_d
+    pub fn big_d(&self) -> CoefficientCommitment {
+        self.big_d
+    }
+
+    /// Takes a secret scalar and the MPC public key and verifies
+    /// C − a ⋅ Y == a ⋅ PK
+    pub fn verify(&self, secret_scalar: Scalar, mpc_pk: CoefficientCommitment) -> bool {
+        self.big_d.value() - self.big_y.value() * secret_scalar == mpc_pk.value() * secret_scalar
+    }
+
     /// Takes a secret scalar and returns
-    /// s <- C  − a  ⋅ Y = msk ⋅ H ( app_id )
+    /// s <- C − a ⋅ Y = msk ⋅ H ( app_id )
     pub fn unmask(&self, secret_scalar: Scalar) -> CoefficientCommitment {
         CoefficientCommitment::new(self.big_c.value() - self.big_y.value() * secret_scalar)
     }
