@@ -196,7 +196,7 @@ condition, then certainly they should hold without it.
     $`x_i \cdot A + y_i \cdot A`$
 
   It wants to compute some values $`C', D', Y'`$ such that the app accepts them as
-  valid, which means $`D' - a \cdot Y' == a \cdot \texttt{PK}`$, yet the coordinator knows the resulting secret $s' = `C' - a \cdot Y'`$
+  valid, which means $`D' - a \cdot Y' == a \cdot \texttt{PK}`$, yet the coordinator knows the resulting secret $`s' = `C' - a \cdot Y'`$
 
   We will assume the attack succeeds and try to obtain a contradiction. In this case, the attacker can obtain:
 
