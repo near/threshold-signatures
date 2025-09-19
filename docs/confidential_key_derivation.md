@@ -196,13 +196,13 @@ condition, then certainly they should hold without it.
     $`x_i \cdot A + y_i \cdot A`$
 
   It wants to compute some values $`C', D', Y'`$ such that the app accepts them as
-  valid, which means $`D' - a \cdot Y' == a \cdot \texttt{PK}`$, yet the coordinator knows the resulting secret $`s' = `C' - a \cdot Y'`$
+  valid, which means $`D' - a \cdot Y' == a \cdot \texttt{PK}`$, yet the coordinator knows the resulting secret $`s' = C' - a \cdot Y'`$
 
   We will assume the attack succeeds and try to obtain a contradiction. In this case, the attacker can obtain:
 
   $`D' - C' + s' = a \cdot PK`$
 
-  But this value should remain secret unless $`a`$ is known or $`msk`$ is known
+  But this value should remain secret unless $`a`$ is known or $`\texttt{msk}`$ is known
   or it is directly leaked during the CKD computation, which does not seem the
   case.
 
