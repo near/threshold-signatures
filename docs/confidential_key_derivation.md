@@ -163,13 +163,18 @@ contract.
   - Coordinator sends $`\texttt{es}`$ to *app* on-chain
 - *app* obtains $`\texttt{es} = (Y, C, D)`$, and checks if
   $`D + (- a) \cdot Y == a \cdot PK`$. If yes,
-  $`s \gets C + (- a) \cdot Y = \texttt{msk} \cdot H(\texttt{app\_id})`$, else discard
-  the values obtained, as they key might be compromised.
+  $`s \gets C + (- a) \cdot Y = \texttt{msk} \cdot H(\texttt{app\_id})`$, else
+  discard the values obtained, as they key might be compromised.
 
 ## Analysis of possible attack vectors
 
 The purpose of this section is to evaluate several simplified attack vectors and
-give evidence of why the system remains secure in each case.
+give evidence of why the system remains secure in each case. This is by no means
+an exhaustive list.
+
+Below we assume that the values $`X_i = x_i \cdot G`$ are public. This might be
+the result of the corruption scenario, or the DKG. If the results hold with this
+condition, then certainly they should hold without it.
 
 ### The coordinator and the app are corrupt
 
@@ -181,6 +186,25 @@ give evidence of why the system remains secure in each case.
 
 - Secrecy of $`\texttt{msk}`$: contained in [the first case](#the-coordinator-and-the-app-are-corrupt)
 - Secrecy of $`s`$
+
+  In this case the coordinator knows:
+
+  - from the request: $`A`$, $`\texttt{app\_id}`$
+
+  - from the CKD computation: $`y_i \cdot G`$,
+    $`x_i \cdot H(\texttt{app\_id}) + y_i \cdot A`$,
+    $`x_i \cdot A + y_i \cdot A`$
+
+  It wants to compute some values $`C', D', Y'`$ such that the app accepts them as
+  valid, which means $`D' - a \cdot Y' == a \cdot \texttt{PK}`$, yet the coordinator knows the resulting secret $s' = `C' - a \cdot Y'`$
+
+  We will assume the attack succeeds and try to obtain a contradiction. In this case, the attacker can obtain:
+
+  $`D' - C' + s' = a \cdot PK`$
+
+  But this value should remain secret unless $`a`$ is known or $`msk`$ is known
+  or it is directly leaked during the CKD computation, which does not seem the
+  case.
 
 ### The app is corrupt
 
