@@ -185,4 +185,4 @@ give evidence of why the system remains secure in each case.
 - Secrecy of $`\texttt{msk}`$: contained in [the first case](#the-coordinator-and-the-app-are-corrupt)
 
 - Secrecy of other app's confidential key
-  $`s' = \texttt{msk} \cdot H(\texttt{app\_id'})`$
+  $`s' = \texttt{msk} \cdot H(\texttt{app\_id}')`$
