@@ -147,7 +147,7 @@ contract.
     - $`Y_i \gets y_i \cdot G`$
     - $`S_i = x_i \cdot H(\texttt{app\_id})`$
     - $`C_i =  S_i + y_i \cdot A`$
-    - $`D_i = (x_i + y_i) \cdot A`$
+    - $`D_i = x_i \cdot (A - H(\texttt{app\_id}))`$
   - Node $`i`$ sends $`(λ_i \cdot Y_i, λ_i \cdot C_i, λ_i \cdot D_i)`$ to the
     *MPC network* coordinator
   - The coordinator adds the received pairs together:
@@ -155,12 +155,12 @@ contract.
     - $`C \gets λ_1 \cdot C_1 + \ldots + λ_n \cdot C_n = λ_1 \cdot S_1 + \ldots +
     λ_n \cdot S_n + ({y_1 \cdot λ_1 + \ldots + y_n \cdot λ_n }) \cdot A =
     \texttt{msk} \cdot H(\texttt{app\_id}) + a \cdot Y`$
-    - $`D \gets λ_1 \cdot D_1 + \ldots + λ_n \cdot D_n =  (x_1 \cdot λ_1 + \ldots + x_n \cdot λ_n) \cdot A + ({y_1 \cdot λ_1 + \ldots + y_n \cdot λ_n }) \cdot A =
-    \texttt{msk} \cdot A + a \cdot Y`$
+    - $`D \gets λ_1 \cdot D_1 + \ldots + λ_n \cdot D_n =  (x_1 \cdot λ_1 + \ldots + x_n \cdot λ_n) \cdot A - ({x_1 \cdot λ_1 + \ldots + x_n \cdot λ_n }) \cdot H(\texttt{app\_id}) =
+    \texttt{msk} \cdot A - \texttt{msk} \cdot H(\texttt{app\_id})`$
     - $`\texttt{es} \gets (Y, C, D) `$
   - Coordinator sends $`\texttt{es}`$ to *app* on-chain
 - *app* obtains $`\texttt{es} = (Y, C, D)`$, and checks if
-  $`D + (- a) \cdot Y == a \cdot PK`$. If yes,
+  $`C + D + (- a) \cdot Y == a \cdot PK`$. If yes,
   $`s \gets C + (- a) \cdot Y = \texttt{msk} \cdot H(\texttt{app\_id})`$, else
   discard the values obtained, as they key might be compromised.
 
