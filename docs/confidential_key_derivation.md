@@ -58,7 +58,10 @@ required.
 
 - *app*: TEE app calling the CKD functionality
 - $`\texttt{app\_id}`$: unique and authenticated identifier for the *app*. It
-  coincides with the account id of the *Developer contract*. The MPC contract authenticates $`\texttt{app\_id}`$ when it receives the request from the *Developer contract*. Because of how the blockchain works, no other contract or account can make a request with the same $`\texttt{app\_id}`$
+  coincides with the account id of the *Developer contract*. The MPC contract
+  authenticates $`\texttt{app\_id}`$ when it receives the request from the
+  *Developer contract*. Because of how the blockchain works, no other contract
+  or account can make a request with the same $`\texttt{app\_id}`$
 - $`\texttt{attestation}`$: the remote attestation report, which is a
 cryptographic proof that *app* is running inside a genuine TEE. It includes
 $\texttt{quote}$, $\texttt{MRTD}$, $\texttt{RTMR0}$, $\texttt{RTMR1}$,
@@ -77,9 +80,9 @@ $\texttt{RTMR2}$, $\texttt{RTMR3}$, *event_log* and *report_data*
 - $`(x_1, x_2, \ldots, x_n)`$: private secret key shares of the MPC nodes, which
   are generated during the Distributed Key Generation (DKG)
 - $`\texttt{msk}`$: master secret key of the *MPC network*, which does not
-  change over time, and is generated during the DKG. As a result, $`\texttt{msk} = x_1 \cdot λ_1 + \ldots + x_n
-  \cdot λ_n`$, where $λ_i$ are
-  the coefficients of the
+  change over time, and is generated during the DKG. As a result, $`\texttt{msk}
+  = x_1 \cdot λ_1 + \ldots + x_n \cdot λ_n`$, where $λ_i$ are the coefficients
+  of the
   [Lagrange polynomial](https://en.wikipedia.org/wiki/Lagrange_polynomial).
 - $`s`$: the key obtained by *app* as a result of the CKD
 
@@ -92,15 +95,17 @@ avoids key leakage in the case a single TEE is compromised
 - $`\texttt{app\_id}`$ must be a unique deterministic value tied to *app* and
 the attestation runtime measurements. It should not be forgeable by any other
 app
-- The DKG has been executed, and each node is in possession of a secret key share
-  $x_i$
+- The DKG has been executed, and each node is in possession of a secret key
+  share $x_i$
 
 ## Security Assumptions
 
 - The *operator* is not trusted, but its TEE-enabled hardware is considered
   secure
 - MPC nodes running in TEE: All are trusted and execute the protocol honestly.
-Liveness and correctness depend on this assumption, while the secrecy does not. Example values that should not be leaked even if a node is malicious of are $`s`$, $`\texttt{msk}`$ and private shares of other nodes
+  Liveness and correctness depend on this assumption, while the secrecy does
+  not. Example values that should not be leaked even if a node is malicious of
+  are $`s`$, $`\texttt{msk}`$ and private shares of other nodes
 - The *developer* guarantee's the *app* security, and that the intended
 attestation measurements ensure the chain of trust inside the TEE is not broken
 
@@ -136,7 +141,8 @@ contract.
   $`\texttt{app\_id}`$ and $`A`$, this request is sent to all nodes and the key
   generation process starts. Let $`H`$ be a suitable cryptographically
   secure hash to curve function from
-  [rfc9380](https://datatracker.ietf.org/doc/rfc9380/). The steps of the generation process follow:
+  [rfc9380](https://datatracker.ietf.org/doc/rfc9380/). The steps of the
+  generation process follow:
   - Node $`i\in \{1, \ldots n\}`$ receives $`(\texttt{app\_id}, A)`$ and
     computes:
     - $`y_i  \gets^{\$} \mathbb{Z}_q`$
