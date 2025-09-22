@@ -184,13 +184,13 @@ mod test_verify {
         ProjectivePoint, Scalar, Secp256k1,
     };
     use rand::prelude::SliceRandom;
-    use rand_core::{OsRng, RngCore};
+    use rand_core::{CryptoRngCore, OsRng, RngCore};
     use sha2::{digest::FixedOutput, Digest, Sha256};
     type C = Secp256K1Sha256;
 
-    fn random_32_bytes() -> [u8; 32] {
+    fn random_32_bytes(rng: &mut impl CryptoRngCore) -> [u8; 32] {
         let mut bytes: [u8; 32] = [0u8; 32];
-        OsRng.fill_bytes(&mut bytes);
+        rng.fill_bytes(&mut bytes);
         bytes
     }
 
@@ -250,6 +250,7 @@ mod test_verify {
 
     // Outputs pk, R,  hash, participants, entropy, randomness
     fn compute_random_outputs(
+        rng: &mut impl CryptoRngCore,
         num_participants: usize,
     ) -> (
         AffinePoint,
@@ -264,8 +265,8 @@ mod test_verify {
         let (_, big_r) = <C>::generate_nonce(&mut OsRng);
         let big_r = big_r.to_affine();
 
-        let msg_hash = random_32_bytes();
-        let entropy = random_32_bytes();
+        let msg_hash = random_32_bytes(rng);
+        let entropy = random_32_bytes(rng);
         // Generate unique ten ParticipantId values
         let participants = generate_participants_with_random_ids(num_participants);
         let participants = ParticipantList::new(&participants).unwrap();
@@ -278,10 +279,11 @@ mod test_verify {
     #[test]
     fn test_different_pk() {
         let num_participants = 10;
+        let mut rng = OsRng;
         let (_, big_r, msg_hash, participants, entropy, delta) =
-            compute_random_outputs(num_participants);
+            compute_random_outputs(&mut rng, num_participants);
         // different pk
-        let (_, pk) = <C>::generate_nonce(&mut OsRng);
+        let (_, pk) = <C>::generate_nonce(&mut rng);
         let pk = pk.to_affine();
         let args = RerandomizationArguments::new(pk, msg_hash, big_r, &participants, entropy);
         let delta_prime = args.derive_randomness();
@@ -291,8 +293,10 @@ mod test_verify {
     #[test]
     fn test_different_msg_hash() {
         let num_participants = 10;
-        let (pk, big_r, _, participants, entropy, delta) = compute_random_outputs(num_participants);
-        let msg_hash = random_32_bytes();
+        let mut rng = OsRng;
+        let (pk, big_r, _, participants, entropy, delta) =
+            compute_random_outputs(&mut rng, num_participants);
+        let msg_hash = random_32_bytes(&mut rng);
         // different msg_hash
         let args = RerandomizationArguments::new(pk, msg_hash, big_r, &participants, entropy);
         let delta_prime = args.derive_randomness();
@@ -302,8 +306,9 @@ mod test_verify {
     #[test]
     fn test_different_big_r() {
         let num_participants = 10;
+        let mut rng = OsRng;
         let (pk, _, msg_hash, participants, entropy, delta) =
-            compute_random_outputs(num_participants);
+            compute_random_outputs(&mut rng, num_participants);
         // different big_r
         let (_, big_r) = <C>::generate_nonce(&mut OsRng);
         let big_r = big_r.to_affine();
@@ -315,7 +320,9 @@ mod test_verify {
     #[test]
     fn test_different_participants() {
         let num_participants = 10;
-        let (pk, big_r, msg_hash, _, entropy, delta) = compute_random_outputs(num_participants);
+        let mut rng = OsRng;
+        let (pk, big_r, msg_hash, _, entropy, delta) =
+            compute_random_outputs(&mut rng, num_participants);
         // different participants set
         let participants = generate_participants_with_random_ids(num_participants);
         let participants = ParticipantList::new(&participants).unwrap();
@@ -327,8 +334,9 @@ mod test_verify {
     #[test]
     fn test_different_entropy() {
         let num_participants = 10;
+        let mut rng = OsRng;
         let (pk, big_r, msg_hash, participants, _, delta) =
-            compute_random_outputs(num_participants);
+            compute_random_outputs(&mut rng, num_participants);
 
         // different entropy
         let mut entropy: [u8; 32] = [0u8; 32];
@@ -342,8 +350,9 @@ mod test_verify {
     #[test]
     fn test_same_randomness() {
         let num_participants = 10;
+        let mut rng = OsRng;
         let (pk, big_r, msg_hash, participants, entropy, delta) =
-            compute_random_outputs(num_participants);
+            compute_random_outputs(&mut rng, num_participants);
 
         let mut rng = rand::rng();
         // reshuffle
