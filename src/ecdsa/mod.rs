@@ -150,8 +150,6 @@ impl<'a> RerandomizationArguments<'a> {
             // we enter into this loop
             let mut okm = [0u8; 32];
 
-            // append an extra 0 at the end of the concatenation everytime delta hits zero
-            concatenation.extend_from_slice(&[0u8, 1]);
             hk.expand(&concatenation, &mut okm).unwrap();
 
             // derive the randomness delta
@@ -159,7 +157,10 @@ impl<'a> RerandomizationArguments<'a> {
                 // if delta falls outside the field
                 // probability is negligible: in the order of 1/2^224
                 Scalar::ZERO,
-            )
+            );
+            // append an extra 0 at the end of the concatenation everytime delta is zero
+            concatenation.extend_from_slice(&[0u8, 1]);
+
         }
         delta
     }
