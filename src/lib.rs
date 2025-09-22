@@ -10,6 +10,7 @@ pub mod protocol;
 mod test;
 
 pub use frost_core;
+use frost_core::serialization::SerializableScalar;
 pub use frost_ed25519;
 pub use frost_secp256k1;
 // For benchmark
@@ -39,16 +40,18 @@ pub struct KeygenOutput<C: Ciphersuite> {
 /// This is a necessary element to be able to derive different keys
 /// from signing shares.
 /// We do not bind the user with the way to compute the inner scalar of the tweak
-pub struct Tweak<C: Ciphersuite>(Scalar<C>);
+#[derive(Copy, Clone, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(bound = "C: Ciphersuite")]
+pub struct Tweak<C: Ciphersuite>(SerializableScalar<C>);
 
 impl<C: Ciphersuite> Tweak<C> {
     pub fn new(tweak: Scalar<C>) -> Self {
-        Tweak(tweak)
+        Tweak(SerializableScalar(tweak))
     }
 
     /// Outputs the inner value of the tweak
     pub fn value(&self) -> Scalar<C> {
-        self.0
+        self.0 .0
     }
 
     /// Derives the signing share as x + tweak
