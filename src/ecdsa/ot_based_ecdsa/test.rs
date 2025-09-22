@@ -78,7 +78,9 @@ pub fn run_sign_with_rerandomization(
             .collect::<Vec<Participant>>(),
     )
     .unwrap();
-    let rerand_args = RerandomizationArguments::new(&pk, &msg_hash, &big_r, &participants, entropy);
+    let msg_hash_bytes: [u8; 32] = msg_hash.to_bytes().into();
+    let rerand_args =
+        RerandomizationArguments::new(pk, msg_hash_bytes, big_r, &participants, entropy);
     let public_key = frost_core::VerifyingKey::new(public_key);
     let derived_pk = tweak.derive_verifying_key(&public_key).to_element();
 

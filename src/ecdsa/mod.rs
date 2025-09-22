@@ -80,9 +80,9 @@ impl Signature {
 /// Following [GS21] https://eprint.iacr.org/2021/1330.pdf, the entropy should
 /// be public, freshly generated, and unpredictable.
 pub struct RerandomizationArguments<'a> {
-    pub pk: &'a AffinePoint,
-    pub msg_hash: &'a Scalar,
-    pub big_r: &'a AffinePoint,
+    pub pk: AffinePoint,
+    pub msg_hash: [u8; 32],
+    pub big_r: AffinePoint,
     pub participants: &'a ParticipantList,
     /// Fresh, Unpredictable, and Public source of entropy
     pub entropy: [u8; 32],
@@ -101,9 +101,9 @@ impl<'a> RerandomizationArguments<'a> {
     ];
 
     pub fn new(
-        pk: &'a AffinePoint,
-        msg_hash: &'a Scalar,
-        big_r: &'a AffinePoint,
+        pk: AffinePoint,
+        msg_hash: [u8; 32],
+        big_r: AffinePoint,
         participants: &'a ParticipantList,
         entropy: [u8; 32],
     ) -> RerandomizationArguments<'a> {
@@ -124,7 +124,7 @@ impl<'a> RerandomizationArguments<'a> {
         // create a string containing (pk, msg_hash, big_r, sorted(participants))
         let pk_encoded_point = self.pk.to_encoded_point(true);
         let encoded_pk: &[u8] = pk_encoded_point.as_bytes();
-        let encoded_msg_hash: &[u8] = &self.msg_hash.to_bytes()[..];
+        let encoded_msg_hash: &[u8] = &self.msg_hash;
         let big_r_encoded_point = self.big_r.to_encoded_point(true);
         let encoded_big_r: &[u8] = big_r_encoded_point.as_bytes();
 
@@ -188,6 +188,12 @@ mod test_verify {
     use sha2::{digest::FixedOutput, Digest, Sha256};
     type C = Secp256K1Sha256;
 
+    fn random_32_bytes() -> [u8; 32] {
+        let mut bytes: [u8; 32] = [0u8; 32];
+        OsRng.fill_bytes(&mut bytes);
+        bytes
+    }
+
     #[test]
     fn test_verify() {
         let msg = b"Hello from Near";
@@ -248,7 +254,7 @@ mod test_verify {
     ) -> (
         AffinePoint,
         AffinePoint,
-        Scalar,
+        [u8; 32],
         ParticipantList,
         [u8; 32],
         Scalar,
@@ -258,15 +264,13 @@ mod test_verify {
         let (_, big_r) = <C>::generate_nonce(&mut OsRng);
         let big_r = big_r.to_affine();
 
-        let msg_hash = Scalar::generate_vartime(&mut OsRng);
+        let msg_hash = random_32_bytes();
+        let entropy = random_32_bytes();
         // Generate unique ten ParticipantId values
         let participants = generate_participants_with_random_ids(num_participants);
         let participants = ParticipantList::new(&participants).unwrap();
 
-        let mut entropy: [u8; 32] = [0u8; 32];
-        OsRng.fill_bytes(&mut entropy);
-
-        let args = RerandomizationArguments::new(&pk, &msg_hash, &big_r, &participants, entropy);
+        let args = RerandomizationArguments::new(pk, msg_hash, big_r, &participants, entropy);
         let delta = args.derive_randomness();
         (pk, big_r, msg_hash, participants, entropy, delta)
     }
@@ -279,7 +283,7 @@ mod test_verify {
         // different pk
         let (_, pk) = <C>::generate_nonce(&mut OsRng);
         let pk = pk.to_affine();
-        let args = RerandomizationArguments::new(&pk, &msg_hash, &big_r, &participants, entropy);
+        let args = RerandomizationArguments::new(pk, msg_hash, big_r, &participants, entropy);
         let delta_prime = args.derive_randomness();
         assert!(delta != delta_prime);
     }
@@ -288,9 +292,9 @@ mod test_verify {
     fn test_different_msg_hash() {
         let num_participants = 10;
         let (pk, big_r, _, participants, entropy, delta) = compute_random_outputs(num_participants);
-        let msg_hash = Scalar::generate_vartime(&mut OsRng);
+        let msg_hash = random_32_bytes();
         // different msg_hash
-        let args = RerandomizationArguments::new(&pk, &msg_hash, &big_r, &participants, entropy);
+        let args = RerandomizationArguments::new(pk, msg_hash, big_r, &participants, entropy);
         let delta_prime = args.derive_randomness();
         assert!(delta != delta_prime);
     }
@@ -303,7 +307,7 @@ mod test_verify {
         // different big_r
         let (_, big_r) = <C>::generate_nonce(&mut OsRng);
         let big_r = big_r.to_affine();
-        let args = RerandomizationArguments::new(&pk, &msg_hash, &big_r, &participants, entropy);
+        let args = RerandomizationArguments::new(pk, msg_hash, big_r, &participants, entropy);
         let delta_prime = args.derive_randomness();
         assert!(delta != delta_prime);
     }
@@ -315,7 +319,7 @@ mod test_verify {
         // different participants set
         let participants = generate_participants_with_random_ids(num_participants);
         let participants = ParticipantList::new(&participants).unwrap();
-        let args = RerandomizationArguments::new(&pk, &msg_hash, &big_r, &participants, entropy);
+        let args = RerandomizationArguments::new(pk, msg_hash, big_r, &participants, entropy);
         let delta_prime = args.derive_randomness();
         assert!(delta != delta_prime);
     }
@@ -329,7 +333,7 @@ mod test_verify {
         // different entropy
         let mut entropy: [u8; 32] = [0u8; 32];
         OsRng.fill_bytes(&mut entropy);
-        let args = RerandomizationArguments::new(&pk, &msg_hash, &big_r, &participants, entropy);
+        let args = RerandomizationArguments::new(pk, msg_hash, big_r, &participants, entropy);
         let delta_prime = args.derive_randomness();
         assert!(delta != delta_prime);
     }
@@ -346,7 +350,7 @@ mod test_verify {
         let mut participants = participants.participants().to_vec();
         participants.shuffle(&mut rng);
         let participants = ParticipantList::new(&participants).unwrap();
-        let args = RerandomizationArguments::new(&pk, &msg_hash, &big_r, &participants, entropy);
+        let args = RerandomizationArguments::new(pk, msg_hash, big_r, &participants, entropy);
         let delta_prime = args.derive_randomness();
         assert!(delta == delta_prime);
     }
