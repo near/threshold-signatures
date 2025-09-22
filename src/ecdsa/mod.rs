@@ -160,7 +160,6 @@ impl<'a> RerandomizationArguments<'a> {
             );
             // append an extra 0 at the end of the concatenation everytime delta is zero
             concatenation.extend_from_slice(&[0u8, 1]);
-
         }
         delta
     }

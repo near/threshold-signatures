@@ -56,7 +56,7 @@ type SigWithRerand = (Tweak, Vec<(Participant, Signature)>);
 /// This signing mimics what should happen in real world, i.e.,
 /// rerandomizing the presignatures
 pub fn run_sign_with_rerandomization(
-    participants_presign: Vec<(Participant, PresignOutput)>,
+    participants_presign: &[(Participant, PresignOutput)],
     public_key: Element,
     msg: &[u8],
 ) -> Result<SigWithRerand, Box<dyn Error>> {
@@ -303,6 +303,6 @@ fn test_e2e_random_identifiers_with_rerandomization() -> Result<(), Box<dyn Erro
 
     let msg = b"hello world";
     // internally verifies the signature's validity
-    run_sign_with_rerandomization(presign_result, public_key.to_element(), msg)?;
+    run_sign_with_rerandomization(&presign_result, public_key.to_element(), msg)?;
     Ok(())
 }

@@ -197,7 +197,7 @@ mod test {
         }
 
         let (tweak, result) =
-            run_sign_with_rerandomization(participants_presign, public_key.to_element(), msg)?;
+            run_sign_with_rerandomization(&participants_presign, public_key.to_element(), msg)?;
         let sig = &result[0].1;
         let sig = ecdsa::Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
 
