@@ -13,19 +13,23 @@ pub mod protocol;
 
 pub use app_id::AppId;
 
-use frost_secp256k1::{keys::SigningShare, Secp256K1Sha256, VerifyingKey};
+use blst::{
+    blst_p1, blst_p1_add, blst_p1_affine, blst_p1_cneg, blst_p1_mult, blst_p1_to_affine,
+    blst_scalar,
+    min_pk::{AggregatePublicKey, PublicKey, SecretKey},
+};
 use serde::{Deserialize, Serialize};
 
 /// Key Pairs containing secret share of the participant along with the master verification key
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct KeygenOutput {
-    pub private_share: SigningShare,
-    pub public_key: VerifyingKey,
+    pub private_share: SecretKey,
+    pub public_key: PublicKey,
 }
 
-pub(crate) type CoefficientCommitment = frost_core::keys::CoefficientCommitment<Secp256K1Sha256>;
-pub(crate) type Element = frost_core::Element<Secp256K1Sha256>;
-pub(crate) type Scalar = frost_core::Scalar<Secp256K1Sha256>;
+pub(crate) type Scalar = SecretKey;
+pub(crate) type Element = PublicKey;
+pub(crate) type CoefficientCommitment = PublicKey;
 
 /// The output of the confidential key derivation protocol when run by the coordinator
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -36,10 +40,7 @@ pub struct CKDCoordinatorOutput {
 
 impl CKDCoordinatorOutput {
     pub fn new(big_y: Element, big_c: Element) -> Self {
-        CKDCoordinatorOutput {
-            big_y: CoefficientCommitment::new(big_y),
-            big_c: CoefficientCommitment::new(big_c),
-        }
+        CKDCoordinatorOutput { big_y, big_c }
     }
 
     /// Outputs big_y
@@ -53,10 +54,25 @@ impl CKDCoordinatorOutput {
     }
 
     /// Takes a secret scalar and returns
-    /// s <- C  − a  ⋅ Y = msk ⋅ H ( app_id )
+    /// s <- C − a ⋅ Y = msk ⋅ H ( app_id )
     pub fn unmask(&self, secret_scalar: Scalar) -> CoefficientCommitment {
-        CoefficientCommitment::new(self.big_c.value() - self.big_y.value() * secret_scalar)
+        let scalar = from_secret_key_to_scalar(&secret_scalar);
+        let big_y = AggregatePublicKey::from_public_key(&self.big_y).into();
+        let big_c = AggregatePublicKey::from_public_key(&self.big_c).into();
+        let mut result = blst_p1::default();
+        let mut result_affine = blst_p1_affine::default();
+        unsafe {
+            blst_p1_mult(&mut result, &big_y, scalar.b.as_ptr(), 255);
+            blst_p1_cneg(&mut result, true);
+            blst_p1_add(&mut result, &result, &big_c);
+            blst_p1_to_affine(&mut result_affine, &result);
+        };
+        result_affine.into()
     }
+}
+
+fn from_secret_key_to_scalar(s: &SecretKey) -> blst_scalar {
+    <&blst::min_pk::SecretKey as std::convert::Into<&blst_scalar>>::into(s).clone()
 }
 
 /// None for participants and Some for coordinator
