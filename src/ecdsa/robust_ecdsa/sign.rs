@@ -23,20 +23,19 @@ pub fn sign(
     msg_hash: Scalar,
 ) -> Result<impl Protocol<Output = Signature>, InitializationError> {
     if participants.len() < 2 {
-        return Err(InitializationError::BadParameters(format!(
-            "participant count cannot be < 2, found: {}",
-            participants.len()
-        )));
+        return Err(InitializationError::NotEnoughParticipants {
+            participants: participants.len(),
+        });
     };
 
-    let participants = ParticipantList::new(participants).ok_or_else(|| {
-        InitializationError::BadParameters("participant list cannot contain duplicates".to_string())
-    })?;
+    let participants =
+        ParticipantList::new(participants).ok_or(InitializationError::DuplicateParticipants)?;
 
     if !participants.contains(me) {
-        return Err(InitializationError::BadParameters(
-            "participant list does not contain me".to_string(),
-        ));
+        return Err(InitializationError::MissingParticipant {
+            role: "self",
+            participant: me,
+        });
     };
 
     let ctx = Comms::new();
@@ -91,10 +90,10 @@ async fn do_sign(
     // interpolate s
     let mut s = Polynomial::eval_interpolation(&identifiers, &sshares, None)?.0;
     // raise error if s is zero
-    if s == <<<C as frost_core::Ciphersuite>::Group as frost_core::Group>::Field as frost_core::Field>::zero(){
+    if s.is_zero().into() {
         return Err(ProtocolError::AssertionFailed(
             "signature part s cannot be zero".to_string(),
-        ))
+        ));
     }
     // Normalize s
     s.conditional_assign(&(-s), s.is_high());
@@ -189,6 +188,47 @@ mod test {
         // verify the correctness of the generated signature
         VerifyingKey::from(&PublicKey::from_affine(public_key.to_affine()).unwrap())
             .verify(&msg[..], &sig)?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_sign_fails_if_s_is_zero() -> Result<(), Box<dyn Error>> {
+        use crate::ecdsa::{ProjectivePoint, Secp256K1ScalarField};
+        use crate::test::generate_participants;
+
+        let participants = generate_participants(2);
+
+        // presignatures with s_me = 0 for each participant
+        let presignatures = participants
+            .iter()
+            .map(|p| {
+                (
+                    *p,
+                    PresignOutput {
+                        big_r: ProjectivePoint::IDENTITY.to_affine(),
+                        alpha_i: Secp256K1ScalarField::zero(),
+                        beta_i: Secp256K1ScalarField::zero(),
+                    },
+                )
+            })
+            .collect::<Vec<_>>();
+
+        let public_key = ProjectivePoint::IDENTITY;
+        let msg = [0u8; 32]; // arbitrary zero message
+
+        let result = crate::ecdsa::robust_ecdsa::test::run_sign(presignatures, public_key, &msg);
+
+        match result {
+            Ok(_) => panic!("expected failure, got success"),
+            Err(err) => {
+                let text = err.to_string();
+                assert!(
+                    text.contains("signature part s cannot be zero"),
+                    "unexpected error type: {}",
+                    text
+                );
+            }
+        }
         Ok(())
     }
 }

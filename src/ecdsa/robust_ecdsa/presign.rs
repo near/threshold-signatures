@@ -1,6 +1,7 @@
 use frost_core::serialization::SerializableScalar;
 use frost_secp256k1::{Group, Secp256K1Group};
-use rand_core::OsRng;
+use rand_core::CryptoRngCore;
+use subtle::ConstantTimeEq;
 
 use super::{PresignArguments, PresignOutput};
 use crate::{
@@ -30,12 +31,12 @@ pub fn presign(
     participants: &[Participant],
     me: Participant,
     args: PresignArguments,
+    rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = PresignOutput>, InitializationError> {
     if participants.len() < 2 {
-        return Err(InitializationError::BadParameters(format!(
-            "participant count cannot be less than 2, found: {}",
-            participants.len()
-        )));
+        return Err(InitializationError::NotEnoughParticipants {
+            participants: participants.len(),
+        });
     };
 
     if args.threshold > participants.len() {
@@ -62,18 +63,18 @@ pub fn presign(
         ));
     }
 
-    let participants = ParticipantList::new(participants).ok_or_else(|| {
-        InitializationError::BadParameters("participant list cannot contain duplicates".to_string())
-    })?;
+    let participants =
+        ParticipantList::new(participants).ok_or(InitializationError::DuplicateParticipants)?;
 
     if !participants.contains(me) {
-        return Err(InitializationError::BadParameters(
-            "Presign participant list does not contain me".to_string(),
-        ));
+        return Err(InitializationError::MissingParticipant {
+            role: "self",
+            participant: me,
+        });
     };
 
     let ctx = Comms::new();
-    let fut = do_presign(ctx.shared_channel(), participants, me, args);
+    let fut = do_presign(ctx.shared_channel(), participants, me, args, rng);
     Ok(make_protocol(ctx, fut))
 }
 
@@ -84,19 +85,20 @@ async fn do_presign(
     participants: ParticipantList,
     me: Participant,
     args: PresignArguments,
+    mut rng: impl CryptoRngCore,
 ) -> Result<PresignOutput, ProtocolError> {
+    let rng = &mut rng;
     let threshold = args.threshold;
     // Round 0
-    let mut rng = OsRng;
 
     let polynomials = [
         // degree t random secret shares where t is the max number of malicious parties
-        Polynomial::generate_polynomial(None, threshold, &mut rng)?, // fk
-        Polynomial::generate_polynomial(None, threshold, &mut rng)?, // fa
+        Polynomial::generate_polynomial(None, threshold, rng)?, // fk
+        Polynomial::generate_polynomial(None, threshold, rng)?, // fa
         // degree 2t zero secret shares where t is the max number of malicious parties
-        zero_secret_polynomial(2 * threshold, &mut rng)?, // fb
-        zero_secret_polynomial(2 * threshold, &mut rng)?, // fd
-        zero_secret_polynomial(2 * threshold, &mut rng)?, // fe
+        zero_secret_polynomial(2 * threshold, rng)?, // fb
+        zero_secret_polynomial(2 * threshold, rng)?, // fd
+        zero_secret_polynomial(2 * threshold, rng)?, // fe
     ];
 
     // send polynomial evaluations to participants
@@ -201,7 +203,11 @@ async fn do_presign(
     )?;
 
     // check R is not identity
-    if big_r.value().eq(&<Secp256K1Group as Group>::identity()) {
+    if big_r
+        .value()
+        .ct_eq(&<Secp256K1Group as Group>::identity())
+        .into()
+    {
         return Err(ProtocolError::IdentityElement);
     }
 
@@ -259,7 +265,8 @@ async fn do_presign(
         // check W == g^w
         if big_w
             .value()
-            .ne(&(<Secp256K1Group as Group>::generator() * w.0))
+            .ct_ne(&(<Secp256K1Group as Group>::generator() * w.0))
+            .into()
         {
             return Err(ProtocolError::AssertionFailed(
                 "Exponent interpolation check failed.".to_string(),
@@ -285,7 +292,10 @@ async fn do_presign(
 }
 
 /// Generates a secret polynomial where the constant term is zero
-fn zero_secret_polynomial(degree: usize, rng: &mut OsRng) -> Result<Polynomial, ProtocolError> {
+fn zero_secret_polynomial(
+    degree: usize,
+    rng: &mut impl CryptoRngCore,
+) -> Result<Polynomial, ProtocolError> {
     let secret = Secp256K1ScalarField::zero();
     Polynomial::generate_polynomial(Some(secret), degree, rng)
 }
@@ -383,6 +393,7 @@ mod test {
                     keygen_out,
                     threshold: max_malicious,
                 },
+                OsRng,
             )
             .unwrap();
             protocols.push((*p, Box::new(protocol)));

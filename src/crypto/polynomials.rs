@@ -2,6 +2,7 @@ use frost_core::{
     keys::CoefficientCommitment, serialization::SerializableScalar, Field, Group, Scalar,
 };
 use rand_core::CryptoRngCore;
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 use super::ciphersuite::Ciphersuite;
 use crate::protocol::{errors::ProtocolError, Participant};
@@ -119,7 +120,10 @@ impl<C: Ciphersuite> Polynomial<C> {
         identifiers: &[Scalar<C>],
         shares: &[SerializableScalar<C>],
         point: Option<&Scalar<C>>,
-    ) -> Result<SerializableScalar<C>, ProtocolError> {
+    ) -> Result<SerializableScalar<C>, ProtocolError>
+    where
+        Scalar<C>: ConstantTimeEq,
+    {
         let mut interpolation = <C::Group as Group>::Field::zero();
         // raise Error if the lengths are not the same
         // or the number of identifiers (<= 1)
@@ -288,7 +292,10 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
         identifiers: &[Scalar<C>],
         shares: &[CoefficientCommitment<C>],
         point: Option<&Scalar<C>>,
-    ) -> Result<CoefficientCommitment<C>, ProtocolError> {
+    ) -> Result<CoefficientCommitment<C>, ProtocolError>
+    where
+        Scalar<C>: ConstantTimeEq,
+    {
         let mut interpolation = C::Group::identity();
         // raise Error if the lengths are not the same
         // or the number of identifiers (<= 1)
@@ -374,7 +381,8 @@ impl<'de, C: Ciphersuite> Deserialize<'de> for PolynomialCommitment<C> {
 /// Note: if `x` is None then consider it as 0.
 /// Note: `x_j` are elements in `point_set`
 /// Note: if `x_i` is not in `point_set` then return an error
-/// Note: `point_set` must not have repeating values.
+/// Warning: For correctness, this function assumes `point_set` does not have repeated values
+/// We dont actually enforce this for performance reasons
 pub fn compute_lagrange_coefficient<C: Ciphersuite>(
     points_set: &[Scalar<C>],
     x_i: &Scalar<C>,
@@ -415,9 +423,8 @@ pub fn compute_lagrange_coefficient<C: Ciphersuite>(
         return Err(ProtocolError::InvalidInterpolationArguments);
     }
 
-    // raises error if the denominator is null, i.e., the set contains duplicates
-    let den = <C::Group as Group>::Field::invert(&den)
-        .map_err(|_| ProtocolError::InvalidInterpolationArguments)?;
+    // denominator will never be 0 here, therefore it is safe to invert
+    let den = <C::Group as Group>::Field::invert(&den).map_err(|_| ProtocolError::Unreachable)?;
     Ok(SerializableScalar(num * den))
 }
 
@@ -460,7 +467,10 @@ pub fn compute_lagrange_coefficient<C: Ciphersuite>(
 pub fn batch_compute_lagrange_coefficients<C: Ciphersuite>(
     points_set: &[Scalar<C>],
     x: Option<&Scalar<C>>,
-) -> Result<Vec<SerializableScalar<C>>, ProtocolError> {
+) -> Result<Vec<SerializableScalar<C>>, ProtocolError>
+where
+    Scalar<C>: ConstantTimeEq,
+{
     let n = points_set.len();
     if n <= 1 {
         return Err(ProtocolError::InvalidInterpolationArguments);
@@ -471,9 +481,24 @@ pub fn batch_compute_lagrange_coefficients<C: Ciphersuite>(
     let x = x.unwrap_or(&zero);
 
     // If x exactly equals some x_i, return Kronecker delta vector
-    if let Some(k) = points_set.iter().position(|&p| p == *x) {
+    // This is done in constant time by iterating through all elements
+    // and accumulating a Choice without short-circuiting.
+    let mut kronecker_index = CtOption::new(0u32, Choice::from(0u8)); // Initialize as CtOption::none() effectively
+
+    for (i, p) in points_set.iter().enumerate() {
+        let is_equal = p.ct_eq(x);
+        // If is_equal is true, select 'i', otherwise keep the current k_index_val
+        kronecker_index = CtOption::conditional_select(
+            &kronecker_index,
+            &CtOption::new(i as u32, is_equal),
+            is_equal,
+        );
+    }
+
+    if kronecker_index.is_some().into() {
+        let kronecker_index_value = kronecker_index.unwrap() as usize;
         let mut coeffs = vec![SerializableScalar(<C::Group as Group>::Field::zero()); n];
-        coeffs[k] = SerializableScalar(<C::Group as Group>::Field::one());
+        coeffs[kronecker_index_value] = SerializableScalar(<C::Group as Group>::Field::one());
         return Ok(coeffs);
     }
 
@@ -571,9 +596,10 @@ pub fn batch_invert<C: Ciphersuite>(values: &[Scalar<C>]) -> Result<Vec<Scalar<C
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::test::generate_participants;
+    use crate::test::{generate_participants, generate_participants_with_random_ids};
     use frost_core::Field;
     use frost_secp256k1::{Secp256K1Group, Secp256K1ScalarField, Secp256K1Sha256};
+    use k256::Scalar;
     use rand_core::{OsRng, RngCore};
     type C = Secp256K1Sha256;
 
@@ -1058,6 +1084,74 @@ mod test {
     }
 
     #[test]
+    fn test_compute_lagrange_coefficient_cubic_polynomial() {
+        let points = generate_participants_with_random_ids(5, &mut OsRng)
+            .iter()
+            .map(|p| p.scalar::<C>())
+            .collect::<Vec<_>>();
+        let mut result = Secp256K1ScalarField::zero();
+        let target_point = Scalar::generate_biased(&mut OsRng);
+        for point in points.iter() {
+            let coefficient =
+                compute_lagrange_coefficient::<C>(&points, point, Some(&target_point))
+                    .unwrap()
+                    .0;
+            result += coefficient * point * point * point;
+        }
+        assert_eq!(result, target_point * target_point * target_point);
+    }
+
+    #[test]
+    fn test_compute_lagrange_coefficient_edge_cases() {
+        let one = Scalar::ONE;
+        let zero = Scalar::ZERO;
+        let target_point = Scalar::generate_biased(&mut OsRng);
+
+        // coefficients computed manually
+        assert_eq!(
+            compute_lagrange_coefficient::<C>(&[one, zero], &one, Some(&target_point))
+                .unwrap()
+                .0,
+            target_point
+        );
+        assert_eq!(
+            compute_lagrange_coefficient::<C>(&[one, zero], &zero, Some(&target_point))
+                .unwrap()
+                .0,
+            (one - target_point)
+        );
+
+        // target point is None should be treated as 0
+        let random_point1 = Scalar::generate_biased(&mut OsRng);
+        let random_point2 = Scalar::generate_biased(&mut OsRng);
+        assert_eq!(
+            compute_lagrange_coefficient::<C>(
+                &[random_point1, random_point2],
+                &random_point1,
+                Some(&zero)
+            )
+            .unwrap()
+            .0,
+            compute_lagrange_coefficient::<C>(
+                &[random_point1, random_point2],
+                &random_point1,
+                None
+            )
+            .unwrap()
+            .0
+        );
+
+        // point not in set
+        assert!(
+            compute_lagrange_coefficient::<C>(&[one, zero], &(one + one), Some(&target_point))
+                .is_err()
+        );
+
+        // not enough points
+        assert!(compute_lagrange_coefficient::<C>(&[one], &one, Some(&target_point)).is_err());
+    }
+
+    #[test]
     fn test_lagrange_computation_equivalence() {
         let degree = 10;
         let participants = generate_participants(degree + 1);
@@ -1086,6 +1180,35 @@ mod test {
         {
             assert_eq!(a.0, b.0);
         }
+    }
+
+    #[test]
+    fn test_batch_compute_lagrange_coefficients_early_exit() {
+        use frost_core::Field;
+        use k256::Scalar;
+        use std::ops::Neg;
+        let points_set = [Scalar::from(1u32), Scalar::from(2u32), Scalar::from(3u32)];
+        let x_equals_point = Scalar::from(2u32); // x is equal to points_set[1]
+
+        let coeffs =
+            batch_compute_lagrange_coefficients::<C>(&points_set[..], Some(&x_equals_point))
+                .unwrap();
+
+        // Expect Kronecker delta vector: [0, 1, 0]
+        assert_eq!(coeffs.len(), 3);
+        assert_eq!(coeffs[0].0, Secp256K1ScalarField::zero());
+        assert_eq!(coeffs[1].0, Secp256K1ScalarField::one());
+        assert_eq!(coeffs[2].0, Secp256K1ScalarField::zero());
+
+        let x_not_equals_point = Scalar::from(4u32); // x is not equal to any point
+        let coeffs_no_early_exit =
+            batch_compute_lagrange_coefficients::<C>(&points_set[..], Some(&x_not_equals_point))
+                .unwrap();
+        // Verify the calculated Lagrange coefficients
+        assert_eq!(coeffs_no_early_exit.len(), 3);
+        assert_eq!(coeffs_no_early_exit[0].0, Scalar::from(1u32)); // lambda_0(4) = 1
+        assert_eq!(coeffs_no_early_exit[1].0, Scalar::from(3u32).neg()); // lambda_1(4) = -3
+        assert_eq!(coeffs_no_early_exit[2].0, Scalar::from(3u32)); // lambda_2(4) = 3
     }
 
     #[test]

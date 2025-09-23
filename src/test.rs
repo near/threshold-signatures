@@ -1,7 +1,7 @@
 // This module provides generic functions to be used
 // in the implemented schemes testing cases
 
-use rand_core::{OsRng, RngCore};
+use rand_core::{CryptoRng, CryptoRngCore, OsRng, RngCore};
 use std::error::Error;
 
 use crate::protocol::{errors::InitializationError, run_protocol, Participant, Protocol};
@@ -17,10 +17,13 @@ pub fn generate_participants(number: usize) -> Vec<Participant> {
 }
 
 /// Generates a vector of `number` participants, sorted by the participant id.
-/// The participants ids are drawn from OsRng.
-pub fn generate_participants_with_random_ids(number: usize) -> Vec<Participant> {
+/// The participants ids are drawn from rng.
+pub fn generate_participants_with_random_ids(
+    number: usize,
+    rng: &mut impl CryptoRngCore,
+) -> Vec<Participant> {
     let mut participants = (0..number)
-        .map(|_| Participant::from(OsRng.next_u32()))
+        .map(|_| Participant::from(rng.next_u32()))
         .collect::<Vec<_>>();
     participants.sort();
     participants
@@ -43,7 +46,7 @@ where
     let mut protocols: GenProtocol<C> = Vec::with_capacity(participants.len());
 
     for p in participants {
-        let protocol = keygen::<C>(participants, *p, threshold)?;
+        let protocol = keygen::<C>(participants, *p, threshold, OsRng)?;
         protocols.push((*p, Box::new(protocol)));
     }
 
@@ -72,6 +75,7 @@ where
             participants,
             threshold,
             *p,
+            OsRng,
         )?;
         protocols.push((*p, Box::new(protocol)));
     }
@@ -123,6 +127,7 @@ where
             &new_participants,
             new_threshold,
             *p,
+            OsRng,
         )?;
         protocols.push((*p, Box::new(protocol)));
     }
@@ -176,4 +181,40 @@ where
     }
 
     Ok(run_protocol(protocols)?)
+}
+
+// Taken from https://rust-random.github.io/book/guide-test-fn-rng.html
+#[derive(Clone, Copy, Debug)]
+pub struct MockCryptoRng {
+    data: [u8; 8],
+    index: usize,
+}
+
+impl MockCryptoRng {
+    pub fn new(data: [u8; 8]) -> MockCryptoRng {
+        MockCryptoRng { data, index: 0 }
+    }
+}
+
+impl CryptoRng for MockCryptoRng {}
+
+impl RngCore for MockCryptoRng {
+    fn next_u32(&mut self) -> u32 {
+        unimplemented!()
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        unimplemented!()
+    }
+
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        for byte in dest.iter_mut() {
+            *byte = self.data[self.index];
+            self.index = (self.index + 1) % self.data.len();
+        }
+    }
+
+    fn try_fill_bytes(&mut self, _dest: &mut [u8]) -> Result<(), rand_core::Error> {
+        unimplemented!()
+    }
 }

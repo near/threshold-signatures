@@ -1,7 +1,7 @@
 This document specifies the signing protocol described in [[DJNPO20](https://eprint.iacr.org/2020/501)].
 The protocol is split into two phases, a pre-signing phase and a signing phase.
 
-*Note that we slightly modify the original scheme and push parts of the computation done on the signing phase to the presigning phase to improve the performance of the former phase. Additionally, the authors assume the message is an input to the first round, but their proof does not require it until the last round.*
+*Note that we slightly modify the original scheme and push parts of the computation done on the signing phase to the presigning phase to improve the performance of the former phase. Additionally, we allow rerandomization and key derivation of the presignature following [[GS21](https://eprint.iacr.org/2021/1330.pdf)] and introduce a coordinator to the online signing phase to reduce the communication complexity.*
 
 ### Note: the threshold $t =$ *number_malicious_parties*
 
@@ -103,6 +103,8 @@ The inputs to this phase are:
 7. $\blacktriangle$ The coordinator asserts that $(R, s)$ is a valid ECDSA signature for $h$.
 
 **Output:** the signature $(R, s)$.
+
+*Note that such message-signature pair is only accepted by a verifier that uses a derived public key, i.e.,* $X + \epsilon\cdot G$.
 
 # Differences with [[DJNPO20](https://eprint.iacr.org/2020/501)]
 
