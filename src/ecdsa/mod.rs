@@ -183,7 +183,6 @@ mod test_verify {
         ecdsa::{signature::Verifier, SigningKey, VerifyingKey},
         ProjectivePoint, Scalar, Secp256k1,
     };
-    use rand::prelude::SliceRandom;
     use rand_core::{CryptoRngCore, OsRng, RngCore};
     use sha2::{digest::FixedOutput, Digest, Sha256};
     type C = Secp256K1Sha256;
@@ -268,7 +267,7 @@ mod test_verify {
         let msg_hash = random_32_bytes(rng);
         let entropy = random_32_bytes(rng);
         // Generate unique ten ParticipantId values
-        let participants = generate_participants_with_random_ids(num_participants);
+        let participants = generate_participants_with_random_ids(num_participants, rng);
         let participants = ParticipantList::new(&participants).unwrap();
 
         let args = RerandomizationArguments::new(pk, msg_hash, big_r, &participants, entropy);
@@ -324,7 +323,7 @@ mod test_verify {
         let (pk, big_r, msg_hash, _, entropy, delta) =
             compute_random_outputs(&mut rng, num_participants);
         // different participants set
-        let participants = generate_participants_with_random_ids(num_participants);
+        let participants = generate_participants_with_random_ids(num_participants, &mut rng);
         let participants = ParticipantList::new(&participants).unwrap();
         let args = RerandomizationArguments::new(pk, msg_hash, big_r, &participants, entropy);
         let delta_prime = args.derive_randomness();
@@ -351,14 +350,11 @@ mod test_verify {
     fn test_same_randomness() {
         let num_participants = 10;
         let mut rng = OsRng;
-        let (pk, big_r, msg_hash, participants, entropy, delta) =
+        let (pk, big_r, msg_hash, mut participants, entropy, delta) =
             compute_random_outputs(&mut rng, num_participants);
 
-        let mut rng = rand::rng();
         // reshuffle
-        let mut participants = participants.participants().to_vec();
-        participants.shuffle(&mut rng);
-        let participants = ParticipantList::new(&participants).unwrap();
+        participants.shuffle(rng);
         let args = RerandomizationArguments::new(pk, msg_hash, big_r, &participants, entropy);
         let delta_prime = args.derive_randomness();
         assert!(delta == delta_prime);

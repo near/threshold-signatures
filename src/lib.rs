@@ -18,6 +18,7 @@ pub use crypto::polynomials::{
     batch_compute_lagrange_coefficients, batch_invert, compute_lagrange_coefficient,
 };
 
+use rand_core::CryptoRngCore;
 use crypto::ciphersuite::Ciphersuite;
 use frost_core::{keys::SigningShare, Group, VerifyingKey};
 use serde::{Deserialize, Serialize};
@@ -72,6 +73,7 @@ pub fn keygen<C: Ciphersuite>(
     participants: &[Participant],
     me: Participant,
     threshold: usize,
+    rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = KeygenOutput<C>>, InitializationError>
 where
     frost_core::Element<C>: Send,
@@ -79,11 +81,12 @@ where
 {
     let comms = Comms::new();
     let participants = assert_keygen_invariants(participants, me, threshold)?;
-    let fut = do_keygen::<C>(comms.shared_channel(), participants, me, threshold);
+    let fut = do_keygen::<C>(comms.shared_channel(), participants, me, threshold, rng);
     Ok(make_protocol(comms, fut))
 }
 
 /// Performs the key reshare protocol
+#[allow(clippy::too_many_arguments)]
 pub fn reshare<C: Ciphersuite>(
     old_participants: &[Participant],
     old_threshold: usize,
@@ -92,6 +95,7 @@ pub fn reshare<C: Ciphersuite>(
     new_participants: &[Participant],
     new_threshold: usize,
     me: Participant,
+    rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = KeygenOutput<C>>, InitializationError>
 where
     frost_core::Element<C>: Send,
@@ -115,6 +119,7 @@ where
         old_signing_key,
         old_public_key,
         old_participants,
+        rng,
     );
     Ok(make_protocol(comms, fut))
 }
@@ -126,6 +131,7 @@ pub fn refresh<C: Ciphersuite>(
     old_participants: &[Participant],
     old_threshold: usize,
     me: Participant,
+    rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = KeygenOutput<C>>, InitializationError>
 where
     frost_core::Element<C>: Send,
@@ -154,6 +160,7 @@ where
         old_signing_key,
         old_public_key,
         old_participants,
+        rng,
     );
     Ok(make_protocol(comms, fut))
 }
