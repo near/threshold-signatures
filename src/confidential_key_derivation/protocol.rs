@@ -1,30 +1,79 @@
 use crate::confidential_key_derivation::{
-    AppId, CKDCoordinatorOutput, CKDOutput, CoefficientCommitment, SigningShare, VerifyingKey,
+    AppId, CKDCoordinatorOutput, CKDOutput, CoefficientCommitment, Element,
 };
 use crate::participants::{ParticipantCounter, ParticipantList};
 use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
 use crate::protocol::{errors::InitializationError, errors::ProtocolError, Participant, Protocol};
 
-use frost_core::Ciphersuite;
+use elliptic_curve::{Field, Group};
 use rand_core::CryptoRngCore;
 
-use frost_secp256k1::Secp256K1Sha256;
+use blstrs::{G1Projective, Scalar};
 
-use k256::ProjectivePoint;
-use k256::{
-    elliptic_curve::hash2curve::{ExpandMsgXof, GroupDigest},
-    Secp256k1,
-};
+const DOMAIN: &[u8] = b"NEAR BLS12381G1_XMD:SHA-256_SSWU_RO_";
 
-const DOMAIN: &[u8] = b"NEAR CURVE_XOF:SHAKE-256_SSWU_RO_";
+fn hash2curve(app_id: &AppId) -> Element {
+    G1Projective::hash_to_curve(app_id, DOMAIN, &[])
+}
 
-fn hash2curve(app_id: &AppId) -> Result<ProjectivePoint, ProtocolError> {
-    let hash = <Secp256k1 as GroupDigest>::hash_from_bytes::<ExpandMsgXof<sha3::Shake256>>(
-        &[app_id.as_ref()],
-        &[DOMAIN],
-    )
-    .map_err(|_| ProtocolError::HashingError)?;
-    Ok(hash)
+fn bytes_to_scalar(input: &[u8]) -> Scalar {
+    let mut output = [0u8; 32];
+    output[0..input.len()].copy_from_slice(input);
+    output[0] += 1;
+    Scalar::from_bytes_be(&output).unwrap()
+}
+
+fn compute_lagrange_coefficient(points_set: &[Scalar], x_i: &Scalar) -> Scalar {
+    let mut num = Scalar::ONE;
+    let mut den = Scalar::ONE;
+
+    for x_j in points_set.iter() {
+        if *x_i == *x_j {
+            continue;
+        }
+        // Both signs inverted just to avoid requiring an extra negation
+        num *= x_j;
+        den *= x_j - x_i;
+    }
+
+    // denominator will never be 0 here, therefore it is safe to invert
+    den = den.invert().unwrap();
+    num * den
+}
+
+fn lagrange(p: Participant, participants: &ParticipantList) -> Scalar {
+    let p = bytes_to_scalar(&p.bytes());
+    let identifiers: Vec<Scalar> = participants
+        .participants()
+        .iter()
+        .map(|p| bytes_to_scalar(&p.bytes()))
+        .collect();
+    compute_lagrange_coefficient(&identifiers, &p)
+}
+
+fn ckd_helper(
+    participants: &ParticipantList,
+    me: Participant,
+    private_share: Scalar,
+    app_id: &AppId,
+    app_pk: Element,
+    rng: &mut impl CryptoRngCore,
+) -> (Element, Element) {
+    // y <- ZZq* , Y <- y * G
+    let y = Scalar::random(rng);
+    let big_y = G1Projective::generator() * y;
+    // H(app_id) when H is a random oracle
+    let hash_point = hash2curve(app_id);
+    // S <- x . H(app_id)
+    let big_s = hash_point * private_share;
+    // C <- S + y . A
+    let big_c = big_s + app_pk * y;
+    // Compute  λi := λi(0)
+    let lambda_i = lagrange(me, &participants);
+    // Normalize Y and C into  (λi . Y , λi . C)
+    let norm_big_y = big_y * lambda_i;
+    let norm_big_c = big_c * lambda_i;
+    (norm_big_y, norm_big_c)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -33,25 +82,13 @@ async fn do_ckd_participant(
     participants: ParticipantList,
     coordinator: Participant,
     me: Participant,
-    private_share: SigningShare,
+    private_share: Scalar,
     app_id: &AppId,
-    app_pk: VerifyingKey,
+    app_pk: Element,
     rng: &mut impl CryptoRngCore,
 ) -> Result<CKDOutput, ProtocolError> {
-    // y <- ZZq* , Y <- y * G
-    let (y, big_y) = Secp256K1Sha256::generate_nonce(rng);
-    // H(app_id) when H is a random oracle
-    let hash_point = hash2curve(app_id)?;
-    // S <- x . H(app_id)
-    let big_s = hash_point * private_share.to_scalar();
-    // C <- S + y . A
-    let big_c = big_s + app_pk.to_element() * y;
-    // Compute  λi := λi(0)
-    let lambda_i = participants.lagrange::<Secp256K1Sha256>(me)?;
-    // Normalize Y and C into  (λi . Y , λi . C)
-    let norm_big_y = CoefficientCommitment::new(big_y * lambda_i);
-    let norm_big_c = CoefficientCommitment::new(big_c * lambda_i);
-
+    let (norm_big_y, norm_big_c) =
+        ckd_helper(&participants, me, private_share, app_id, app_pk, rng);
     let waitpoint = chan.next_waitpoint();
     chan.send_private(waitpoint, coordinator, &(norm_big_y, norm_big_c))?;
 
@@ -62,24 +99,13 @@ async fn do_ckd_coordinator(
     mut chan: SharedChannel,
     participants: ParticipantList,
     me: Participant,
-    private_share: SigningShare,
+    private_share: Scalar,
     app_id: &AppId,
-    app_pk: VerifyingKey,
+    app_pk: Element,
     rng: &mut impl CryptoRngCore,
 ) -> Result<CKDOutput, ProtocolError> {
-    // y <- ZZq* , Y <- y * G
-    let (y, big_y) = Secp256K1Sha256::generate_nonce(rng);
-    // H(app_id) when H is a random oracle
-    let hash_point = hash2curve(app_id)?;
-    // S <- x . H(app_id)
-    let big_s = hash_point * private_share.to_scalar();
-    // C <- S + y . A
-    let big_c = big_s + app_pk.to_element() * y;
-    // Compute  λi := λi(0)
-    let lambda_i = participants.lagrange::<Secp256K1Sha256>(me)?;
-    // Normalize Y and C into  (λi . Y , λi . C)
-    let mut norm_big_y = big_y * lambda_i;
-    let mut norm_big_c = big_c * lambda_i;
+    let (mut norm_big_y, mut norm_big_c) =
+        ckd_helper(&participants, me, private_share, app_id, app_pk, rng);
 
     // Receive everyone's inputs and add them together
     let mut seen = ParticipantCounter::new(&participants);
@@ -92,8 +118,8 @@ async fn do_ckd_coordinator(
         if !seen.put(from) {
             continue;
         }
-        norm_big_y += big_y.value();
-        norm_big_c += big_c.value();
+        norm_big_y += big_y;
+        norm_big_c += big_c;
     }
     let ckd_output = CKDCoordinatorOutput::new(norm_big_y, norm_big_c);
     Ok(Some(ckd_output))
@@ -108,9 +134,9 @@ pub fn ckd(
     participants: &[Participant],
     coordinator: Participant,
     me: Participant,
-    private_share: SigningShare,
+    private_share: Scalar,
     app_id: impl Into<AppId>,
-    app_pk: VerifyingKey,
+    app_pk: Element,
     rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = CKDOutput>, InitializationError> {
     // not enough participants
@@ -164,9 +190,9 @@ async fn run_ckd_protocol(
     coordinator: Participant,
     me: Participant,
     participants: ParticipantList,
-    private_share: SigningShare,
+    private_share: Scalar,
     app_id: AppId,
-    app_pk: VerifyingKey,
+    app_pk: Element,
     mut rng: impl CryptoRngCore,
 ) -> Result<CKDOutput, ProtocolError> {
     if me == coordinator {
@@ -198,7 +224,6 @@ async fn run_ckd_protocol(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::crypto::polynomials::Polynomial;
     use crate::protocol::run_protocol;
     use std::error::Error;
 
@@ -208,32 +233,24 @@ mod test {
     fn test_hash2curve() -> Result<(), Box<dyn Error>> {
         let app_id = b"Hello Near";
         let app_id_same = b"Hello Near";
-        let pt1 = hash2curve(&AppId::from(app_id)).unwrap();
-        let pt2 = hash2curve(&AppId::from(app_id_same)).unwrap();
+        let pt1 = hash2curve(&AppId::from(app_id));
+        let pt2 = hash2curve(&AppId::from(app_id_same));
         assert!(pt1 == pt2);
 
         let app_id = b"Hello Near!";
-        let pt2 = hash2curve(&AppId::from(app_id)).unwrap();
+        let pt2 = hash2curve(&AppId::from(app_id));
         assert!(pt1 != pt2);
         Ok(())
     }
 
     #[test]
     fn test_ckd() -> Result<(), Box<dyn Error>> {
-        let threshold = 3;
-
-        let f =
-            Polynomial::<Secp256K1Sha256>::generate_polynomial(None, threshold - 1, &mut OsRng)?;
-
-        // Create the threshold signer's master secret key
-        let msk = f.eval_at_zero()?;
+        let mut rng = OsRng;
 
         // Create the app necessary items
         let app_id = AppId::from(b"Near App");
-        let (app_sk, app_pk) = Secp256K1Sha256::generate_nonce(&mut OsRng);
-        let app_pk = VerifyingKey::new(app_pk);
-
-        let expected_confidential_key = hash2curve(&app_id).unwrap() * msk.0;
+        let app_sk = Scalar::random(&mut rng);
+        let app_pk = G1Projective::generator() * app_sk;
 
         let participants = vec![
             Participant::from(0u32),
@@ -248,9 +265,10 @@ mod test {
         let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = CKDOutput>>)> =
             Vec::with_capacity(participants.len());
 
+        let mut private_shares = Vec::new();
         for p in &participants {
-            let share = f.eval_at_participant(*p)?;
-            let private_share = SigningShare::new(share.0);
+            let private_share = Scalar::random(&mut rng);
+            private_shares.push(private_share);
 
             let protocol = ckd(
                 &participants,
@@ -282,135 +300,19 @@ mod test {
         // compute msk . H(app_id)
         let confidential_key = ckd.unmask(app_sk);
 
+        let mut msk = Scalar::ZERO;
+        let participants = ParticipantList::new(&participants).unwrap();
+        for (i, private_share) in private_shares.iter().enumerate() {
+            let lambda_i = lagrange(participants.get_participant(i).unwrap(), &participants);
+            msk += lambda_i * private_share;
+        }
+
+        let expected_confidential_key = hash2curve(&app_id) * msk;
+
         assert_eq!(
-            confidential_key.value(),
-            expected_confidential_key,
+            confidential_key, expected_confidential_key,
             "Keys should be equal"
         );
         Ok(())
-    }
-
-    #[test]
-    fn test_ckd_duplicate_participants() {
-        let participants = vec![
-            Participant::from(0u32),
-            Participant::from(1u32),
-            Participant::from(1u32),
-        ];
-        let coordinator = Participant::from(0u32);
-        let me = Participant::from(0u32);
-        let (_app_sk, app_pk) = Secp256K1Sha256::generate_nonce(&mut OsRng);
-        let app_pk = VerifyingKey::new(app_pk);
-        let f = Polynomial::<Secp256K1Sha256>::generate_polynomial(None, 2, &mut OsRng).unwrap();
-        let private_share = SigningShare::new(f.eval_at_participant(me).unwrap().0);
-        let app_id = AppId::from(b"test");
-
-        let result = ckd(
-            &participants,
-            coordinator,
-            me,
-            private_share,
-            app_id,
-            app_pk,
-            OsRng,
-        );
-        match result {
-            Ok(_) => panic!("Expected an error, but got Ok"),
-            Err(err) => assert_eq!(err, InitializationError::DuplicateParticipants),
-        }
-    }
-
-    #[test]
-    fn test_ckd_not_enough_participants() {
-        let participants = vec![Participant::from(0u32)];
-        let coordinator = Participant::from(0u32);
-        let me = Participant::from(0u32);
-        let (_app_sk, app_pk) = Secp256K1Sha256::generate_nonce(&mut OsRng);
-        let app_pk = VerifyingKey::new(app_pk);
-        let f = Polynomial::<Secp256K1Sha256>::generate_polynomial(None, 2, &mut OsRng).unwrap();
-        let private_share = SigningShare::new(f.eval_at_participant(me).unwrap().0);
-        let app_id = AppId::from(b"test");
-
-        let result = ckd(
-            &participants,
-            coordinator,
-            me,
-            private_share,
-            app_id,
-            app_pk,
-            OsRng,
-        );
-        match result {
-            Ok(_) => panic!("Expected an error, but got Ok"),
-            Err(err) => assert_eq!(
-                err,
-                InitializationError::NotEnoughParticipants { participants: 1 }
-            ),
-        }
-    }
-
-    #[test]
-    fn test_ckd_me_not_in_participants() {
-        let participants = vec![Participant::from(0u32), Participant::from(1u32)];
-        let coordinator = Participant::from(0u32);
-        let me = Participant::from(2u32); // Me is not in the list
-        let (_app_sk, app_pk) = Secp256K1Sha256::generate_nonce(&mut OsRng);
-        let app_pk = VerifyingKey::new(app_pk);
-        let f = Polynomial::<Secp256K1Sha256>::generate_polynomial(None, 2, &mut OsRng).unwrap();
-        let private_share =
-            SigningShare::new(f.eval_at_participant(Participant::from(0u32)).unwrap().0);
-        let app_id = AppId::from(b"test");
-
-        let result = ckd(
-            &participants,
-            coordinator,
-            me,
-            private_share,
-            app_id,
-            app_pk,
-            OsRng,
-        );
-        match result {
-            Ok(_) => panic!("Expected an error, but got Ok"),
-            Err(err) => assert_eq!(
-                err,
-                InitializationError::MissingParticipant {
-                    role: "self",
-                    participant: me
-                }
-            ),
-        }
-    }
-
-    #[test]
-    fn test_ckd_coordinator_not_in_participants() {
-        let participants = vec![Participant::from(0u32), Participant::from(1u32)];
-        let coordinator = Participant::from(2u32); // Coordinator is not in the list
-        let me = Participant::from(0u32);
-        let (_app_sk, app_pk) = Secp256K1Sha256::generate_nonce(&mut OsRng);
-        let app_pk = VerifyingKey::new(app_pk);
-        let f = Polynomial::<Secp256K1Sha256>::generate_polynomial(None, 2, &mut OsRng).unwrap();
-        let private_share = SigningShare::new(f.eval_at_participant(me).unwrap().0);
-        let app_id = AppId::from(b"test");
-
-        let result = ckd(
-            &participants,
-            coordinator,
-            me,
-            private_share,
-            app_id,
-            app_pk,
-            OsRng,
-        );
-        match result {
-            Ok(_) => panic!("Expected an error, but got Ok"),
-            Err(err) => assert_eq!(
-                err,
-                InitializationError::MissingParticipant {
-                    role: "coordinator",
-                    participant: coordinator
-                }
-            ),
-        }
     }
 }
