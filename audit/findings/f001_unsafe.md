@@ -1,3 +1,4 @@
+[<-](../findings.md)
 # Unsafe Code Analysis Report
 
 This document serves as a comprehensive report for all instances of `unsafe` code usage within the project. Each entry details the diagnosis, required invariants, potential failure modes, and remediation steps for a specific `unsafe` block.
@@ -46,6 +47,7 @@ The steps taken to mitigate the identified risks:
 | :---: | :--- | :--- |
 | ✅ **Done** | Unit Tests + Dev Comments to mitigate Code Evolution risk  | [Very High]. A [unit test](../../src/crypto/proofs/strobe.rs#L205) is added to detect regression. |
 | ✅ **Done** |Unsafe Soundness | [Very High]. [Kani](../../src/crypto/proofs/strobe_kani.rs) Proves the soundness. |
-| ⬜️ **To Do** | CI Endianness | - |
+| ⬜️ **To Do** | CI big-endian coverage | - |
+
 
 ---

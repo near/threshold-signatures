@@ -1,3 +1,4 @@
+[<-](../findings.md)
 # [YOUR] Report
 
 [SUMMARY]
