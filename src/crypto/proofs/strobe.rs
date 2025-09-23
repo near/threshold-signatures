@@ -8,6 +8,9 @@ use core::ops::{Deref, DerefMut};
 
 use zeroize::Zeroize;
 
+#[cfg(kani)]
+use kani;
+
 /// Strobe R value; security level 128 is hardcoded
 const STROBE_R: u8 = 166;
 
@@ -18,6 +21,19 @@ const FLAG_T: u8 = 1 << 3;
 const FLAG_M: u8 = 1 << 4;
 const FLAG_K: u8 = 1 << 5;
 
+// WARNING: This function is performance-critical and uses `unsafe` to cast
+// a byte buffer into a `u64` array to avoid copies. This operation is
+// extremely dangerous and relies on three critical invariants:
+//
+// 1.  **Size**: `AlignedKeccakState` MUST be exactly 200 bytes, the same as `[u64; 25]`.
+// 2.  **Alignment**: `AlignedKeccakState` MUST have an alignment of at least 8 bytes.
+//     This is enforced by the `#[repr(align(8))]` attribute.
+// 3.  **Endianness**: This cast is only correct on little-endian architectures.
+//     The Keccak specification requires a little-endian interpretation of the state.
+//     Running this code on a big-endian machine will produce incorrect results.
+//
+// Do NOT modify the `AlignedKeccakState` struct or this function without
+// fully understanding these implications.
 fn transmute_state(st: &mut AlignedKeccakState) -> &mut [u64; 25] {
     unsafe { &mut *(st as *mut AlignedKeccakState as *mut [u64; 25]) }
 }
@@ -26,6 +42,7 @@ fn transmute_state(st: &mut AlignedKeccakState) -> &mut [u64; 25] {
 /// to make pointers to it safely convertible to pointers to [u64; 25]
 /// (since u64 words must be 8-byte aligned)
 #[derive(Clone, Zeroize)]
+#[cfg_attr(kani, derive(kani::Arbitrary))]
 #[zeroize(drop)]
 #[repr(align(8))]
 struct AlignedKeccakState([u8; 200]);
@@ -177,5 +194,37 @@ impl Deref for AlignedKeccakState {
 impl DerefMut for AlignedKeccakState {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+/// Kani proofs for the `strobe` module.
+#[cfg(kani)]
+mod proofs {
+    use super::*;
+
+    #[kani::proof]
+    fn check_transmute_state_correctness() {
+        // Create a symbolic/nondeterministic `AlignedKeccakState`. Kani will explore
+        // all possible byte patterns for this array.
+        let mut state: AlignedKeccakState = kani::any();
+
+        // Implement the safe, little-endian equivalent.
+        // We iterate over the 200-byte buffer in 8-byte chunks and convert
+        // each chunk to a u64 using the specified little-endian byte order,
+        // as required by the Keccak standard.
+        let mut safe_slice = [0u64; 25];
+        for (i, chunk) in state.0.chunks_exact(8).enumerate() {
+            let chunk_array: [u8; 8] = chunk.try_into().unwrap();
+            safe_slice[i] = u64::from_le_bytes(chunk_array);
+        }
+
+        // Call the function under test, which contains the `unsafe` block.
+        let transmuted_slice: &[u64; 25] = transmute_state(&mut state);
+
+        // Assert that the result of the `unsafe` transmutation is bit-for-bit
+        // identical to the result of the safe, endian-aware implementation.
+        // This proof will fail if the `unsafe` code is incorrect or if the
+        // host machine is not little-endian.
+        assert_eq!(*transmuted_slice, safe_slice);
     }
 }
