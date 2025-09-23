@@ -100,3 +100,5 @@ The inputs to this phase are:
 7. $\blacktriangle$ Each $P_i$ asserts that $(R, s)$ is a valid ECDSA signature for $h$.
 
 **Output:** the signature $(R, s)$.
+
+*Note that such message-signature pair is only accepted by a verifier that uses a derived public key, i.e.,* $X + \epsilon\cdot G$.
