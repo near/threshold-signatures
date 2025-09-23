@@ -69,7 +69,7 @@ fn ckd_helper(
     // C <- S + y . A
     let big_c = big_s + app_pk * y;
     // Compute  λi := λi(0)
-    let lambda_i = lagrange(me, &participants);
+    let lambda_i = lagrange(me, participants);
     // Normalize Y and C into  (λi . Y , λi . C)
     let norm_big_y = big_y * lambda_i;
     let norm_big_c = big_c * lambda_i;
