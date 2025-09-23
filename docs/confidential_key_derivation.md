@@ -135,14 +135,15 @@ contract.
 
 - $`\texttt{gen\_app\_private\_key}`$ sets $`\texttt{app\_id}`$ equal to the
   account id of the caller and creates a transaction on-chain with a CKD
-  request with parameters $`(\texttt{app\_id},A)`$
+  request with parameters $`(\texttt{app\_id},A, zkA)`$
 - When the *MPC Network* receives a new CKD request with parameters
-  $`\texttt{app\_id}`$ and $`A`$, this request is sent to all nodes and the key
+  $`\texttt{app\_id}`$, $`A`$ and $`zkA`$, this request is sent to all nodes and the key
   generation process starts. Let $`H`$ be a suitable cryptographically
   secure hash to curve function from
   [rfc9380](https://datatracker.ietf.org/doc/rfc9380/). The steps of the generation process follow:
-  - Node $`i\in \{1, \ldots n\}`$ receives $`(\texttt{app\_id}, A)`$ and
+  - Node $`i\in \{1, \ldots n\}`$ receives $`(\texttt{app\_id}, A, zkA)`$ and
     computes:
+    - verifies $`zkA`$ is a correct nizk proof for $`(G, A)`$, else abort
     - $`y_i  \gets^{\$} \mathbb{Z}_q`$
     - $`Y_i \gets y_i \cdot G`$
     - $`S_i = x_i \cdot H(\texttt{app\_id})`$
@@ -179,6 +180,11 @@ condition, then certainly they should hold without it.
 - Secrecy of $`\texttt{msk}`$
 - Secrecy of other app's confidential key
   $`s' = \texttt{msk} \cdot H(\texttt{app\_id}')`$
+
+From any session, the only new information obtained by the attacker is
+$`x_i \cdot H(app\_id)`$. This should not allow the attacker to compute the
+secret for any other app, because computing the discrete log of $`H(app\_id)`$
+is hard.
 
 ### The coordinator is corrupt
 
