@@ -6,7 +6,7 @@ use subtle::ConditionallySelectable;
 use crate::{
     ecdsa::{
         robust_ecdsa::RerandomizedPresignOutput, x_coordinate, AffinePoint, Polynomial, Scalar,
-        Secp256K1Sha256, Signature, SignatureOption,
+        Secp256K1Sha256, Signature, SignatureCore,
     },
     participants::{ParticipantCounter, ParticipantList, ParticipantMap},
     protocol::{
@@ -26,22 +26,22 @@ pub fn sign(
     public_key: AffinePoint,
     presignature: RerandomizedPresignOutput,
     msg_hash: Scalar,
-) -> Result<impl Protocol<Output = SignatureOption>, InitializationError> {
+) -> Result<impl Protocol<Output = Signature>, InitializationError> {
     if participants.len() < 2 {
-        return Err(InitializationError::BadParameters(format!(
-            "participant count cannot be < 2, found: {}",
-            participants.len()
-        )));
+        return Err(InitializationError::NotEnoughParticipants {
+            participants: participants.len(),
+        });
     };
 
-    let participants = ParticipantList::new(participants).ok_or_else(|| {
-        InitializationError::BadParameters("participant list cannot contain duplicates".to_string())
-    })?;
+    let participants =
+        ParticipantList::new(participants).ok_or(InitializationError::DuplicateParticipants)?;
 
+    // ensure my presence in the participant list
     if !participants.contains(me) {
-        return Err(InitializationError::BadParameters(
-            "participant list does not contain me".to_string(),
-        ));
+        return Err(InitializationError::MissingParticipant {
+            role: "me",
+            participant: me,
+        });
     };
 
     // ensure the coordinator is a participant
@@ -73,7 +73,7 @@ async fn do_sign_participant(
     // me: Participant,
     presignature: RerandomizedPresignOutput,
     msg_hash: Scalar,
-) -> Result<SignatureOption, ProtocolError> {
+) -> Result<Signature, ProtocolError> {
     // (beta + tweak * k) * delta^{-1}
     let big_r = presignature.big_r;
     let big_r_x_coordinate = x_coordinate(&big_r);
@@ -96,7 +96,7 @@ async fn do_sign_coordinator(
     public_key: AffinePoint,
     presignature: RerandomizedPresignOutput,
     msg_hash: Scalar,
-) -> Result<SignatureOption, ProtocolError> {
+) -> Result<Signature, ProtocolError> {
     // (beta + tweak * k) * delta^{-1}
     let big_r = presignature.big_r;
     let big_r_x_coordinate = x_coordinate(&big_r);
@@ -141,7 +141,7 @@ async fn do_sign_coordinator(
     // Normalize s
     s.conditional_assign(&(-s), s.is_high());
 
-    let sig = Signature { big_r, s };
+    let sig = SignatureCore { big_r, s };
 
     if !sig.verify(&public_key, &msg_hash) {
         return Err(ProtocolError::AssertionFailed(
@@ -161,7 +161,7 @@ async fn fut_wrapper(
     public_key: AffinePoint,
     presignature: RerandomizedPresignOutput,
     msg_hash: Scalar,
-) -> Result<SignatureOption, ProtocolError> {
+) -> Result<Signature, ProtocolError> {
     if me == coordinator {
         do_sign_coordinator(chan, participants, me, public_key, presignature, msg_hash).await
     } else {
@@ -251,8 +251,7 @@ mod test {
             participants_presign.push((*p, presignature));
         }
 
-        let result = run_sign_without_rerandomization(participants_presign, public_key, msg)?;
-        let sig = result.1.clone();
+        let (_, sig) = run_sign_without_rerandomization(participants_presign, public_key, msg)?;
         let sig = ecdsa::Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
 
         // verify the correctness of the generated signature
