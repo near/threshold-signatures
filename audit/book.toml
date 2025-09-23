@@ -1,5 +1,0 @@
-[book]
-authors = ["Charly"]
-language = "en"
-src = "src"
-title = "Threshold Signatures Dev Audit"
