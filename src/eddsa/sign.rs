@@ -218,7 +218,7 @@ pub fn sign(
         return Err(InitializationError::DuplicateParticipants);
     };
 
-    // ensure the coordinator is a participant
+    // ensure my presence in the participant list
     if !participants.contains(me) {
         return Err(InitializationError::MissingParticipant {
             role: "me",
