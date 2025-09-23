@@ -18,9 +18,9 @@ pub use crypto::polynomials::{
     batch_compute_lagrange_coefficients, batch_invert, compute_lagrange_coefficient,
 };
 
-use rand_core::CryptoRngCore;
 use crypto::ciphersuite::Ciphersuite;
 use frost_core::{keys::SigningShare, Group, VerifyingKey};
+use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
 use std::marker::Send;
 
