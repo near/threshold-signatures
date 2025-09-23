@@ -113,12 +113,14 @@ impl ParticipantList {
     }
 
     #[cfg(test)]
-    pub fn shuffle(&mut self, mut rng: impl rand_core::CryptoRngCore) {
+    pub fn shuffle(&self, mut rng: impl rand_core::CryptoRngCore) -> Option<ParticipantList> {
+        let mut participants = self.participants().to_vec();
         let len = self.participants.len();
         for i in (1..len).rev() {
             let j = rng.next_u64() % ((i + 1) as u64);
-            self.participants.swap(i, j as usize);
+            participants.swap(i, j as usize);
         }
+        ParticipantList::new(&participants)
     }
 }
 

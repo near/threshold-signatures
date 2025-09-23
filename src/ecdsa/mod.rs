@@ -350,11 +350,12 @@ mod test_verify {
     fn test_same_randomness() {
         let num_participants = 10;
         let mut rng = OsRng;
-        let (pk, big_r, msg_hash, mut participants, entropy, delta) =
+        let (pk, big_r, msg_hash, participants, entropy, delta) =
             compute_random_outputs(&mut rng, num_participants);
 
         // reshuffle
-        participants.shuffle(rng);
+        participants.shuffle(rng).unwrap();
+
         let args = RerandomizationArguments::new(pk, msg_hash, big_r, &participants, entropy);
         let delta_prime = args.derive_randomness();
         assert!(delta == delta_prime);
