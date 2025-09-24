@@ -9,6 +9,8 @@
 //! For more details, refer to the `confidential_key_derivation.md` document in the `docs` folder.
 
 pub mod app_id;
+pub mod ciphersuite;
+mod dkg;
 pub mod protocol;
 
 pub use app_id::AppId;
