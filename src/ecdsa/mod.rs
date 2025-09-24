@@ -79,16 +79,16 @@ impl Signature {
 /// *** Warning ***
 /// Following [GS21] https://eprint.iacr.org/2021/1330.pdf, the entropy should
 /// be public, freshly generated, and unpredictable.
-pub struct RerandomizationArguments<'a> {
+pub struct RerandomizationArguments {
     pub pk: AffinePoint,
     pub msg_hash: [u8; 32],
     pub big_r: AffinePoint,
-    pub participants: &'a ParticipantList,
+    pub participants: ParticipantList,
     /// Fresh, Unpredictable, and Public source of entropy
     pub entropy: [u8; 32],
 }
 
-impl<'a> RerandomizationArguments<'a> {
+impl RerandomizationArguments {
     /// The following salt is picked by hashing with sha256
     /// "NEAR 6.4478$ 7:20pm CEST 2024-11-24"
     /// Based on [Krawczyk10] paper:
@@ -104,9 +104,9 @@ impl<'a> RerandomizationArguments<'a> {
         pk: AffinePoint,
         msg_hash: [u8; 32],
         big_r: AffinePoint,
-        participants: &'a ParticipantList,
+        participants: ParticipantList,
         entropy: [u8; 32],
-    ) -> RerandomizationArguments<'a> {
+    ) -> RerandomizationArguments {
         RerandomizationArguments {
             pk,
             msg_hash,
@@ -251,14 +251,7 @@ mod test_verify {
     fn compute_random_outputs(
         rng: &mut impl CryptoRngCore,
         num_participants: usize,
-    ) -> (
-        AffinePoint,
-        AffinePoint,
-        [u8; 32],
-        ParticipantList,
-        [u8; 32],
-        Scalar,
-    ) {
+    ) -> (RerandomizationArguments, Scalar) {
         let sk = SigningKey::random(&mut OsRng);
         let pk = *VerifyingKey::from(sk).as_affine();
         let (_, big_r) = <C>::generate_nonce(&mut OsRng);
@@ -270,21 +263,19 @@ mod test_verify {
         let participants = generate_participants_with_random_ids(num_participants, rng);
         let participants = ParticipantList::new(&participants).unwrap();
 
-        let args = RerandomizationArguments::new(pk, msg_hash, big_r, &participants, entropy);
+        let args = RerandomizationArguments::new(pk, msg_hash, big_r, participants, entropy);
         let delta = args.derive_randomness();
-        (pk, big_r, msg_hash, participants, entropy, delta)
+        (args, delta)
     }
 
     #[test]
     fn test_different_pk() {
         let num_participants = 10;
         let mut rng = OsRng;
-        let (_, big_r, msg_hash, participants, entropy, delta) =
-            compute_random_outputs(&mut rng, num_participants);
+        let (mut args, delta) = compute_random_outputs(&mut rng, num_participants);
         // different pk
         let (_, pk) = <C>::generate_nonce(&mut rng);
-        let pk = pk.to_affine();
-        let args = RerandomizationArguments::new(pk, msg_hash, big_r, &participants, entropy);
+        args.pk = pk.to_affine();
         let delta_prime = args.derive_randomness();
         assert!(delta != delta_prime);
     }
@@ -293,11 +284,9 @@ mod test_verify {
     fn test_different_msg_hash() {
         let num_participants = 10;
         let mut rng = OsRng;
-        let (pk, big_r, _, participants, entropy, delta) =
-            compute_random_outputs(&mut rng, num_participants);
-        let msg_hash = random_32_bytes(&mut rng);
+        let (mut args, delta) = compute_random_outputs(&mut rng, num_participants);
         // different msg_hash
-        let args = RerandomizationArguments::new(pk, msg_hash, big_r, &participants, entropy);
+        args.msg_hash = random_32_bytes(&mut rng);
         let delta_prime = args.derive_randomness();
         assert!(delta != delta_prime);
     }
@@ -306,12 +295,10 @@ mod test_verify {
     fn test_different_big_r() {
         let num_participants = 10;
         let mut rng = OsRng;
-        let (pk, _, msg_hash, participants, entropy, delta) =
-            compute_random_outputs(&mut rng, num_participants);
+        let (mut args, delta) = compute_random_outputs(&mut rng, num_participants);
         // different big_r
         let (_, big_r) = <C>::generate_nonce(&mut OsRng);
-        let big_r = big_r.to_affine();
-        let args = RerandomizationArguments::new(pk, msg_hash, big_r, &participants, entropy);
+        args.big_r = big_r.to_affine();
         let delta_prime = args.derive_randomness();
         assert!(delta != delta_prime);
     }
@@ -320,12 +307,10 @@ mod test_verify {
     fn test_different_participants() {
         let num_participants = 10;
         let mut rng = OsRng;
-        let (pk, big_r, msg_hash, _, entropy, delta) =
-            compute_random_outputs(&mut rng, num_participants);
+        let (mut args, delta) = compute_random_outputs(&mut rng, num_participants);
         // different participants set
         let participants = generate_participants_with_random_ids(num_participants, &mut rng);
-        let participants = ParticipantList::new(&participants).unwrap();
-        let args = RerandomizationArguments::new(pk, msg_hash, big_r, &participants, entropy);
+        args.participants = ParticipantList::new(&participants).unwrap();
         let delta_prime = args.derive_randomness();
         assert!(delta != delta_prime);
     }
@@ -334,13 +319,10 @@ mod test_verify {
     fn test_different_entropy() {
         let num_participants = 10;
         let mut rng = OsRng;
-        let (pk, big_r, msg_hash, participants, _, delta) =
-            compute_random_outputs(&mut rng, num_participants);
+        let (mut args, delta) = compute_random_outputs(&mut rng, num_participants);
 
         // different entropy
-        let mut entropy: [u8; 32] = [0u8; 32];
-        OsRng.fill_bytes(&mut entropy);
-        let args = RerandomizationArguments::new(pk, msg_hash, big_r, &participants, entropy);
+        OsRng.fill_bytes(&mut args.entropy);
         let delta_prime = args.derive_randomness();
         assert!(delta != delta_prime);
     }
@@ -350,13 +332,10 @@ mod test_verify {
     fn test_same_randomness() {
         let num_participants = 10;
         let mut rng = OsRng;
-        let (pk, big_r, msg_hash, participants, entropy, delta) =
-            compute_random_outputs(&mut rng, num_participants);
+        let (mut args, delta) = compute_random_outputs(&mut rng, num_participants);
 
         // reshuffle
-        participants.shuffle(rng).unwrap();
-
-        let args = RerandomizationArguments::new(pk, msg_hash, big_r, &participants, entropy);
+        args.participants = args.participants.shuffle(rng).unwrap();
         let delta_prime = args.derive_randomness();
         assert!(delta == delta_prime);
     }
