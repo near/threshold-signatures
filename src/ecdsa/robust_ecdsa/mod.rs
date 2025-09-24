@@ -64,10 +64,10 @@ impl RerandomizedPresignOutput {
         // cannot be zero due to the previous check
         let inv_delta = delta.invert().unwrap();
 
-        // delta . R
+        // delta * R
         let rerandomized_big_r = presignature.big_r * delta;
 
-        // (alpha + tweak * k) * delta^{-1}
+        // alpha * delta^{-1}
         let rerandomized_alpha = presignature.alpha * inv_delta;
 
         // (beta + c*tweak) * delta^{-1}
