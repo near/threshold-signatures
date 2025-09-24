@@ -67,20 +67,13 @@ pub fn sign(
 /// Performs signing from any participant's perspective (except the coordinator)
 async fn do_sign_participant(
     mut chan: SharedChannel,
-    // participants: ParticipantList,
+    participants: ParticipantList,
     coordinator: Participant,
-    // me: Participant,
+    me: Participant,
     presignature: RerandomizedPresignOutput,
     msg_hash: Scalar,
 ) -> Result<SignatureOption, ProtocolError> {
-    // (beta + tweak * k) * delta^{-1}
-    let big_r = presignature.big_r;
-    let big_r_x_coordinate = x_coordinate(&big_r);
-    let beta = presignature.beta * big_r_x_coordinate + presignature.e;
-
-    let s_me = msg_hash * presignature.alpha + beta;
-    let s_me = SerializableScalar::<C>(s_me);
-
+    let s_me = compute_signature_share(&presignature, msg_hash, &participants, me)?;
     let wait_round = chan.next_waitpoint();
     chan.send_private(wait_round, coordinator, &s_me)?;
 
@@ -96,20 +89,10 @@ async fn do_sign_coordinator(
     presignature: RerandomizedPresignOutput,
     msg_hash: Scalar,
 ) -> Result<SignatureOption, ProtocolError> {
-    // (beta_i + tweak * k_i) * delta^{-1}
-    let big_r = presignature.big_r;
-    let big_r_x_coordinate = x_coordinate(&big_r);
-    let beta = presignature.beta * big_r_x_coordinate + presignature.e;
-    // msghash * alpha_i + beta_i
-    let s_me = msg_hash * presignature.alpha + beta;
-    // lambda_i * s_i
-    let linearized_s_me = s_me * participants.lagrange::<C>(me)?;
-    let ser_linearized_s_me = SerializableScalar::<C>(linearized_s_me);
-
+    let mut s = compute_signature_share(&presignature, msg_hash, &participants, me)?.0;
     let wait_round = chan.next_waitpoint();
 
     let mut seen = ParticipantCounter::new(&participants);
-    let mut s = linearized_s_me;
 
     seen.put(me);
     while !seen.full() {
@@ -130,7 +113,10 @@ async fn do_sign_coordinator(
     // Normalize s
     s.conditional_assign(&(-s), s.is_high());
 
-    let sig = Signature { big_r, s };
+    let sig = Signature {
+        big_r: presignature.big_r,
+        s,
+    };
 
     if !sig.verify(&public_key, &msg_hash) {
         return Err(ProtocolError::AssertionFailed(
@@ -139,6 +125,26 @@ async fn do_sign_coordinator(
     };
 
     Ok(Some(sig))
+}
+
+/// A common computation done by both the coordinator and the other participants
+fn compute_signature_share(
+    presignature: &RerandomizedPresignOutput,
+    msg_hash: Scalar,
+    participants: &ParticipantList,
+    me: Participant,
+) -> Result<SerializableScalar<C>, ProtocolError> {
+
+    // (beta_i + tweak * k_i) * delta^{-1}
+    let big_r = presignature.big_r;
+    let big_r_x_coordinate = x_coordinate(&big_r);
+    // beta * Rx + e
+    let beta = presignature.beta * big_r_x_coordinate + presignature.e;
+
+    let s_me = msg_hash * presignature.alpha + beta;
+    // lambda_i * s_i
+    let linearized_s_me = s_me * participants.lagrange::<C>(me)?;
+    Ok(SerializableScalar::<C>(linearized_s_me))
 }
 
 /// Wraps the coordinator and the participant into a single functions to be called
@@ -154,7 +160,7 @@ async fn fut_wrapper(
     if me == coordinator {
         do_sign_coordinator(chan, participants, me, public_key, presignature, msg_hash).await
     } else {
-        do_sign_participant(chan, coordinator, presignature, msg_hash).await
+        do_sign_participant(chan, participants, coordinator, me, presignature, msg_hash).await
     }
 }
 
