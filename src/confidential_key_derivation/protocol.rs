@@ -1,6 +1,6 @@
 use crate::confidential_key_derivation::ciphersuite::{hash2curve, BLS12381SHA256};
 use crate::confidential_key_derivation::{
-    AppId, CKDCoordinatorOutput, CKDOutput, ElementG1, Scalar, SigningShare,
+    AppId, CKDCoordinatorOutput, CKDOutput, ElementG1, PublicKey, Scalar, SigningShare,
 };
 use crate::participants::{ParticipantCounter, ParticipantList};
 use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
@@ -14,7 +14,7 @@ fn ckd_helper(
     me: Participant,
     private_share: SigningShare,
     app_id: &AppId,
-    app_pk: ElementG1,
+    app_pk: PublicKey,
     rng: &mut impl CryptoRngCore,
 ) -> Result<(ElementG1, ElementG1), ProtocolError> {
     // y <- ZZq* , Y <- y * G
@@ -42,7 +42,7 @@ async fn do_ckd_participant(
     me: Participant,
     private_share: SigningShare,
     app_id: &AppId,
-    app_pk: ElementG1,
+    app_pk: PublicKey,
     rng: &mut impl CryptoRngCore,
 ) -> Result<CKDOutput, ProtocolError> {
     let (norm_big_y, norm_big_c) =
@@ -59,7 +59,7 @@ async fn do_ckd_coordinator(
     me: Participant,
     private_share: SigningShare,
     app_id: &AppId,
-    app_pk: ElementG1,
+    app_pk: PublicKey,
     rng: &mut impl CryptoRngCore,
 ) -> Result<CKDOutput, ProtocolError> {
     let (mut norm_big_y, mut norm_big_c) =
@@ -93,7 +93,7 @@ pub fn ckd(
     me: Participant,
     private_share: SigningShare,
     app_id: impl Into<AppId>,
-    app_pk: ElementG1,
+    app_pk: PublicKey,
     rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = CKDOutput>, InitializationError> {
     // not enough participants
@@ -149,7 +149,7 @@ async fn run_ckd_protocol(
     participants: ParticipantList,
     private_share: SigningShare,
     app_id: AppId,
-    app_pk: ElementG1,
+    app_pk: PublicKey,
     mut rng: impl CryptoRngCore,
 ) -> Result<CKDOutput, ProtocolError> {
     if me == coordinator {

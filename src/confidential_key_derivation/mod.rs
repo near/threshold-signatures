@@ -56,4 +56,5 @@ impl CKDCoordinatorOutput {
 /// None for participants and Some for coordinator
 pub type CKDOutput = Option<CKDCoordinatorOutput>;
 pub type VerifyingKey = crate::VerifyingKey<BLS12381SHA256>;
+pub type PublicKey = ElementG1;
 pub type Signature = ElementG1;
