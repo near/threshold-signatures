@@ -60,12 +60,13 @@ async fn do_sign(
     presignature: RerandomizedPresignOutput,
     msg_hash: Scalar,
 ) -> Result<Signature, ProtocolError> {
-    // (beta + tweak * k) * delta^{-1}
+    // beta_i * Rx + ei
     let big_r = presignature.big_r;
     let big_r_x_coordinate = x_coordinate(&big_r);
     let beta = presignature.beta * big_r_x_coordinate + presignature.e;
-
+    // msghash * alpha_i + beta_i
     let s_me = msg_hash * presignature.alpha + beta;
+    // lambda_i * s_i
     let linearized_s_me = s_me * participants.lagrange::<C>(me)?;
     let ser_linearized_s_me = SerializableScalar::<C>(linearized_s_me);
 
