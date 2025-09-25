@@ -1,5 +1,6 @@
+use crate::confidential_key_derivation::ciphersuite::{hash2curve, BLS12381SHA256};
 use crate::confidential_key_derivation::{
-    AppId, CKDCoordinatorOutput, CKDOutput, ElementG1, SigningShare,
+    AppId, CKDCoordinatorOutput, CKDOutput, ElementG1, Scalar, SigningShare,
 };
 use crate::participants::{ParticipantCounter, ParticipantList};
 use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
@@ -8,49 +9,6 @@ use crate::protocol::{errors::InitializationError, errors::ProtocolError, Partic
 use elliptic_curve::{Field, Group};
 use rand_core::CryptoRngCore;
 
-use blstrs::{G1Projective, Scalar};
-
-const DOMAIN: &[u8] = b"NEAR BLS12381G1_XMD:SHA-256_SSWU_RO_";
-
-pub fn hash2curve(bytes: &[u8]) -> ElementG1 {
-    G1Projective::hash_to_curve(bytes, DOMAIN, &[])
-}
-
-fn bytes_to_scalar(input: &[u8]) -> Scalar {
-    let mut output = [0u8; 32];
-    output[0..input.len()].copy_from_slice(input);
-    output[0] += 1;
-    Scalar::from_bytes_be(&output).unwrap()
-}
-
-fn compute_lagrange_coefficient(points_set: &[Scalar], x_i: &Scalar) -> Scalar {
-    let mut num = Scalar::ONE;
-    let mut den = Scalar::ONE;
-
-    for x_j in points_set.iter() {
-        if *x_i == *x_j {
-            continue;
-        }
-        // Both signs inverted just to avoid requiring an extra negation
-        num *= x_j;
-        den *= x_j - x_i;
-    }
-
-    // denominator will never be 0 here, therefore it is safe to invert
-    den = den.invert().unwrap();
-    num * den
-}
-
-fn lagrange(p: Participant, participants: &ParticipantList) -> Scalar {
-    let p = bytes_to_scalar(&p.bytes());
-    let identifiers: Vec<Scalar> = participants
-        .participants()
-        .iter()
-        .map(|p| bytes_to_scalar(&p.bytes()))
-        .collect();
-    compute_lagrange_coefficient(&identifiers, &p)
-}
-
 fn ckd_helper(
     participants: &ParticipantList,
     me: Participant,
@@ -58,10 +16,10 @@ fn ckd_helper(
     app_id: &AppId,
     app_pk: ElementG1,
     rng: &mut impl CryptoRngCore,
-) -> (ElementG1, ElementG1) {
+) -> Result<(ElementG1, ElementG1), ProtocolError> {
     // y <- ZZq* , Y <- y * G
     let y = Scalar::random(rng);
-    let big_y = G1Projective::generator() * y;
+    let big_y = ElementG1::generator() * y;
     // H(app_id) when H is a random oracle
     let hash_point = hash2curve(app_id);
     // S <- x . H(app_id)
@@ -69,11 +27,11 @@ fn ckd_helper(
     // C <- S + y . A
     let big_c = big_s + app_pk * y;
     // Compute  λi := λi(0)
-    let lambda_i = lagrange(me, participants);
+    let lambda_i = participants.lagrange::<BLS12381SHA256>(me)?;
     // Normalize Y and C into  (λi . Y , λi . C)
     let norm_big_y = big_y * lambda_i;
     let norm_big_c = big_c * lambda_i;
-    (norm_big_y, norm_big_c)
+    Ok((norm_big_y, norm_big_c))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -88,7 +46,7 @@ async fn do_ckd_participant(
     rng: &mut impl CryptoRngCore,
 ) -> Result<CKDOutput, ProtocolError> {
     let (norm_big_y, norm_big_c) =
-        ckd_helper(&participants, me, private_share, app_id, app_pk, rng);
+        ckd_helper(&participants, me, private_share, app_id, app_pk, rng)?;
     let waitpoint = chan.next_waitpoint();
     chan.send_private(waitpoint, coordinator, &(norm_big_y, norm_big_c))?;
 
@@ -105,7 +63,7 @@ async fn do_ckd_coordinator(
     rng: &mut impl CryptoRngCore,
 ) -> Result<CKDOutput, ProtocolError> {
     let (mut norm_big_y, mut norm_big_c) =
-        ckd_helper(&participants, me, private_share, app_id, app_pk, rng);
+        ckd_helper(&participants, me, private_share, app_id, app_pk, rng)?;
 
     // Receive everyone's inputs and add them together
     let mut seen = ParticipantCounter::new(&participants);
@@ -223,8 +181,8 @@ async fn run_ckd_protocol(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::protocol::run_protocol;
     use crate::test::one_coordinator_output;
+    use crate::{confidential_key_derivation::ciphersuite::hash2curve, protocol::run_protocol};
     use rand_core::{OsRng, RngCore};
     use std::error::Error;
 
@@ -249,7 +207,7 @@ mod test {
         // Create the app necessary items
         let app_id = AppId::from(b"Near App");
         let app_sk = Scalar::random(&mut rng);
-        let app_pk = G1Projective::generator() * app_sk;
+        let app_pk = ElementG1::generator() * app_sk;
 
         let participants = vec![
             Participant::from(0u32),
@@ -293,7 +251,8 @@ mod test {
         let mut msk = Scalar::ZERO;
         let participants = ParticipantList::new(&participants).unwrap();
         for (i, private_share) in private_shares.iter().enumerate() {
-            let lambda_i = lagrange(participants.get_participant(i).unwrap(), &participants);
+            let lambda_i = participants
+                .lagrange::<BLS12381SHA256>(participants.get_participant(i).unwrap())?;
             msk += lambda_i * private_share.to_scalar();
         }
 

@@ -3,8 +3,7 @@ use elliptic_curve::hash2curve::{hash_to_field, ExpandMsgXmd, FromOkm};
 use rand_core::{CryptoRng, RngCore};
 use sha2::Sha256;
 
-use crate::confidential_key_derivation::protocol::hash2curve;
-use crate::confidential_key_derivation::{Signature, VerifyingKey};
+use crate::confidential_key_derivation::{ElementG1, Signature, VerifyingKey};
 use crate::crypto::ciphersuite::{BytesOrder, ScalarSerializationFormat};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -214,7 +213,6 @@ impl frost_core::Group for BLS12381G1Group {
     }
 }
 
-#[allow(unused)]
 pub fn verify_signature(
     verifying_key: &VerifyingKey,
     msg: &[u8],
@@ -231,6 +229,12 @@ pub fn verify_signature(
     } else {
         Err(frost_core::Error::InvalidSignature)
     }
+}
+
+const DOMAIN: &[u8] = b"NEAR BLS12381G1_XMD:SHA-256_SSWU_RO_";
+
+pub fn hash2curve(bytes: &[u8]) -> ElementG1 {
+    G1Projective::hash_to_curve(bytes, DOMAIN, &[])
 }
 
 // From https://github.com/ZcashFoundation/frost/blob/3ffc19d8f473d5bc4e07ed41bc884bdb42d6c29f/frost-secp256k1/src/lib.rs#L161
@@ -281,7 +285,8 @@ mod tests {
     use crate::confidential_key_derivation::VerifyingKey;
     use crate::{
         confidential_key_derivation::{
-            ciphersuite::BLS12381SHA256, protocol::hash2curve, ElementG2,
+            ciphersuite::{hash2curve, BLS12381SHA256},
+            ElementG2,
         },
         test::check_common_traits_for_type,
     };
