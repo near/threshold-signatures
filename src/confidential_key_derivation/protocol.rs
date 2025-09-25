@@ -1,5 +1,5 @@
 use crate::confidential_key_derivation::{
-    AppId, CKDCoordinatorOutput, CKDOutput, CoefficientCommitment, Element,
+    AppId, CKDCoordinatorOutput, CKDOutput, ElementG1, SigningShare,
 };
 use crate::participants::{ParticipantCounter, ParticipantList};
 use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
@@ -12,8 +12,8 @@ use blstrs::{G1Projective, Scalar};
 
 const DOMAIN: &[u8] = b"NEAR BLS12381G1_XMD:SHA-256_SSWU_RO_";
 
-fn hash2curve(app_id: &AppId) -> Element {
-    G1Projective::hash_to_curve(app_id, DOMAIN, &[])
+pub fn hash2curve(bytes: &[u8]) -> ElementG1 {
+    G1Projective::hash_to_curve(bytes, DOMAIN, &[])
 }
 
 fn bytes_to_scalar(input: &[u8]) -> Scalar {
@@ -54,18 +54,18 @@ fn lagrange(p: Participant, participants: &ParticipantList) -> Scalar {
 fn ckd_helper(
     participants: &ParticipantList,
     me: Participant,
-    private_share: Scalar,
+    private_share: SigningShare,
     app_id: &AppId,
-    app_pk: Element,
+    app_pk: ElementG1,
     rng: &mut impl CryptoRngCore,
-) -> (Element, Element) {
+) -> (ElementG1, ElementG1) {
     // y <- ZZq* , Y <- y * G
     let y = Scalar::random(rng);
     let big_y = G1Projective::generator() * y;
     // H(app_id) when H is a random oracle
     let hash_point = hash2curve(app_id);
     // S <- x . H(app_id)
-    let big_s = hash_point * private_share;
+    let big_s = hash_point * private_share.to_scalar();
     // C <- S + y . A
     let big_c = big_s + app_pk * y;
     // Compute  λi := λi(0)
@@ -82,9 +82,9 @@ async fn do_ckd_participant(
     participants: ParticipantList,
     coordinator: Participant,
     me: Participant,
-    private_share: Scalar,
+    private_share: SigningShare,
     app_id: &AppId,
-    app_pk: Element,
+    app_pk: ElementG1,
     rng: &mut impl CryptoRngCore,
 ) -> Result<CKDOutput, ProtocolError> {
     let (norm_big_y, norm_big_c) =
@@ -99,9 +99,9 @@ async fn do_ckd_coordinator(
     mut chan: SharedChannel,
     participants: ParticipantList,
     me: Participant,
-    private_share: Scalar,
+    private_share: SigningShare,
     app_id: &AppId,
-    app_pk: Element,
+    app_pk: ElementG1,
     rng: &mut impl CryptoRngCore,
 ) -> Result<CKDOutput, ProtocolError> {
     let (mut norm_big_y, mut norm_big_c) =
@@ -113,8 +113,7 @@ async fn do_ckd_coordinator(
 
     seen.put(me);
     while !seen.full() {
-        let (from, (big_y, big_c)): (_, (CoefficientCommitment, CoefficientCommitment)) =
-            chan.recv(waitpoint).await?;
+        let (from, (big_y, big_c)): (_, (ElementG1, ElementG1)) = chan.recv(waitpoint).await?;
         if !seen.put(from) {
             continue;
         }
@@ -134,9 +133,9 @@ pub fn ckd(
     participants: &[Participant],
     coordinator: Participant,
     me: Participant,
-    private_share: Scalar,
+    private_share: SigningShare,
     app_id: impl Into<AppId>,
-    app_pk: Element,
+    app_pk: ElementG1,
     rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = CKDOutput>, InitializationError> {
     // not enough participants
@@ -190,9 +189,9 @@ async fn run_ckd_protocol(
     coordinator: Participant,
     me: Participant,
     participants: ParticipantList,
-    private_share: Scalar,
+    private_share: SigningShare,
     app_id: AppId,
-    app_pk: Element,
+    app_pk: ElementG1,
     mut rng: impl CryptoRngCore,
 ) -> Result<CKDOutput, ProtocolError> {
     if me == coordinator {
@@ -267,7 +266,7 @@ mod test {
 
         let mut private_shares = Vec::new();
         for p in &participants {
-            let private_share = Scalar::random(&mut rng);
+            let private_share = SigningShare::new(Scalar::random(&mut rng));
             private_shares.push(private_share);
 
             let protocol = ckd(
@@ -304,7 +303,7 @@ mod test {
         let participants = ParticipantList::new(&participants).unwrap();
         for (i, private_share) in private_shares.iter().enumerate() {
             let lambda_i = lagrange(participants.get_participant(i).unwrap(), &participants);
-            msk += lambda_i * private_share;
+            msk += lambda_i * private_share.to_scalar();
         }
 
         let expected_confidential_key = hash2curve(&app_id) * msk;

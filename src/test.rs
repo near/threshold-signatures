@@ -218,3 +218,15 @@ impl RngCore for MockCryptoRng {
         unimplemented!()
     }
 }
+
+#[allow(clippy::unnecessary_literal_unwrap)]
+pub fn check_common_traits_for_type<T: Clone + Eq + PartialEq + std::fmt::Debug>(v: T) {
+    // Make sure can be debug-printed. This also catches if the Debug does not
+    // have an endless recursion (a popular mistake).
+    println!("{:?}", v);
+    // Test Clone and Eq
+    assert_eq!(v, v.clone());
+    // Make sure it can be unwrapped in a Result (which requires Debug).
+    let e: Result<T, ()> = Ok(v.clone());
+    assert_eq!(v, e.unwrap());
+}

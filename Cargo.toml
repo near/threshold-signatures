@@ -17,7 +17,6 @@ elliptic-curve = { version = "0.13.5", features = ["serde"] }
 frost-core = { version = "2.1.0", default-features = false, features = [
   "serialization",
   "std",
-  "internals",
 ] }
 frost-ed25519 = { version = "2.1.0", default-features = false, features = [
   "serialization",

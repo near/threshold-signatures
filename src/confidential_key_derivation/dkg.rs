@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod test {
 
-    type E = crate::confidential_key_derivation::ciphersuite::BLS12381G2SHA256;
-    use crate::confidential_key_derivation::ciphersuite::BLS12381G2Group;
+    type C = crate::confidential_key_derivation::ciphersuite::BLS12381SHA256;
+    type G = crate::confidential_key_derivation::ciphersuite::BLS12381G2Group;
     use crate::participants::ParticipantList;
     use crate::protocol::Participant;
     use crate::test::{
@@ -20,7 +20,7 @@ mod test {
         ];
         let threshold = 3;
 
-        let result = run_keygen::<E>(&participants, threshold)?;
+        let result = run_keygen::<C>(&participants, threshold)?;
         assert_public_key_invariant(&result);
 
         assert!(result.len() == participants.len());
@@ -34,10 +34,10 @@ mod test {
             result[2].1.private_share.to_scalar(),
         ];
         let p_list = ParticipantList::new(&participants).unwrap();
-        let x = p_list.lagrange::<E>(participants[0])? * shares[0]
-            + p_list.lagrange::<E>(participants[1])? * shares[1]
-            + p_list.lagrange::<E>(participants[2])? * shares[2];
-        assert_eq!(<BLS12381G2Group>::generator() * x, pub_key);
+        let x = p_list.lagrange::<C>(participants[0])? * shares[0]
+            + p_list.lagrange::<C>(participants[1])? * shares[1]
+            + p_list.lagrange::<C>(participants[2])? * shares[2];
+        assert_eq!(<G>::generator() * x, pub_key);
         Ok(())
     }
 
@@ -50,7 +50,7 @@ mod test {
         ];
         let threshold = 3;
 
-        let result0 = run_keygen::<E>(&participants, threshold)?;
+        let result0 = run_keygen::<C>(&participants, threshold)?;
         assert_public_key_invariant(&result0);
 
         let pub_key = result0[2].1.public_key.to_element();
@@ -65,10 +65,10 @@ mod test {
             result1[2].1.private_share.to_scalar(),
         ];
         let p_list = ParticipantList::new(&participants).unwrap();
-        let x = p_list.lagrange::<E>(participants[0])? * shares[0]
-            + p_list.lagrange::<E>(participants[1])? * shares[1]
-            + p_list.lagrange::<E>(participants[2])? * shares[2];
-        assert_eq!(<BLS12381G2Group>::generator() * x, pub_key);
+        let x = p_list.lagrange::<C>(participants[0])? * shares[0]
+            + p_list.lagrange::<C>(participants[1])? * shares[1]
+            + p_list.lagrange::<C>(participants[2])? * shares[2];
+        assert_eq!(<G>::generator() * x, pub_key);
         Ok(())
     }
 
@@ -78,7 +78,7 @@ mod test {
         let threshold0 = 2;
         let threshold1 = 3;
 
-        let result0 = run_keygen::<E>(&participants, threshold0)?;
+        let result0 = run_keygen::<C>(&participants, threshold0)?;
         assert_public_key_invariant(&result0);
 
         let pub_key = result0[2].1.public_key;
@@ -103,11 +103,11 @@ mod test {
             result1[3].1.private_share.to_scalar(),
         ];
         let p_list = ParticipantList::new(&participants).unwrap();
-        let x = p_list.lagrange::<E>(participants[0])? * shares[0]
-            + p_list.lagrange::<E>(participants[1])? * shares[1]
-            + p_list.lagrange::<E>(participants[2])? * shares[2]
-            + p_list.lagrange::<E>(participants[3])? * shares[3];
-        assert_eq!(<BLS12381G2Group>::generator() * x, pub_key.to_element());
+        let x = p_list.lagrange::<C>(participants[0])? * shares[0]
+            + p_list.lagrange::<C>(participants[1])? * shares[1]
+            + p_list.lagrange::<C>(participants[2])? * shares[2]
+            + p_list.lagrange::<C>(participants[3])? * shares[3];
+        assert_eq!(<G>::generator() * x, pub_key.to_element());
 
         Ok(())
     }
