@@ -1,4 +1,5 @@
 mod crypto;
+pub mod threshold;
 mod generic_dkg;
 mod participants;
 

@@ -11,7 +11,7 @@ The EdDSA implementation is mainly a wrapper of the [Frost](https://github.com/Z
 The repository provides implementations for both ECDSA and EdDSA.
 Each signature scheme has its own repository that implements it, namely, `src/ecdsa` and `src/eddsa`.
 Additionally `src/crypto` implements generic mathematical and cryptographic tools used for both schemes such as polynomial manipulations, randomness generation, commitment schemes, etc...  `src/crypto/proofs` implements \[[Mau09](https://crypto.ethz.ch/publications/files/Maurer09.pdf)\] proofs for discrete logarithms, and `src/protocol` allows defining participants, communication channels, asynchronous functions that run and test the protocol and reliable broadcast channel.
-Some additional files are found in `src`. `src/participants.rs` provides complex structures related to participants mainly based on hash maps and `src/generic_dkg.rs` implements a distributed key generation (DKG) that is agnostic of the curve.
+Some additional files are found in `src`. `src/participants.rs` provides complex structures related to participants mainly based on hash maps, `src/generic_dkg.rs` implements a distributed key generation (DKG) that is agnostic of the curve, and `src/threshold.rs` provides an API for validating security parameters (see the module documentation for details).
 
 # Important Technical Details
 ## Threshold ECDSA Functionalities
@@ -25,8 +25,7 @@ $c = a\cdot b$ and where $(A,B,C) = (g^a, g^b, g^c)$. These triples are essentia
 5) **Signing (online)**: Corresponds to the online signing phase in which the signing parties produce a valid signature
 
 ## Threshold EdDSA Functionalities
-The threshold EdDSA scheme is implemented over curve
-Curve25519. We refer to such scheme as Ed25519.
+The threshold EdDSA scheme is implemented over curve Curve25519. We refer to such scheme as Ed25519.
 The following functionalities are provided:
 1) **Distributed Key Generation (DKG)**: Same as in ECDSA.
 2) **Key Resharing**: Same as in ECDSA.
@@ -34,7 +33,7 @@ The following functionalities are provided:
 
 ## Comments
 
-* We do not implement any verification algorithm. In fact, a party possessing the message-signature pair can simply run the verification algorithm of the corresponding classic, non-distributed  scheme using the master verification key.
+* We do not implement any verification algorithm. In fact, a party possessing the message-signature pair can simply run the verification algorithm of the corresponding classic, non-distributed scheme using the master verification key.
 
 * Both implemented ECDSA and EdDSA schemes do not currently provide **Robustness** i.e. recovery in case a participants drops out during presigning/signing.
 
