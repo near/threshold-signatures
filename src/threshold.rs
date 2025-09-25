@@ -309,7 +309,7 @@ mod tests {
                         if f == 0 {
                             // Threshold zero is invalid
                             assert_eq!(result, Err(ValidationError::ThresholdIsZero));
-                        } else if 2 * f + 1 <= n && n > 0 && f < n {
+                        } else if 2 * f < n && n > 0 && f < n {
                             assert_eq!(result.unwrap(), f);
                         } else {
                             assert!(result.is_err());
