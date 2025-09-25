@@ -56,7 +56,7 @@ type SigWithRerand = (Tweak, Vec<(Participant, Signature)>);
 /// This signing mimics what should happen in real world, i.e.,
 /// rerandomizing the presignatures
 pub fn run_sign_with_rerandomization(
-    participants_presign: Vec<(Participant, PresignOutput)>,
+    participants_presign: &[(Participant, PresignOutput)],
     public_key: Element,
     msg: &[u8],
 ) -> Result<SigWithRerand, Box<dyn Error>> {
@@ -78,7 +78,9 @@ pub fn run_sign_with_rerandomization(
             .collect::<Vec<Participant>>(),
     )
     .unwrap();
-    let rerand_args = RerandomizationArguments::new(&pk, &msg_hash, &big_r, &participants, entropy);
+    let msg_hash_bytes: [u8; 32] = msg_hash.to_bytes().into();
+    let rerand_args =
+        RerandomizationArguments::new(pk, msg_hash_bytes, big_r, participants, entropy);
     let public_key = frost_core::VerifyingKey::new(public_key);
     let derived_pk = tweak.derive_verifying_key(&public_key).to_element();
 
@@ -208,6 +210,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
 fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants(5);
     let threshold = 4;
+    let mut rng = OsRng;
     let result0 = run_keygen(&participants, threshold)?;
     assert_public_key_invariant(&result0);
 
@@ -229,8 +232,8 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
 
     let public_key = key_packages[0].1.public_key;
     // Prepare triples
-    let (pub0, shares0) = deal(&mut OsRng, &new_participant, new_threshold)?;
-    let (pub1, shares1) = deal(&mut OsRng, &new_participant, new_threshold)?;
+    let (pub0, shares0) = deal(&mut rng, &new_participant, new_threshold)?;
+    let (pub1, shares1) = deal(&mut rng, &new_participant, new_threshold)?;
 
     let presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, new_threshold)?;
 
@@ -245,13 +248,14 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants(3);
     let threshold = 3;
 
+    let mut rng = OsRng;
     let key_packages = run_keygen(&participants.clone(), threshold)?;
 
     assert_public_key_invariant(&key_packages);
     let public_key = key_packages[0].1.public_key;
 
-    let (pub0, shares0) = deal(&mut OsRng, &participants, threshold)?;
-    let (pub1, shares1) = deal(&mut OsRng, &participants, threshold)?;
+    let (pub0, shares0) = deal(&mut rng, &participants, threshold)?;
+    let (pub1, shares1) = deal(&mut rng, &participants, threshold)?;
 
     let presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, threshold)?;
 
@@ -264,7 +268,8 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
 #[test]
 fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     let participants_count = 3;
-    let participants = generate_participants_with_random_ids(participants_count);
+    let mut rng = OsRng;
+    let participants = generate_participants_with_random_ids(participants_count, &mut rng);
     let threshold = 3;
 
     let key_packages = run_keygen(&participants.clone(), threshold)?;
@@ -272,8 +277,8 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
 
     let public_key = key_packages[0].1.public_key;
 
-    let (pub0, shares0) = deal(&mut OsRng, &participants, threshold)?;
-    let (pub1, shares1) = deal(&mut OsRng, &participants, threshold)?;
+    let (pub0, shares0) = deal(&mut rng, &participants, threshold)?;
+    let (pub1, shares1) = deal(&mut rng, &participants, threshold)?;
 
     let presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, threshold)?;
 
@@ -286,7 +291,8 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
 #[test]
 fn test_e2e_random_identifiers_with_rerandomization() -> Result<(), Box<dyn Error>> {
     let participants_count = 3;
-    let participants = generate_participants_with_random_ids(participants_count);
+    let mut rng = OsRng;
+    let participants = generate_participants_with_random_ids(participants_count, &mut rng);
     let threshold = 3;
 
     let key_packages = run_keygen(&participants.clone(), threshold)?;
@@ -294,13 +300,13 @@ fn test_e2e_random_identifiers_with_rerandomization() -> Result<(), Box<dyn Erro
 
     let public_key = key_packages[0].1.public_key;
 
-    let (pub0, shares0) = deal(&mut OsRng, &participants, threshold)?;
-    let (pub1, shares1) = deal(&mut OsRng, &participants, threshold)?;
+    let (pub0, shares0) = deal(&mut rng, &participants, threshold)?;
+    let (pub1, shares1) = deal(&mut rng, &participants, threshold)?;
 
     let presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, threshold)?;
 
     let msg = b"hello world";
     // internally verifies the signature's validity
-    run_sign_with_rerandomization(presign_result, public_key.to_element(), msg)?;
+    run_sign_with_rerandomization(&presign_result, public_key.to_element(), msg)?;
     Ok(())
 }

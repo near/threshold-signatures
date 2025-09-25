@@ -34,9 +34,10 @@ pub fn sign(
         ParticipantList::new(participants).ok_or(InitializationError::DuplicateParticipants)?;
 
     if !participants.contains(me) {
-        return Err(InitializationError::BadParameters(
-            "participant list does not contain me".to_string(),
-        ));
+        return Err(InitializationError::MissingParticipant {
+            role: "self",
+            participant: me,
+        });
     };
 
     let ctx = Comms::new();
@@ -197,7 +198,7 @@ mod test {
         }
 
         let (tweak, result) =
-            run_sign_with_rerandomization(participants_presign, public_key.to_element(), msg)?;
+            run_sign_with_rerandomization(&participants_presign, public_key.to_element(), msg)?;
         let sig = &result[0].1;
         let sig = ecdsa::Signature::from_scalars(x_coordinate(&sig.big_r), sig.s)?;
 

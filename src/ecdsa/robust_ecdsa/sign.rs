@@ -5,10 +5,10 @@ use subtle::ConditionallySelectable;
 
 use crate::{
     ecdsa::{
-        robust_ecdsa::RerandomizedPresignOutput, x_coordinate, AffinePoint, Polynomial, Scalar,
+        robust_ecdsa::RerandomizedPresignOutput, x_coordinate, AffinePoint, Scalar,
         Secp256K1Sha256, Signature,
     },
-    participants::{ParticipantCounter, ParticipantList, ParticipantMap},
+    participants::{ParticipantCounter, ParticipantList},
     protocol::{
         errors::{InitializationError, ProtocolError},
         internal::{make_protocol, Comms, SharedChannel},
@@ -25,20 +25,19 @@ pub fn sign(
     msg_hash: Scalar,
 ) -> Result<impl Protocol<Output = Signature>, InitializationError> {
     if participants.len() < 2 {
-        return Err(InitializationError::BadParameters(format!(
-            "participant count cannot be < 2, found: {}",
-            participants.len()
-        )));
+        return Err(InitializationError::NotEnoughParticipants {
+            participants: participants.len(),
+        });
     };
 
-    let participants = ParticipantList::new(participants).ok_or_else(|| {
-        InitializationError::BadParameters("participant list cannot contain duplicates".to_string())
-    })?;
+    let participants =
+        ParticipantList::new(participants).ok_or(InitializationError::DuplicateParticipants)?;
 
     if !participants.contains(me) {
-        return Err(InitializationError::BadParameters(
-            "participant list does not contain me".to_string(),
-        ));
+        return Err(InitializationError::MissingParticipant {
+            role: "self",
+            participant: me,
+        });
     };
 
     let ctx = Comms::new();
@@ -67,14 +66,14 @@ async fn do_sign(
     let beta = presignature.beta * big_r_x_coordinate + presignature.e;
 
     let s_me = msg_hash * presignature.alpha + beta;
-    let s_me = SerializableScalar(s_me);
+    let linearized_s_me = s_me * participants.lagrange::<C>(me)?;
+    let ser_linearized_s_me = SerializableScalar::<C>(linearized_s_me);
 
     let wait_round = chan.next_waitpoint();
-    chan.send_many(wait_round, &s_me)?;
+    chan.send_many(wait_round, &ser_linearized_s_me)?;
 
     let mut seen = ParticipantCounter::new(&participants);
-    let mut s_map = ParticipantMap::new(&participants);
-    s_map.put(me, s_me);
+    let mut s = linearized_s_me;
 
     seen.put(me);
     while !seen.full() {
@@ -82,21 +81,10 @@ async fn do_sign(
         if !seen.put(from) {
             continue;
         }
-        s_map.put(from, s_i);
+        // Sum the linearized shares
+        s += s_i.0;
     }
 
-    let identifiers: Vec<Scalar> = s_map
-        .participants()
-        .iter()
-        .map(|p| p.scalar::<C>())
-        .collect();
-
-    let sshares = s_map
-        .into_vec_or_none()
-        .ok_or(ProtocolError::InvalidInterpolationArguments)?;
-
-    // interpolate s
-    let mut s = Polynomial::eval_interpolation(&identifiers, &sshares, None)?.0;
     // raise error if s is zero
     if s.is_zero().into() {
         return Err(ProtocolError::AssertionFailed(
@@ -128,7 +116,7 @@ mod test {
     use crate::ecdsa::{
         robust_ecdsa::test::{run_sign_with_rerandomization, run_sign_without_rerandomization},
         robust_ecdsa::PresignOutput,
-        x_coordinate, Field, ProjectivePoint, Secp256K1ScalarField,
+        Field, Polynomial, ProjectivePoint, Secp256K1ScalarField,
     };
     use crate::test::generate_participants;
 

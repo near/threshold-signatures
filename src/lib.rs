@@ -10,6 +10,7 @@ pub mod protocol;
 mod test;
 
 pub use frost_core;
+use frost_core::serialization::SerializableScalar;
 pub use frost_ed25519;
 pub use frost_secp256k1;
 // For benchmark
@@ -19,6 +20,7 @@ pub use crypto::polynomials::{
 
 use crypto::ciphersuite::Ciphersuite;
 use frost_core::{keys::SigningShare, Group, VerifyingKey};
+use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
 use std::marker::Send;
 
@@ -39,16 +41,18 @@ pub struct KeygenOutput<C: Ciphersuite> {
 /// This is a necessary element to be able to derive different keys
 /// from signing shares.
 /// We do not bind the user with the way to compute the inner scalar of the tweak
-pub struct Tweak<C: Ciphersuite>(Scalar<C>);
+#[derive(Copy, Clone, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(bound = "C: Ciphersuite")]
+pub struct Tweak<C: Ciphersuite>(SerializableScalar<C>);
 
 impl<C: Ciphersuite> Tweak<C> {
     pub fn new(tweak: Scalar<C>) -> Self {
-        Tweak(tweak)
+        Tweak(SerializableScalar(tweak))
     }
 
     /// Outputs the inner value of the tweak
     pub fn value(&self) -> Scalar<C> {
-        self.0
+        self.0 .0
     }
 
     /// Derives the signing share as x + tweak
@@ -69,6 +73,7 @@ pub fn keygen<C: Ciphersuite>(
     participants: &[Participant],
     me: Participant,
     threshold: usize,
+    rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = KeygenOutput<C>>, InitializationError>
 where
     frost_core::Element<C>: Send,
@@ -76,11 +81,12 @@ where
 {
     let comms = Comms::new();
     let participants = assert_keygen_invariants(participants, me, threshold)?;
-    let fut = do_keygen::<C>(comms.shared_channel(), participants, me, threshold);
+    let fut = do_keygen::<C>(comms.shared_channel(), participants, me, threshold, rng);
     Ok(make_protocol(comms, fut))
 }
 
 /// Performs the key reshare protocol
+#[allow(clippy::too_many_arguments)]
 pub fn reshare<C: Ciphersuite>(
     old_participants: &[Participant],
     old_threshold: usize,
@@ -89,6 +95,7 @@ pub fn reshare<C: Ciphersuite>(
     new_participants: &[Participant],
     new_threshold: usize,
     me: Participant,
+    rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = KeygenOutput<C>>, InitializationError>
 where
     frost_core::Element<C>: Send,
@@ -112,6 +119,7 @@ where
         old_signing_key,
         old_public_key,
         old_participants,
+        rng,
     );
     Ok(make_protocol(comms, fut))
 }
@@ -123,6 +131,7 @@ pub fn refresh<C: Ciphersuite>(
     old_participants: &[Participant],
     old_threshold: usize,
     me: Participant,
+    rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = KeygenOutput<C>>, InitializationError>
 where
     frost_core::Element<C>: Send,
@@ -151,6 +160,7 @@ where
         old_signing_key,
         old_public_key,
         old_participants,
+        rng,
     );
     Ok(make_protocol(comms, fut))
 }

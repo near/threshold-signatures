@@ -53,7 +53,7 @@ impl RerandomizedPresignOutput {
         tweak: &Tweak,
         args: &RerandomizationArguments,
     ) -> Result<Self, ProtocolError> {
-        if presignature.big_r != *args.big_r {
+        if presignature.big_r != args.big_r {
             return Err(ProtocolError::IncompatibleRerandomizationInputs);
         }
         let delta = args.derive_randomness();
