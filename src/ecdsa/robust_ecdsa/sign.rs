@@ -134,7 +134,6 @@ fn compute_signature_share(
     participants: &ParticipantList,
     me: Participant,
 ) -> Result<SerializableScalar<C>, ProtocolError> {
-
     // (beta_i + tweak * k_i) * delta^{-1}
     let big_r = presignature.big_r;
     let big_r_x_coordinate = x_coordinate(&big_r);
