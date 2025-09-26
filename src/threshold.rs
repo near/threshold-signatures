@@ -75,11 +75,6 @@ pub enum ValidationError {
 /// - **`f`**: Maximum number of tolerated faulty or malicious participants.
 /// - **`threshold (t`)**: Minimum number of participants required to generate a signature, derived from `n` and `f`.
 ///
-/// ## Threshold Rules
-/// - **Dkg**: `t = f + 1`, requires `f <= floor(N / 3)`
-/// - **OtBasedEcdsa**: `t = f + 1`
-/// - **RobustEcdsa**: `t = f`, requires `2f + 1 <= N`
-///
 /// Returns valid threshold value or ValidationError
 pub fn validate_and_derive_threshold(
     scheme: Scheme,
