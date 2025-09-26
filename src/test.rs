@@ -290,6 +290,7 @@ impl RngCore for MockCryptoRng {
     }
 }
 
+// Taken from https://github.com/ZcashFoundation/frost/blob/3ffc19d8f473d5bc4e07ed41bc884bdb42d6c29f/frost-secp256k1/tests/common_traits_tests.rs#L9
 #[allow(clippy::unnecessary_literal_unwrap)]
 pub fn check_common_traits_for_type<T: Clone + Eq + PartialEq + std::fmt::Debug>(v: T) {
     // Make sure can be debug-printed. This also catches if the Debug does not
