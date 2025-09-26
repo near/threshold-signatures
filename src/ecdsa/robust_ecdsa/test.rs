@@ -11,6 +11,7 @@ use crate::test::{
     assert_public_key_invariant, generate_participants, generate_participants_with_random_ids,
     run_keygen, run_refresh, run_reshare,
 };
+use crate::threshold::Scheme;
 
 /// Runs signing by calling the generic run_sign function from crate::test
 pub fn run_sign(
@@ -65,17 +66,16 @@ fn test_refresh() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants(11);
     let max_malicious = 5;
     let threshold = max_malicious + 1;
-    let keys = run_keygen(&participants, threshold)?;
+    let keys = run_keygen(Scheme::RobustEcdsa, &participants, threshold)?;
     assert_public_key_invariant(&keys);
     // run refresh on these
-    let key_packages = run_refresh(&participants, keys, threshold)?;
+    let key_packages = run_refresh(Scheme::RobustEcdsa, &participants, keys, threshold)?;
     let public_key = key_packages[0].1.public_key;
     assert_public_key_invariant(&key_packages);
     let presign_result = run_presign(key_packages, max_malicious)?;
 
     let msg = b"hello world";
     run_sign(presign_result, public_key.to_element(), msg)?;
-
     Ok(())
 }
 
@@ -86,7 +86,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
 
     let max_malicious = 3;
     let threshold = max_malicious + 1;
-    let result0 = run_keygen(&participants, threshold)?;
+    let result0 = run_keygen(Scheme::RobustEcdsa, &participants, threshold)?;
     assert_public_key_invariant(&result0);
 
     let pub_key = result0[2].1.public_key;
@@ -100,6 +100,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
     new_participant.push(Participant::from(32u32));
     new_participant.push(Participant::from(33u32));
     let key_packages = run_reshare(
+        Scheme::RobustEcdsa,
         &participants,
         &pub_key,
         result0,
@@ -126,7 +127,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
 
     let max_malicious = 2;
     let threshold = max_malicious + 1;
-    let result0 = run_keygen(&participants, threshold)?;
+    let result0 = run_keygen(Scheme::RobustEcdsa, &participants, threshold)?;
     assert_public_key_invariant(&result0);
 
     let pub_key = result0[2].1.public_key;
@@ -137,6 +138,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     let mut new_participant = participants.clone();
     new_participant.pop();
     let key_packages = run_reshare(
+        Scheme::RobustEcdsa,
         &participants,
         &pub_key,
         result0,
@@ -160,7 +162,11 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants(8);
     let max_malicious = 3;
 
-    let keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;
+    let keygen_result = run_keygen(
+        Scheme::RobustEcdsa,
+        &participants.clone(),
+        max_malicious + 1,
+    )?;
 
     let public_key = keygen_result[0].1.public_key;
     assert_public_key_invariant(&keygen_result);
@@ -178,7 +184,11 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants_with_random_ids(participants_count, &mut OsRng);
     let max_malicious = 3;
 
-    let keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;
+    let keygen_result = run_keygen(
+        Scheme::RobustEcdsa,
+        &participants.clone(),
+        max_malicious + 1,
+    )?;
     assert_public_key_invariant(&keygen_result);
 
     let public_key = keygen_result[0].1.public_key;

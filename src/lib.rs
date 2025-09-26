@@ -1,7 +1,7 @@
 mod crypto;
-pub mod threshold;
 mod generic_dkg;
 mod participants;
+pub mod threshold;
 
 pub mod confidential_key_derivation;
 pub mod ecdsa;
@@ -11,7 +11,6 @@ pub mod protocol;
 mod test;
 
 pub use frost_core;
-use frost_core::serialization::SerializableScalar;
 pub use frost_ed25519;
 pub use frost_secp256k1;
 // For benchmark
@@ -20,7 +19,7 @@ pub use crypto::polynomials::{
 };
 
 use crypto::ciphersuite::Ciphersuite;
-use frost_core::{keys::SigningShare, Group, VerifyingKey};
+use frost_core::{keys::SigningShare, serialization::SerializableScalar, Group, VerifyingKey};
 use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
 use std::marker::Send;
@@ -28,6 +27,7 @@ use std::marker::Send;
 use crate::generic_dkg::*;
 use crate::protocol::internal::{make_protocol, Comms};
 use crate::protocol::{errors::InitializationError, Participant, Protocol};
+use crate::threshold::Scheme;
 
 type Scalar<C> = frost_core::Scalar<C>;
 
@@ -71,6 +71,7 @@ impl<C: Ciphersuite> Tweak<C> {
 
 /// Generic key generation function agnostic of the curve
 pub fn keygen<C: Ciphersuite>(
+    scheme: Scheme,
     participants: &[Participant],
     me: Participant,
     threshold: usize,
@@ -81,7 +82,7 @@ where
     frost_core::Scalar<C>: Send,
 {
     let comms = Comms::new();
-    let participants = assert_keygen_invariants(participants, me, threshold)?;
+    let participants = assert_keygen_invariants(scheme, participants, me, threshold)?;
     let fut = do_keygen::<C>(comms.shared_channel(), participants, me, threshold, rng);
     Ok(make_protocol(comms, fut))
 }
@@ -89,6 +90,7 @@ where
 /// Performs the key reshare protocol
 #[allow(clippy::too_many_arguments)]
 pub fn reshare<C: Ciphersuite>(
+    scheme: Scheme,
     old_participants: &[Participant],
     old_threshold: usize,
     old_signing_key: Option<SigningShare<C>>,
@@ -105,6 +107,7 @@ where
     let comms = Comms::new();
     let threshold = new_threshold;
     let (participants, old_participants) = reshare_assertions::<C>(
+        scheme,
         new_participants,
         me,
         threshold,
@@ -127,6 +130,7 @@ where
 
 /// Performs the refresh protocol
 pub fn refresh<C: Ciphersuite>(
+    scheme: Scheme,
     old_signing_key: Option<SigningShare<C>>,
     old_public_key: VerifyingKey<C>,
     old_participants: &[Participant],
@@ -146,6 +150,7 @@ where
     let comms = Comms::new();
     let threshold = old_threshold;
     let (participants, old_participants) = reshare_assertions::<C>(
+        scheme,
         old_participants,
         me,
         threshold,

@@ -296,6 +296,7 @@ mod test {
     use crate::eddsa::test::{build_key_packages_with_dealer, test_run_signature_protocols};
     use crate::protocol::Participant;
     use crate::test::{assert_public_key_invariant, run_keygen, run_refresh, run_reshare};
+    use crate::threshold::Scheme;
     use std::error::Error;
 
     fn assert_single_coordinator_result(
@@ -374,7 +375,7 @@ mod test {
         let msg_hash = hash(&msg)?;
 
         // test dkg
-        let key_packages = run_keygen(&participants, threshold)?;
+        let key_packages = run_keygen(Scheme::Dkg, &participants, threshold)?;
         assert_public_key_invariant(&key_packages);
         let coordinators = vec![key_packages[0].0];
         let data = test_run_signature_protocols(
@@ -393,7 +394,7 @@ mod test {
             .is_ok());
 
         // // test refresh
-        let key_packages1 = run_refresh(&participants, key_packages, threshold)?;
+        let key_packages1 = run_refresh(Scheme::Dkg, &participants, key_packages, threshold)?;
         assert_public_key_invariant(&key_packages1);
         let msg = "hello_near_2";
         let msg_hash = hash(&msg)?;
@@ -415,8 +416,9 @@ mod test {
         // test reshare
         let mut new_participant = participants.clone();
         new_participant.push(Participant::from(20u32));
-        let new_threshold = 4;
+        let new_threshold = 2;
         let key_packages2 = run_reshare(
+            Scheme::Dkg,
             &participants,
             &pub_key,
             key_packages1,
@@ -448,19 +450,20 @@ mod test {
     #[test]
     fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
         let participants = generate_participants(5);
-        let threshold = 3;
-        let result0 = run_keygen(&participants, threshold)?;
+        let threshold = 2;
+        let result0 = run_keygen(Scheme::Dkg, &participants, threshold)?;
         assert_public_key_invariant(&result0);
 
         let pub_key = result0[2].1.public_key;
 
         // Run heavy reshare
-        let new_threshold = 5;
+        let new_threshold = 3;
         let mut new_participant = participants.clone();
         new_participant.push(Participant::from(31u32));
         new_participant.push(Participant::from(32u32));
         new_participant.push(Participant::from(33u32));
         let key_packages = run_reshare(
+            Scheme::Dkg,
             &participants,
             &pub_key,
             result0,
@@ -514,18 +517,19 @@ mod test {
     #[test]
     fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
         let participants = generate_participants(5);
-        let threshold = 4;
-        let result0 = run_keygen(&participants, threshold)?;
+        let threshold = 2;
+        let result0 = run_keygen(Scheme::Dkg, &participants, threshold)?;
         assert_public_key_invariant(&result0);
         let coordinators = vec![result0[0].0];
 
         let pub_key = result0[2].1.public_key;
 
         // Run heavy reshare
-        let new_threshold = 3;
+        let new_threshold = 2;
         let mut new_participant = participants.clone();
         new_participant.pop();
         let key_packages = run_reshare(
+            Scheme::Dkg,
             &participants,
             &pub_key,
             result0,
