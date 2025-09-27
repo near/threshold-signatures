@@ -4,11 +4,11 @@
 use rand_core::{CryptoRng, CryptoRngCore, OsRng, RngCore};
 use std::error::Error;
 
-use crate::threshold::Scheme;
 use crate::protocol::{
     errors::{InitializationError, ProtocolError},
     run_protocol, Participant, Protocol,
 };
+use crate::threshold::Scheme;
 use crate::{keygen, refresh, reshare, Ciphersuite, KeygenOutput, VerifyingKey};
 
 // +++++++++++++++++ Participants Utilities +++++++++++++++++ //
