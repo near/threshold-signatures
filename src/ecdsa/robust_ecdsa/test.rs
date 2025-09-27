@@ -154,7 +154,7 @@ fn test_refresh() -> Result<(), Box<dyn Error>> {
     let presign_result = run_presign(key_packages, max_malicious)?;
 
     let msg = b"hello world";
-    run_sign(presign_result, public_key.to_element(), msg)?;
+    run_sign_without_rerandomization(presign_result, public_key.to_element(), msg)?;
     Ok(())
 }
 
