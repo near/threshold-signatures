@@ -18,7 +18,20 @@ const FLAG_T: u8 = 1 << 3;
 const FLAG_M: u8 = 1 << 4;
 const FLAG_K: u8 = 1 << 5;
 
-fn transmute_state(st: &mut AlignedKeccakState) -> &mut [u64; 25] {
+// WARNING: This function is performance-critical and uses `unsafe` to cast
+// a byte buffer into a `u64` array to avoid copies. This operation is
+// dangerous and relies on three critical invariants:
+//
+// 1.  **Size**: `AlignedKeccakState` MUST be exactly 200 bytes, the same as `[u64; 25]`.
+// 2.  **Alignment**: `AlignedKeccakState` MUST have an alignment of at least 8 bytes.
+//     This is enforced by the `#[repr(align(8))]` attribute.
+// 3.  **Endianness**: This cast is only correct on little-endian architectures.
+//     The Keccak specification requires a little-endian interpretation of the state.
+//     Running this code on a big-endian machine will produce incorrect results.
+//
+// Do NOT modify the `AlignedKeccakState` struct or this function without
+// fully understanding these implications.
+pub(crate) fn transmute_state(st: &mut AlignedKeccakState) -> &mut [u64; 25] {
     unsafe { &mut *(st as *mut AlignedKeccakState as *mut [u64; 25]) }
 }
 
@@ -26,9 +39,10 @@ fn transmute_state(st: &mut AlignedKeccakState) -> &mut [u64; 25] {
 /// to make pointers to it safely convertible to pointers to [u64; 25]
 /// (since u64 words must be 8-byte aligned)
 #[derive(Clone, Zeroize)]
+#[cfg_attr(kani, derive(kani::Arbitrary))]
 #[zeroize(drop)]
 #[repr(align(8))]
-struct AlignedKeccakState([u8; 200]);
+pub(crate) struct AlignedKeccakState([u8; 200]);
 
 /// A Strobe context for the 128-bit security level.
 ///
@@ -177,5 +191,27 @@ impl Deref for AlignedKeccakState {
 impl DerefMut for AlignedKeccakState {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ensure_aligned_keccak_state_invariants() {
+        // This test ensures that the invariants required by the `unsafe`
+        // `transmute_state` function are met. If this test fails, the
+        // `unsafe` block is likely to cause Undefined Behavior.
+        assert_eq!(
+            std::mem::size_of::<AlignedKeccakState>(),
+            200,
+            "AlignedKeccakState must be exactly 200 bytes"
+        );
+        assert_eq!(
+            std::mem::align_of::<AlignedKeccakState>(),
+            8,
+            "AlignedKeccakState must have an 8-byte alignment"
+        );
     }
 }
