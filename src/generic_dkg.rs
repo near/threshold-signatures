@@ -544,7 +544,12 @@ pub(crate) fn assert_keygen_invariants(
     if threshold == 0 {
         return Err(InitializationError::ThresholdCannotBeZero);
     }
-    let f = threshold - 1;
+    let f = match scheme {
+        Scheme::Dkg | Scheme::OtBasedEcdsa => threshold
+            .checked_sub(1)
+            .ok_or(InitializationError::ThresholdCannotBeZero)?,
+        Scheme::RobustEcdsa => threshold,
+    };
 
     // Validate that the threshold is appropriate for the number of participants
     // according to the DKG scheme rules.
