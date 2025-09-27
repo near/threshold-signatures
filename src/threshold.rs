@@ -9,12 +9,6 @@
 //! - **`f`**: Maximum assumed faulty participants.
 //! - **`t` (threshold)**: Minimum participants required to generate a signature, derived from `N` and `f`.
 //!
-//! # Scheme Semantics
-//!
-//! - **DKG**: `t = f + 1`, requires `f <= floor(N/3)`.
-//! - **OtBasedEcdsa**: `t = f + 1`
-//! - **RobustEcdsa**: `t = f`, requires `2f + 1 <= N`.
-//!
 //! # Usage
 //! ```
 //! use threshold_signatures::threshold::{Scheme, validate_and_derive_threshold};
