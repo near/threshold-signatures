@@ -9,6 +9,7 @@ use threshold_signatures::{
     },
     keygen,
     protocol::{run_protocol, Participant, Protocol},
+    threshold::Scheme,
 };
 
 type C = threshold_signatures::confidential_key_derivation::ciphersuite::BLS12381SHA256;
@@ -17,6 +18,7 @@ type Scalar = BLS12381Scalar;
 type ParticipantAndProtocol<T> = (Participant, Box<dyn Protocol<Output = T>>);
 
 fn make_keygen(
+    scheme: Scheme,
     participants: &[Participant],
     threshold: usize,
 ) -> HashMap<Participant, KeygenOutput> {
@@ -24,7 +26,7 @@ fn make_keygen(
     for participant in participants {
         protocols.push((
             *participant,
-            Box::new(keygen::<C>(participants, *participant, threshold, OsRng).unwrap()),
+            Box::new(keygen::<C>(scheme, participants, *participant, threshold, OsRng).unwrap()),
         ));
     }
     run_protocol(protocols).unwrap().into_iter().collect()
@@ -40,14 +42,19 @@ fn test_ckd() -> Result<(), Box<dyn Error>> {
     let app_pk = G1Projective::generator() * app_sk;
 
     // create participants
-    let threshold = 3;
+    let threshold = 3; // f = 3 - 1 = 2
+                       // f * 3 <= n
+                       // 2 * 3 <= 6
     let participants = vec![
         Participant::from(0u32),
         Participant::from(1u32),
         Participant::from(2u32),
+        Participant::from(3u32),
+        Participant::from(4u32),
+        Participant::from(5u32),
     ];
 
-    let result = make_keygen(&participants, threshold);
+    let result = make_keygen(Scheme::Dkg, &participants, threshold);
 
     assert!(result.len() == participants.len());
 

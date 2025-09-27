@@ -115,4 +115,7 @@ pub enum InitializationError {
 
     #[error("participant has an invalid index")]
     InvalidParticipantIndex,
+
+    #[error("threshold cannot be zero")]
+    ThresholdCannotBeZero,
 }

@@ -8,6 +8,7 @@ use crate::protocol::{
     errors::{InitializationError, ProtocolError},
     run_protocol, Participant, Protocol,
 };
+use crate::threshold::Scheme;
 use crate::{keygen, refresh, reshare, Ciphersuite, KeygenOutput, VerifyingKey};
 
 // +++++++++++++++++ Participants Utilities +++++++++++++++++ //
@@ -39,6 +40,7 @@ type GenProtocol<C> = Vec<(Participant, Box<dyn Protocol<Output = KeygenOutput<C
 /// Runs distributed keygen
 /// If the protocol succeeds, returns a sorted vector based on participants id
 pub(crate) fn run_keygen<C: Ciphersuite>(
+    scheme: Scheme,
     participants: &[Participant],
     threshold: usize,
 ) -> GenOutput<C>
@@ -49,7 +51,7 @@ where
     let mut protocols: GenProtocol<C> = Vec::with_capacity(participants.len());
 
     for p in participants {
-        let protocol = keygen::<C>(participants, *p, threshold, OsRng)?;
+        let protocol = keygen::<C>(scheme, participants, *p, threshold, OsRng)?;
         protocols.push((*p, Box::new(protocol)));
     }
 
@@ -61,8 +63,9 @@ where
 /// Runs distributed refresh
 /// If the protocol succeeds, returns a sorted vector based on participants id
 pub(crate) fn run_refresh<C: Ciphersuite>(
+    scheme: Scheme,
     participants: &[Participant],
-    keys: Vec<(Participant, KeygenOutput<C>)>,
+    keys: Vec<(Participant, KeygenOutput<C>)>, // This should be old_keys
     threshold: usize,
 ) -> GenOutput<C>
 where
@@ -73,6 +76,7 @@ where
 
     for (p, out) in keys.iter() {
         let protocol = refresh::<C>(
+            scheme,
             Some(out.private_share),
             out.public_key,
             participants,
@@ -91,9 +95,10 @@ where
 /// Runs distributed reshare
 /// If the protocol succeeds, returns a sorted vector based on participants id
 pub(crate) fn run_reshare<C: Ciphersuite>(
-    participants: &[Participant],
+    scheme: Scheme,
+    old_participants: &[Participant],
     pub_key: &VerifyingKey<C>,
-    keys: Vec<(Participant, KeygenOutput<C>)>,
+    keys: Vec<(Participant, KeygenOutput<C>)>, // This should be old_keys
     old_threshold: usize,
     new_threshold: usize,
     new_participants: Vec<Participant>,
@@ -119,11 +124,12 @@ where
         }
     }
 
-    let mut protocols: GenProtocol<C> = Vec::with_capacity(participants.len());
+    let mut protocols: GenProtocol<C> = Vec::with_capacity(old_participants.len());
 
     for (p, out) in setup.iter() {
         let protocol = reshare(
-            participants,
+            scheme,
+            old_participants,
             old_threshold,
             out.0,
             out.1,
