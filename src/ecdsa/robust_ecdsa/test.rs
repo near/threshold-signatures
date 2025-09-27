@@ -144,7 +144,7 @@ pub fn run_presign(
 fn test_refresh() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants(11);
     let max_malicious = 5;
-    let threshold = max_malicious + 1;
+    let threshold = max_malicious;
     let keys = run_keygen(Scheme::RobustEcdsa, &participants, threshold)?;
     assert_public_key_invariant(&keys);
     // run refresh on these
@@ -204,7 +204,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants(5);
 
     let max_malicious = 2;
-    let threshold = max_malicious + 1;
+    let threshold = max_malicious;
     let result0 = run_keygen(Scheme::RobustEcdsa, &participants, threshold)?;
     assert_public_key_invariant(&result0);
 
@@ -237,13 +237,9 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
 #[test]
 fn test_e2e() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants(8);
-    let max_malicious = 3;
+    let max_malicious = 3; //f
 
-    let keygen_result = run_keygen(
-        Scheme::RobustEcdsa,
-        &participants.clone(),
-        max_malicious + 1,
-    )?;
+    let keygen_result = run_keygen(Scheme::RobustEcdsa, &participants.clone(), max_malicious)?;
 
     let public_key = keygen_result[0].1.public_key;
     assert_public_key_invariant(&keygen_result);
@@ -260,11 +256,7 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants_with_random_ids(participants_count, &mut OsRng);
     let max_malicious = 3;
 
-    let keygen_result = run_keygen(
-        Scheme::RobustEcdsa,
-        &participants.clone(),
-        max_malicious + 1,
-    )?;
+    let keygen_result = run_keygen(Scheme::RobustEcdsa, &participants.clone(), max_malicious)?;
     assert_public_key_invariant(&keygen_result);
 
     let public_key = keygen_result[0].1.public_key;
@@ -282,7 +274,7 @@ fn test_e2e_random_identifiers_with_rerandomization() -> Result<(), Box<dyn Erro
     let participants = generate_participants_with_random_ids(participants_count, &mut OsRng);
     let max_malicious = 3;
 
-    let keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;
+    let keygen_result = run_keygen(Scheme::RobustEcdsa, &participants.clone(), max_malicious)?;
     assert_public_key_invariant(&keygen_result);
 
     let public_key = keygen_result[0].1.public_key;
