@@ -25,6 +25,10 @@
 //! let threshold = validate_and_derive_threshold(Scheme::Dkg, n, f).unwrap();
 //! assert_eq!(threshold, 3); // t = f + 1
 //!
+//! // OtBasedEcdsa: t = f + 1, no additional requirements
+//! let threshold_ot_based = validate_and_derive_threshold(Scheme::OtBasedEcdsa, n, f).unwrap();
+//! assert_eq!(threshold_ot_based, 3); // t = f + 1
+//!
 //! // Robust ECDSA: t = f, requires 2f + 1 <= N
 //! let threshold_robust = validate_and_derive_threshold(Scheme::RobustEcdsa, n, f).unwrap();
 //! assert_eq!(threshold_robust, 2); // t = f
@@ -32,7 +36,6 @@
 //! // Invalid DKG: f too large
 //! assert!(validate_and_derive_threshold(Scheme::Dkg, 7, 3).is_err());
 //! ```
-
 use thiserror::Error;
 
 /// Supported cryptographic schemes.
@@ -96,11 +99,7 @@ pub fn validate_and_derive_threshold(
             }
             f.checked_add(1).ok_or(ValidationError::ArithmeticError)?
         }
-        Scheme::OtBasedEcdsa => {
-            // In Ot-based ecdsa: generating a signature would require at least max_malicious_parties + 1
-            // which this would be named as threshold
-            f.checked_add(1).ok_or(ValidationError::ArithmeticError)?
-        }
+        Scheme::OtBasedEcdsa => f.checked_add(1).ok_or(ValidationError::ArithmeticError)?,
         Scheme::RobustEcdsa => {
             // threshold = f, require 2f+1 <= n
             let two_f_plus_one = f
@@ -188,7 +187,7 @@ mod tests {
     }
 
     #[test]
-    fn arithmetic_overflow() {
+    fn aritometic_overflow() {
         // Test overflow for 2*f + 1 in RobustECDSA
         let f_robust = usize::MAX / 2 + 1;
         assert_eq!(
@@ -197,13 +196,13 @@ mod tests {
         );
 
         // Test overflow for 3*f in DKG
-        let f_dkg = usize::MAX / 2;
+        let f_dkg = usize::MAX / 3 + 1;
         assert_eq!(
             validate_and_derive_threshold(Scheme::Dkg, usize::MAX, f_dkg),
             Err(ValidationError::ArithmeticError)
         );
 
-        // NOTE: Overflow for f+1 in OtBasedEcdsa is not reachable because it requires
+        // Overflow for f+1 in OtBasedEcdsa is not reachable because it requires
         // f = usize::MAX, which would fail the `f < n` check.
         let f_add = usize::MAX;
         assert_eq!(
