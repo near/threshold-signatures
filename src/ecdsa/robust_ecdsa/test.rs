@@ -6,7 +6,7 @@ use crate::crypto::hash::test::scalar_hash_secp256k1;
 use crate::ecdsa::robust_ecdsa::RerandomizedPresignOutput;
 use crate::ecdsa::{
     Element, KeygenOutput, ParticipantList, RerandomizationArguments, Secp256K1Sha256, Signature,
-    SignatureCore, Tweak,
+    SignatureOption, Tweak,
 };
 use crate::protocol::{run_protocol, Participant, Protocol};
 use crate::test::{
@@ -22,7 +22,7 @@ pub fn run_sign_without_rerandomization(
     participants_presign: Vec<(Participant, PresignOutput)>,
     public_key: Element,
     msg: &[u8],
-) -> Result<(Participant, SignatureCore), Box<dyn Error>> {
+) -> Result<(Participant, Signature), Box<dyn Error>> {
     // hash the message into secp256k1 field
     let msg_hash = scalar_hash_secp256k1(msg);
 
@@ -41,7 +41,7 @@ pub fn run_sign_without_rerandomization(
             let rerand_presig =
                 RerandomizedPresignOutput::new_without_rerandomization(presignature);
             sign(participants, coordinator, me, pk, rerand_presig, msg_hash)
-                .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = Signature>>)
+                .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
         },
     )?;
     // test one single some for the coordinator
@@ -57,7 +57,7 @@ pub fn run_sign_with_rerandomization(
     participants_presign: Vec<(Participant, PresignOutput)>,
     public_key: Element,
     msg: &[u8],
-) -> Result<(Tweak, Participant, SignatureCore), Box<dyn Error>> {
+) -> Result<(Tweak, Participant, Signature), Box<dyn Error>> {
     // hash the message into secp256k1 field
     let msg_hash = scalar_hash_secp256k1(msg);
 
@@ -76,14 +76,17 @@ pub fn run_sign_with_rerandomization(
             .collect::<Vec<Participant>>(),
     )
     .unwrap();
-    let rerand_args = RerandomizationArguments::new(&pk, &msg_hash, &big_r, &participants, entropy);
+    let msg_hash_bytes: [u8; 32] = msg_hash.to_bytes().into();
+    let rerand_args =
+        RerandomizationArguments::new(pk, msg_hash_bytes, big_r, participants, entropy);
     let public_key = frost_core::VerifyingKey::new(public_key);
     let derived_pk = tweak.derive_verifying_key(&public_key).to_element();
 
     let rerand_participants_presign = participants_presign
         .iter()
         .map(|(p, presig)| {
-            RerandomizedPresignOutput::new(presig, &tweak, &rerand_args).map(|out| (*p, out))
+            RerandomizedPresignOutput::rerandomize_presign(presig, &tweak, &rerand_args)
+                .map(|out| (*p, out))
         })
         .collect::<Result<_, _>>()?;
 
@@ -100,7 +103,7 @@ pub fn run_sign_with_rerandomization(
         |participants, coordinator, me, pk, presignature, msg_hash| {
             let pk = pk.to_affine();
             sign(participants, coordinator, me, pk, presignature, msg_hash)
-                .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = Signature>>)
+                .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
         },
     )?;
     // test one single some for the coordinator
@@ -125,6 +128,7 @@ pub fn run_presign(
                 keygen_out,
                 threshold: max_malicious,
             },
+            OsRng,
         )?;
         protocols.push((p, Box::new(protocol)));
     }
@@ -246,7 +250,7 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
 #[test]
 fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     let participants_count = 7;
-    let participants = generate_participants_with_random_ids(participants_count);
+    let participants = generate_participants_with_random_ids(participants_count, &mut OsRng);
     let max_malicious = 3;
 
     let keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;
@@ -264,7 +268,7 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
 #[test]
 fn test_e2e_random_identifiers_with_rerandomization() -> Result<(), Box<dyn Error>> {
     let participants_count = 7;
-    let participants = generate_participants_with_random_ids(participants_count);
+    let participants = generate_participants_with_random_ids(participants_count, &mut OsRng);
     let max_malicious = 3;
 
     let keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;

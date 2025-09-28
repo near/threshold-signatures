@@ -1,7 +1,7 @@
 // This module provides generic functions to be used
 // in the implemented schemes testing cases
 
-use rand_core::{CryptoRng, OsRng, RngCore};
+use rand_core::{CryptoRng, CryptoRngCore, OsRng, RngCore};
 use std::error::Error;
 
 use crate::protocol::{
@@ -20,10 +20,13 @@ pub fn generate_participants(number: usize) -> Vec<Participant> {
 }
 
 /// Generates a vector of `number` participants, sorted by the participant id.
-/// The participants ids are drawn from OsRng.
-pub fn generate_participants_with_random_ids(number: usize) -> Vec<Participant> {
+/// The participants ids are drawn from rng.
+pub fn generate_participants_with_random_ids(
+    number: usize,
+    rng: &mut impl CryptoRngCore,
+) -> Vec<Participant> {
     let mut participants = (0..number)
-        .map(|_| Participant::from(OsRng.next_u32()))
+        .map(|_| Participant::from(rng.next_u32()))
         .collect::<Vec<_>>();
     participants.sort();
     participants
@@ -46,7 +49,7 @@ where
     let mut protocols: GenProtocol<C> = Vec::with_capacity(participants.len());
 
     for p in participants {
-        let protocol = keygen::<C>(participants, *p, threshold)?;
+        let protocol = keygen::<C>(participants, *p, threshold, OsRng)?;
         protocols.push((*p, Box::new(protocol)));
     }
 
@@ -75,6 +78,7 @@ where
             participants,
             threshold,
             *p,
+            OsRng,
         )?;
         protocols.push((*p, Box::new(protocol)));
     }
@@ -126,6 +130,7 @@ where
             &new_participants,
             new_threshold,
             *p,
+            OsRng,
         )?;
         protocols.push((*p, Box::new(protocol)));
     }
@@ -252,4 +257,17 @@ impl RngCore for MockCryptoRng {
     fn try_fill_bytes(&mut self, _dest: &mut [u8]) -> Result<(), rand_core::Error> {
         unimplemented!()
     }
+}
+
+// Taken from https://github.com/ZcashFoundation/frost/blob/3ffc19d8f473d5bc4e07ed41bc884bdb42d6c29f/frost-secp256k1/tests/common_traits_tests.rs#L9
+#[allow(clippy::unnecessary_literal_unwrap)]
+pub fn check_common_traits_for_type<T: Clone + Eq + PartialEq + std::fmt::Debug>(v: T) {
+    // Make sure can be debug-printed. This also catches if the Debug does not
+    // have an endless recursion (a popular mistake).
+    println!("{:?}", v);
+    // Test Clone and Eq
+    assert_eq!(v, v.clone());
+    // Make sure it can be unwrapped in a Result (which requires Debug).
+    let e: Result<T, ()> = Ok(v.clone());
+    assert_eq!(v, e.unwrap());
 }

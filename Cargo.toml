@@ -8,6 +8,7 @@ license = "MIT"
 
 [dependencies]
 auto_ops = "0.3.0"
+blstrs = "0.7.1"
 borsh = "1.5.7"
 byteorder = "1.5.0"
 digest = "0.10.7"
@@ -16,7 +17,6 @@ elliptic-curve = { version = "0.13.5", features = ["serde"] }
 frost-core = { version = "2.1.0", default-features = false, features = [
   "serialization",
   "std",
-  "internals",
 ] }
 frost-ed25519 = { version = "2.1.0", default-features = false, features = [
   "serialization",
@@ -37,8 +37,7 @@ k256 = { version = "0.13.1", features = [
   "hash2curve",
 ] }
 keccak = "0.1.5"
-rand = "0.9.0"
-# updating this one requires quite a few code changes
+# This one cannot be upgraded to remain compatible with frost-core
 rand_core = { version = "0.6.4", features = ["getrandom"] }
 rmp-serde = "1.1.2"
 serde = { version = "1.0.175", features = ["derive"] }
