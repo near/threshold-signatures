@@ -37,7 +37,7 @@ pub fn sign(
     // ensure my presence in the participant list
     if !participants.contains(me) {
         return Err(InitializationError::MissingParticipant {
-            role: "me",
+            role: "self",
             participant: me,
         });
     };
@@ -73,20 +73,7 @@ async fn do_sign_participant(
     msg_hash: Scalar,
 ) -> Result<SignatureOption, ProtocolError> {
     // Round 1
-    // Linearize ki
-    // Spec 1.1
-    let lambda = participants.lagrange::<Secp256K1Sha256>(me)?;
-    let k_i = lambda * presignature.k;
-
-    // Linearize sigmai
-    // Spec 1.2
-    let sigma_i = lambda * presignature.sigma;
-
-    // Compute si = h * ki + Rx * sigmai
-    // Spec 1.3
-    let r = x_coordinate(&presignature.big_r);
-    let s_i = msg_hash * k_i + r * sigma_i;
-
+    let s_i = compute_signature_share(&participants, me, &presignature, msg_hash)?;
     // Send si
     // Spec 1.4
     let wait0 = chan.next_waitpoint();
@@ -105,20 +92,7 @@ async fn do_sign_coordinator(
     msg_hash: Scalar,
 ) -> Result<SignatureOption, ProtocolError> {
     // Round 1
-    // Linearize ki
-    // Spec 1.1
-    let lambda = participants.lagrange::<Secp256K1Sha256>(me)?;
-    let k_i = lambda * presignature.k;
-
-    // Linearize sigmai
-    // Spec 1.2
-    let sigma_i = lambda * presignature.sigma;
-
-    // Compute si = h * ki + Rx * sigmai
-    // Spec 1.3
-    let r = x_coordinate(&presignature.big_r);
-    let s_i = msg_hash * k_i + r * sigma_i;
-
+    let s_i = compute_signature_share(&participants, me, &presignature, msg_hash)?;
     // Spec 1.4 is non existant for a coordinator
 
     let wait0 = chan.next_waitpoint();
@@ -153,6 +127,29 @@ async fn do_sign_coordinator(
     }
 
     Ok(Some(sig))
+}
+
+/// A common computation done by both the coordinator and the other participants
+fn compute_signature_share(
+    participants: &ParticipantList,
+    me: Participant,
+    presignature: &RerandomizedPresignOutput,
+    msg_hash: Scalar,
+) -> Result<Scalar, ProtocolError> {
+    // Round 1
+    // Linearize ki
+    // Spec 1.1
+    let lambda = participants.lagrange::<Secp256K1Sha256>(me)?;
+    let k_i = lambda * presignature.k;
+
+    // Linearize sigmai
+    // Spec 1.2
+    let sigma_i = lambda * presignature.sigma;
+
+    // Compute si = h * ki + Rx * sigmai
+    // Spec 1.3
+    let r = x_coordinate(&presignature.big_r);
+    Ok(msg_hash * k_i + r * sigma_i)
 }
 
 /// Wraps the coordinator and the participant into a single functions to be called
