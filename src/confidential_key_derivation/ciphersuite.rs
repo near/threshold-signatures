@@ -1,5 +1,3 @@
-use std::sync::LazyLock;
-
 use digest::{consts::U48, generic_array::GenericArray};
 use elliptic_curve::hash2curve::{hash_to_field, ExpandMsgXmd, FromOkm};
 use rand_core::{CryptoRng, RngCore};
@@ -220,7 +218,7 @@ pub fn verify_signature(
     msg: &[u8],
     signature: &Signature,
 ) -> Result<(), frost_core::Error<BLS12381SHA256>> {
-    let base1 = hash2curve(msg).into();
+    let base1 = hash_to_curve(msg).into();
     let element1 = verifying_key.to_element().into();
     let base2 =
         <<BLS12381SHA256 as frost_core::Ciphersuite>::Group as frost_core::Group>::generator()
@@ -235,7 +233,7 @@ pub fn verify_signature(
 
 const DOMAIN: &[u8] = b"NEAR BLS12381G1_XMD:SHA-256_SSWU_RO_";
 
-pub fn hash2curve(bytes: &[u8]) -> ElementG1 {
+pub fn hash_to_curve(bytes: &[u8]) -> ElementG1 {
     G1Projective::hash_to_curve(bytes, DOMAIN, &[])
 }
 
@@ -252,96 +250,27 @@ fn hash_to_scalar(domain: &[&[u8]], msg: &[u8]) -> blstrs::Scalar {
 #[derive(Clone, Copy, Debug, Default)]
 struct ScalarWrapper(blstrs::Scalar);
 
-static R: LazyLock<blstrs::Scalar> =
-    LazyLock::new(|| blstrs::Scalar::pow(&blstrs::Scalar::from(2), [256]));
-
-const MODULUS: [u64; 4] = [
-    0xffff_ffff_0000_0001,
-    0x53bd_a402_fffe_5bfe,
-    0x3339_d808_09a1_d805,
-    0x73ed_a753_299d_7d48,
-];
-
 impl ScalarWrapper {
-    fn from_bytes_wide(bytes: &[u8; 64]) -> Self {
-        Self::from_u512([
-            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[0..8]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[8..16]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[16..24]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[24..32]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[32..40]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[40..48]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[48..56]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&bytes[56..64]).unwrap()),
-        ])
-    }
+    // Based on https://github.com/arkworks-rs/algebra/blob/c6f9284c17df00c50d954a5fe1c72dd4a5698103/ff/src/fields/prime.rs#L72
+    // Converts `bytes` into a `Scalar`
+    fn from_le_bytes_mod_order(bytes: &[u8]) -> Self {
+        let mut res = blstrs::Scalar::ZERO;
 
-    fn from_u512(limbs: [u64; 8]) -> Self {
-        // We reduce an arbitrary 512-bit number by decomposing it into two 256-bit digits
-        // with the higher bits multiplied by 2^256. Thus, we perform two reductions
-        //
-        // 1. the lower bits are multiplied by R^2, as normal
-        // 2. the upper bits are multiplied by R^2 * 2^256 = R^3
-        //
-        // and computing their sum in the field. It remains to see that arbitrary 256-bit
-        // numbers can be placed into Montgomery form safely using the reduction. The
-        // reduction works so long as the product is less than R=2^256 multiplied by
-        // the modulus. This holds because for any `c` smaller than the modulus, we have
-        // that (2^256 - 1)*c is an acceptable product for the reduction. Therefore, the
-        // reduction always works so long as `c` is in the field; in this case it is either the
-        // constant `R2` or `R3`.
-        // Thanks to the reduction, these unwraps to Scalar are safe
-        let reduced_limbs0 = Self::reduce(limbs[..4].try_into().unwrap());
-        let reduced_limbs1 = Self::reduce(limbs[4..8].try_into().unwrap());
-        let d0 = blstrs::Scalar::from_u64s_le(&reduced_limbs0).unwrap();
-        let d1 = blstrs::Scalar::from_u64s_le(&reduced_limbs1).unwrap();
-        // Convert to Montgomery form
-        Self(d0 + d1 * *R)
-    }
-
-    // This is only needed because blstrs does not provide any method for constructing a Scalar
-    // while applying modular reduction to the input
-    fn reduce(limbs: [u64; 4]) -> [u64; 4] {
-        const P2_64: u128 = 1u128 << 64;
-        let mut reduced_limbs = [0u128; 4];
-
-        let mut result = [0; 4];
-        result.copy_from_slice(&limbs);
-        let mut reps = 0;
-        while !Self::is_reduced(result) {
-            let mut remainder = 0;
-            for i in 0..4 {
-                reduced_limbs[i] = result[i] as u128;
-                if reduced_limbs[i] >= MODULUS[i] as u128 + remainder {
-                    reduced_limbs[i] -= MODULUS[i] as u128 + remainder;
-                    remainder = 0;
-                } else {
-                    reduced_limbs[i] += P2_64 - (MODULUS[i] as u128 + remainder);
-                    remainder = 1;
-                }
-                assert!(reduced_limbs[i] < P2_64);
-                result[i] = reduced_limbs[i] as u64;
-            }
-            reps += 1;
-            assert!(remainder == 0);
-        }
-        assert!(reps <= 2);
-        result
-    }
-
-    fn is_reduced(limbs: [u64; 4]) -> bool {
-        for i in (0..4).rev() {
-            match limbs[i].cmp(&(MODULUS[i])) {
-                std::cmp::Ordering::Less => {
-                    return true;
-                }
-                std::cmp::Ordering::Equal => {}
-                std::cmp::Ordering::Greater => {
-                    return false;
-                }
+        let mut count = 0;
+        let mut remainder = 0;
+        for byte in bytes.iter().rev() {
+            remainder = (remainder << 8) + u64::from(*byte);
+            count += 1;
+            if count == 8 {
+                res = res.shl(64) + blstrs::Scalar::from(remainder);
+                remainder = 0;
+                count = 0;
             }
         }
-        true
+        if count > 0 {
+            res = res * res.shl(count * 8) + blstrs::Scalar::from(remainder);
+        }
+        Self(res)
     }
 }
 
@@ -354,7 +283,7 @@ impl FromOkm for ScalarWrapper {
         let mut bs = [0u8; 64];
         bs[16..].copy_from_slice(okm);
         bs.reverse(); // into little endian
-        ScalarWrapper::from_bytes_wide(&bs)
+        ScalarWrapper::from_le_bytes_mod_order(&bs)
     }
 }
 
@@ -372,7 +301,7 @@ mod tests {
     use crate::confidential_key_derivation::VerifyingKey;
     use crate::{
         confidential_key_derivation::{
-            ciphersuite::{hash2curve, BLS12381SHA256},
+            ciphersuite::{hash_to_curve, BLS12381SHA256},
             ElementG2,
         },
         test::check_common_traits_for_type,
@@ -414,7 +343,7 @@ mod tests {
         let x = Scalar::random(OsRng);
         let g2 = ElementG2::generator();
         let g2x = g2 * x;
-        let hm = hash2curve(b"hello world");
+        let hm = hash_to_curve(b"hello world");
         let sigma = hm * x;
 
         assert!(verify_signature(&VerifyingKey::new(g2x), b"hello world", &sigma).is_ok());
