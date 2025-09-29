@@ -134,7 +134,7 @@ that each of the parties would only send their shares to the coordinator which c
 ### Presignature rerandomization and key derivation
 Following [[GS21](https://eprint.iacr.org/2021/1330.pdf)]'s recommendation, we rerandomize the presignature to make the Wagner attack practically infeasible.
 The key derivation is a feature that allows the holder of a secret key to derive multiple secret keys for different applications (e.g. an MPC node holding a secret key share that uses to derive several clients secret key shares).
-The scheme remains correct after this rerandomization and key derivation. We leave the proof as an exercice for the reader.
+The scheme remains correct after this rerandomization and key derivation.
 
 ### Outsourcing the message hash
 Providing the signing phase with raw hashes as inputs instead of the original messages is beneficial for many use cases, e.g., the signing nodes receive a hashed payload and are required to generate a signature that is valid for a "universal verifier". Note that such API is quite common in cryptographic libraries and has been intensively studied for the non-distributed case in [[PR24](https://link.springer.com/chapter/10.1007/978-3-031-57718-5_10)] and [[R25](https://www.research-collection.ethz.ch/bitstream/handle/20.500.11850/729349/uploaded-version.pdf?sequence=1)].
