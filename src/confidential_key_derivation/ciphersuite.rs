@@ -383,6 +383,7 @@ mod tests {
         check_common_traits_for_type(BLS12381SHA256);
     }
 
+    // Taken from bls12_381 implementation https://github.com/zkcrypto/bls12_381/blob/6bb96951d5c2035caf4989b6e4a018435379590f/src/hash_to_curve/map_scalar.rs#L26
     #[test]
     fn test_hash_to_scalar() {
         let tests: &[(&[u8], &str)] = &[
