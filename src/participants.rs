@@ -280,3 +280,27 @@ impl<'a> ParticipantCounter<'a> {
         self.counter == 0
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::test::generate_participants;
+
+    #[test]
+    fn test_get_index_participant_error() {
+        let participants = generate_participants(5);
+        let participants = ParticipantList::new(&participants).unwrap();
+        assert!(participants.index(&Participant::from(1234_u32)).is_err())
+    }
+
+    #[test]
+    fn test_get_index_data_error() {
+        let participants = generate_participants(5);
+        let participants = ParticipantList::new(&participants).unwrap();
+        let map: ParticipantMap<'_, u32> = ParticipantMap::new(&participants);
+        // no participant test
+        assert!(map.index(Participant::from(1233_u32)).is_err());
+        // no data test
+        assert!(map.index(Participant::from(1_u32)).is_err())
+    }
+}
