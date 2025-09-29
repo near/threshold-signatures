@@ -4,7 +4,7 @@
 //! or getting the field values corresponding to each participant, etc.
 //! This module tries to provide useful data structures for doing that.
 
-use std::{collections::HashMap, mem, ops::Index};
+use std::{collections::HashMap, mem};
 
 use frost_core::Scalar;
 use serde::Serialize;
@@ -69,8 +69,13 @@ impl ParticipantList {
     /// Return the index of a given participant.
     ///
     /// Basically, the order they appear in a sorted list
-    pub fn index(&self, participant: &Participant) -> usize {
-        self.indices[participant]
+    pub fn index(&self, participant: &Participant) -> Result<usize, ProtocolError> {
+        self.indices
+            .get(participant)
+            .copied()
+            .ok_or(
+                ProtocolError::Other("Could not find the searched participant".to_string())
+            )
     }
 
     // Return a participant of a given index from the order they
@@ -203,13 +208,18 @@ impl<'a, T> ParticipantMap<'a, T> {
     pub fn participants(&self) -> &[Participant] {
         self.participants.participants()
     }
-}
 
-impl<T> Index<Participant> for ParticipantMap<'_, T> {
-    type Output = T;
-
-    fn index(&self, index: Participant) -> &Self::Output {
-        self.data[self.participants.index(&index)].as_ref().unwrap()
+    pub fn index(&self, index: Participant) -> Result<&T, ProtocolError> {
+        let index = self.participants.index(&index)?;
+        self.data
+            .get(index)
+            .ok_or(
+                ProtocolError::Other("Data index not found in map".to_string())
+            )?
+            .as_ref()
+            .ok_or(
+                ProtocolError::Other("No data found".to_string())
+            )
     }
 }
 

@@ -90,7 +90,7 @@ where
     T: Serialize,
 {
     let vote = MessageType::Send(data);
-    let sid = participants.index(me);
+    let sid = participants.index(me)?;
     // Send vote to all participants but for myself
     chan.send_many(wait, &(&sid, &vote))?;
     // the vote is returned to be taken into consideration as received
@@ -133,7 +133,7 @@ where
 
     // receive simulated vote
     let mut from = *me;
-    let mut sid = participants.index(me);
+    let mut sid = participants.index(me)?;
     let mut vote = match send_vote {
         MessageType::Send(_) => send_vote.clone(),
         _ => {
@@ -169,7 +169,7 @@ where
                 // then skip
                 // the second condition prevents a malicious party starting the protocol
                 // on behalf on somebody else
-                if finish_send[sid] || sid != participants.index(&from) {
+                if finish_send[sid] || sid != participants.index(&from)? {
                     continue;
                 }
                 vote = MessageType::Echo(data);
@@ -272,7 +272,7 @@ where
 
                     // Output error if the received vote after broadcast is not
                     // the same as the one originally sent
-                    if sid == participants.index(me) && MessageType::Send(data) != send_vote {
+                    if sid == participants.index(me)? && MessageType::Send(data) != send_vote {
                         return Err(ProtocolError::AssertionFailed(
                             "Too many malicious parties, way above the assumed threshold:
                             The message output after the broadcast protocol is not the same as
@@ -384,7 +384,7 @@ mod test {
         me: Participant,
     ) -> Result<Vec<bool>, ProtocolError> {
         let wait_broadcast = chan.next_waitpoint();
-        let sid = participants.index(&me);
+        let sid = participants.index(&me)?;
 
         // malicious reliable broadcast send
         let vote_true = MessageType::Send(true);
@@ -411,7 +411,7 @@ mod test {
         me: Participant,
     ) -> Result<Vec<bool>, ProtocolError> {
         let wait_broadcast = chan.next_waitpoint();
-        let sid = participants.index(&me);
+        let sid = participants.index(&me)?;
 
         // malicious reliable broadcast send
         let vote_true = MessageType::Send(true);
