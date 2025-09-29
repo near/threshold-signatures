@@ -430,10 +430,15 @@ mod test {
         Ok(vote_list)
     }
 
-    fn do_broadcast_dishonest_v1(
+    fn do_broadcast_dishonest<F, Fut>(
         participants: &[Participant],
         me: Participant,
-    ) -> Result<impl Protocol<Output = Vec<bool>>, ProtocolError> {
+        do_broadcast_dishonest_consume: F,
+    ) -> Result<impl Protocol<Output = Vec<bool>>, ProtocolError>
+    where
+        F: FnOnce(SharedChannel, ParticipantList, Participant) -> Fut,
+        Fut: futures::Future<Output = Result<Vec<bool>, ProtocolError>> + Send + 'static,
+    {
         // the idea is that the dishonest party is going to send one 2 true and two false
         let participants = ParticipantList::new(participants).unwrap();
 
@@ -445,36 +450,21 @@ mod test {
         let comms = Comms::new();
         let chan = comms.shared_channel();
 
-        let fut = do_broadcast_dishonest_consume_version_1(chan, participants, me);
+        let fut = do_broadcast_dishonest_consume(chan, participants, me);
 
         Ok(make_protocol(comms, fut))
     }
 
-    fn do_broadcast_dishonest_v2(
-        participants: &[Participant],
-        me: Participant,
-    ) -> Result<impl Protocol<Output = Vec<bool>>, ProtocolError> {
-        // the idea is that the dishonest party is going to send one 2 true and two false
-        let participants = ParticipantList::new(participants).unwrap();
-
-        if !participants.contains(me) {
-            return Err(ProtocolError::AssertionFailed(
-                "Does not contain me".to_string(),
-            ));
-        }
-        let comms = Comms::new();
-        let chan = comms.shared_channel();
-
-        let fut = do_broadcast_dishonest_consume_version_2(chan, participants, me);
-
-        Ok(make_protocol(comms, fut))
-    }
-
-    fn broadcast_dishonest_v1(
+    fn broadcast_dishonest<F, Fut>(
         honest_participants: &[Participant],
         dishonest_participant: &Participant,
         honest_votes: &[bool],
-    ) -> Result<Vec<(Participant, Vec<bool>)>, ProtocolError> {
+        do_broadcast_dishonest_consume: F,
+    ) -> Result<Vec<(Participant, Vec<bool>)>, ProtocolError>
+    where
+        F: FnOnce(SharedChannel, ParticipantList, Participant) -> Fut + 'static,
+        Fut: futures::Future<Output = Result<Vec<bool>, ProtocolError>> + Send + 'static,
+    {
         assert_eq!(honest_participants.len(), honest_votes.len());
 
         let mut participants = honest_participants.to_vec();
@@ -490,35 +480,11 @@ mod test {
         }
 
         // we run the protocol for the dishonest party
-        let protocol = do_broadcast_dishonest_v1(&participants, *dishonest_participant)?;
-
-        protocols.push((*dishonest_participant, Box::new(protocol)));
-
-        let result = run_protocol(protocols)?;
-        Ok(result)
-    }
-
-    fn broadcast_dishonest_v2(
-        honest_participants: &[Participant],
-        dishonest_participant: &Participant,
-        honest_votes: &[bool],
-    ) -> Result<Vec<(Participant, Vec<bool>)>, ProtocolError> {
-        assert_eq!(honest_participants.len(), honest_votes.len());
-
-        let mut participants = honest_participants.to_vec();
-        participants.push(*dishonest_participant);
-
-        let mut protocols: Vec<(_, Box<dyn Protocol<Output = Vec<bool>>>)> =
-            Vec::with_capacity(participants.len());
-
-        // we run the protocol for all honest parties
-        for (p, b) in honest_participants.iter().zip(honest_votes.iter()) {
-            let protocol = do_broadcast_honest(&participants, *p, *b)?;
-            protocols.push((*p, Box::new(protocol)));
-        }
-
-        // we run the protocol for the dishonest party
-        let protocol = do_broadcast_dishonest_v2(&participants, *dishonest_participant)?;
+        let protocol = do_broadcast_dishonest(
+            &participants,
+            *dishonest_participant,
+            do_broadcast_dishonest_consume,
+        )?;
 
         protocols.push((*dishonest_participant, Box::new(protocol)));
 
@@ -555,12 +521,20 @@ mod test {
         let honest_votes = vec![true, true, true];
 
         // version 1
-        let result =
-            broadcast_dishonest_v1(&honest_participants, &dishonest_participant, &honest_votes);
+        let result = broadcast_dishonest(
+            &honest_participants,
+            &dishonest_participant,
+            &honest_votes,
+            do_broadcast_dishonest_consume_version_1,
+        );
         assert!(result.is_err());
         // version 2
-        let result =
-            broadcast_dishonest_v2(&honest_participants, &dishonest_participant, &honest_votes)?;
+        let result = broadcast_dishonest(
+            &honest_participants,
+            &dishonest_participant,
+            &honest_votes,
+            do_broadcast_dishonest_consume_version_2,
+        )?;
 
         for (_, vec_b) in result.iter() {
             let false_count = vec_b.iter().filter(|&&b| !b).count();
