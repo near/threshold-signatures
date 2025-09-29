@@ -338,7 +338,6 @@ mod test {
         Ok(vote_list)
     }
 
-    #[allow(clippy::type_complexity)]
     pub fn do_broadcast_honest(
         participants: &[Participant],
         me: Participant,
@@ -359,14 +358,13 @@ mod test {
     }
 
     /// All participants are assumed to be honest here
-    #[allow(clippy::type_complexity)]
     fn broadcast_honest(
         participants: &[Participant],
         votes: &[bool],
-    ) -> Result<Vec<(Participant, Vec<bool>)>, Box<dyn Error>> {
+    ) -> Result<Vec<(Participant, Vec<bool>)>, ProtocolError> {
         assert_eq!(participants.len(), votes.len());
 
-        let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = Vec<bool>>>)> =
+        let mut protocols: Vec<(_, Box<dyn Protocol<Output = Vec<bool>>>)> =
             Vec::with_capacity(participants.len());
 
         for (p, b) in participants.iter().zip(votes.iter()) {
@@ -432,7 +430,6 @@ mod test {
         Ok(vote_list)
     }
 
-    #[allow(clippy::type_complexity)]
     pub fn do_broadcast_dishonest_v1(
         participants: &[Participant],
         me: Participant,
@@ -453,7 +450,6 @@ mod test {
         Ok(make_protocol(comms, fut))
     }
 
-    #[allow(clippy::type_complexity)]
     pub fn do_broadcast_dishonest_v2(
         participants: &[Participant],
         me: Participant,
@@ -474,18 +470,17 @@ mod test {
         Ok(make_protocol(comms, fut))
     }
 
-    #[allow(clippy::type_complexity)]
     fn broadcast_dishonest_v1(
         honest_participants: &[Participant],
         dishonest_participant: &Participant,
         honest_votes: &[bool],
-    ) -> Result<Vec<(Participant, Vec<bool>)>, Box<dyn Error>> {
+    ) -> Result<Vec<(Participant, Vec<bool>)>, ProtocolError> {
         assert_eq!(honest_participants.len(), honest_votes.len());
 
         let mut participants = honest_participants.to_vec();
         participants.push(*dishonest_participant);
 
-        let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = Vec<bool>>>)> =
+        let mut protocols: Vec<(_, Box<dyn Protocol<Output = Vec<bool>>>)> =
             Vec::with_capacity(participants.len());
 
         // we run the protocol for all honest parties
@@ -503,18 +498,17 @@ mod test {
         Ok(result)
     }
 
-    #[allow(clippy::type_complexity)]
     fn broadcast_dishonest_v2(
         honest_participants: &[Participant],
         dishonest_participant: &Participant,
         honest_votes: &[bool],
-    ) -> Result<Vec<(Participant, Vec<bool>)>, Box<dyn Error>> {
+    ) -> Result<Vec<(Participant, Vec<bool>)>, ProtocolError> {
         assert_eq!(honest_participants.len(), honest_votes.len());
 
         let mut participants = honest_participants.to_vec();
         participants.push(*dishonest_participant);
 
-        let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = Vec<bool>>>)> =
+        let mut protocols: Vec<(_, Box<dyn Protocol<Output = Vec<bool>>>)> =
             Vec::with_capacity(participants.len());
 
         // we run the protocol for all honest parties
