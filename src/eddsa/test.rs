@@ -129,3 +129,18 @@ fn keygen_output__should_be_serializable() {
         "{\"private_share\":\"0700000000000000000000000000000000000000000000000000000000000000\",\"public_key\":\"c6473159e19ed185b373e935081774e0c133b9416abdff319667187a71dff53e\"}"
     );
 }
+
+#[test]
+fn test_keygen() -> Result<(), Box<dyn Error>> {
+    crate::dkg::test::test_keygen::<C>()
+}
+
+#[test]
+fn test_refresh() -> Result<(), Box<dyn Error>> {
+    crate::dkg::test::test_refresh::<C>()
+}
+
+#[test]
+fn test_reshare() -> Result<(), Box<dyn Error>> {
+    crate::dkg::test::test_reshare::<C>()
+}
