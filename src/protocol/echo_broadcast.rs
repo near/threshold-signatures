@@ -322,7 +322,7 @@ mod test {
     /// This function is similar to do_broadcast except it is tailored to
     /// consume the inputs instead of borrowing and become suitable for make_protocol
     /// function
-    pub async fn do_broadcast_consume(
+    async fn do_broadcast_consume(
         mut chan: SharedChannel,
         participants: ParticipantList,
         me: Participant,
@@ -338,7 +338,7 @@ mod test {
         Ok(vote_list)
     }
 
-    pub fn do_broadcast_honest(
+    fn do_broadcast_honest(
         participants: &[Participant],
         me: Participant,
         data: bool,
@@ -376,7 +376,7 @@ mod test {
         Ok(result)
     }
 
-    pub async fn do_broadcast_dishonest_consume_version_1(
+    async fn do_broadcast_dishonest_consume_version_1(
         mut chan: SharedChannel,
         participants: ParticipantList,
         me: Participant,
@@ -403,7 +403,7 @@ mod test {
         Ok(vote_list)
     }
 
-    pub async fn do_broadcast_dishonest_consume_version_2(
+    async fn do_broadcast_dishonest_consume_version_2(
         mut chan: SharedChannel,
         participants: ParticipantList,
         me: Participant,
@@ -430,7 +430,7 @@ mod test {
         Ok(vote_list)
     }
 
-    pub fn do_broadcast_dishonest_v1(
+    fn do_broadcast_dishonest_v1(
         participants: &[Participant],
         me: Participant,
     ) -> Result<impl Protocol<Output = Vec<bool>>, ProtocolError> {
@@ -450,7 +450,7 @@ mod test {
         Ok(make_protocol(comms, fut))
     }
 
-    pub fn do_broadcast_dishonest_v2(
+    fn do_broadcast_dishonest_v2(
         participants: &[Participant],
         me: Participant,
     ) -> Result<impl Protocol<Output = Vec<bool>>, ProtocolError> {

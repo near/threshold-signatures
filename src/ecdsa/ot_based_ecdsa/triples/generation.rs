@@ -243,7 +243,8 @@ async fn do_generation(
                 )));
             }
 
-            if !all_commitments.index(from)?
+            if !all_commitments
+                .index(from)?
                 .check(
                     &(&their_big_e, &their_big_f, &their_big_l),
                     &their_randomizer,
@@ -773,7 +774,8 @@ async fn do_generation_many<const N: usize>(
                     )));
                 }
 
-                if !all_commitments.index(from)?
+                if !all_commitments
+                    .index(from)?
                     .check(
                         &(&their_big_e, &their_big_f, &their_big_l),
                         their_randomizer,
