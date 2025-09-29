@@ -282,3 +282,55 @@ fn test_e2e_random_identifiers_with_rerandomization() -> Result<(), Box<dyn Erro
     run_sign_with_rerandomization(presign_result, public_key.to_element(), msg)?;
     Ok(())
 }
+
+#[test]
+fn test_robustness_without_rerandomization() -> Result<(), Box<dyn Error>> {
+    let participants_count = 11;
+    let mut participants = generate_participants_with_random_ids(participants_count, &mut OsRng);
+    let max_malicious = 4;
+
+    let mut keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;
+    assert_public_key_invariant(&keygen_result);
+
+    // Now remove a participant
+    // You can remove the same index because both participants and key_packages are sorted in the same way
+    participants.remove(0);
+    keygen_result.remove(0);
+
+    let public_key = keygen_result[0].1.public_key;
+    assert_public_key_invariant(&keygen_result);
+    let mut presign_result = run_presign(keygen_result, max_malicious)?;
+
+    // Use less presignatures to sign
+    presign_result.remove(0);
+
+    let msg = b"hello world";
+    run_sign_without_rerandomization(presign_result, public_key.to_element(), msg)?;
+    Ok(())
+}
+
+#[test]
+fn test_robustness_with_rerandomization() -> Result<(), Box<dyn Error>> {
+    let participants_count = 11;
+    let mut participants = generate_participants_with_random_ids(participants_count, &mut OsRng);
+    let max_malicious = 4;
+
+    let mut keygen_result = run_keygen(&participants.clone(), max_malicious + 1)?;
+    assert_public_key_invariant(&keygen_result);
+
+    // Now remove a participant
+    // You can remove the same index because both participants and key_packages are sorted in the same way
+    participants.remove(0);
+    keygen_result.remove(0);
+
+    let public_key = keygen_result[0].1.public_key;
+    assert_public_key_invariant(&keygen_result);
+    let mut presign_result = run_presign(keygen_result, max_malicious)?;
+
+    // Use less presignatures to sign
+    presign_result.remove(0);
+
+    let msg = b"hello world";
+    run_sign_with_rerandomization(presign_result, public_key.to_element(), msg)?;
+    Ok(())
+}
