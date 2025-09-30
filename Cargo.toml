@@ -57,6 +57,7 @@ actively_secure_robust_ecdsa = []
 [dev-dependencies]
 criterion = "0.7.0"
 bincode = { version = "2.0.1", features = ["serde"] }
+rand = "0.8.5"
 
 [[bench]]
 name = "main"
@@ -77,7 +78,7 @@ many-single-char-names = "allow"
 must-use-candidate = "allow"
 
 # TODO: remove this one https://github.com/near/threshold-signatures/issues/119
-cast-possible-truncation = "allow"
+# cast-possible-truncation = "allow"
 # TODO: this detected some function which might panic https://github.com/near/threshold-signatures/issues/120
 missing-panics-doc = "allow"
 # TODO: this also hit too many cases https://github.com/near/threshold-signatures/issues/122
@@ -85,6 +86,8 @@ indexing-slicing = "allow"
 
 # Part of clippy restriction
 panic = "deny"
+# TODO: this one should be enabled as well
+# assertions-on-result-states = "warn"
 # TODO: enable this one
 # panic-in-result-fn = "warn"
 
