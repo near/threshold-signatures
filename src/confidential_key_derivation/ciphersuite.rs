@@ -232,7 +232,6 @@ pub fn verify_signature(
 
 const DOMAIN: &[u8] = b"NEAR BLS12381G1_XMD:SHA-256_SSWU_RO_";
 
-#[must_use]
 pub fn hash2curve(bytes: &[u8]) -> ElementG1 {
     G1Projective::hash_to_curve(bytes, DOMAIN, &[])
 }

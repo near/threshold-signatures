@@ -84,7 +84,6 @@ impl RerandomizedPresignOutput {
     #[cfg(test)]
     /// Outputs the same elements as in the `PresignatureOutput`
     /// Used for testing the core schemes without rerandomization
-    #[must_use]
     pub fn new_without_rerandomization(presignature: &PresignOutput) -> Self {
         Self {
             big_r: presignature.big_r,

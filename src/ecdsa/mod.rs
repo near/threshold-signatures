@@ -57,7 +57,6 @@ pub struct Signature {
 }
 
 impl Signature {
-    #[must_use]
     // This verification tests the signature including whether s has been normalized
     pub fn verify(&self, public_key: &AffinePoint, msg_hash: &Scalar) -> bool {
         let r: Scalar = x_coordinate(&self.big_r);
@@ -103,7 +102,6 @@ impl RerandomizationArguments {
         0x58, 0x31,
     ];
 
-    #[must_use]
     pub fn new(
         pk: AffinePoint,
         msg_hash: [u8; 32],
@@ -124,7 +122,6 @@ impl RerandomizationArguments {
     /// set of participants and the entropy.
     ///
     /// Outputs a random string computed as HKDF(entropy, pk, hash, R, participants)
-    #[must_use]
     pub fn derive_randomness(&self) -> Scalar {
         // create a string containing (pk, msg_hash, big_r, sorted(participants))
         let pk_encoded_point = self.pk.to_encoded_point(true);

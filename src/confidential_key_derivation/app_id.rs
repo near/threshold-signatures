@@ -48,12 +48,10 @@ impl AppId {
         Self(Arc::from(id.as_ref()))
     }
 
-    #[must_use]
     pub fn as_bytes(&self) -> &[u8] {
         &self.0
     }
 
-    #[must_use]
     pub fn into_bytes(self) -> Arc<[u8]> {
         self.0
     }

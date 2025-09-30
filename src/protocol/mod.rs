@@ -29,13 +29,11 @@ pub struct Participant(u32);
 
 impl Participant {
     /// Return this participant as little endian bytes.
-    #[must_use]
     pub fn bytes(&self) -> [u8; 4] {
         self.0.to_le_bytes()
     }
 
     /// Return the scalar associated with this participant.
-    #[must_use]
     pub fn scalar<C: Ciphersuite>(&self) -> Scalar<C> {
         let mut bytes = [0u8; 32];
         let id = u64::from(self.0) + 1;
@@ -52,7 +50,6 @@ impl Participant {
     }
 
     /// Returns a Frost identifier used in the frost library
-    #[must_use]
     pub fn to_identifier<C: Ciphersuite>(&self) -> Identifier<C> {
         let id = self.scalar::<C>();
         // creating an identifier as required by the syntax of frost_core
