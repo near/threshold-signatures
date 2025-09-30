@@ -16,7 +16,7 @@ fn bench_lagrange_computation(c: &mut Criterion) {
         let participants = (0..=*degree).map(Participant::from).collect::<Vec<_>>();
         let ids = participants
             .iter()
-            .map(threshold_signatures::protocol::Participant::scalar::<C>)
+            .map(Participant::scalar::<C>)
             .collect::<Vec<_>>();
         let point = Some(Secp256K1ScalarField::random(&mut OsRng));
 
