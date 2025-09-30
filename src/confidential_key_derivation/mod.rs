@@ -32,22 +32,26 @@ pub struct CKDOutput {
 }
 
 impl CKDOutput {
+    #[must_use]
     pub fn new(big_y: ElementG1, big_c: ElementG1) -> Self {
-        CKDOutput { big_y, big_c }
+        Self { big_y, big_c }
     }
 
-    /// Outputs big_y
+    /// Outputs `big_y`
+    #[must_use]
     pub fn big_y(&self) -> ElementG1 {
         self.big_y
     }
 
-    /// Outputs big_c
+    /// Outputs `big_c`
+    #[must_use]
     pub fn big_c(&self) -> ElementG1 {
         self.big_c
     }
 
     /// Takes a secret scalar and returns
-    /// s <- C − a ⋅ Y = msk ⋅ H ( app_id )
+    /// s <- C − a ⋅ Y = msk ⋅ H ( `app_id` )
+    #[must_use]
     pub fn unmask(&self, secret_scalar: Scalar) -> Signature {
         self.big_c - self.big_y * secret_scalar
     }
