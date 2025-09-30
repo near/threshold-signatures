@@ -195,7 +195,6 @@ where
 
                 // upon gathering strictly more than (n+f)/2 votes
                 // for a result, deliver Ready.
-                // Would not panic as I just put the item in the previous line
                 if data_echo[sid].get(&data).ok_or_else(|| {
                     ProtocolError::Other("Missing element in CounterList".to_string())
                 })? > echo_t
@@ -252,7 +251,6 @@ where
                 // upon gathering strictly more than f votes
                 // and if I haven't already amplified ready vote in session sid then
                 // proceed to amplification of the ready message
-                // Would not panic as I just put the item in the previous line
                 if data_ready[sid].get(&data).ok_or_else(|| {
                     ProtocolError::Other("Missing element in CounterList".to_string())
                 })? > ready_t
@@ -266,7 +264,6 @@ where
                     is_simulated_vote = true;
                     from = me;
                 }
-                // Would not panic as I just put the item in the previous line
                 if data_ready[sid].get(&data).ok_or_else(|| {
                     ProtocolError::Other("Missing element in CounterList".to_string())
                 })? > 2 * ready_t
@@ -277,7 +274,6 @@ where
                     finish_ready[sid] = true;
 
                     // return a map of participant data
-                    // the unwrap will not fail as the index is in the range of participants
                     let p = participants
                         .get_participant(sid)
                         .ok_or_else(|| ProtocolError::Other("Missing participant".to_string()))?;
