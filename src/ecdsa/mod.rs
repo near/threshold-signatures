@@ -153,7 +153,8 @@ impl RerandomizationArguments {
             // we enter into this loop
             let mut okm = [0u8; 32];
 
-            hk.expand(&concatenation, &mut okm).map_err(|_| ProtocolError::HashingError)?;
+            hk.expand(&concatenation, &mut okm)
+                .map_err(|_| ProtocolError::HashingError)?;
 
             // derive the randomness delta
             delta = Scalar::from_repr(okm.into()).unwrap_or(

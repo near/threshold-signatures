@@ -255,7 +255,9 @@ where
                 // Would not panic as I just put the item in the previous line
                 if data_ready[sid].get(&data).ok_or_else(|| {
                     ProtocolError::Other("Missing element in CounterList".to_string())
-                })? > ready_t && !finish_amplification[sid] {
+                })? > ready_t
+                    && !finish_amplification[sid]
+                {
                     vote = MessageType::Ready(data.clone());
                     chan.send_many(wait, &(&sid, &vote))?;
                     finish_amplification[sid] = true;
@@ -267,7 +269,8 @@ where
                 // Would not panic as I just put the item in the previous line
                 if data_ready[sid].get(&data).ok_or_else(|| {
                     ProtocolError::Other("Missing element in CounterList".to_string())
-                })? > 2 * ready_t {
+                })? > 2 * ready_t
+                {
                     // skip all types of messages sent for session sid from now on
                     finish_send[sid] = true;
                     finish_echo[sid] = true;
@@ -275,9 +278,9 @@ where
 
                     // return a map of participant data
                     // the unwrap will not fail as the index is in the range of participants
-                    let p = participants.get_participant(sid).ok_or_else(|| {
-                    ProtocolError::Other("Missing participant".to_string())
-                })?;
+                    let p = participants
+                        .get_participant(sid)
+                        .ok_or_else(|| ProtocolError::Other("Missing participant".to_string()))?;
                     // make a list of data and return them
                     vote_output.put(p, data.clone());
 

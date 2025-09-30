@@ -222,6 +222,9 @@ pub mod test {
             }
         }
 
-        Ok((out0.ok_or_else(|| ProtocolError::Other("out0 is None".to_string()))?, out1.ok_or_else(|| ProtocolError::Other("out1 is None".to_string()))?))
+        Ok((
+            out0.ok_or_else(|| ProtocolError::Other("out0 is None".to_string()))?,
+            out1.ok_or_else(|| ProtocolError::Other("out1 is None".to_string()))?,
+        ))
     }
 }
