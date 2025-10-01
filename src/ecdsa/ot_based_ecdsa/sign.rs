@@ -4,9 +4,10 @@ use subtle::ConditionallySelectable;
 use super::RerandomizedPresignOutput;
 use crate::{
     ecdsa::{x_coordinate, AffinePoint, Scalar, Secp256K1Sha256, Signature, SignatureOption},
-    participants::{ParticipantCounter, ParticipantList},
+    participants::ParticipantList,
     protocol::{
         errors::{InitializationError, ProtocolError},
+        helpers::recv_from_many,
         internal::{make_protocol, Comms, SharedChannel},
         Participant, Protocol,
     },
@@ -98,16 +99,11 @@ async fn do_sign_coordinator(
     let wait0 = chan.next_waitpoint();
     // Receive sj
     // Spec 1.5
-    let mut seen = ParticipantCounter::new(&participants);
     let mut s = s_i;
-    seen.put(me);
-    while !seen.full() {
-        let (from, s_j): (_, Scalar) = chan.recv(wait0).await?;
-        if !seen.put(from) {
-            continue;
-        }
+    let other_participants = participants.others(me).collect::<Vec<Participant>>();
+    for (_, s_j) in recv_from_many::<Scalar>(&mut chan, &other_participants, wait0).await? {
         // Spec 1.6
-        s += s_j
+        s += s_j;
     }
 
     // Normalize s
