@@ -8,6 +8,7 @@ use crate::participants::{ParticipantCounter, ParticipantList, ParticipantMap};
 use crate::protocol::{
     echo_broadcast::do_broadcast,
     errors::{InitializationError, ProtocolError},
+    helpers::recv_from_many,
     internal::SharedChannel,
     Participant,
 };
@@ -390,13 +391,22 @@ async fn do_keyshare<C: Ciphersuite>(
     // hash commitment and send it
     let commit_domain_separator = domain_separator;
     let commitment_hash = domain_separate_hash(domain_separator, &(&me, &commitment, &session_id))?;
+
     let wait_round_1 = chan.next_waitpoint();
     chan.send_many(wait_round_1, &commitment_hash)?;
     // receive commitment_hash
+
     let mut all_hash_commitments = ParticipantMap::new(&participants);
     all_hash_commitments.put(me, commitment_hash);
-    while !all_hash_commitments.full() {
-        let (from, their_commitment_hash) = chan.recv(wait_round_1).await?;
+
+    for (from, their_commitment_hash) in recv_from_many(
+        &mut chan,
+        wait_round_1,
+        &participants.participants(),
+        Some(&[me]),
+    )
+    .await?
+    {
         all_hash_commitments.put(from, their_commitment_hash);
     }
 
