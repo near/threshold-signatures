@@ -1,8 +1,6 @@
 //! This module serves as a wrapper for ECDSA scheme.
 pub mod ot_based_ecdsa;
 pub mod robust_ecdsa;
-#[cfg(test)]
-mod test;
 
 use hkdf::Hkdf;
 
@@ -173,7 +171,9 @@ impl RerandomizationArguments {
 
 #[cfg(test)]
 mod test {
+    use crate::test::generate_participants;
     use crate::test::MockCryptoRng;
+    use crate::Participant;
 
     use super::*;
     use crate::test::generate_participants_with_random_ids;
@@ -344,5 +344,35 @@ mod test {
         args.participants = args.participants.shuffle(rng).unwrap();
         let delta_prime = args.derive_randomness().unwrap();
         assert_eq!(delta, delta_prime);
+    }
+
+    #[test]
+    fn test_keygen() {
+        let participants = [
+            Participant::from(31u32),
+            Participant::from(1u32),
+            Participant::from(2u32),
+        ];
+        let threshold = 2;
+        crate::dkg::test::test_keygen::<C>(&participants, threshold);
+    }
+
+    #[test]
+    fn test_refresh() {
+        let participants = [
+            Participant::from(0u32),
+            Participant::from(31u32),
+            Participant::from(2u32),
+        ];
+        let threshold = 2;
+        crate::dkg::test::test_refresh::<C>(&participants, threshold);
+    }
+
+    #[test]
+    fn test_reshare() {
+        let participants = generate_participants(3);
+        let threshold0 = 2;
+        let threshold1 = 3;
+        crate::dkg::test::test_reshare::<C>(&participants, threshold0, threshold1);
     }
 }

@@ -665,11 +665,11 @@ pub mod test {
         assert!(hash_1 != hash_2);
     }
 
-    pub fn test_keygen<C: Ciphersuite>(participants: Vec<Participant>, threshold: usize)
+    pub fn test_keygen<C: Ciphersuite>(participants: &[Participant], threshold: usize)
     where <C::Group as frost_core::Group>::Element: std::fmt::Debug + std::marker::Send,
     <<<C as frost_core::Ciphersuite>::Group as frost_core::Group>::Field as frost_core::Field>::Scalar: std::marker::Send
     {
-        let result = run_keygen::<C>(&participants, threshold).unwrap();
+        let result = run_keygen::<C>(participants, threshold).unwrap();
         assert!(result.len() == participants.len());
         assert_public_key_invariant(&result);
 
@@ -688,16 +688,16 @@ pub mod test {
         assert_eq!(<C::Group as frost_core::Group>::generator() * x, pub_key);
     }
 
-    pub fn test_refresh<C: Ciphersuite>(participants: Vec<Participant>, threshold: usize)
+    pub fn test_refresh<C: Ciphersuite>(participants: &[Participant], threshold: usize)
     where <C::Group as frost_core::Group>::Element: std::fmt::Debug + std::marker::Send,
     <<<C as frost_core::Ciphersuite>::Group as frost_core::Group>::Field as frost_core::Field>::Scalar: std::marker::Send
     {
-        let result0 = run_keygen::<C>(&participants, threshold).unwrap();
+        let result0 = run_keygen::<C>(participants, threshold).unwrap();
         assert_public_key_invariant(&result0);
 
         let pub_key = result0[0].1.public_key.to_element();
 
-        let result1 = run_refresh(&participants, result0, threshold).unwrap();
+        let result1 = run_refresh(participants, &result0, threshold).unwrap();
         assert_public_key_invariant(&result1);
 
         let participants = result1.iter().map(|p| p.0).collect::<Vec<_>>();
@@ -713,24 +713,24 @@ pub mod test {
         assert_eq!(<C::Group as frost_core::Group>::generator() * x, pub_key);
     }
 
-    pub fn test_reshare<C: Ciphersuite>(participants: Vec<Participant>, threshold0: usize, threshold1: usize)
+    pub fn test_reshare<C: Ciphersuite>(participants: &[Participant], threshold0: usize, threshold1: usize)
     where <C::Group as frost_core::Group>::Element: std::fmt::Debug + std::marker::Send,
     <<<C as frost_core::Ciphersuite>::Group as frost_core::Group>::Field as frost_core::Field>::Scalar: std::marker::Send
     {
-        let result0 = run_keygen::<C>(&participants, threshold0).unwrap();
+        let result0 = run_keygen::<C>(participants, threshold0).unwrap();
         assert_public_key_invariant(&result0);
 
         let pub_key = result0[0].1.public_key;
 
-        let mut new_participant = participants.clone();
+        let mut new_participant = participants.to_vec();
         new_participant.push(Participant::from(31u32));
         let result1 = run_reshare::<C>(
-            &participants,
+            participants,
             &pub_key,
-            result0,
+            &result0,
             threshold0,
             threshold1,
-            new_participant,
+            &new_participant,
         )
         .unwrap();
         assert_public_key_invariant(&result1);
