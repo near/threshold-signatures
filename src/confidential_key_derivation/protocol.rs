@@ -72,7 +72,7 @@ async fn do_ckd_coordinator(
     for (_, (big_y, big_c)) in recv_from_many::<(ElementG1, ElementG1)>(
         &mut chan,
         waitpoint,
-        &participants.participants(),
+        participants.participants(),
         Some(&[me]),
     )
     .await?

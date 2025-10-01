@@ -186,13 +186,9 @@ async fn do_generation(
         let mut b_i = f.eval_at_participant(me)?.0;
 
         // Spec 3.1 + 3.2
-        for (from, confirmation) in recv_from_many::<HashOutput>(
-            &mut chan,
-            wait1,
-            &participants.participants(),
-            Some(&[me]),
-        )
-        .await?
+        for (from, confirmation) in
+            recv_from_many::<HashOutput>(&mut chan, wait1, participants.participants(), Some(&[me]))
+                .await?
         {
             if confirmation != my_confirmation {
                 return Err(ProtocolError::AssertionFailed(format!(
@@ -224,7 +220,7 @@ async fn do_generation(
             _,
             _,
             _,
-        )>(&mut chan, wait2, &participants.participants(), Some(&[me]))
+        )>(&mut chan, wait2, participants.participants(), Some(&[me]))
         .await?
         {
             if their_big_e.degree() != threshold - 1
@@ -286,7 +282,7 @@ async fn do_generation(
         for (_, (a_j_i, b_j_i)) in recv_from_many::<(SerializableScalar<C>, SerializableScalar<C>)>(
             &mut chan,
             wait3,
-            &participants.participants(),
+            participants.participants(),
             Some(&[me]),
         )
         .await?
@@ -332,7 +328,7 @@ async fn do_generation(
         for (from, (big_c_j, their_phi_proof)) in recv_from_many::<(CoefficientCommitment, _)>(
             &mut chan,
             wait4,
-            &participants.participants(),
+            participants.participants(),
             Some(&[me]),
         )
         .await?
@@ -422,7 +418,7 @@ async fn do_generation(
     for (from, (their_hat_big_c, their_phi_proof)) in recv_from_many::<(CoefficientCommitment, _)>(
         &mut chan,
         wait5,
-        &participants.participants(),
+        participants.participants(),
         Some(&[me]),
     )
     .await?
@@ -457,7 +453,7 @@ async fn do_generation(
     for (_, c_j_i) in recv_from_many::<SerializableScalar<C>>(
         &mut chan,
         wait6,
-        &participants.participants(),
+        participants.participants(),
         Some(&[me]),
     )
     .await?
@@ -696,7 +692,7 @@ async fn do_generation_many<const N: usize>(
         for (from, confirmation) in recv_from_many::<Vec<HashOutput>>(
             &mut chan,
             wait1,
-            &participants.participants(),
+            participants.participants(),
             Some(&[me]),
         )
         .await?
@@ -737,7 +733,7 @@ async fn do_generation_many<const N: usize>(
             Vec<Randomness>,
             Vec<dlog::Proof<C>>,
             Vec<dlog::Proof<C>>,
-        )>(&mut chan, wait2, &participants.participants(), Some(&[me]))
+        )>(&mut chan, wait2, participants.participants(), Some(&[me]))
         .await?
         {
             //#[allow(clippy::type_complexity)]
@@ -810,7 +806,7 @@ async fn do_generation_many<const N: usize>(
             Vec<SerializableScalar<C>>,
             Vec<SerializableScalar<C>>,
         )>(
-            &mut chan, wait3, &participants.participants(), Some(&[me])
+            &mut chan, wait3, participants.participants(), Some(&[me])
         )
         .await?
         {
@@ -877,7 +873,7 @@ async fn do_generation_many<const N: usize>(
             recv_from_many::<(Vec<CoefficientCommitment>, Vec<dlogeq::Proof<C>>)>(
                 &mut chan,
                 wait4,
-                &participants.participants(),
+                participants.participants(),
                 Some(&[me]),
             )
             .await?
@@ -998,7 +994,7 @@ async fn do_generation_many<const N: usize>(
         recv_from_many::<(Vec<CoefficientCommitment>, Vec<dlog::Proof<C>>)>(
             &mut chan,
             wait5,
-            &participants.participants(),
+            participants.participants(),
             Some(&[me]),
         )
         .await?
@@ -1044,7 +1040,7 @@ async fn do_generation_many<const N: usize>(
     for (_, c_j_i_v) in recv_from_many::<Vec<SerializableScalar<C>>>(
         &mut chan,
         wait6,
-        &participants.participants(),
+        participants.participants(),
         Some(&[me]),
     )
     .await?

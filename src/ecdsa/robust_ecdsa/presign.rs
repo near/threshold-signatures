@@ -124,7 +124,7 @@ async fn do_presign(
     for (_, package) in recv_from_many::<Shares>(
         &mut chan,
         wait_round_0,
-        &participants.participants(),
+        participants.participants(),
         Some(&[me]),
     )
     .await?

@@ -402,7 +402,7 @@ async fn do_keyshare<C: Ciphersuite>(
     for (from, their_commitment_hash) in recv_from_many(
         &mut chan,
         wait_round_1,
-        &participants.participants(),
+        participants.participants(),
         Some(&[me]),
     )
     .await?
@@ -491,7 +491,7 @@ async fn do_keyshare<C: Ciphersuite>(
     for (from, signing_share_from) in recv_from_many(
         &mut chan,
         wait_round_3,
-        &participants.participants(),
+        participants.participants(),
         Some(&[me]),
     )
     .await?

@@ -97,7 +97,7 @@ async fn do_sign_coordinator(
     for (_, s_i) in recv_from_many::<SerializableScalar<C>>(
         &mut chan,
         wait_round,
-        &participants.participants(),
+        participants.participants(),
         Some(&[me]),
     )
     .await?

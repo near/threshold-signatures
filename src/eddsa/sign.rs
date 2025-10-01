@@ -68,7 +68,7 @@ async fn do_sign_coordinator(
     for (from, commitment) in recv_from_many(
         &mut chan,
         commit_waitpoint,
-        &participants.participants(),
+        participants.participants(),
         Some(&[me]),
     )
     .await?
@@ -99,7 +99,7 @@ async fn do_sign_coordinator(
     for (from, signature_share) in recv_from_many(
         &mut chan,
         r2_wait_point,
-        &participants.participants(),
+        participants.participants(),
         Some(&[me]),
     )
     .await?
