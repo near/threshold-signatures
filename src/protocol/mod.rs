@@ -7,6 +7,7 @@
 //! to serialize the emssages it produces.
 pub mod echo_broadcast;
 pub mod errors;
+pub mod helpers;
 pub(crate) mod internal;
 
 use std::collections::HashMap;
