@@ -85,7 +85,7 @@ mod test {
             &result0,
             threshold0,
             threshold1,
-            &new_participant,
+            &new_participants,
         )?;
         assert_public_key_invariant(&result1);
 

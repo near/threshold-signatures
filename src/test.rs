@@ -124,12 +124,12 @@ where
         }
     }
 
-    let mut protocols: GenProtocol<C> = Vec::with_capacity(old_participants.len());
+    let mut protocols: GenProtocol<C> = Vec::with_capacity(participants.len());
 
     for (p, out) in &setup {
         let protocol = reshare(
             scheme,
-            old_participants,
+            participants,
             old_threshold,
             out.0,
             out.1,
