@@ -179,8 +179,17 @@ fn test_sign() {
 
     let signature =
         run_sign_with_rerandomization(&presign_result, public_key, msg_hash, tweak, entropy);
+
+    // TODO: this interface to check a signature is clearly sub-optimal
     let msg_hash_scalar = Scalar::from_repr(msg_hash.into())
         .into_option()
         .expect("Couldn't construct k256 point");
-    signature.verify(&public_key.to_element().to_affine(), &msg_hash_scalar);
+    let tweak = Tweak::new(
+        Scalar::from_repr(tweak.into())
+            .into_option()
+            .expect("Couldn't construct k256 point"),
+    );
+
+    let derived_pk = tweak.derive_verifying_key(&public_key).to_element();
+    assert!(signature.verify(&derived_pk.to_affine(), &msg_hash_scalar));
 }
