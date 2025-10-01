@@ -9,9 +9,10 @@ use crate::{
         CoefficientCommitment, Field, Polynomial, PolynomialCommitment, Scalar,
         Secp256K1ScalarField, Secp256K1Sha256,
     },
-    participants::{ParticipantCounter, ParticipantList, ParticipantMap},
+    participants::{ParticipantList, ParticipantMap},
     protocol::{
         errors::{InitializationError, ProtocolError},
+        helpers::recv_from_many,
         internal::{make_protocol, Comms, SharedChannel},
         Participant, Protocol,
     },
@@ -120,14 +121,14 @@ async fn do_presign(
 
     // Round 1
     // Receive evaluations from all participants
-    let mut seen = ParticipantCounter::new(&participants);
-    seen.put(me);
-    while !seen.full() {
-        let (from, package): (_, Shares) = chan.recv(wait_round_0).await?;
-        if !seen.put(from) {
-            continue;
-        }
-
+    for (_, package) in recv_from_many::<Shares>(
+        &mut chan,
+        wait_round_0,
+        &participants.participants(),
+        Some(&[me]),
+    )
+    .await?
+    {
         // calculate the respective sum of the different shares received from each participant
         shares.add_shares(&package);
     }

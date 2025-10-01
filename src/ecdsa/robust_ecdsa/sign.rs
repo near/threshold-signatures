@@ -8,9 +8,10 @@ use crate::{
         robust_ecdsa::RerandomizedPresignOutput, x_coordinate, AffinePoint, Scalar,
         Secp256K1Sha256, Signature, SignatureOption,
     },
-    participants::{ParticipantCounter, ParticipantList},
+    participants::ParticipantList,
     protocol::{
         errors::{InitializationError, ProtocolError},
+        helpers::recv_from_many,
         internal::{make_protocol, Comms, SharedChannel},
         Participant, Protocol,
     },
@@ -93,14 +94,14 @@ async fn do_sign_coordinator(
     let mut s = compute_signature_share(&presignature, msg_hash, &participants, me)?.0;
     let wait_round = chan.next_waitpoint();
 
-    let mut seen = ParticipantCounter::new(&participants);
-
-    seen.put(me);
-    while !seen.full() {
-        let (from, s_i): (_, SerializableScalar<C>) = chan.recv(wait_round).await?;
-        if !seen.put(from) {
-            continue;
-        }
+    for (_, s_i) in recv_from_many::<SerializableScalar<C>>(
+        &mut chan,
+        wait_round,
+        &participants.participants(),
+        Some(&[me]),
+    )
+    .await?
+    {
         // Sum the linearized shares
         s += s_i.0;
     }
