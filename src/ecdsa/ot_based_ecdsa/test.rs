@@ -355,7 +355,7 @@ fn test_robustness_with_rerandomization() {
 
 fn test_robustness<T, F>(run_sign: F) -> Result<(), Box<dyn Error>>
     where F: Fn(
-        Vec<(Participant, PresignOutput)>,
+        &[(Participant, PresignOutput)],
         Element,
         &[u8]
     ) -> Result<T, Box<dyn Error>>,
@@ -407,6 +407,6 @@ fn test_robustness<T, F>(run_sign: F) -> Result<(), Box<dyn Error>>
     let msg = b"hello world";
     // Use less presignatures to sign
     presign_result.remove(0);
-    run_sign(presign_result, public_key, msg)?;
+    run_sign(&presign_result, public_key, msg)?;
     Ok(())
 }

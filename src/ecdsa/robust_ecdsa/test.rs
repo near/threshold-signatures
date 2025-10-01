@@ -19,7 +19,7 @@ use rand_core::{OsRng, RngCore};
 /// Runs signing by calling the generic `run_sign` function from `crate::test`
 /// This signing does not rerandomize the presignatures and tests only the core protocol
 pub fn run_sign_without_rerandomization(
-    participants_presign: Vec<(Participant, PresignOutput)>,
+    participants_presign: &[(Participant, PresignOutput)],
     public_key: Element,
     msg: &[u8],
 ) -> Result<(Participant, Signature), Box<dyn Error>> {
@@ -32,7 +32,7 @@ pub fn run_sign_without_rerandomization(
 
     // run sign instanciation with the necessary arguments
     let result = crate::test::run_sign::<Secp256K1Sha256, _, _, _>(
-        participants_presign,
+        participants_presign.to_vec(),
         coordinator,
         public_key,
         msg_hash,
@@ -152,7 +152,7 @@ fn test_refresh() -> Result<(), Box<dyn Error>> {
     let presign_result = run_presign(key_packages, max_malicious)?;
 
     let msg = b"hello world";
-    run_sign_without_rerandomization(presign_result, public_key.to_element(), msg)?;
+    run_sign_without_rerandomization(&presign_result, public_key.to_element(), msg)?;
 
     Ok(())
 }
@@ -192,7 +192,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
     let presign_result = run_presign(key_packages, max_malicious)?;
 
     let msg = b"hello world";
-    run_sign_without_rerandomization(presign_result, public_key.to_element(), msg)?;
+    run_sign_without_rerandomization(&presign_result, public_key.to_element(), msg)?;
     Ok(())
 }
 
@@ -227,7 +227,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     let presign_result = run_presign(key_packages, max_malicious)?;
 
     let msg = b"hello world";
-    run_sign_without_rerandomization(presign_result, public_key.to_element(), msg)?;
+    run_sign_without_rerandomization(&presign_result, public_key.to_element(), msg)?;
     Ok(())
 }
 
@@ -243,7 +243,7 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
     let presign_result = run_presign(keygen_result, max_malicious)?;
 
     let msg = b"hello world";
-    run_sign_without_rerandomization(presign_result, public_key.to_element(), msg)?;
+    run_sign_without_rerandomization(&presign_result, public_key.to_element(), msg)?;
     Ok(())
 }
 
@@ -261,7 +261,7 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     let presign_result = run_presign(keygen_result, max_malicious)?;
 
     let msg = b"hello world";
-    run_sign_without_rerandomization(presign_result, public_key.to_element(), msg)?;
+    run_sign_without_rerandomization(&presign_result, public_key.to_element(), msg)?;
     Ok(())
 }
 
@@ -297,7 +297,7 @@ fn test_robustness_with_rerandomization() {
 
 fn test_robustness<T, F>(run_sign: F) -> Result<(), Box<dyn Error>>
     where F: Fn(
-        Vec<(Participant, PresignOutput)>,
+        &[(Participant, PresignOutput)],
         Element,
         &[u8]
     ) -> Result<T, Box<dyn Error>>,
@@ -322,6 +322,6 @@ fn test_robustness<T, F>(run_sign: F) -> Result<(), Box<dyn Error>>
     presign_result.remove(0);
 
     let msg = b"hello world";
-    run_sign(presign_result, public_key.to_element(), msg)?;
+    run_sign(&presign_result, public_key.to_element(), msg)?;
     Ok(())
 }
