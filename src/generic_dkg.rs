@@ -4,7 +4,7 @@ use crate::crypto::{
     polynomials::{Polynomial, PolynomialCommitment},
 };
 
-use crate::participants::{ParticipantCounter, ParticipantList, ParticipantMap};
+use crate::participants::{ParticipantList, ParticipantMap};
 use crate::protocol::{
     echo_broadcast::do_broadcast,
     errors::{InitializationError, ProtocolError},
@@ -488,8 +488,6 @@ async fn do_keyshare<C: Ciphersuite>(
     // should not panic as secret_coefficients are created internally
     let mut my_signing_share = secret_coefficients.eval_at_participant(me)?.0;
     // receive evaluations from all participants
-    let mut seen = ParticipantCounter::new(&participants);
-
     for (from, signing_share_from) in recv_from_many(
         &mut chan,
         wait_round_3,
