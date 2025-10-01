@@ -13,9 +13,10 @@ use crate::{
         CoefficientCommitment, Polynomial, PolynomialCommitment, ProjectivePoint, Scalar,
         Secp256K1Sha256,
     },
-    participants::{ParticipantCounter, ParticipantList, ParticipantMap},
+    participants::{ParticipantList, ParticipantMap},
     protocol::{
         errors::{InitializationError, ProtocolError},
+        helpers::recv_from_many,
         internal::{make_protocol, Comms},
         Participant, Protocol,
     },
@@ -118,8 +119,7 @@ async fn do_generation(
         )
     };
 
-    struct ParallelToMultiplicationTaskOutput<'a> {
-        seen: ParticipantCounter<'a>,
+    struct ParallelToMultiplicationTaskOutput {
         big_e: PolynomialCommitment,
         big_f: PolynomialCommitment,
         big_l: PolynomialCommitment,
@@ -186,13 +186,14 @@ async fn do_generation(
         let mut b_i = f.eval_at_participant(me)?.0;
 
         // Spec 3.1 + 3.2
-        let mut seen = ParticipantCounter::new(&participants);
-        seen.put(me);
-        while !seen.full() {
-            let (from, confirmation): (_, HashOutput) = chan.recv(wait1).await?;
-            if !seen.put(from) {
-                continue;
-            }
+        for (from, confirmation) in recv_from_many::<HashOutput>(
+            &mut chan,
+            wait1,
+            &participants.participants(),
+            Some(&[me]),
+        )
+        .await?
+        {
             if confirmation != my_confirmation {
                 return Err(ProtocolError::AssertionFailed(format!(
                     "confirmation from {from:?} did not match expectation"
@@ -205,34 +206,27 @@ async fn do_generation(
         let mut big_f = big_f_i;
         let mut big_l = big_l_i;
         let mut big_e_j_zero = ParticipantMap::new(&participants);
-        seen.clear();
-        seen.put(me);
-        while !seen.full() {
-            let (
-                from,
-                (
-                    their_big_e,
-                    their_big_f,
-                    their_big_l,
-                    their_randomizer,
-                    their_phi_proof0,
-                    their_phi_proof1,
-                ),
-            ): (
-                _,
-                (
-                    PolynomialCommitment,
-                    PolynomialCommitment,
-                    PolynomialCommitment,
-                    _,
-                    _,
-                    _,
-                ),
-            ) = chan.recv(wait2).await?;
-            if !seen.put(from) {
-                continue;
-            }
 
+        for (
+            from,
+            (
+                their_big_e,
+                their_big_f,
+                their_big_l,
+                their_randomizer,
+                their_phi_proof0,
+                their_phi_proof1,
+            ),
+        ) in recv_from_many::<(
+            PolynomialCommitment,
+            PolynomialCommitment,
+            PolynomialCommitment,
+            _,
+            _,
+            _,
+        )>(&mut chan, wait2, &participants.participants(), Some(&[me]))
+        .await?
+        {
             if their_big_e.degree() != threshold - 1
                 || their_big_f.degree() != threshold - 1
                 // testing threshold - 2 because the identity element is non-serializable
@@ -289,14 +283,14 @@ async fn do_generation(
         }
 
         // Spec 3.5 + 3.6
-        seen.clear();
-        seen.put(me);
-        while !seen.full() {
-            let (from, (a_j_i, b_j_i)): (_, (SerializableScalar<C>, SerializableScalar<C>)) =
-                chan.recv(wait3).await?;
-            if !seen.put(from) {
-                continue;
-            }
+        for (_, (a_j_i, b_j_i)) in recv_from_many::<(SerializableScalar<C>, SerializableScalar<C>)>(
+            &mut chan,
+            wait3,
+            &participants.participants(),
+            Some(&[me]),
+        )
+        .await?
+        {
             a_i += &a_j_i.0;
             b_i += &b_j_i.0;
         }
@@ -334,15 +328,15 @@ async fn do_generation(
         chan.send_many(wait4, &(CoefficientCommitment::new(big_c_i), my_phi_proof))?;
 
         // Spec 4.1 + 4.2 + 4.3
-        seen.clear();
-        seen.put(me);
         let mut big_c = big_c_i;
-        while !seen.full() {
-            let (from, (big_c_j, their_phi_proof)): (_, (CoefficientCommitment, _)) =
-                chan.recv(wait4).await?;
-            if !seen.put(from) {
-                continue;
-            }
+        for (from, (big_c_j, their_phi_proof)) in recv_from_many::<(CoefficientCommitment, _)>(
+            &mut chan,
+            wait4,
+            &participants.participants(),
+            Some(&[me]),
+        )
+        .await?
+        {
             let big_c_j = big_c_j.value();
 
             let statement = dlogeq::Statement::<C> {
@@ -364,7 +358,6 @@ async fn do_generation(
             big_c += big_c_j;
         }
         Ok(ParallelToMultiplicationTaskOutput {
-            seen,
             big_e,
             big_f,
             // extend big_l of degree threshold - 2
@@ -379,7 +372,6 @@ async fn do_generation(
     let (
         l0,
         ParallelToMultiplicationTaskOutput {
-            mut seen,
             big_e,
             big_f,
             mut big_l,
@@ -425,16 +417,16 @@ async fn do_generation(
     let mut c_i = l.eval_at_participant(me)?.0;
 
     // Spec 5.1 + 5.2 + 5.3
-    seen.clear();
-    seen.put(me);
     let mut hat_big_c = hat_big_c_i;
-    while !seen.full() {
-        let (from, (their_hat_big_c, their_phi_proof)): (_, (CoefficientCommitment, _)) =
-            chan.recv(wait5).await?;
-        if !seen.put(from) {
-            continue;
-        }
 
+    for (from, (their_hat_big_c, their_phi_proof)) in recv_from_many::<(CoefficientCommitment, _)>(
+        &mut chan,
+        wait5,
+        &participants.participants(),
+        Some(&[me]),
+    )
+    .await?
+    {
         let their_hat_big_c = their_hat_big_c.value();
         let statement = dlog::Statement::<C> {
             public: &their_hat_big_c,
@@ -462,13 +454,14 @@ async fn do_generation(
     }
 
     // Spec 5.5 + 5.6
-    seen.clear();
-    seen.put(me);
-    while !seen.full() {
-        let (from, c_j_i): (_, SerializableScalar<C>) = chan.recv(wait6).await?;
-        if !seen.put(from) {
-            continue;
-        }
+    for (_, c_j_i) in recv_from_many::<SerializableScalar<C>>(
+        &mut chan,
+        wait6,
+        &participants.participants(),
+        Some(&[me]),
+    )
+    .await?
+    {
         c_i += c_j_i.0;
     }
 
@@ -607,8 +600,7 @@ async fn do_generation_many<const N: usize>(
         )
     };
 
-    struct ParallelToMultiplicationTaskOutput<'a> {
-        seen: ParticipantCounter<'a>,
+    struct ParallelToMultiplicationTaskOutput {
         big_e_v: Vec<PolynomialCommitment>,
         big_f_v: Vec<PolynomialCommitment>,
         big_l_v: Vec<PolynomialCommitment>,
@@ -701,13 +693,14 @@ async fn do_generation_many<const N: usize>(
         }
 
         // Spec 3.1 + 3.2
-        let mut seen = ParticipantCounter::new(&participants);
-        seen.put(me);
-        while !seen.full() {
-            let (from, confirmation): (_, Vec<HashOutput>) = chan.recv(wait1).await?;
-            if !seen.put(from) {
-                continue;
-            }
+        for (from, confirmation) in recv_from_many::<Vec<HashOutput>>(
+            &mut chan,
+            wait1,
+            &participants.participants(),
+            Some(&[me]),
+        )
+        .await?
+        {
             if confirmation != my_confirmations {
                 return Err(ProtocolError::AssertionFailed(format!(
                     "confirmation from {from:?} did not match expectation"
@@ -726,34 +719,28 @@ async fn do_generation_many<const N: usize>(
             big_l_v.push(big_l_i_v[i].clone());
             big_e_j_zero_v.push(ParticipantMap::new(&participants));
         }
-        seen.clear();
-        seen.put(me);
-        while !seen.full() {
-            #[allow(clippy::type_complexity)]
-            let (
-                from,
-                (
-                    their_big_e_v,
-                    their_big_f_v,
-                    their_big_l_v,
-                    their_randomizers,
-                    their_phi_proof0_v,
-                    their_phi_proof1_v,
-                ),
-            ): (
-                _,
-                (
-                    Vec<PolynomialCommitment>,
-                    Vec<PolynomialCommitment>,
-                    Vec<PolynomialCommitment>,
-                    Vec<Randomness>,
-                    Vec<dlog::Proof<C>>,
-                    Vec<dlog::Proof<C>>,
-                ),
-            ) = chan.recv(wait2).await?;
-            if !seen.put(from) {
-                continue;
-            }
+
+        for (
+            from,
+            (
+                their_big_e_v,
+                their_big_f_v,
+                their_big_l_v,
+                their_randomizers,
+                their_phi_proof0_v,
+                their_phi_proof1_v,
+            ),
+        ) in recv_from_many::<(
+            Vec<PolynomialCommitment>,
+            Vec<PolynomialCommitment>,
+            Vec<PolynomialCommitment>,
+            Vec<Randomness>,
+            Vec<dlog::Proof<C>>,
+            Vec<dlog::Proof<C>>,
+        )>(&mut chan, wait2, &participants.participants(), Some(&[me]))
+        .await?
+        {
+            //#[allow(clippy::type_complexity)]
 
             for i in 0..N {
                 let all_commitments = &all_commitments_vec[i];
@@ -819,17 +806,15 @@ async fn do_generation_many<const N: usize>(
         }
 
         // Spec 3.5 + 3.6
-        seen.clear();
-        seen.put(me);
-        while !seen.full() {
-            #[allow(clippy::type_complexity)]
-            let (from, (a_j_i_v, b_j_i_v)): (
-                _,
-                (Vec<SerializableScalar<C>>, Vec<SerializableScalar<C>>),
-            ) = chan.recv(wait3).await?;
-            if !seen.put(from) {
-                continue;
-            }
+        for (_, (a_j_i_v, b_j_i_v)) in recv_from_many::<(
+            Vec<SerializableScalar<C>>,
+            Vec<SerializableScalar<C>>,
+        )>(
+            &mut chan, wait3, &participants.participants(), Some(&[me])
+        )
+        .await?
+        {
+            //#[allow(clippy::type_complexity)]
             for i in 0..N {
                 let a_j_i = &a_j_i_v[i];
                 let b_j_i = &b_j_i_v[i];
@@ -883,21 +868,21 @@ async fn do_generation_many<const N: usize>(
         chan.send_many(wait4, &(&big_c_i_points, &my_phi_proofs))?;
 
         // Spec 4.1 + 4.2 + 4.3
-        seen.clear();
-        seen.put(me);
+
         let mut big_c_v = vec![];
         for big_c_i_v_i in big_c_i_v.iter().take(N) {
             big_c_v.push(*big_c_i_v_i);
         }
-        while !seen.full() {
-            #[allow(clippy::type_complexity)]
-            let (from, (big_c_j_v, their_phi_proofs)): (
-                _,
-                (Vec<CoefficientCommitment>, Vec<dlogeq::Proof<C>>),
-            ) = chan.recv(wait4).await?;
-            if !seen.put(from) {
-                continue;
-            }
+        for (from, (big_c_j_v, their_phi_proofs)) in
+            recv_from_many::<(Vec<CoefficientCommitment>, Vec<dlogeq::Proof<C>>)>(
+                &mut chan,
+                wait4,
+                &participants.participants(),
+                Some(&[me]),
+            )
+            .await?
+        {
+            //#[allow(clippy::type_complexity)]
             for i in 0..N {
                 let big_e_j_zero = &big_e_j_zero_v[i];
                 let big_f = &big_f_v[i];
@@ -928,7 +913,6 @@ async fn do_generation_many<const N: usize>(
             .map(|big_l| big_l.extend_with_identity())
             .collect::<Result<Vec<_>, _>>()?;
         Ok(ParallelToMultiplicationTaskOutput {
-            seen,
             big_e_v,
             big_f_v,
             big_l_v,
@@ -942,7 +926,6 @@ async fn do_generation_many<const N: usize>(
     let (
         l0_v,
         ParallelToMultiplicationTaskOutput {
-            mut seen,
             big_e_v,
             big_f_v,
             mut big_l_v,
@@ -1006,22 +989,21 @@ async fn do_generation_many<const N: usize>(
     }
 
     // Spec 5.1 + 5.2 + 5.3
-    seen.clear();
-    seen.put(me);
     let mut hat_big_c_v = vec![];
     for hat_big_c_i_v_i in hat_big_c_i_v.iter().take(N) {
         hat_big_c_v.push(*hat_big_c_i_v_i);
     }
 
-    while !seen.full() {
-        #[allow(clippy::type_complexity)]
-        let (from, (their_hat_big_c_i_points, their_phi_proofs)): (
-            _,
-            (Vec<CoefficientCommitment>, Vec<dlog::Proof<C>>),
-        ) = chan.recv(wait5).await?;
-        if !seen.put(from) {
-            continue;
-        }
+    for (from, (their_hat_big_c_i_points, their_phi_proofs)) in
+        recv_from_many::<(Vec<CoefficientCommitment>, Vec<dlog::Proof<C>>)>(
+            &mut chan,
+            wait5,
+            &participants.participants(),
+            Some(&[me]),
+        )
+        .await?
+    {
+        //#[allow(clippy::type_complexity)]
         for i in 0..N {
             let their_hat_big_c = their_hat_big_c_i_points[i].value();
             let their_phi_proof = &their_phi_proofs[i];
@@ -1059,13 +1041,14 @@ async fn do_generation_many<const N: usize>(
     }
 
     // Spec 5.5 + 5.6
-    seen.clear();
-    seen.put(me);
-    while !seen.full() {
-        let (from, c_j_i_v): (_, Vec<SerializableScalar<C>>) = chan.recv(wait6).await?;
-        if !seen.put(from) {
-            continue;
-        }
+    for (_, c_j_i_v) in recv_from_many::<Vec<SerializableScalar<C>>>(
+        &mut chan,
+        wait6,
+        &participants.participants(),
+        Some(&[me]),
+    )
+    .await?
+    {
         for i in 0..N {
             let c_j_i = c_j_i_v[i].0;
             c_i_v[i] += c_j_i;
