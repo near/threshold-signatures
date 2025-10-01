@@ -259,7 +259,7 @@ impl ScalarWrapper {
 
         let mut count = 0;
         let mut remainder = 0;
-        for byte in bytes.iter() {
+        for byte in bytes {
             remainder = (remainder << 8) + u64::from(*byte);
             count += 1;
             if count == 8 {
@@ -281,7 +281,7 @@ impl FromOkm for ScalarWrapper {
     type Length = U48;
 
     fn from_okm(okm: &GenericArray<u8, Self::Length>) -> Self {
-        ScalarWrapper::from_be_bytes_mod_order(okm)
+        Self::from_be_bytes_mod_order(okm)
     }
 }
 
@@ -365,7 +365,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "attempt to add with overflow")]
     // This test guarantees that `overflow-checks` are enabled
     fn test_verify_overflow_failure() {
         let mut a = u64::MAX - 123;
