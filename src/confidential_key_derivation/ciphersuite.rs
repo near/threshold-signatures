@@ -252,15 +252,15 @@ struct ScalarWrapper(blstrs::Scalar);
 
 impl ScalarWrapper {
     // Based on https://github.com/arkworks-rs/algebra/blob/c6f9284c17df00c50d954a5fe1c72dd4a5698103/ff/src/fields/prime.rs#L72
-    // Converts `bytes` into a `Scalar` by interpreting the input as 
-    // an integer in small endian and then converting the result to Scalar
+    // Converts `bytes` into a `Scalar` by interpreting the input as
+    // an integer in big-endian and then converting the result to Scalar
     // which implicitly does modular reduction
-    fn from_le_bytes_mod_order(bytes: &[u8]) -> Self {
+    fn from_be_bytes_mod_order(bytes: &[u8]) -> Self {
         let mut res = blstrs::Scalar::ZERO;
 
         let mut count = 0;
         let mut remainder = 0;
-        for byte in bytes.iter().rev() {
+        for byte in bytes.iter() {
             remainder = (remainder << 8) + u64::from(*byte);
             count += 1;
             if count == 8 {
@@ -282,10 +282,7 @@ impl FromOkm for ScalarWrapper {
     type Length = U48;
 
     fn from_okm(okm: &GenericArray<u8, Self::Length>) -> Self {
-        let mut bs = [0u8; 64];
-        bs[16..].copy_from_slice(okm);
-        bs.reverse(); // into little endian
-        ScalarWrapper::from_le_bytes_mod_order(&bs)
+        ScalarWrapper::from_be_bytes_mod_order(okm)
     }
 }
 
@@ -358,13 +355,13 @@ mod tests {
     // This is guaranteed by the `test_verify_overflow_failure` below
     fn test_stress_test_scalarwrapper_from_le_bytes_mod_order() {
         // empty case
-        ScalarWrapper::from_le_bytes_mod_order(&[]);
+        ScalarWrapper::from_be_bytes_mod_order(&[]);
         let mut rng = rand::rngs::OsRng;
         for _ in 0..1000 {
             let len = rng.gen_range(1..10000);
             let mut bytes = vec![0; len];
             rng.fill_bytes(&mut bytes);
-            ScalarWrapper::from_le_bytes_mod_order(&bytes);
+            ScalarWrapper::from_be_bytes_mod_order(&bytes);
         }
     }
 
