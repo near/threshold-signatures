@@ -354,12 +354,9 @@ fn test_robustness_with_rerandomization() {
 }
 
 fn test_robustness<T, F>(run_sign: F) -> Result<(), Box<dyn Error>>
-    where F: Fn(
-        &[(Participant, PresignOutput)],
-        Element,
-        &[u8]
-    ) -> Result<T, Box<dyn Error>>,
- {
+where
+    F: Fn(&[(Participant, PresignOutput)], Element, &[u8]) -> Result<T, Box<dyn Error>>,
+{
     let participants_count = 7;
     let mut rng = OsRng;
     let mut participants = generate_participants_with_random_ids(participants_count, &mut rng);
