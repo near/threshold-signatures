@@ -285,11 +285,13 @@ fn test_e2e_random_identifiers_with_rerandomization() -> Result<(), Box<dyn Erro
 
 #[test]
 fn test_robustness_without_rerandomization() {
+    // Without robustness, the signature verification would fail
     test_robustness(run_sign_without_rerandomization).expect("robustness test should succeed");
 }
 
 #[test]
 fn test_robustness_with_rerandomization() {
+    // Without robustness, the signature verification would fail
     test_robustness(run_sign_with_rerandomization).expect("robustness test should succeed");
 }
 
