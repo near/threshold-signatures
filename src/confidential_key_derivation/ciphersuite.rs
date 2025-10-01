@@ -252,7 +252,9 @@ struct ScalarWrapper(blstrs::Scalar);
 
 impl ScalarWrapper {
     // Based on https://github.com/arkworks-rs/algebra/blob/c6f9284c17df00c50d954a5fe1c72dd4a5698103/ff/src/fields/prime.rs#L72
-    // Converts `bytes` into a `Scalar`
+    // Converts `bytes` into a `Scalar` by interpreting the input as 
+    // an integer in small endian and then converting the result to Scalar
+    // which implicitly does modular reduction
     fn from_le_bytes_mod_order(bytes: &[u8]) -> Self {
         let mut res = blstrs::Scalar::ZERO;
 
