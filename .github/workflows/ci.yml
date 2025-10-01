@@ -44,7 +44,7 @@ jobs:
         run: cargo install cargo-nextest
 
       - name: Run cargo-nextest
-        run: cargo nextest run --release --locked --all-features
+        run: cargo nextest run --locked --all-features --cargo-profile test-release
 
       - name: Run cargo test debug
         run: cargo test --locked --all-features --all-targets
