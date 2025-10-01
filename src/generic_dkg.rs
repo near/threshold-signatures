@@ -489,14 +489,15 @@ async fn do_keyshare<C: Ciphersuite>(
     let mut my_signing_share = secret_coefficients.eval_at_participant(me)?.0;
     // receive evaluations from all participants
     let mut seen = ParticipantCounter::new(&participants);
-    seen.put(me);
-    while !seen.full() {
-        let (from, signing_share_from): (Participant, SigningShare<C>) =
-            chan.recv(wait_round_3).await?;
-        if !seen.put(from) {
-            continue;
-        }
 
+    for (from, signing_share_from) in recv_from_many(
+        &mut chan,
+        wait_round_3,
+        &participants.participants(),
+        Some(&[me]),
+    )
+    .await?
+    {
         // Verify the share
         // this deviates from the original FROST DKG paper
         // however it matches the FROST implementation of ZCash
