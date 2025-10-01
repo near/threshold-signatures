@@ -65,7 +65,7 @@ where
 pub(crate) fn run_refresh<C: Ciphersuite>(
     scheme: Scheme,
     participants: &[Participant],
-    keys: Vec<(Participant, KeygenOutput<C>)>, // This should be old_keys
+    keys: &[(Participant, KeygenOutput<C>)], // This should be old_keys
     threshold: usize,
 ) -> GenOutput<C>
 where
@@ -74,7 +74,7 @@ where
 {
     let mut protocols: GenProtocol<C> = Vec::with_capacity(participants.len());
 
-    for (p, out) in keys.iter() {
+    for (p, out) in keys {
         let protocol = refresh::<C>(
             scheme,
             Some(out.private_share),
@@ -96,12 +96,12 @@ where
 /// If the protocol succeeds, returns a sorted vector based on participants id
 pub(crate) fn run_reshare<C: Ciphersuite>(
     scheme: Scheme,
-    old_participants: &[Participant],
+    participants: &[Participant],
     pub_key: &VerifyingKey<C>,
-    keys: Vec<(Participant, KeygenOutput<C>)>, // This should be old_keys
+    keys: &[(Participant, KeygenOutput<C>)], // This should be old_keys
     old_threshold: usize,
     new_threshold: usize,
-    new_participants: Vec<Participant>,
+    new_participants: &[Participant],
 ) -> GenOutput<C>
 where
     frost_core::Element<C>: Send,
@@ -110,9 +110,9 @@ where
     assert!(!new_participants.is_empty());
     let mut setup = vec![];
 
-    for new_participant in &new_participants {
+    for new_participant in new_participants {
         let mut is_break = false;
-        for (p, k) in &keys {
+        for (p, k) in keys {
             if p == new_participant {
                 setup.push((*p, (Some(k.private_share), k.public_key)));
                 is_break = true;
@@ -126,14 +126,14 @@ where
 
     let mut protocols: GenProtocol<C> = Vec::with_capacity(old_participants.len());
 
-    for (p, out) in setup.iter() {
+    for (p, out) in &setup {
         let protocol = reshare(
             scheme,
             old_participants,
             old_threshold,
             out.0,
             out.1,
-            &new_participants,
+            new_participants,
             new_threshold,
             *p,
             OsRng,
@@ -147,7 +147,7 @@ where
 }
 
 /// Assert that each participant has the same view of the public key
-pub(crate) fn assert_public_key_invariant<C: Ciphersuite>(
+pub fn assert_public_key_invariant<C: Ciphersuite>(
     participants: &[(Participant, KeygenOutput<C>)],
 ) {
     let vk = participants.first().unwrap().1.public_key;
@@ -162,40 +162,9 @@ pub(crate) fn assert_public_key_invariant<C: Ciphersuite>(
 
 // +++++++++++++++++ Signing Functions +++++++++++++++++ //
 /// Runs the signing algorithm for ECDSA.
-/// Only used for unit tests.
-pub(crate) fn run_sign<C: Ciphersuite, PresignOutput, Signature: Clone, F>(
-    participants_presign: Vec<(Participant, PresignOutput)>,
-    public_key: frost_core::Element<C>,
-    msg_hash: frost_core::Scalar<C>,
-    sign: F,
-) -> Result<Vec<(Participant, Signature)>, Box<dyn Error>>
-where
-    F: Fn(
-        &[Participant],
-        Participant,
-        frost_core::Element<C>,
-        PresignOutput,
-        frost_core::Scalar<C>,
-    ) -> Result<Box<dyn Protocol<Output = Signature>>, InitializationError>,
-{
-    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = Signature>>)> =
-        Vec::with_capacity(participants_presign.len());
-
-    let participants: Vec<Participant> = participants_presign.iter().map(|(p, _)| *p).collect();
-    let participants = participants.as_slice();
-    for (p, presignature) in participants_presign.into_iter() {
-        let protocol = sign(participants, p, public_key, presignature, msg_hash)?;
-
-        protocols.push((p, protocol));
-    }
-
-    Ok(run_protocol(protocols)?)
-}
-
-/// Runs the signing algorithm for ECDSA.
 /// The scheme must be asymmetric as in: there exists a coordinator that is different than participants.
 /// Only used for unit tests.
-pub(crate) fn run_asymmetric_sign<C: Ciphersuite, PresignOutput, Signature: Clone, F>(
+pub fn run_sign<C: Ciphersuite, PresignOutput, Signature: Clone, F>(
     participants_presign: Vec<(Participant, PresignOutput)>,
     coordinator: Participant,
     public_key: frost_core::Element<C>,
@@ -217,7 +186,7 @@ where
 
     let participants: Vec<Participant> = participants_presign.iter().map(|(p, _)| *p).collect();
     let participants = participants.as_slice();
-    for (p, presignature) in participants_presign.into_iter() {
+    for (p, presignature) in participants_presign {
         let protocol = sign(
             participants,
             coordinator,
@@ -235,7 +204,7 @@ where
 
 /// Checks that the list contains all None but one element
 /// and verifies such element belongs to the coordinator
-pub(crate) fn one_coordinator_output<ProtocolOutput: Clone>(
+pub fn one_coordinator_output<ProtocolOutput: Clone>(
     all_sigs: Vec<(Participant, Option<ProtocolOutput>)>,
     coordinator: Participant,
 ) -> Result<ProtocolOutput, ProtocolError> {
@@ -256,7 +225,7 @@ pub(crate) fn one_coordinator_output<ProtocolOutput: Clone>(
 
     if some_iter.next().is_some() {
         return Err(ProtocolError::MismatchCoordinatorOutput);
-    };
+    }
     Ok(out)
 }
 
@@ -268,8 +237,8 @@ pub struct MockCryptoRng {
 }
 
 impl MockCryptoRng {
-    pub fn new(data: [u8; 8]) -> MockCryptoRng {
-        MockCryptoRng { data, index: 0 }
+    pub fn new(data: [u8; 8]) -> Self {
+        Self { data, index: 0 }
     }
 }
 
@@ -298,13 +267,13 @@ impl RngCore for MockCryptoRng {
 
 // Taken from https://github.com/ZcashFoundation/frost/blob/3ffc19d8f473d5bc4e07ed41bc884bdb42d6c29f/frost-secp256k1/tests/common_traits_tests.rs#L9
 #[allow(clippy::unnecessary_literal_unwrap)]
-pub fn check_common_traits_for_type<T: Clone + Eq + PartialEq + std::fmt::Debug>(v: T) {
+pub fn check_common_traits_for_type<T: Clone + Eq + PartialEq + std::fmt::Debug>(v: &T) {
     // Make sure can be debug-printed. This also catches if the Debug does not
     // have an endless recursion (a popular mistake).
-    println!("{:?}", v);
+    println!("{v:?}");
     // Test Clone and Eq
-    assert_eq!(v, v.clone());
+    assert_eq!(*v, v.clone());
     // Make sure it can be unwrapped in a Result (which requires Debug).
     let e: Result<T, ()> = Ok(v.clone());
-    assert_eq!(v, e.unwrap());
+    assert_eq!(*v, e.unwrap());
 }

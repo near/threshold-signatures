@@ -17,7 +17,7 @@ use crate::threshold::Scheme;
 
 use rand_core::{OsRng, RngCore};
 
-/// Runs signing by calling the generic run_sign function from crate::test
+/// Runs signing by calling the generic `run_sign` function from `crate::test`
 /// This signing does not rerandomize the presignatures and tests only the core protocol
 pub fn run_sign_without_rerandomization(
     participants_presign: Vec<(Participant, PresignOutput)>,
@@ -32,7 +32,7 @@ pub fn run_sign_without_rerandomization(
     let coordinator = participants_presign[index as usize].0;
 
     // run sign instanciation with the necessary arguments
-    let result = crate::test::run_asymmetric_sign::<Secp256K1Sha256, _, _, _>(
+    let result = crate::test::run_sign::<Secp256K1Sha256, _, _, _>(
         participants_presign,
         coordinator,
         public_key,
@@ -40,7 +40,7 @@ pub fn run_sign_without_rerandomization(
         |participants, coordinator, me, pk, presignature, msg_hash| {
             let pk = pk.to_affine();
             let rerand_presig =
-                RerandomizedPresignOutput::new_without_rerandomization(presignature);
+                RerandomizedPresignOutput::new_without_rerandomization(&presignature);
             sign(participants, coordinator, me, pk, rerand_presig, msg_hash)
                 .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
         },
@@ -51,15 +51,14 @@ pub fn run_sign_without_rerandomization(
     Ok((coordinator, signature))
 }
 
-type SigWithRerand = (Tweak, Participant, Signature);
-/// Runs signing by calling the generic run_sign function from crate::test
+/// Runs signing by calling the generic `run_sign` function from `crate::test`
 /// This signing mimics what should happen in real world, i.e.,
 /// rerandomizing the presignatures
 pub fn run_sign_with_rerandomization(
-    participants_presign: Vec<(Participant, PresignOutput)>,
+    participants_presign: &[(Participant, PresignOutput)],
     public_key: Element,
     msg: &[u8],
-) -> Result<SigWithRerand, Box<dyn Error>> {
+) -> Result<(Tweak, Participant, Signature), Box<dyn Error>> {
     // hash the message into secp256k1 field
     let msg_hash = scalar_hash_secp256k1(msg);
 
@@ -97,7 +96,7 @@ pub fn run_sign_with_rerandomization(
     let coordinator = participants_presign[index as usize].0;
 
     // run sign instanciation with the necessary arguments
-    let result = crate::test::run_asymmetric_sign::<Secp256K1Sha256, _, _, _>(
+    let result = crate::test::run_sign::<Secp256K1Sha256, _, _, _>(
         rerand_participants_presign,
         coordinator,
         derived_pk,
@@ -122,7 +121,7 @@ pub fn run_presign(
 
     let participant_list: Vec<Participant> = participants.iter().map(|(p, _)| *p).collect();
 
-    for (p, keygen_out) in participants.into_iter() {
+    for (p, keygen_out) in participants {
         let protocol = presign(
             &participant_list,
             p,
@@ -148,7 +147,7 @@ fn test_refresh() -> Result<(), Box<dyn Error>> {
     let keys = run_keygen(Scheme::RobustEcdsa, &participants, threshold)?;
     assert_public_key_invariant(&keys);
     // run refresh on these
-    let key_packages = run_refresh(Scheme::RobustEcdsa, &participants, keys, threshold)?;
+    let key_packages = run_refresh(Scheme::RobustEcdsa, &participants, &keys, threshold)?;
     let public_key = key_packages[0].1.public_key;
     assert_public_key_invariant(&key_packages);
     let presign_result = run_presign(key_packages, max_malicious)?;
@@ -182,10 +181,10 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
         Scheme::RobustEcdsa,
         &participants,
         &pub_key,
-        result0,
+        &result0,
         threshold,
         new_threshold,
-        new_participant.clone(),
+        &new_participant,
     )?;
     assert_public_key_invariant(&key_packages);
 
@@ -219,10 +218,10 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
         Scheme::RobustEcdsa,
         &participants,
         &pub_key,
-        result0,
+        &result0,
         threshold,
         new_threshold,
-        new_participant.clone(),
+        &new_participant,
     )?;
     assert_public_key_invariant(&key_packages);
     let public_key = key_packages[0].1.public_key;
@@ -239,7 +238,7 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants(8);
     let max_malicious = 3; //f
 
-    let keygen_result = run_keygen(Scheme::RobustEcdsa, &participants.clone(), max_malicious)?;
+    let keygen_result = run_keygen(Scheme::RobustEcdsa, &participants, max_malicious + 1)?;
 
     let public_key = keygen_result[0].1.public_key;
     assert_public_key_invariant(&keygen_result);
@@ -256,7 +255,7 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants_with_random_ids(participants_count, &mut OsRng);
     let max_malicious = 3;
 
-    let keygen_result = run_keygen(Scheme::RobustEcdsa, &participants.clone(), max_malicious)?;
+    let keygen_result = run_keygen(Scheme::RobustEcdsa, &participants, max_malicious + 1)?;
     assert_public_key_invariant(&keygen_result);
 
     let public_key = keygen_result[0].1.public_key;
@@ -274,7 +273,7 @@ fn test_e2e_random_identifiers_with_rerandomization() -> Result<(), Box<dyn Erro
     let participants = generate_participants_with_random_ids(participants_count, &mut OsRng);
     let max_malicious = 3;
 
-    let keygen_result = run_keygen(Scheme::RobustEcdsa, &participants.clone(), max_malicious)?;
+    let keygen_result = run_keygen(Scheme::RobustEcdsa, &participants, max_malicious + 1)?;
     assert_public_key_invariant(&keygen_result);
 
     let public_key = keygen_result[0].1.public_key;
@@ -282,6 +281,6 @@ fn test_e2e_random_identifiers_with_rerandomization() -> Result<(), Box<dyn Erro
     let presign_result = run_presign(keygen_result, max_malicious)?;
 
     let msg = b"hello world";
-    run_sign_with_rerandomization(presign_result, public_key.to_element(), msg)?;
+    run_sign_with_rerandomization(&presign_result, public_key.to_element(), msg)?;
     Ok(())
 }

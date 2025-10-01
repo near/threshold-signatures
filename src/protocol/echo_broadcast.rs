@@ -9,7 +9,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 /// This structure is essential for the reliable broadcast protocol
 /// Send is used in the first phase, Echo in the second, and Ready
 /// in the third.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MessageType<T> {
     Send(T),
     Echo(T),
@@ -18,7 +18,7 @@ pub enum MessageType<T> {
 
 /// A homemade sturcture that allows counting the number of
 /// votes gathered during the reliable-broadcast protocol
-/// only requiring from votes to have trait PartialEq
+/// only requiring from votes to have trait `PartialEq`
 #[derive(Clone)]
 struct CounterList<T> {
     list: Vec<(T, usize)>,
@@ -46,8 +46,8 @@ impl<T: PartialEq> CounterList<T> {
 
     fn get_sum_counters(&self) -> usize {
         let mut sum = 0;
-        for (_, cnt) in self.list.iter() {
-            sum += cnt
+        for (_, cnt) in &self.list {
+            sum += cnt;
         }
         sum
     }
@@ -79,11 +79,11 @@ fn echo_ready_thresholds(n: usize) -> (usize, usize) {
 
 /// This reliable broadcast function is the echo-broadcast protocol from the sender side.
 /// It broadcasts some data in a vote
-pub async fn reliable_broadcast_send<T>(
+pub fn reliable_broadcast_send<T>(
     chan: &SharedChannel,
     wait: Waitpoint,
     participants: &ParticipantList,
-    me: &Participant,
+    me: Participant,
     data: T,
 ) -> Result<MessageType<T>, ProtocolError>
 where
@@ -98,14 +98,16 @@ where
 }
 
 /// This reliable broadcast function is the echo-broadcast protocol from the sender side.
-/// It broadcasts a vote of type MessageType::Send and expects that the output
+///
+/// It broadcasts a vote of type `MessageType::Send` and expects that the output
 /// of the broadcasts be the same as the input vote.
-/// Reliable_broadcast_receive_all is expected to be called right after reliable_broadcast_send.
+/// `Reliable_broadcast_receive_all` is expected to be called right after `reliable_broadcast_send`.
+#[allow(clippy::too_many_lines)]
 pub async fn reliable_broadcast_receive_all<'a, T>(
     chan: &SharedChannel,
     wait: Waitpoint,
     participants: &'a ParticipantList,
-    me: &Participant,
+    me: Participant,
     send_vote: MessageType<T>,
 ) -> Result<ParticipantMap<'a, T>, ProtocolError>
 where
@@ -132,7 +134,7 @@ where
     let mut finish_ready = vec![false; n];
 
     // receive simulated vote
-    let mut from = *me;
+    let mut from = me;
     let mut sid = participants.index(me);
     let mut vote = match send_vote {
         MessageType::Send(_) => send_vote.clone(),
@@ -157,19 +159,19 @@ where
                 Ok(value) => (from, (sid, vote)) = value,
                 _ => continue,
             };
-        };
+        }
 
         is_simulated_vote = false;
 
         match vote.clone() {
             // Receive send vote then echo to everybody
             MessageType::Send(data) => {
-                // if the sender is not the one identified by the session id (sid)
+                // If the sender is not the one identified by the session id (sid)
                 // or if the sender have already delivered a MessageType::Send message
-                // then skip
-                // the second condition prevents a malicious party starting the protocol
+                // then skip.
+                // The second condition prevents a malicious party starting the protocol
                 // on behalf on somebody else
-                if finish_send[sid] || sid != participants.index(&from) {
+                if finish_send[sid] || sid != participants.index(from) {
                     continue;
                 }
                 vote = MessageType::Echo(data);
@@ -179,7 +181,7 @@ where
 
                 // simulate an echo vote sent by me
                 is_simulated_vote = true;
-                from = *me;
+                from = me;
             }
             // Receive send vote then echo to everybody
             MessageType::Echo(data) => {
@@ -193,8 +195,10 @@ where
 
                 // upon gathering strictly more than (n+f)/2 votes
                 // for a result, deliver Ready.
-                // Would not panic as I just put the item in the previous line
-                if data_echo[sid].get(&data).unwrap() > echo_t {
+                if data_echo[sid].get(&data).ok_or_else(|| {
+                    ProtocolError::Other("Missing element in CounterList".to_string())
+                })? > echo_t
+                {
                     vote = MessageType::Ready(data);
                     chan.send_many(wait, &(&sid, &vote))?;
                     // state that the echo phase for session id (sid) is done
@@ -202,7 +206,7 @@ where
 
                     // simulate a ready vote sent by me
                     is_simulated_vote = true;
-                    from = *me;
+                    from = me;
                 }
                 // suppose you receive not enough echo votes but the amount of votes
                 // left to receive is not sufficient to proceed to the ready phase
@@ -247,26 +251,32 @@ where
                 // upon gathering strictly more than f votes
                 // and if I haven't already amplified ready vote in session sid then
                 // proceed to amplification of the ready message
-                // Would not panic as I just put the item in the previous line
-                if data_ready[sid].get(&data).unwrap() > ready_t && !finish_amplification[sid] {
+                if data_ready[sid].get(&data).ok_or_else(|| {
+                    ProtocolError::Other("Missing element in CounterList".to_string())
+                })? > ready_t
+                    && !finish_amplification[sid]
+                {
                     vote = MessageType::Ready(data.clone());
                     chan.send_many(wait, &(&sid, &vote))?;
                     finish_amplification[sid] = true;
 
                     // simulate a ready vote sent by me
                     is_simulated_vote = true;
-                    from = *me;
+                    from = me;
                 }
-                // Would not panic as I just put the item in the previous line
-                if data_ready[sid].get(&data).unwrap() > 2 * ready_t {
+                if data_ready[sid].get(&data).ok_or_else(|| {
+                    ProtocolError::Other("Missing element in CounterList".to_string())
+                })? > 2 * ready_t
+                {
                     // skip all types of messages sent for session sid from now on
                     finish_send[sid] = true;
                     finish_echo[sid] = true;
                     finish_ready[sid] = true;
 
                     // return a map of participant data
-                    // the unwrap will not fail as the index is in the range of participants
-                    let p = participants.get_participant(sid).unwrap();
+                    let p = participants
+                        .get_participant(sid)
+                        .ok_or_else(|| ProtocolError::Other("Missing participant".to_string()))?;
                     // make a list of data and return them
                     vote_output.put(p, data.clone());
 
@@ -298,14 +308,14 @@ where
 pub async fn do_broadcast<'a, T>(
     chan: &mut SharedChannel,
     participants: &'a ParticipantList,
-    me: &Participant,
+    me: Participant,
     data: T,
 ) -> Result<ParticipantMap<'a, T>, ProtocolError>
 where
     T: Serialize + Clone + DeserializeOwned + PartialEq,
 {
     let wait_broadcast = chan.next_waitpoint();
-    let send_vote = reliable_broadcast_send(chan, wait_broadcast, participants, me, data).await?;
+    let send_vote = reliable_broadcast_send(chan, wait_broadcast, participants, me, data)?;
     let vote_list =
         reliable_broadcast_receive_all(chan, wait_broadcast, participants, me, send_vote).await?;
     Ok(vote_list)
@@ -319,8 +329,8 @@ mod test {
     use crate::test::generate_participants;
     use std::error::Error;
 
-    /// This function is similar to do_broadcast except it is tailored to
-    /// consume the inputs instead of borrowing and become suitable for make_protocol
+    /// This function is similar to `do_broadcast` except it is tailored to
+    /// consume the inputs instead of borrowing and become suitable for `make_protocol`
     /// function
     pub async fn do_broadcast_consume(
         mut chan: SharedChannel,
@@ -329,10 +339,9 @@ mod test {
         data: bool,
     ) -> Result<Vec<bool>, ProtocolError> {
         let wait_broadcast = chan.next_waitpoint();
-        let send_vote =
-            reliable_broadcast_send(&chan, wait_broadcast, &participants, &me, data).await?;
+        let send_vote = reliable_broadcast_send(&chan, wait_broadcast, &participants, me, data)?;
         let vote_list =
-            reliable_broadcast_receive_all(&chan, wait_broadcast, &participants, &me, send_vote)
+            reliable_broadcast_receive_all(&chan, wait_broadcast, &participants, me, send_vote)
                 .await?;
         let vote_list = vote_list.into_vec_or_none().unwrap();
         Ok(vote_list)
@@ -384,7 +393,7 @@ mod test {
         me: Participant,
     ) -> Result<Vec<bool>, ProtocolError> {
         let wait_broadcast = chan.next_waitpoint();
-        let sid = participants.index(&me);
+        let sid = participants.index(me);
 
         // malicious reliable broadcast send
         let vote_true = MessageType::Send(true);
@@ -399,7 +408,7 @@ mod test {
         }
 
         let vote_list =
-            reliable_broadcast_receive_all(&chan, wait_broadcast, &participants, &me, vote_false)
+            reliable_broadcast_receive_all(&chan, wait_broadcast, &participants, me, vote_false)
                 .await?;
         let vote_list = vote_list.into_vec_or_none().unwrap();
         Ok(vote_list)
@@ -411,7 +420,7 @@ mod test {
         me: Participant,
     ) -> Result<Vec<bool>, ProtocolError> {
         let wait_broadcast = chan.next_waitpoint();
-        let sid = participants.index(&me);
+        let sid = participants.index(me);
 
         // malicious reliable broadcast send
         let vote_true = MessageType::Send(true);
@@ -426,7 +435,7 @@ mod test {
         }
 
         let vote_list =
-            reliable_broadcast_receive_all(&chan, wait_broadcast, &participants, &me, vote_true)
+            reliable_broadcast_receive_all(&chan, wait_broadcast, &participants, me, vote_true)
                 .await?;
         let vote_list = vote_list.into_vec_or_none().unwrap();
         Ok(vote_list)
@@ -477,13 +486,13 @@ mod test {
     #[allow(clippy::type_complexity)]
     fn broadcast_dishonest_v1(
         honest_participants: &[Participant],
-        dishonest_participant: &Participant,
+        dishonest_participant: Participant,
         honest_votes: &[bool],
     ) -> Result<Vec<(Participant, Vec<bool>)>, Box<dyn Error>> {
         assert_eq!(honest_participants.len(), honest_votes.len());
 
         let mut participants = honest_participants.to_vec();
-        participants.push(*dishonest_participant);
+        participants.push(dishonest_participant);
 
         let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = Vec<bool>>>)> =
             Vec::with_capacity(participants.len());
@@ -495,9 +504,9 @@ mod test {
         }
 
         // we run the protocol for the dishonest party
-        let protocol = do_broadcast_dishonest_v1(&participants, *dishonest_participant)?;
+        let protocol = do_broadcast_dishonest_v1(&participants, dishonest_participant)?;
 
-        protocols.push((*dishonest_participant, Box::new(protocol)));
+        protocols.push((dishonest_participant, Box::new(protocol)));
 
         let result = run_protocol(protocols)?;
         Ok(result)
@@ -506,13 +515,13 @@ mod test {
     #[allow(clippy::type_complexity)]
     fn broadcast_dishonest_v2(
         honest_participants: &[Participant],
-        dishonest_participant: &Participant,
+        dishonest_participant: Participant,
         honest_votes: &[bool],
     ) -> Result<Vec<(Participant, Vec<bool>)>, Box<dyn Error>> {
         assert_eq!(honest_participants.len(), honest_votes.len());
 
         let mut participants = honest_participants.to_vec();
-        participants.push(*dishonest_participant);
+        participants.push(dishonest_participant);
 
         let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = Vec<bool>>>)> =
             Vec::with_capacity(participants.len());
@@ -524,9 +533,9 @@ mod test {
         }
 
         // we run the protocol for the dishonest party
-        let protocol = do_broadcast_dishonest_v2(&participants, *dishonest_participant)?;
+        let protocol = do_broadcast_dishonest_v2(&participants, dishonest_participant)?;
 
-        protocols.push((*dishonest_participant, Box::new(protocol)));
+        protocols.push((dishonest_participant, Box::new(protocol)));
 
         let result = run_protocol(protocols)?;
         Ok(result)
@@ -541,7 +550,7 @@ mod test {
         // change everytime a party voting false
         for i in 0..votes.len() {
             let result = broadcast_honest(&participants, &votes)?;
-            for (_, vec_b) in result.iter() {
+            for (_, vec_b) in &result {
                 let false_count = vec_b.iter().filter(|&&b| !b).count();
                 assert_eq!(false_count, i);
             }
@@ -562,13 +571,13 @@ mod test {
 
         // version 1
         let result =
-            broadcast_dishonest_v1(&honest_participants, &dishonest_participant, &honest_votes);
+            broadcast_dishonest_v1(&honest_participants, dishonest_participant, &honest_votes);
         assert!(result.is_err());
         // version 2
         let result =
-            broadcast_dishonest_v2(&honest_participants, &dishonest_participant, &honest_votes)?;
+            broadcast_dishonest_v2(&honest_participants, dishonest_participant, &honest_votes)?;
 
-        for (_, vec_b) in result.iter() {
+        for (_, vec_b) in &result {
             let false_count = vec_b.iter().filter(|&&b| !b).count();
             assert_eq!(false_count, 0);
         }
