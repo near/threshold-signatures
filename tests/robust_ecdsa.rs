@@ -71,7 +71,7 @@ fn run_presign(
     run_protocol(protocols).unwrap()
 }
 
-pub fn run_sign(
+fn run_sign(
     participants_presign: Vec<(Participant, RerandomizedPresignOutput)>,
     coordinator: Participant,
     public_key: frost_core::Element<C>,
@@ -102,7 +102,7 @@ pub fn run_sign(
     run_protocol(protocols).unwrap()
 }
 
-pub fn run_sign_with_rerandomization(
+fn run_sign_with_rerandomization(
     participants_presign: &[(Participant, PresignOutput)],
     public_key: VerifyingKey,
     msg_hash: [u8; 32],

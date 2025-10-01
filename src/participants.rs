@@ -100,6 +100,7 @@ impl ParticipantList {
     }
 
     /// Return the intersection of this list with another list.
+    #[allow(clippy::missing_panics_doc)]
     pub fn intersection(&self, others: &Self) -> Self {
         let mut out = Vec::new();
         for &p in &self.participants {
