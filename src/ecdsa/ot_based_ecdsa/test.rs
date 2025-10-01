@@ -13,6 +13,7 @@ use crate::test::{
     assert_public_key_invariant, generate_participants, generate_participants_with_random_ids,
     one_coordinator_output, run_keygen, run_refresh, run_reshare,
 };
+use crate::threshold::Scheme;
 use crate::{
     crypto::hash::test::scalar_hash_secp256k1, ecdsa::ot_based_ecdsa::RerandomizedPresignOutput,
 };
@@ -166,10 +167,10 @@ fn test_refresh() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants(11);
     let max_malicious = 5;
     let threshold = max_malicious + 1;
-    let keys = run_keygen(&participants, threshold)?;
+    let keys = run_keygen(Scheme::OtBasedEcdsa, &participants, threshold)?;
     assert_public_key_invariant(&keys);
     // run refresh on these
-    let key_packages = run_refresh(&participants, &keys, threshold)?;
+    let key_packages = run_refresh(Scheme::OtBasedEcdsa, &participants, &keys, threshold)?;
     let public_key = key_packages[0].1.public_key;
     assert_public_key_invariant(&key_packages);
     let (pub0, shares0) = deal(&mut OsRng, &participants, threshold)?;
@@ -188,7 +189,7 @@ fn test_refresh() -> Result<(), Box<dyn Error>> {
 fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants(5);
     let threshold = 3;
-    let result0 = run_keygen(&participants, threshold)?;
+    let result0 = run_keygen(Scheme::OtBasedEcdsa, &participants, threshold)?;
     assert_public_key_invariant(&result0);
 
     let pub_key = result0[2].1.public_key;
@@ -200,6 +201,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
     new_participant.push(Participant::from(32u32));
     new_participant.push(Participant::from(33u32));
     let key_packages = run_reshare(
+        Scheme::OtBasedEcdsa,
         &participants,
         &pub_key,
         &result0,
@@ -228,7 +230,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants(5);
     let threshold = 4;
     let mut rng = OsRng;
-    let result0 = run_keygen(&participants, threshold)?;
+    let result0 = run_keygen(Scheme::OtBasedEcdsa, &participants, threshold)?;
     assert_public_key_invariant(&result0);
 
     let pub_key = result0[2].1.public_key;
@@ -238,6 +240,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     let mut new_participant = participants.clone();
     new_participant.pop();
     let key_packages = run_reshare(
+        Scheme::OtBasedEcdsa,
         &participants,
         &pub_key,
         &result0,
@@ -266,7 +269,7 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
     let threshold = 3;
 
     let mut rng = OsRng;
-    let key_packages = run_keygen(&participants.clone(), threshold)?;
+    let key_packages = run_keygen(Scheme::OtBasedEcdsa, &participants.clone(), threshold)?;
 
     assert_public_key_invariant(&key_packages);
     let public_key = key_packages[0].1.public_key;
@@ -289,7 +292,7 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     let participants = generate_participants_with_random_ids(participants_count, &mut rng);
     let threshold = 3;
 
-    let key_packages = run_keygen(&participants.clone(), threshold)?;
+    let key_packages = run_keygen(Scheme::OtBasedEcdsa, &participants.clone(), threshold)?;
     assert_public_key_invariant(&key_packages);
 
     let public_key = key_packages[0].1.public_key;
@@ -312,7 +315,7 @@ fn test_e2e_random_identifiers_with_rerandomization() -> Result<(), Box<dyn Erro
     let participants = generate_participants_with_random_ids(participants_count, &mut rng);
     let threshold = 3;
 
-    let key_packages = run_keygen(&participants.clone(), threshold)?;
+    let key_packages = run_keygen(Scheme::OtBasedEcdsa, &participants.clone(), threshold)?;
     assert_public_key_invariant(&key_packages);
 
     let public_key = key_packages[0].1.public_key;

@@ -11,6 +11,7 @@ use crate::protocol::{
     internal::SharedChannel,
     Participant,
 };
+use crate::threshold::{validate_and_derive_threshold, Scheme};
 use crate::KeygenOutput;
 
 use frost_core::keys::{
@@ -523,7 +524,8 @@ pub async fn do_keygen<C: Ciphersuite>(
 
 /// This function is to be called before running DKG
 /// It ensures that the input parameters are valid
-pub fn assert_keygen_invariants(
+pub(crate) fn assert_keygen_invariants(
+    scheme: Scheme,
     participants: &[Participant],
     me: Participant,
     threshold: usize,
@@ -535,12 +537,22 @@ pub fn assert_keygen_invariants(
         });
     }
 
-    // validate threshold
-    if threshold > participants.len() {
-        return Err(InitializationError::ThresholdTooLarge {
-            threshold,
-            max: participants.len(),
-        });
+    // For DKG, the threshold `t` is `f+1`, so `f = t-1`.
+    // We must check that `t > 0` to avoid underflow.
+    if threshold == 0 {
+        return Err(InitializationError::ThresholdCannotBeZero);
+    }
+    let f = match scheme {
+        Scheme::Dkg | Scheme::OtBasedEcdsa => threshold
+            .checked_sub(1)
+            .ok_or(InitializationError::ThresholdCannotBeZero)?,
+        Scheme::RobustEcdsa => threshold,
+    };
+
+    // Validate that the threshold is appropriate for the number of participants
+    // according to the DKG scheme rules.
+    if let Err(e) = validate_and_derive_threshold(scheme, participants.len(), f) {
+        return Err(InitializationError::BadParameters(e.to_string()));
     }
 
     // ensure uniqueness of participants in the participant list
@@ -595,7 +607,8 @@ pub async fn do_reshare<C: Ciphersuite>(
     Ok(keygen_output)
 }
 
-pub fn reshare_assertions<C: Ciphersuite>(
+pub(crate) fn reshare_assertions<C: Ciphersuite>(
+    scheme: Scheme,
     participants: &[Participant],
     me: Participant,
     threshold: usize,
@@ -607,12 +620,17 @@ pub fn reshare_assertions<C: Ciphersuite>(
         return Err(InitializationError::NotEnoughParticipants {
             participants: participants.len(),
         });
+    };
+
+    // For DKG, the threshold `t` is `f+1`, so `f = t-1`.
+    if threshold == 0 {
+        return Err(InitializationError::ThresholdCannotBeZero);
     }
-    if threshold > participants.len() {
-        return Err(InitializationError::ThresholdTooLarge {
-            threshold,
-            max: participants.len(),
-        });
+    let f = threshold - 1;
+
+    // Validate the new threshold against the new participant list.
+    if let Err(e) = validate_and_derive_threshold(scheme, participants.len(), f) {
+        return Err(InitializationError::BadParameters(e.to_string()));
     }
 
     let participants =

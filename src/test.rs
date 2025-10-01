@@ -8,6 +8,7 @@ use crate::protocol::{
     errors::{InitializationError, ProtocolError},
     run_protocol, Participant, Protocol,
 };
+use crate::threshold::Scheme;
 use crate::{keygen, refresh, reshare, Ciphersuite, KeygenOutput, VerifyingKey};
 
 // +++++++++++++++++ Participants Utilities +++++++++++++++++ //
@@ -38,7 +39,11 @@ type GenProtocol<C> = Vec<(Participant, Box<dyn Protocol<Output = KeygenOutput<C
 
 /// Runs distributed keygen
 /// If the protocol succeeds, returns a sorted vector based on participants id
-pub fn run_keygen<C: Ciphersuite>(participants: &[Participant], threshold: usize) -> GenOutput<C>
+pub(crate) fn run_keygen<C: Ciphersuite>(
+    scheme: Scheme,
+    participants: &[Participant],
+    threshold: usize,
+) -> GenOutput<C>
 where
     frost_core::Element<C>: Send,
     frost_core::Scalar<C>: Send,
@@ -46,7 +51,7 @@ where
     let mut protocols: GenProtocol<C> = Vec::with_capacity(participants.len());
 
     for p in participants {
-        let protocol = keygen::<C>(participants, *p, threshold, OsRng)?;
+        let protocol = keygen::<C>(scheme, participants, *p, threshold, OsRng)?;
         protocols.push((*p, Box::new(protocol)));
     }
 
@@ -57,9 +62,10 @@ where
 
 /// Runs distributed refresh
 /// If the protocol succeeds, returns a sorted vector based on participants id
-pub fn run_refresh<C: Ciphersuite>(
+pub(crate) fn run_refresh<C: Ciphersuite>(
+    scheme: Scheme,
     participants: &[Participant],
-    keys: &[(Participant, KeygenOutput<C>)],
+    keys: &[(Participant, KeygenOutput<C>)], // This should be old_keys
     threshold: usize,
 ) -> GenOutput<C>
 where
@@ -70,6 +76,7 @@ where
 
     for (p, out) in keys {
         let protocol = refresh::<C>(
+            scheme,
             Some(out.private_share),
             out.public_key,
             participants,
@@ -87,10 +94,11 @@ where
 
 /// Runs distributed reshare
 /// If the protocol succeeds, returns a sorted vector based on participants id
-pub fn run_reshare<C: Ciphersuite>(
+pub(crate) fn run_reshare<C: Ciphersuite>(
+    scheme: Scheme,
     participants: &[Participant],
     pub_key: &VerifyingKey<C>,
-    keys: &[(Participant, KeygenOutput<C>)],
+    keys: &[(Participant, KeygenOutput<C>)], // This should be old_keys
     old_threshold: usize,
     new_threshold: usize,
     new_participants: &[Participant],
@@ -120,6 +128,7 @@ where
 
     for (p, out) in &setup {
         let protocol = reshare(
+            scheme,
             participants,
             old_threshold,
             out.0,
