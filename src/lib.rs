@@ -19,7 +19,7 @@ pub use crypto::polynomials::{
 };
 pub use participants::ParticipantList;
 
-use crypto::ciphersuite::Ciphersuite;
+pub use crypto::ciphersuite::Ciphersuite;
 use frost_core::{keys::SigningShare, Group, VerifyingKey};
 use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};

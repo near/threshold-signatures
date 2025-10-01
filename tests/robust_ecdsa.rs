@@ -1,3 +1,6 @@
+mod common;
+
+use common::{generate_participants, run_keygen};
 use std::collections::HashMap;
 
 use rand_core::{OsRng, RngCore};
@@ -11,7 +14,6 @@ use threshold_signatures::{
         RerandomizationArguments, Secp256K1Sha256, Signature, SignatureOption,
     },
     frost_secp256k1::VerifyingKey,
-    keygen,
     protocol::{run_protocol, Participant, Protocol},
     ParticipantList,
 };
@@ -21,29 +23,8 @@ use elliptic_curve::ff::PrimeField;
 
 type C = Secp256K1Sha256;
 type KeygenOutput = threshold_signatures::KeygenOutput<C>;
-type GenProtocol = Vec<(Participant, Box<dyn Protocol<Output = KeygenOutput>>)>;
 type Scalar = threshold_signatures::frost_core::Scalar<C>;
 type Tweak = threshold_signatures::Tweak<C>;
-
-fn generate_participants(number: usize) -> Vec<Participant> {
-    (0..number)
-        .map(|i| Participant::from(i as u32))
-        .collect::<Vec<_>>()
-}
-
-fn run_keygen(
-    participants: &[Participant],
-    threshold: usize,
-) -> HashMap<Participant, KeygenOutput> {
-    let mut protocols: GenProtocol = Vec::with_capacity(participants.len());
-
-    for p in participants {
-        let protocol = keygen::<C>(participants, *p, threshold, OsRng).unwrap();
-        protocols.push((*p, Box::new(protocol)));
-    }
-
-    run_protocol(protocols).unwrap().into_iter().collect()
-}
 
 fn run_presign(
     participants: HashMap<Participant, KeygenOutput>,
