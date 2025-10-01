@@ -1,5 +1,4 @@
 //! Helper functions for the protocol.
-
 use super::{internal::SharedChannel, Participant, ProtocolError};
 
 /// Receive a message from a specific participant.
@@ -20,29 +19,30 @@ where
 }
 
 /// Gather exactly one message from each participant in a group before proceeding.
-/// TODO: how about adding a timeout in case some participants failed to send a message?
 pub async fn recv_from_many<T>(
     chan: &mut SharedChannel,
-    participants: &[Participant],
     wait: u64,
+    participants: &[Participant],
+    already_received: Option<&[Participant]>,
 ) -> Result<Vec<(Participant, T)>, ProtocolError>
 where
     T: serde::de::DeserializeOwned,
 {
     let mut messages = Vec::with_capacity(participants.len());
-    let mut received_from = std::collections::HashSet::new();
+    let mut pending: std::collections::HashSet<_> = participants.iter().copied().collect();
 
-    for &p in participants {
-        received_from.insert(p);
-    }
-
-    loop {
-        let (from, msg) = chan.recv(wait).await?;
-        if received_from.remove(&from) {
-            messages.push((from, msg));
-            if received_from.is_empty() {
-                return Ok(messages);
-            }
+    // remove already-received participants if provided
+    if let Some(already) = already_received {
+        for p in already {
+            pending.remove(p);
         }
     }
+    while !pending.is_empty() {
+        let (from, msg) = chan.recv(wait).await?;
+        if pending.remove(&from) {
+            messages.push((from, msg));
+        }
+    }
+
+    Ok(messages)
 }
