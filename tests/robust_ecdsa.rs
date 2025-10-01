@@ -31,7 +31,7 @@ fn generate_participants(number: usize) -> Vec<Participant> {
         .collect::<Vec<_>>()
 }
 
-fn make_keygen(
+fn run_keygen(
     participants: &[Participant],
     threshold: usize,
 ) -> HashMap<Participant, KeygenOutput> {
@@ -164,7 +164,7 @@ fn test_sign() {
     let participants = generate_participants(11);
     let max_malicious = 5;
     let threshold = max_malicious + 1;
-    let keys = make_keygen(&participants, threshold);
+    let keys = run_keygen(&participants, threshold);
     assert_eq!(keys.len(), participants.len());
     let public_key = keys.get(&participants[0]).unwrap().public_key;
     let presign_result = run_presign(keys, max_malicious);

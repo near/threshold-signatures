@@ -16,7 +16,7 @@ type Scalar = BLS12381Scalar;
 
 type ParticipantAndProtocol<T> = (Participant, Box<dyn Protocol<Output = T>>);
 
-fn make_keygen(
+fn run_keygen(
     participants: &[Participant],
     threshold: usize,
 ) -> HashMap<Participant, KeygenOutput> {
@@ -47,7 +47,7 @@ fn test_ckd() -> Result<(), Box<dyn Error>> {
         Participant::from(2u32),
     ];
 
-    let result = make_keygen(&participants, threshold);
+    let result = run_keygen(&participants, threshold);
 
     assert!(result.len() == participants.len());
 
