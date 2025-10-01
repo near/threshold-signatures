@@ -294,6 +294,8 @@ mod tests {
     use elliptic_curve::hash2curve::FromOkm;
     use elliptic_curve::Field;
     use elliptic_curve::Group;
+    use rand::Rng;
+    use rand::RngCore;
     use rand_core::OsRng;
 
     use crate::confidential_key_derivation::ciphersuite::verify_signature;
@@ -347,5 +349,32 @@ mod tests {
         let sigma = hm * x;
 
         assert!(verify_signature(&VerifyingKey::new(g2x), b"hello world", &sigma).is_ok());
+    }
+
+    #[test]
+    // This test only makes sense if `overflow-checks` are enabled
+    // This is guaranteed by the `test_verify_overflow_failure` below
+    fn test_stress_test_scalarwrapper_from_le_bytes_mod_order() {
+        // empty case
+        ScalarWrapper::from_le_bytes_mod_order(&[]);
+        let mut rng = rand::rngs::OsRng;
+        for _ in 0..1000 {
+            let len = rng.gen_range(1..10000);
+            let mut bytes = vec![0; len];
+            rng.fill_bytes(&mut bytes);
+            ScalarWrapper::from_le_bytes_mod_order(&bytes);
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    // This test guarantees that `overflow-checks` are enabled
+    fn test_verify_overflow_failure() {
+        let mut a = u64::MAX - 123;
+        let mut rng = rand::rngs::OsRng;
+        // Required to avoid clippy detecting the overflow
+        let b = rng.gen_range(124..10000);
+        a += b;
+        assert!(a > 0);
     }
 }
