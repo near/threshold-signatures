@@ -20,7 +20,6 @@ use frost_core::{
     Challenge, Element, Error, Field, Group, Scalar, Signature, SigningKey, VerifyingKey,
 };
 use rand_core::CryptoRngCore;
-use std::ops::Index;
 
 /// This function prevents calling keyshare function with inproper inputs
 fn assert_keyshare_inputs<C: Ciphersuite>(
@@ -217,7 +216,7 @@ fn verify_commitment_hash<C: Ciphersuite>(
     commitment: &VerifiableSecretSharingCommitment<C>,
     all_hash_commitments: &ParticipantMap<'_, HashOutput>,
 ) -> Result<(), ProtocolError> {
-    let actual_commitment_hash = all_hash_commitments.index(participant);
+    let actual_commitment_hash = all_hash_commitments.index(participant)?;
     let commitment_hash =
         domain_separate_hash(domain_separator, &(&participant, &commitment, &session_id))?;
     if *actual_commitment_hash != commitment_hash {
@@ -415,7 +414,7 @@ async fn do_keyshare<C: Ciphersuite>(
     // Start Round 3
     let wait_round_3 = chan.next_waitpoint();
     for p in participants.others(me) {
-        let (commitment_i, proof_i) = commitments_and_proofs_map.index(p);
+        let (commitment_i, proof_i) = commitments_and_proofs_map.index(p)?;
 
         // verify the proof of knowledge
         // if proof is none then make sure the participant is new
@@ -488,7 +487,7 @@ async fn do_keyshare<C: Ciphersuite>(
         // Verify the share
         // this deviates from the original FROST DKG paper
         // however it matches the FROST implementation of ZCash
-        let full_commitment_from = all_full_commitments.index(from);
+        let full_commitment_from = all_full_commitments.index(from)?;
         validate_received_share::<C>(me, from, &signing_share_from, full_commitment_from)?;
 
         // Compute the sum of all the owned secret shares
@@ -652,7 +651,7 @@ pub mod test {
     use crate::protocol::Participant;
     use crate::test::generate_participants;
     use crate::test::{assert_public_key_invariant, run_keygen, run_refresh, run_reshare};
-    use frost_core::{Group, Field};
+    use frost_core::{Field, Group};
 
     #[test]
     fn test_domain_separate_hash() {
@@ -667,8 +666,9 @@ pub mod test {
     }
 
     pub fn test_keygen<C: Ciphersuite>(participants: &[Participant], threshold: usize)
-    where <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
-    <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send
+    where
+        <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
+        <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send,
     {
         let result = run_keygen::<C>(participants, threshold).unwrap();
         assert!(result.len() == participants.len());
@@ -690,8 +690,9 @@ pub mod test {
     }
 
     pub fn test_refresh<C: Ciphersuite>(participants: &[Participant], threshold: usize)
-    where <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
-    <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send
+    where
+        <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
+        <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send,
     {
         let result0 = run_keygen::<C>(participants, threshold).unwrap();
         assert_public_key_invariant(&result0);
@@ -707,17 +708,21 @@ pub mod test {
             .map(|r| r.1.private_share.to_scalar())
             .collect::<Vec<_>>();
         let p_list = ParticipantList::new(&participants).unwrap();
-        
-        let mut x = <C::Group as  Group>::Field::zero();
+
+        let mut x = <C::Group as Group>::Field::zero();
         for i in 0..participants.len() {
             x = x + p_list.lagrange::<C>(participants[i]).unwrap() * shares[i];
         }
         assert_eq!(<C::Group as Group>::generator() * x, pub_key);
     }
 
-    pub fn test_reshare<C: Ciphersuite>(participants: &[Participant], threshold0: usize, threshold1: usize)
-    where <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
-    <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send
+    pub fn test_reshare<C: Ciphersuite>(
+        participants: &[Participant],
+        threshold0: usize,
+        threshold1: usize,
+    ) where
+        <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
+        <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send,
     {
         let result0 = run_keygen::<C>(participants, threshold0).unwrap();
         assert_public_key_invariant(&result0);
@@ -747,9 +752,6 @@ pub mod test {
         for i in 0..participants.len() {
             x = x + p_list.lagrange::<C>(participants[i]).unwrap() * shares[i];
         }
-        assert_eq!(
-            <C::Group as Group>::generator() * x,
-            pub_key.to_element()
-        );
+        assert_eq!(<C::Group as Group>::generator() * x, pub_key.to_element());
     }
 }
