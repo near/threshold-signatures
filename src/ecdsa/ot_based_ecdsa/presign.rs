@@ -111,8 +111,7 @@ async fn do_presign(
     // Spec 1.3
     let mut e = e_i;
 
-    for (_from, e_j) in
-        recv_from_others::<Scalar, _>(&mut chan, wait0, participants.others(me)).await?
+    for (_, e_j) in recv_from_others::<Scalar, _>(&mut chan, wait0, participants.others(me)).await?
     {
         if e_j.is_zero().into() {
             return Err(ProtocolError::AssertionFailed(
@@ -150,7 +149,7 @@ async fn do_presign(
     let mut alpha = alpha_i;
     let mut beta = beta_i;
 
-    for (_from, (alpha_j, beta_j)) in
+    for (_, (alpha_j, beta_j)) in
         recv_from_others::<(Scalar, Scalar), _>(&mut chan, wait1, participants.others(me)).await?
     {
         // Spec 2.4
