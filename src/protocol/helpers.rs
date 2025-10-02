@@ -21,7 +21,7 @@ where
 /// Gather exactly one message from each participant in a group before proceeding.
 ///
 /// Note: Result vector order depends on the order messages arrive.
-/// @dev If you ever need deterministic ordering (matching participant list), consider BTreeMap.
+/// @dev If you ever need deterministic ordering (matching participant list), consider `BTreeMap`.
 pub async fn recv_from_others<T, P>(
     chan: &mut SharedChannel,
     wait: u64,
