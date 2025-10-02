@@ -172,5 +172,5 @@ contract.
   $`\texttt{sig} \gets C + (- a) \cdot  Y`$ and checks its correctness with
   respect to the MPC network public key $`\texttt{pk}`$. If correct, the app can
   use the computed $`\texttt{sig} = \texttt{msk} \cdot H(\texttt{app\_id})`$ to
-  compute the key $`s = \texttt{HKDF}(\texttt{sig})`$, using a suitable
+  compute the key $`s = \texttt{HKDF}(\texttt{sig})`$, using a
   [HKDF](https://en.wikipedia.org/wiki/HKDF) function.
