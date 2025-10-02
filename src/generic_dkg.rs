@@ -8,7 +8,7 @@ use crate::participants::{ParticipantList, ParticipantMap};
 use crate::protocol::{
     echo_broadcast::do_broadcast,
     errors::{InitializationError, ProtocolError},
-    helpers::recv_from_many,
+    helpers::recv_from_others,
     internal::SharedChannel,
     Participant,
 };
@@ -399,13 +399,8 @@ async fn do_keyshare<C: Ciphersuite>(
     let mut all_hash_commitments = ParticipantMap::new(&participants);
     all_hash_commitments.put(me, commitment_hash);
 
-    for (from, their_commitment_hash) in recv_from_many(
-        &mut chan,
-        wait_round_1,
-        participants.participants(),
-        Some(&[me]),
-    )
-    .await?
+    for (from, their_commitment_hash) in
+        recv_from_others(&mut chan, wait_round_1, participants.participants(), &me).await?
     {
         all_hash_commitments.put(from, their_commitment_hash);
     }
@@ -488,13 +483,8 @@ async fn do_keyshare<C: Ciphersuite>(
     // should not panic as secret_coefficients are created internally
     let mut my_signing_share = secret_coefficients.eval_at_participant(me)?.0;
     // receive evaluations from all participants
-    for (from, signing_share_from) in recv_from_many(
-        &mut chan,
-        wait_round_3,
-        participants.participants(),
-        Some(&[me]),
-    )
-    .await?
+    for (from, signing_share_from) in
+        recv_from_others(&mut chan, wait_round_3, participants.participants(), &me).await?
     {
         // Verify the share
         // this deviates from the original FROST DKG paper

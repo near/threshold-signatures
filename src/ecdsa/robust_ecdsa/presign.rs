@@ -12,7 +12,7 @@ use crate::{
     participants::{ParticipantList, ParticipantMap},
     protocol::{
         errors::{InitializationError, ProtocolError},
-        helpers::recv_from_many,
+        helpers::recv_from_others,
         internal::{make_protocol, Comms, SharedChannel},
         Participant, Protocol,
     },
@@ -121,13 +121,9 @@ async fn do_presign(
 
     // Round 1
     // Receive evaluations from all participants
-    for (_, package) in recv_from_many::<Shares>(
-        &mut chan,
-        wait_round_0,
-        participants.participants(),
-        Some(&[me]),
-    )
-    .await?
+    for (_, package) in
+        recv_from_others::<Shares>(&mut chan, wait_round_0, participants.participants(), &me)
+            .await?
     {
         // calculate the respective sum of the different shares received from each participant
         shares.add_shares(&package);

@@ -2,7 +2,7 @@ use super::{PresignArguments, PresignOutput};
 use crate::ecdsa::{ProjectivePoint, Scalar, Secp256K1Sha256};
 use crate::participants::ParticipantList;
 use crate::protocol::errors::{InitializationError, ProtocolError};
-use crate::protocol::helpers::recv_from_many;
+use crate::protocol::helpers::recv_from_others;
 use crate::protocol::{
     internal::{make_protocol, Comms, SharedChannel},
     Participant, Protocol,
@@ -112,7 +112,7 @@ async fn do_presign(
     let mut e = e_i;
 
     for (_from, e_j) in
-        recv_from_many::<Scalar>(&mut chan, wait0, participants.participants(), Some(&[me])).await?
+        recv_from_others::<Scalar>(&mut chan, wait0, participants.participants(), &me).await?
     {
         if e_j.is_zero().into() {
             return Err(ProtocolError::AssertionFailed(
@@ -150,13 +150,9 @@ async fn do_presign(
     let mut alpha = alpha_i;
     let mut beta = beta_i;
 
-    for (_from, (alpha_j, beta_j)) in recv_from_many::<(Scalar, Scalar)>(
-        &mut chan,
-        wait1,
-        participants.participants(),
-        Some(&[me]),
-    )
-    .await?
+    for (_from, (alpha_j, beta_j)) in
+        recv_from_others::<(Scalar, Scalar)>(&mut chan, wait1, participants.participants(), &me)
+            .await?
     {
         // Spec 2.4
         alpha += alpha_j;

@@ -3,7 +3,7 @@ use crate::confidential_key_derivation::{
     AppId, CKDOutput, CKDOutputOption, ElementG1, PublicKey, Scalar, SigningShare,
 };
 use crate::participants::ParticipantList;
-use crate::protocol::helpers::recv_from_many;
+use crate::protocol::helpers::recv_from_others;
 use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
 use crate::protocol::{errors::InitializationError, errors::ProtocolError, Participant, Protocol};
 
@@ -69,11 +69,11 @@ async fn do_ckd_coordinator(
     // Receive everyone's inputs and add them together
     let waitpoint = chan.next_waitpoint();
 
-    for (_, (big_y, big_c)) in recv_from_many::<(ElementG1, ElementG1)>(
+    for (_, (big_y, big_c)) in recv_from_others::<(ElementG1, ElementG1)>(
         &mut chan,
         waitpoint,
         participants.participants(),
-        Some(&[me]),
+        &me,
     )
     .await?
     {

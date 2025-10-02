@@ -3,7 +3,7 @@
 use super::{KeygenOutput, SignatureOption};
 use crate::participants::ParticipantList;
 use crate::protocol::errors::{InitializationError, ProtocolError};
-use crate::protocol::helpers::recv_from_many;
+use crate::protocol::helpers::recv_from_others;
 use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
 use crate::protocol::{Participant, Protocol};
 
@@ -65,11 +65,11 @@ async fn do_sign_coordinator(
 
     let commit_waitpoint = chan.next_waitpoint();
 
-    for (from, commitment) in recv_from_many(
+    for (from, commitment) in recv_from_others(
         &mut chan,
         commit_waitpoint,
         participants.participants(),
-        Some(&[me]),
+        &me,
     )
     .await?
     {
@@ -96,13 +96,8 @@ async fn do_sign_coordinator(
         .map_err(|e| ProtocolError::AssertionFailed(e.to_string()))?;
     signature_shares.insert(me.to_identifier(), signature_share);
 
-    for (from, signature_share) in recv_from_many(
-        &mut chan,
-        r2_wait_point,
-        participants.participants(),
-        Some(&[me]),
-    )
-    .await?
+    for (from, signature_share) in
+        recv_from_others(&mut chan, r2_wait_point, participants.participants(), &me).await?
     {
         signature_shares.insert(from.to_identifier(), signature_share);
     }

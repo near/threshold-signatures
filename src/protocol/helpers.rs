@@ -18,8 +18,33 @@ where
     }
 }
 
+/// Gather exactly one message from each participant in a group, except yourself, before proceeding.                                                    │
+pub async fn recv_from_others<T>(
+    chan: &mut SharedChannel,
+    wait: u64,
+    participants: &[Participant],
+    me: &Participant,
+) -> Result<Vec<(Participant, T)>, ProtocolError>
+where
+    T: serde::de::DeserializeOwned,
+{
+    recv_from_many_internal(chan, wait, participants, Some(&[*me])).await
+}
+
 /// Gather exactly one message from each participant in a group before proceeding.
 pub async fn recv_from_many<T>(
+    chan: &mut SharedChannel,
+    wait: u64,
+    participants: &[Participant],
+) -> Result<Vec<(Participant, T)>, ProtocolError>
+where
+    T: serde::de::DeserializeOwned,
+{
+    recv_from_many_internal(chan, wait, participants, None).await
+}
+
+/// Gather exactly one message from each participant in a group before proceeding.
+pub async fn recv_from_many_internal<T>(
     chan: &mut SharedChannel,
     wait: u64,
     participants: &[Participant],

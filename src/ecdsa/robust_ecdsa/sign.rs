@@ -11,7 +11,7 @@ use crate::{
     participants::ParticipantList,
     protocol::{
         errors::{InitializationError, ProtocolError},
-        helpers::recv_from_many,
+        helpers::recv_from_others,
         internal::{make_protocol, Comms, SharedChannel},
         Participant, Protocol,
     },
@@ -94,11 +94,11 @@ async fn do_sign_coordinator(
     let mut s = compute_signature_share(&presignature, msg_hash, &participants, me)?.0;
     let wait_round = chan.next_waitpoint();
 
-    for (_, s_i) in recv_from_many::<SerializableScalar<C>>(
+    for (_, s_i) in recv_from_others::<SerializableScalar<C>>(
         &mut chan,
         wait_round,
         participants.participants(),
-        Some(&[me]),
+        &me,
     )
     .await?
     {
