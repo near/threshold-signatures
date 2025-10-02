@@ -118,12 +118,13 @@ impl ParticipantList {
     }
 
     #[cfg(test)]
+    #[allow(clippy::missing_panics_doc)]
     pub fn shuffle(&self, mut rng: impl rand_core::CryptoRngCore) -> Option<Self> {
         let mut participants = self.participants().to_vec();
         let len = self.participants.len();
         for i in (1..len).rev() {
-            let j = rng.next_u64() % ((i + 1) as u64);
-            participants.swap(i, usize::try_from(j).unwrap());
+            let j = usize::try_from(rng.next_u32()).unwrap() % (i + 1);
+            participants.swap(i, j);
         }
         Self::new(&participants)
     }
