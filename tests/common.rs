@@ -23,12 +23,14 @@ where
     Element<C>: std::marker::Send,
     Scalar<C>: std::marker::Send,
 {
-    let mut protocols: GenProtocol<C> = Vec::with_capacity(participants.len());
-
-    for p in participants {
-        let protocol = keygen::<C>(participants, *p, threshold, OsRng).unwrap();
-        protocols.push((*p, Box::new(protocol)));
-    }
+    let protocols: GenProtocol<C> = participants
+        .iter()
+        .map(|p| {
+            let protocol: Box<dyn Protocol<Output = KeygenOutput<C>>> =
+                Box::new(keygen::<C>(participants, *p, threshold, OsRng).unwrap());
+            (*p, protocol)
+        })
+        .collect();
 
     run_protocol(protocols).unwrap().into_iter().collect()
 }
