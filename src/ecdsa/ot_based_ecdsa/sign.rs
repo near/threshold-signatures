@@ -7,7 +7,7 @@ use crate::{
     participants::ParticipantList,
     protocol::{
         errors::{InitializationError, ProtocolError},
-        helpers::recv_from_many,
+        helpers::recv_from_others,
         internal::{make_protocol, Comms, SharedChannel},
         Participant, Protocol,
     },
@@ -100,8 +100,8 @@ async fn do_sign_coordinator(
     // Receive sj
     // Spec 1.5
     let mut s = s_i;
-    let other_participants = participants.others(me).collect::<Vec<Participant>>();
-    for (_, s_j) in recv_from_many::<Scalar>(&mut chan, wait0, &other_participants).await? {
+    for (_, s_j) in recv_from_others::<Scalar, _>(&mut chan, wait0, participants.others(me)).await?
+    {
         // Spec 1.6
         s += s_j;
     }

@@ -121,10 +121,7 @@ async fn do_presign(
 
     // Round 1
     // Receive evaluations from all participants
-    for (_, package) in
-        recv_from_others::<Shares>(&mut chan, wait_round_0, participants.participants(), &me)
-            .await?
-    {
+    for (_, package) in recv_from_others(&mut chan, wait_round_0, participants.others(me)).await? {
         // calculate the respective sum of the different shares received from each participant
         shares.add_shares(&package);
     }

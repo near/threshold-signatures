@@ -18,52 +18,25 @@ where
     }
 }
 
-/// Gather exactly one message from each participant in a group, except yourself, before proceeding.                                                    │
-pub async fn recv_from_others<T>(
-    chan: &mut SharedChannel,
-    wait: u64,
-    participants: &[Participant],
-    me: &Participant,
-) -> Result<Vec<(Participant, T)>, ProtocolError>
-where
-    T: serde::de::DeserializeOwned,
-{
-    recv_from_many_internal(chan, wait, participants, Some(&[*me])).await
-}
-
 /// Gather exactly one message from each participant in a group before proceeding.
-pub async fn recv_from_many<T>(
+///
+/// Note: Result vector order depends on the order messages arrive.
+/// @dev If you ever need deterministic ordering (matching participant list), consider BTreeMap.
+pub async fn recv_from_others<T, P>(
     chan: &mut SharedChannel,
     wait: u64,
-    participants: &[Participant],
+    participants: P,
 ) -> Result<Vec<(Participant, T)>, ProtocolError>
 where
     T: serde::de::DeserializeOwned,
+    P: IntoIterator<Item = Participant>,
 {
-    recv_from_many_internal(chan, wait, participants, None).await
-}
+    let mut pending: std::collections::HashSet<Participant> = participants.into_iter().collect();
+    let mut messages = Vec::with_capacity(pending.len());
 
-/// Gather exactly one message from each participant in a group before proceeding.
-pub async fn recv_from_many_internal<T>(
-    chan: &mut SharedChannel,
-    wait: u64,
-    participants: &[Participant],
-    already_received: Option<&[Participant]>,
-) -> Result<Vec<(Participant, T)>, ProtocolError>
-where
-    T: serde::de::DeserializeOwned,
-{
-    let mut messages = Vec::with_capacity(participants.len());
-    let mut pending: std::collections::HashSet<_> = participants.iter().copied().collect();
-
-    // remove already-received participants if provided
-    if let Some(already) = already_received {
-        for p in already {
-            pending.remove(p);
-        }
-    }
     while !pending.is_empty() {
         let (from, msg) = chan.recv(wait).await?;
+        // extra messages are silently ignored
         if pending.remove(&from) {
             messages.push((from, msg));
         }
