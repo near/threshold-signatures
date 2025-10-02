@@ -69,9 +69,9 @@ impl ParticipantList {
     /// Return the index of a given participant.
     ///
     /// Basically, the order they appear in a sorted list
-    pub fn index(&self, participant: &Participant) -> Result<usize, ProtocolError> {
+    pub fn index(&self, participant: Participant) -> Result<usize, ProtocolError> {
         self.indices
-            .get(participant)
+            .get(&participant)
             .copied()
             .ok_or(ProtocolError::InvalidIndex)
     }
@@ -208,12 +208,12 @@ impl<'a, T> ParticipantMap<'a, T> {
     }
 
     pub fn index(&self, index: Participant) -> Result<&T, ProtocolError> {
-        let index = self.participants.index(&index)?;
+        let index = self.participants.index(index)?;
         self.data
             .get(index)
             .ok_or(ProtocolError::InvalidIndex)?
             .as_ref()
-            .ok_or(ProtocolError::Other("No data found".to_string()))
+            .ok_or_else(|| ProtocolError::Other("No data found".to_string()))
     }
 }
 
@@ -286,7 +286,7 @@ mod test {
     fn test_get_index_participant_error() {
         let participants = generate_participants(5);
         let participants = ParticipantList::new(&participants).unwrap();
-        assert!(participants.index(&Participant::from(1234_u32)).is_err())
+        assert!(participants.index(Participant::from(1234_u32)).is_err());
     }
 
     #[test]
@@ -297,6 +297,6 @@ mod test {
         // no participant test
         assert!(map.index(Participant::from(1233_u32)).is_err());
         // no data test
-        assert!(map.index(Participant::from(1_u32)).is_err())
+        assert!(map.index(Participant::from(1_u32)).is_err());
     }
 }
