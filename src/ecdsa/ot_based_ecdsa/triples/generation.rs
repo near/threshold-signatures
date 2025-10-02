@@ -726,8 +726,6 @@ async fn do_generation_many<const N: usize>(
         >(&mut chan, wait2, participants.others(me))
         .await?
         {
-            //#[allow(clippy::type_complexity)]
-
             for i in 0..N {
                 let all_commitments = &all_commitments_vec[i];
                 let their_big_e = &their_big_e_v[i];
@@ -798,7 +796,6 @@ async fn do_generation_many<const N: usize>(
         >(&mut chan, wait3, participants.others(me))
         .await?
         {
-            //#[allow(clippy::type_complexity)]
             for i in 0..N {
                 let a_j_i = &a_j_i_v[i];
                 let b_j_i = &b_j_i_v[i];
@@ -985,7 +982,6 @@ async fn do_generation_many<const N: usize>(
         )
         .await?
     {
-        //#[allow(clippy::type_complexity)]
         for i in 0..N {
             let their_hat_big_c = their_hat_big_c_i_points[i].value();
             let their_phi_proof = &their_phi_proofs[i];
