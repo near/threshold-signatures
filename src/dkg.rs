@@ -652,6 +652,7 @@ pub mod test {
     use crate::protocol::Participant;
     use crate::test::generate_participants;
     use crate::test::{assert_public_key_invariant, run_keygen, run_refresh, run_reshare};
+    use frost_core::{Group, Field};
 
     #[test]
     fn test_domain_separate_hash() {
@@ -666,8 +667,8 @@ pub mod test {
     }
 
     pub fn test_keygen<C: Ciphersuite>(participants: &[Participant], threshold: usize)
-    where <C::Group as frost_core::Group>::Element: std::fmt::Debug + std::marker::Send,
-    <<<C as frost_core::Ciphersuite>::Group as frost_core::Group>::Field as frost_core::Field>::Scalar: std::marker::Send
+    where <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
+    <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send
     {
         let result = run_keygen::<C>(participants, threshold).unwrap();
         assert!(result.len() == participants.len());
@@ -681,16 +682,16 @@ pub mod test {
             .collect::<Vec<_>>();
 
         let p_list = ParticipantList::new(&participants).unwrap();
-        let mut x = <<<C as frost_core::Ciphersuite>::Group as frost_core::Group>::Field as frost_core::Field>::zero();
+        let mut x = <<C::Group as Group>::Field>::zero();
         for i in 0..participants.len() {
             x = x + p_list.lagrange::<C>(participants[i]).unwrap() * shares[i];
         }
-        assert_eq!(<C::Group as frost_core::Group>::generator() * x, pub_key);
+        assert_eq!(<C::Group as Group>::generator() * x, pub_key);
     }
 
     pub fn test_refresh<C: Ciphersuite>(participants: &[Participant], threshold: usize)
-    where <C::Group as frost_core::Group>::Element: std::fmt::Debug + std::marker::Send,
-    <<<C as frost_core::Ciphersuite>::Group as frost_core::Group>::Field as frost_core::Field>::Scalar: std::marker::Send
+    where <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
+    <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send
     {
         let result0 = run_keygen::<C>(participants, threshold).unwrap();
         assert_public_key_invariant(&result0);
@@ -706,16 +707,17 @@ pub mod test {
             .map(|r| r.1.private_share.to_scalar())
             .collect::<Vec<_>>();
         let p_list = ParticipantList::new(&participants).unwrap();
-        let mut x = <<<C as frost_core::Ciphersuite>::Group as frost_core::Group>::Field as frost_core::Field>::zero();
+        
+        let mut x = <C::Group as  Group>::Field::zero();
         for i in 0..participants.len() {
             x = x + p_list.lagrange::<C>(participants[i]).unwrap() * shares[i];
         }
-        assert_eq!(<C::Group as frost_core::Group>::generator() * x, pub_key);
+        assert_eq!(<C::Group as Group>::generator() * x, pub_key);
     }
 
     pub fn test_reshare<C: Ciphersuite>(participants: &[Participant], threshold0: usize, threshold1: usize)
-    where <C::Group as frost_core::Group>::Element: std::fmt::Debug + std::marker::Send,
-    <<<C as frost_core::Ciphersuite>::Group as frost_core::Group>::Field as frost_core::Field>::Scalar: std::marker::Send
+    where <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
+    <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send
     {
         let result0 = run_keygen::<C>(participants, threshold0).unwrap();
         assert_public_key_invariant(&result0);
@@ -741,12 +743,12 @@ pub mod test {
             .map(|r| r.1.private_share.to_scalar())
             .collect::<Vec<_>>();
         let p_list = ParticipantList::new(&participants).unwrap();
-        let mut x = <<<C as frost_core::Ciphersuite>::Group as frost_core::Group>::Field as frost_core::Field>::zero();
+        let mut x = <<C::Group as Group>::Field>::zero();
         for i in 0..participants.len() {
             x = x + p_list.lagrange::<C>(participants[i]).unwrap() * shares[i];
         }
         assert_eq!(
-            <C::Group as frost_core::Group>::generator() * x,
+            <C::Group as Group>::generator() * x,
             pub_key.to_element()
         );
     }
