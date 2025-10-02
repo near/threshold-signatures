@@ -2,7 +2,9 @@ mod common;
 
 use common::{generate_participants, run_keygen};
 
+use rand::Rng;
 use rand_core::{OsRng, RngCore};
+
 use threshold_signatures::{
     self,
     eddsa::{sign::sign, Ed25519Sha512, SignatureOption},
@@ -72,8 +74,8 @@ fn test_sign() {
 
     let msg_hash = *b"hello worldhello worldhello worl";
     // choose a coordinator at random
-    let index = OsRng.next_u32() % participants.len() as u32;
-    let coordinator = participants[index as usize];
+    let index = rand::rngs::OsRng.gen_range(0..participants.len());
+    let coordinator = participants[index];
     let participants = keys.into_iter().collect::<Vec<_>>();
     let all_sigs = run_sign(participants.as_slice(), &[coordinator], threshold, msg_hash);
 

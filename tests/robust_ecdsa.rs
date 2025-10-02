@@ -3,7 +3,9 @@ mod common;
 use common::{generate_participants, run_keygen};
 use std::collections::HashMap;
 
+use rand::Rng;
 use rand_core::{OsRng, RngCore};
+
 use threshold_signatures::{
     self,
     ecdsa::{
@@ -118,8 +120,8 @@ fn run_sign_with_rerandomization(
         .unwrap();
 
     // choose a coordinator at random
-    let index = OsRng.next_u32() % participants_presign.len() as u32;
-    let coordinator = participants_presign[index as usize].0;
+    let index = rand::rngs::OsRng.gen_range(0..participants_presign.len());
+    let coordinator = participants_presign[index].0;
 
     // run sign instantiation with the necessary arguments
     let all_sigs = run_sign(

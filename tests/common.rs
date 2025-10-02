@@ -10,10 +10,8 @@ use threshold_signatures::{
 
 type GenProtocol<C> = Vec<(Participant, Box<dyn Protocol<Output = KeygenOutput<C>>>)>;
 
-pub fn generate_participants(number: usize) -> Vec<Participant> {
-    (0..number)
-        .map(|i| Participant::from(i as u32))
-        .collect::<Vec<_>>()
+pub fn generate_participants(number: u32) -> Vec<Participant> {
+    (0..number).map(Participant::from).collect::<Vec<_>>()
 }
 
 #[allow(clippy::missing_panics_doc)]
