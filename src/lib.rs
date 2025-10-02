@@ -17,6 +17,7 @@ pub use frost_secp256k1;
 pub use crypto::polynomials::{
     batch_compute_lagrange_coefficients, batch_invert, compute_lagrange_coefficient,
 };
+pub use participants::ParticipantList;
 
 use crypto::ciphersuite::Ciphersuite;
 use frost_core::{keys::SigningShare, Group, VerifyingKey};

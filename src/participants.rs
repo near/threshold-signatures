@@ -56,6 +56,10 @@ impl ParticipantList {
         self.participants.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.participants.is_empty()
+    }
+
     /// Check if this list has a given participant.
     pub fn contains(&self, participant: Participant) -> bool {
         self.indices.contains_key(&participant)
