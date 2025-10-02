@@ -73,9 +73,7 @@ impl ParticipantList {
         self.indices
             .get(participant)
             .copied()
-            .ok_or(ProtocolError::Other(
-                "Could not find the searched participant".to_string(),
-            ))
+            .ok_or(ProtocolError::InvalidIndex)
     }
 
     // Return a participant of a given index from the order they
@@ -213,9 +211,7 @@ impl<'a, T> ParticipantMap<'a, T> {
         let index = self.participants.index(&index)?;
         self.data
             .get(index)
-            .ok_or(ProtocolError::Other(
-                "Data index not found in map".to_string(),
-            ))?
+            .ok_or(ProtocolError::InvalidIndex)?
             .as_ref()
             .ok_or(ProtocolError::Other("No data found".to_string()))
     }
