@@ -5,7 +5,7 @@ use rand_core::OsRng;
 use threshold_signatures::{
     self, keygen,
     protocol::{run_protocol, Participant, Protocol},
-    Ciphersuite, KeygenOutput,
+    Ciphersuite, Element, KeygenOutput, Scalar,
 };
 
 type GenProtocol<C> = Vec<(Participant, Box<dyn Protocol<Output = KeygenOutput<C>>>)>;
@@ -21,8 +21,9 @@ pub fn run_keygen<C: Ciphersuite>(
     participants: &[Participant],
     threshold: usize,
 ) -> HashMap<Participant, KeygenOutput<C>>
-where <<C as threshold_signatures::frost_core::Ciphersuite>::Group as threshold_signatures::frost_core::Group>::Element: std::marker::Send
-, <<<C as threshold_signatures::frost_core::Ciphersuite>::Group as threshold_signatures::frost_core::Group>::Field as threshold_signatures::frost_core::Field>::Scalar: std::marker::Send
+where
+    Element<C>: std::marker::Send,
+    Scalar<C>: std::marker::Send,
 {
     let mut protocols: GenProtocol<C> = Vec::with_capacity(participants.len());
 

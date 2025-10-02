@@ -6,11 +6,11 @@
 
 use std::{collections::HashMap, mem, ops::Index};
 
-use frost_core::Scalar;
 use serde::Serialize;
 
 use crate::crypto::{ciphersuite::Ciphersuite, polynomials::compute_lagrange_coefficient};
 use crate::protocol::{errors::ProtocolError, Participant};
+use crate::Scalar;
 
 /// Represents a sorted list of participants.
 ///

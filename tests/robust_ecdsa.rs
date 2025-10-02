@@ -15,7 +15,7 @@ use threshold_signatures::{
     },
     frost_secp256k1::VerifyingKey,
     protocol::{run_protocol, Participant, Protocol},
-    ParticipantList,
+    Element, ParticipantList,
 };
 
 // TODO: This is required to use Scalar::from_repr
@@ -23,7 +23,7 @@ use elliptic_curve::ff::PrimeField;
 
 type C = Secp256K1Sha256;
 type KeygenOutput = threshold_signatures::KeygenOutput<C>;
-type Scalar = threshold_signatures::frost_core::Scalar<C>;
+type Scalar = threshold_signatures::Scalar<C>;
 type Tweak = threshold_signatures::Tweak<C>;
 
 fn run_presign(
@@ -55,7 +55,7 @@ fn run_presign(
 fn run_sign(
     participants_presign: Vec<(Participant, RerandomizedPresignOutput)>,
     coordinator: Participant,
-    public_key: frost_core::Element<C>,
+    public_key: Element<C>,
     msg_hash: [u8; 32],
 ) -> Vec<(Participant, SignatureOption)> {
     let msg_hash = Scalar::from_repr(msg_hash.into())
