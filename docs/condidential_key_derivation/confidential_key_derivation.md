@@ -92,7 +92,7 @@ required.
   of the
   [Lagrange polynomial](https://en.wikipedia.org/wiki/Lagrange_polynomial). Let
   $`\texttt{pk} \in \mathbb{G_2}`$ the corresponding public key.
-- $`s`$: the key obtained by *app* as a result of the CKD, which will depend
+- $`s`$: the key obtained by *app* as a result of the CKD, will depend
   on the [BLS signature](https://en.wikipedia.org/wiki/BLS_digital_signature) over
   the hash of $`\texttt{app\_id}`$
 
