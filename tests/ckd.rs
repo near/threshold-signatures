@@ -1,9 +1,8 @@
 mod common;
 
-use rand::Rng;
 use rand_core::OsRng;
 
-use common::{generate_participants, run_keygen};
+use common::{choose_coordinator_at_random, generate_participants, run_keygen};
 use threshold_signatures::{
     confidential_key_derivation::{
         ciphersuite::{verify_signature, Field, G1Projective, Group},
@@ -34,9 +33,7 @@ fn test_ckd() {
 
     let public_key = result.get(&participants[0]).unwrap().public_key;
 
-    // choose a coordinator at random
-    let index = OsRng.gen_range(0..participants.len());
-    let coordinator = participants[index as usize];
+    let coordinator = choose_coordinator_at_random(&participants);
 
     let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = CKDOutputOption>>)> =
         Vec::with_capacity(participants.len());

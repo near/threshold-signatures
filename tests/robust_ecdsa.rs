@@ -1,9 +1,8 @@
 mod common;
 
-use common::{generate_participants, run_keygen};
+use common::{choose_coordinator_at_random, generate_participants, run_keygen};
 use std::collections::HashMap;
 
-use rand::Rng;
 use rand_core::{OsRng, RngCore};
 
 use threshold_signatures::{
@@ -100,14 +99,17 @@ fn run_sign_with_rerandomization(
 
     let pk = public_key.to_element().to_affine();
     let big_r = participants_presign[0].1.big_r;
-    let participants = ParticipantList::new(
-        &participants_presign
-            .iter()
-            .map(|(p, _)| *p)
-            .collect::<Vec<Participant>>(),
-    )
-    .unwrap();
-    let rerand_args = RerandomizationArguments::new(pk, msg_hash, big_r, participants, entropy);
+    let participants = participants_presign
+        .iter()
+        .map(|(p, _)| *p)
+        .collect::<Vec<Participant>>();
+    let rerand_args = RerandomizationArguments::new(
+        pk,
+        msg_hash,
+        big_r,
+        ParticipantList::new(&participants).unwrap(),
+        entropy,
+    );
     let derived_pk = tweak.derive_verifying_key(&public_key).to_element();
 
     let rerand_participants_presign = participants_presign
@@ -119,9 +121,7 @@ fn run_sign_with_rerandomization(
         .collect::<Result<_, _>>()
         .unwrap();
 
-    // choose a coordinator at random
-    let index = rand::rngs::OsRng.gen_range(0..participants_presign.len());
-    let coordinator = participants_presign[index].0;
+    let coordinator = choose_coordinator_at_random(&participants);
 
     // run sign instantiation with the necessary arguments
     let all_sigs = run_sign(

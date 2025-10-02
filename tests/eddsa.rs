@@ -1,63 +1,41 @@
 mod common;
 
-use common::{generate_participants, run_keygen};
+use common::{choose_coordinator_at_random, generate_participants, run_keygen};
 
-use rand::Rng;
-use rand_core::{OsRng, RngCore};
+use rand_core::OsRng;
 
 use threshold_signatures::{
     self,
     eddsa::{sign::sign, Ed25519Sha512, SignatureOption},
     protocol::{run_protocol, Participant, Protocol},
-    ParticipantList,
 };
 
 type C = Ed25519Sha512;
 type KeygenOutput = threshold_signatures::KeygenOutput<C>;
 
 fn run_sign(
-    participants: &[(Participant, KeygenOutput)],
-    coordinators: &[Participant],
     threshold: usize,
-    msg_hash: [u8; 32],
+    participants: &[(Participant, KeygenOutput)],
+    coordinator: Participant,
+    msg_hash: &[u8],
 ) -> Vec<(Participant, SignatureOption)> {
     let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)> =
         Vec::with_capacity(participants.len());
 
-    let participants_list = participants.iter().map(|(id, _)| *id).collect::<Vec<_>>();
-    let coordinators = ParticipantList::new(coordinators).unwrap();
-    for (participant, key_pair) in participants {
-        let protocol = if coordinators.contains(*participant) {
-            let protocol = sign(
-                &participants_list,
-                threshold,
-                *participant,
-                *participant,
-                key_pair.clone(),
-                msg_hash.as_ref().to_vec(),
-                OsRng,
-            )
-            .unwrap();
-            Box::new(protocol)
-        } else {
-            // pick any coordinator
-            let mut rng = OsRng;
-            let index = rng.next_u32() as usize % coordinators.len();
-            let coordinator = coordinators.get_participant(index).unwrap();
-            // run the signing scheme
-            let protocol = sign(
-                &participants_list,
-                threshold,
-                *participant,
-                coordinator,
-                key_pair.clone(),
-                msg_hash.as_ref().to_vec(),
-                OsRng,
-            )
-            .unwrap();
-            Box::new(protocol)
-        };
-        protocols.push((*participant, protocol));
+    let participants_list: Vec<Participant> = participants.iter().map(|(p, _)| *p).collect();
+    for (p, keygen_output) in participants {
+        let protocol = sign(
+            &participants_list,
+            threshold,
+            *p,
+            coordinator,
+            keygen_output.clone(),
+            msg_hash.to_vec(),
+            OsRng,
+        )
+        .unwrap();
+
+        protocols.push((*p, Box::new(protocol)));
     }
 
     run_protocol(protocols).unwrap()
@@ -72,12 +50,10 @@ fn test_sign() {
     assert_eq!(keys.len(), participants.len());
     let public_key = keys.get(&participants[0]).unwrap().public_key;
 
-    let msg_hash = *b"hello worldhello worldhello worl";
-    // choose a coordinator at random
-    let index = rand::rngs::OsRng.gen_range(0..participants.len());
-    let coordinator = participants[index];
+    let msg_hash = *b"hello worldhello worldhello worlregerghwhrth";
+    let coordinator = choose_coordinator_at_random(&participants);
     let participants = keys.into_iter().collect::<Vec<_>>();
-    let all_sigs = run_sign(participants.as_slice(), &[coordinator], threshold, msg_hash);
+    let all_sigs = run_sign(threshold, participants.as_slice(), coordinator, &msg_hash);
 
     let signature = all_sigs
         .into_iter()

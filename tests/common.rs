@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use rand::Rng;
 use rand_core::OsRng;
 
 use threshold_signatures::{
@@ -12,6 +13,11 @@ type GenProtocol<C> = Vec<(Participant, Box<dyn Protocol<Output = KeygenOutput<C
 
 pub fn generate_participants(number: u32) -> Vec<Participant> {
     (0..number).map(Participant::from).collect::<Vec<_>>()
+}
+
+pub fn choose_coordinator_at_random(participants: &[Participant]) -> Participant {
+    let index = rand::rngs::OsRng.gen_range(0..participants.len());
+    participants[index]
 }
 
 #[allow(clippy::missing_panics_doc)]
