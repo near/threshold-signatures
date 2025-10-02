@@ -2,6 +2,7 @@ use crate::crypto::hash::HashOutput;
 use crate::eddsa::{sign::sign, KeygenOutput, SignatureOption};
 use crate::participants::ParticipantList;
 use crate::protocol::{run_protocol, Participant, Protocol};
+use crate::test::generate_participants;
 use crate::test::MockCryptoRng;
 
 use frost_core::keys::SigningShare;
@@ -16,12 +17,12 @@ use std::error::Error;
 
 /// this is a centralized key generation
 pub fn build_key_packages_with_dealer(
-    max_signers: usize,
-    min_signers: usize,
+    max_signers: u16,
+    min_signers: u16,
 ) -> Vec<(Participant, KeygenOutput)> {
     use std::collections::BTreeMap;
 
-    let mut identifiers = Vec::with_capacity(max_signers);
+    let mut identifiers = Vec::with_capacity(max_signers.into());
     for _ in 0..max_signers {
         // from 1 to avoid assigning 0 to a ParticipantId
         identifiers.push(Participant::from(OsRng.next_u32()));
@@ -35,8 +36,8 @@ pub fn build_key_packages_with_dealer(
     let identifiers_list = from_frost_identifiers.keys().copied().collect::<Vec<_>>();
 
     let (shares, pubkey_package) = frost_ed25519::keys::generate_with_dealer(
-        max_signers as u16,
-        min_signers as u16,
+        max_signers,
+        min_signers,
         frost_ed25519::keys::IdentifierList::Custom(identifiers_list.as_slice()),
         OsRng,
     )
@@ -128,4 +129,26 @@ fn keygen_output__should_be_serializable() {
         serialized_keygen_output,
         "{\"private_share\":\"0700000000000000000000000000000000000000000000000000000000000000\",\"public_key\":\"c6473159e19ed185b373e935081774e0c133b9416abdff319667187a71dff53e\"}"
     );
+}
+
+#[test]
+fn test_keygen() {
+    let participants = generate_participants(3);
+    let threshold = 2;
+    crate::dkg::test::test_keygen::<C>(&participants, threshold);
+}
+
+#[test]
+fn test_refresh() {
+    let participants = generate_participants(3);
+    let threshold = 2;
+    crate::dkg::test::test_refresh::<C>(&participants, threshold);
+}
+
+#[test]
+fn test_reshare() {
+    let participants = generate_participants(3);
+    let threshold0 = 2;
+    let threshold1 = 3;
+    crate::dkg::test::test_reshare::<C>(&participants, threshold0, threshold1);
 }

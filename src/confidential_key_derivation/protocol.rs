@@ -1,4 +1,4 @@
-use crate::confidential_key_derivation::ciphersuite::{hash2curve, BLS12381SHA256};
+use crate::confidential_key_derivation::ciphersuite::{hash_to_curve, BLS12381SHA256};
 use crate::confidential_key_derivation::{
     AppId, CKDOutput, CKDOutputOption, ElementG1, PublicKey, Scalar, SigningShare,
 };
@@ -166,7 +166,7 @@ fn compute_signature_share(
     let y = Scalar::random(rng);
     let big_y = ElementG1::generator() * y;
     // H(app_id) when H is a random oracle
-    let hash_point = hash2curve(app_id);
+    let hash_point = hash_to_curve(app_id);
     // S <- x . H(app_id)
     let big_s = hash_point * private_share.to_scalar();
     // C <- S + y . A
@@ -183,26 +183,26 @@ fn compute_signature_share(
 mod test {
     use super::*;
     use crate::test::one_coordinator_output;
-    use crate::{confidential_key_derivation::ciphersuite::hash2curve, protocol::run_protocol};
-    use rand_core::{OsRng, RngCore};
+    use crate::{confidential_key_derivation::ciphersuite::hash_to_curve, protocol::run_protocol};
+    use rand::Rng;
     use std::error::Error;
 
     #[test]
     fn test_hash2curve() {
         let app_id = b"Hello Near";
         let app_id_same = b"Hello Near";
-        let pt1 = hash2curve(&AppId::from(app_id));
-        let pt2 = hash2curve(&AppId::from(app_id_same));
+        let pt1 = hash_to_curve(&AppId::from(app_id));
+        let pt2 = hash_to_curve(&AppId::from(app_id_same));
         assert_eq!(pt1, pt2);
 
         let app_id = b"Hello Near!";
-        let pt2 = hash2curve(&AppId::from(app_id));
+        let pt2 = hash_to_curve(&AppId::from(app_id));
         assert_ne!(pt1, pt2);
     }
 
     #[test]
     fn test_ckd() -> Result<(), Box<dyn Error>> {
-        let mut rng = OsRng;
+        let mut rng = rand::rngs::OsRng;
 
         // Create the app necessary items
         let app_id = AppId::from(b"Near App");
@@ -216,7 +216,7 @@ mod test {
         ];
 
         // choose a coordinator at random
-        let index = OsRng.next_u32() % participants.len() as u32;
+        let index = rng.gen_range(0..participants.len());
         let coordinator = participants[index as usize];
 
         let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = CKDOutputOption>>)> =
@@ -234,7 +234,7 @@ mod test {
                 private_share,
                 app_id.clone(),
                 app_pk,
-                OsRng,
+                rng,
             )?;
 
             protocols.push((*p, Box::new(protocol)));
@@ -256,7 +256,7 @@ mod test {
             msk += lambda_i * private_share.to_scalar();
         }
 
-        let expected_confidential_key = hash2curve(&app_id) * msk;
+        let expected_confidential_key = hash_to_curve(&app_id) * msk;
 
         assert_eq!(
             confidential_key, expected_confidential_key,
