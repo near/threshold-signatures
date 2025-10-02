@@ -16,7 +16,7 @@ pub mod protocol;
 pub use app_id::AppId;
 use serde::{Deserialize, Serialize};
 
-use crate::confidential_key_derivation::ciphersuite::BLS12381SHA256;
+pub use crate::confidential_key_derivation::ciphersuite::BLS12381SHA256;
 
 pub type ElementG1 = blstrs::G1Projective;
 pub type ElementG2 = blstrs::G2Projective;

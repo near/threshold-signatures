@@ -16,7 +16,6 @@ pub use frost_core;
 pub use frost_ed25519;
 pub use frost_secp256k1;
 
-
 pub use crypto::ciphersuite::Ciphersuite;
 pub use participants::ParticipantList;
 // For benchmark
