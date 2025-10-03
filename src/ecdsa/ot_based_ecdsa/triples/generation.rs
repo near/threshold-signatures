@@ -62,6 +62,15 @@ async fn do_generation(
     threshold: usize,
     mut rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<TripleGenerationOutput, ProtocolError> {
+    struct ParallelToMultiplicationTaskOutput {
+        big_e: PolynomialCommitment,
+        big_f: PolynomialCommitment,
+        big_l: PolynomialCommitment,
+        big_c: ProjectivePoint,
+        a_i: Scalar,
+        b_i: Scalar,
+    }
+
     let mut chan = comms.shared_channel();
     let mut transcript = create_transcript(&participants, threshold)?;
 
@@ -118,15 +127,6 @@ async fn do_generation(
             f0.0,
         )
     };
-
-    struct ParallelToMultiplicationTaskOutput {
-        big_e: PolynomialCommitment,
-        big_f: PolynomialCommitment,
-        big_l: PolynomialCommitment,
-        big_c: ProjectivePoint,
-        a_i: Scalar,
-        b_i: Scalar,
-    }
 
     let parallel_to_multiplication_task = async {
         // Spec 2.5
@@ -486,6 +486,16 @@ async fn do_generation_many<const N: usize>(
     threshold: usize,
     mut rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<TripleGenerationOutputMany, ProtocolError> {
+    #[allow(clippy::struct_field_names)]
+    struct ParallelToMultiplicationTaskOutput {
+        big_e_v: Vec<PolynomialCommitment>,
+        big_f_v: Vec<PolynomialCommitment>,
+        big_l_v: Vec<PolynomialCommitment>,
+        big_c_v: Vec<ProjectivePoint>,
+        a_i_v: Vec<Scalar>,
+        b_i_v: Vec<Scalar>,
+    }
+
     assert!(N > 0);
 
     let mut chan = comms.shared_channel();
@@ -587,14 +597,6 @@ async fn do_generation_many<const N: usize>(
         )
     };
 
-    struct ParallelToMultiplicationTaskOutput {
-        big_e_v: Vec<PolynomialCommitment>,
-        big_f_v: Vec<PolynomialCommitment>,
-        big_l_v: Vec<PolynomialCommitment>,
-        big_c_v: Vec<ProjectivePoint>,
-        a_i_v: Vec<Scalar>,
-        b_i_v: Vec<Scalar>,
-    }
     let parallel_to_multiplication_task = async {
         // Spec 2.5
         let wait1 = chan.next_waitpoint();
