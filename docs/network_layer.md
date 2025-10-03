@@ -40,3 +40,13 @@ These guarantees hold under standard _threshold assumptions_ (where `n` = _total
    - **OtBasedECDSA**: Threshold `t = f + 1`. No additional requirement. Example: with `n = 7`, `f = 2` -> `t = 3`.
    
    - **Robust ECDSA**: Threshold `t = f`. Requires `2f + 1 ≤ N`. Example: with `n = 7`, `f = 2` -> `t = 2`.
+
+## Documentation Notation
+In protocol specifications (particularly for ECDSA), we use the following symbols to describe actions:
+
+| Symbol | Meaning | Description |
+| :---: | :--- | :--- |
+| $\star$ | **Send** | A participant sends a message to one or more others. |
+| $\textcolor{red}{\star}$ | **Send Private** | A participant sends a private, encrypted message. |
+| $\bullet$ | **Receive** | A participant waits to receive a message. |
+| $\blacktriangle$ | **Assert** | A participant makes an assertion. The protocol aborts if it fails. |
