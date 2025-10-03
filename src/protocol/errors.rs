@@ -25,8 +25,14 @@ pub enum ProtocolError {
     #[error("encountered the identity element (identity point)")]
     IdentityElement,
 
+    #[error("cannot rerandomize presignature with incompatible inputs")]
+    IncompatibleRerandomizationInputs,
+
     #[error("the sent commitment_hash does not equal the hash of the commitment")]
     InvalidCommitmentHash,
+
+    #[error("The index you are looking for is invalid")]
+    InvalidIndex,
 
     #[error("invalid arguments for polynomial interpolation")]
     InvalidInterpolationArguments,
@@ -49,11 +55,21 @@ pub enum ProtocolError {
     #[error("the constructed signing key is null")]
     MalformedSigningKey,
 
+    #[cfg(test)]
+    #[error("Expected exactly one output that belongs only to the coordinator")]
+    MismatchCoordinatorOutput,
+
     #[error("the group element could not be serialized")]
     PointSerialization,
 
+    #[error("hashing operation failed")]
+    HashingError,
+
     #[error("encountered a zero scalar")]
     ZeroScalar,
+
+    #[error("this should never happen, please report upstream")]
+    Unreachable,
 
     // catch-all for foreign errors
     #[error("{0}")]
@@ -62,7 +78,7 @@ pub enum ProtocolError {
 
 impl From<Box<dyn error::Error + Send + Sync>> for ProtocolError {
     fn from(err: Box<dyn error::Error + Send + Sync>) -> Self {
-        ProtocolError::Other(err.to_string())
+        Self::Other(err.to_string())
     }
 }
 
@@ -75,21 +91,31 @@ impl From<Box<dyn error::Error + Send + Sync>> for ProtocolError {
 pub enum InitializationError {
     #[error("bad parameters: {0}")]
     BadParameters(String),
+
+    #[error("participant list cannot contain duplicates")]
+    DuplicateParticipants,
+
     #[error("participant list must contain {role}: {participant:?}")]
     MissingParticipant {
         role: &'static str,
         participant: Participant,
     },
-    #[error("participant list cannot contain duplicates")]
-    DuplicateParticipants,
+
     #[error("Participant count cannot be < 2, found: {participants}")]
-    NotEnoughParticipants { participants: u32 },
+    NotEnoughParticipants { participants: usize },
+
     #[error("not enough intersecting old/new participants ({participants}) to reconstruct private key for resharing with threshold bigger than old threshold ({threshold})")]
-    NotEnoughParticipantsForThreshold { threshold: u32, participants: u32 },
+    NotEnoughParticipantsForThreshold {
+        threshold: usize,
+        participants: usize,
+    },
+
     #[error("threshold {threshold} is too small, it must be at least {min}")]
-    ThresholdTooSmall { threshold: u32, min: u32 },
+    ThresholdTooSmall { threshold: usize, min: usize },
+
     #[error("threshold {threshold} is too large, it must be at most {max}")]
-    ThresholdTooLarge { threshold: u32, max: u32 },
+    ThresholdTooLarge { threshold: usize, max: usize },
+
     #[error("participant has an invalid index")]
     InvalidParticipantIndex,
 }

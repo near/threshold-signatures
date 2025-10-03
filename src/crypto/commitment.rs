@@ -1,6 +1,7 @@
 use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use subtle::{Choice, ConstantTimeEq};
 
 use crate::protocol::errors::ProtocolError;
 
@@ -17,20 +18,26 @@ pub struct Commitment([u8; COMMIT_LEN]);
 
 impl Commitment {
     /// Computes the commitment using a randomizer as follows
-    /// SHA256(COMMIT_LABEL || randomness || START_LABEL || msgpack(value))
+    /// `SHA256(COMMIT_LABEL` || randomness || `START_LABEL` || msgpack(value))
     fn compute<T: Serialize>(val: &T, r: &Randomness) -> Result<Self, ProtocolError> {
         let mut hasher = Sha256::new();
         hasher.update(NEAR_COMMIT_LABEL);
         hasher.update(r.as_ref());
         hasher.update(START_LABEL);
         rmp_serde::encode::write(&mut hasher, val).map_err(|_| ProtocolError::ErrorEncoding)?;
-        Ok(Commitment(hasher.finalize().into()))
+        Ok(Self(hasher.finalize().into()))
     }
 
     /// Check that a value and a randomizer match this commitment.
     pub fn check<T: Serialize>(&self, val: &T, r: &Randomness) -> Result<bool, ProtocolError> {
         let actual = Self::compute(val, r)?;
-        Ok(*self == actual)
+        Ok(self.ct_eq(&actual).into())
+    }
+}
+
+impl ConstantTimeEq for Commitment {
+    fn ct_eq(&self, other: &Self) -> Choice {
+        self.0.ct_eq(&other.0)
     }
 }
 

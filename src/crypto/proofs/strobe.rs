@@ -1,6 +1,6 @@
 //! Fully imported from zkcrypto/merlin project specifically from
-//! https://github.com/zkcrypto/merlin/blob/main/src/strobe.rs
-//! except for the test cases to prevent importing strobe_rs crate into the project
+//! <https://github.com/zkcrypto/merlin/blob/main/src/strobe.rs>
+//! except for the test cases to prevent importing `strobe_rs` crate into the project
 
 //! Minimal implementation of (parts of) Strobe.
 
@@ -11,7 +11,7 @@ use zeroize::Zeroize;
 use crate::crypto::constants::{FLAG_A, FLAG_C, FLAG_I, FLAG_K, FLAG_M, FLAG_T, STROBE_R};
 
 fn transmute_state(st: &mut AlignedKeccakState) -> &mut [u64; 25] {
-    unsafe { &mut *(st as *mut AlignedKeccakState as *mut [u64; 25]) }
+    unsafe { &mut *std::ptr::from_mut::<AlignedKeccakState>(st).cast::<[u64; 25]>() }
 }
 
 /// This is a wrapper around 200-byte buffer that's always 8-byte aligned
@@ -41,7 +41,7 @@ impl ::core::fmt::Debug for Strobe128 {
 }
 
 impl Strobe128 {
-    pub fn new(protocol_label: &[u8]) -> Strobe128 {
+    pub fn new(protocol_label: &[u8]) -> Self {
         let initial_state = {
             let mut st = AlignedKeccakState([0u8; 200]);
             st[0..6].copy_from_slice(&[1, STROBE_R + 2, 1, 0, 1, 96]);
@@ -51,7 +51,7 @@ impl Strobe128 {
             st
         };
 
-        let mut strobe = Strobe128 {
+        let mut strobe = Self {
             state: initial_state,
             pos: 0,
             pos_begin: 0,

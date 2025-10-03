@@ -1,11 +1,15 @@
-use rand_core::OsRng;
+use k256::Scalar;
+use rand_core::CryptoRngCore;
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use subtle::ConditionallySelectable;
 
 use crate::{
     crypto::constants::NEAR_BATCH_RANDOM_OT_HASH,
-    ecdsa::{CoefficientCommitment, Field, ProjectivePoint, Secp256K1ScalarField},
+    ecdsa::{
+        ot_based_ecdsa::triples::bits::SEC_PARAM_64, CoefficientCommitment, Field, ProjectivePoint,
+        Secp256K1ScalarField,
+    },
     protocol::{errors::ProtocolError, internal::PrivateChannel},
 };
 
@@ -46,13 +50,18 @@ fn hash(
     Ok(BitVector::from_bytes(&bytes))
 }
 
-pub(crate) type BatchRandomOTOutputSender = (SquareBitMatrix, SquareBitMatrix);
+pub type BatchRandomOTOutputSender = (SquareBitMatrix, SquareBitMatrix);
+
+pub fn batch_random_ot_sender_helper(rng: &mut impl CryptoRngCore) -> Scalar {
+    Secp256K1ScalarField::random(rng)
+}
 
 pub async fn batch_random_ot_sender(
     mut chan: PrivateChannel,
+    y: Scalar,
 ) -> Result<BatchRandomOTOutputSender, ProtocolError> {
     // Spec 1
-    let y = Secp256K1ScalarField::random(&mut OsRng);
+    // let y = Secp256K1ScalarField::random(rng);
     let big_y = ProjectivePoint::GENERATOR * y;
     let big_z = big_y * y;
 
@@ -96,6 +105,7 @@ pub async fn batch_random_ot_sender(
 #[allow(dead_code)]
 pub async fn batch_random_ot_sender_many<const N: usize>(
     mut chan: PrivateChannel,
+    mut rng: impl CryptoRngCore,
 ) -> Result<Vec<BatchRandomOTOutputSender>, ProtocolError> {
     assert!(N > 0);
     let mut big_y_v = vec![];
@@ -103,7 +113,7 @@ pub async fn batch_random_ot_sender_many<const N: usize>(
     let mut yv = vec![];
     for _ in 0..N {
         // Spec 1
-        let y = Secp256K1ScalarField::random(&mut OsRng);
+        let y = Secp256K1ScalarField::random(&mut rng);
         let big_y = ProjectivePoint::GENERATOR * y;
         let big_z = big_y * y;
         yv.push(y);
@@ -113,7 +123,7 @@ pub async fn batch_random_ot_sender_many<const N: usize>(
 
     let wait0 = chan.next_waitpoint();
     let mut big_y_ser_v = vec![];
-    for big_y_verkey in big_y_v.iter() {
+    for big_y_verkey in &big_y_v {
         big_y_ser_v.push(CoefficientCommitment::new(*big_y_verkey));
     }
     chan.send(wait0, &big_y_ser_v)?;
@@ -162,7 +172,7 @@ pub async fn batch_random_ot_sender_many<const N: usize>(
     }
     for outsi in outs {
         for j in 0..N {
-            reshaped_outs[j].push(outsi[j])
+            reshaped_outs[j].push(outsi[j]);
         }
     }
     let outs = reshaped_outs;
@@ -176,17 +186,32 @@ pub async fn batch_random_ot_sender_many<const N: usize>(
     Ok(ret)
 }
 
-pub(crate) type BatchRandomOTOutputReceiver = (BitVector, SquareBitMatrix);
+pub type BatchRandomOTOutputReceiver = (BitVector, SquareBitMatrix);
 
+pub fn batch_random_ot_receiver_random_helper(
+    rng: &mut impl CryptoRngCore,
+) -> (BitVector, [Scalar; SEC_PARAM_64 * 64]) {
+    let random_delta = BitVector::random(rng);
+    let mut random_x = [Scalar::ZERO; SEC_PARAM_64 * 64];
+    for random_x_i in random_x.iter_mut().take(SEC_PARAM_64 * 64) {
+        *random_x_i = Secp256K1ScalarField::random(rng);
+    }
+    (random_delta, random_x)
+}
+
+// Fixing this one breaks a test
+#[allow(clippy::large_types_passed_by_value)]
 pub async fn batch_random_ot_receiver(
     mut chan: PrivateChannel,
+    delta: BitVector,
+    x: [Scalar; SEC_PARAM_64 * 64],
 ) -> Result<BatchRandomOTOutputReceiver, ProtocolError> {
     // Step 3
     let wait0 = chan.next_waitpoint();
     // deserialization prevents receiving the identity
     let big_y_verkey: CoefficientCommitment = chan.recv(wait0).await?;
     let big_y = big_y_verkey.value();
-    let delta = BitVector::random(&mut OsRng);
+    // let delta = BitVector::random(&mut rng);
 
     let out = delta
         .bits()
@@ -194,7 +219,8 @@ pub async fn batch_random_ot_receiver(
         .map(|(i, d_i)| {
             let mut chan = chan.child(i as u64);
             // Step 4
-            let x_i = Secp256K1ScalarField::random(&mut OsRng);
+            // let x_i = Secp256K1ScalarField::random(&mut rng);
+            let x_i = x[i];
             let mut big_x_i = ProjectivePoint::GENERATOR * x_i;
             big_x_i.conditional_assign(&(big_x_i + big_y), d_i);
 
@@ -219,6 +245,7 @@ pub async fn batch_random_ot_receiver(
 #[allow(dead_code)]
 pub async fn batch_random_ot_receiver_many<const N: usize>(
     mut chan: PrivateChannel,
+    mut rng: impl CryptoRngCore,
 ) -> Result<Vec<BatchRandomOTOutputReceiver>, ProtocolError> {
     assert!(N > 0);
     // Step 3
@@ -228,9 +255,9 @@ pub async fn batch_random_ot_receiver_many<const N: usize>(
 
     let mut big_y_v = vec![];
     let mut deltav = vec![];
-    for big_y_verkey in big_y_verkey_v.iter() {
+    for big_y_verkey in &big_y_verkey_v {
         let big_y = big_y_verkey.value();
-        let delta = BitVector::random(&mut OsRng);
+        let delta = BitVector::random(&mut rng);
         big_y_v.push(big_y);
         deltav.push(delta);
     }
@@ -264,7 +291,7 @@ pub async fn batch_random_ot_receiver_many<const N: usize>(
             for j in 0..N {
                 let d_i = d_i_v[j];
                 // Step 4
-                let x_i = Secp256K1ScalarField::random(&mut OsRng);
+                let x_i = Secp256K1ScalarField::random(&mut rng);
                 let mut big_x_i = ProjectivePoint::GENERATOR * x_i;
                 big_x_i.conditional_assign(&(big_x_i + big_y_v_arc[j]), d_i);
                 x_i_v.push(x_i);
@@ -274,7 +301,7 @@ pub async fn batch_random_ot_receiver_many<const N: usize>(
             let wait0 = chan.next_waitpoint();
 
             let mut big_x_i_verkey_v = Vec::new();
-            for big_x_i_verkey in big_x_i_v.iter() {
+            for big_x_i_verkey in &big_x_i_v {
                 big_x_i_verkey_v.push(CoefficientCommitment::new(*big_x_i_verkey));
             }
             chan.send(wait0, &big_x_i_verkey_v)?;
@@ -295,7 +322,7 @@ pub async fn batch_random_ot_receiver_many<const N: usize>(
             }
             hashv
         };
-        outs.push(hashv)
+        outs.push(hashv);
     }
 
     // batch dimension is on the inside but needs to be on the outside
@@ -303,7 +330,7 @@ pub async fn batch_random_ot_receiver_many<const N: usize>(
     for _ in 0..N {
         reshaped_outs.push(Vec::new());
     }
-    for outsi in outs.iter() {
+    for outsi in &outs {
         for j in 0..N {
             reshaped_outs[j].push(outsi[j]);
         }
@@ -313,27 +340,28 @@ pub async fn batch_random_ot_receiver_many<const N: usize>(
     for j in 0..N {
         let delta = deltav[j];
         let out = &outs[j];
-        let big_k: BitMatrix = out.iter().cloned().collect();
+        let big_k: BitMatrix = out.iter().copied().collect();
         let h = SquareBitMatrix::try_from(big_k);
-        ret.push((delta, h.unwrap()))
+        ret.push((delta, h.unwrap()));
     }
     Ok(ret)
 }
 
 #[cfg(test)]
 mod test {
+
     use super::*;
     use crate::ecdsa::ot_based_ecdsa::triples::test::run_batch_random_ot;
     use crate::protocol::{
         internal::{make_protocol, Comms},
-        run_two_party_protocol, Participant,
+        test::run_two_party_protocol,
+        Participant,
     };
+    use rand_core::OsRng;
 
     #[test]
     fn test_batch_random_ot() {
-        let res = run_batch_random_ot();
-        assert!(res.is_ok());
-        let ((k0, k1), (delta, k_delta)) = res.unwrap();
+        let ((k0, k1), (delta, k_delta)) = run_batch_random_ot().unwrap();
 
         // Check that we've gotten the right rows of the two matrices.
         for (((row0, row1), delta_i), row_delta) in k0
@@ -368,11 +396,11 @@ mod test {
             r,
             &mut make_protocol(
                 comms_s.clone(),
-                batch_random_ot_sender_many::<N>(comms_s.private_channel(s, r)),
+                batch_random_ot_sender_many::<N>(comms_s.private_channel(s, r), OsRng),
             ),
             &mut make_protocol(
                 comms_r.clone(),
-                batch_random_ot_receiver_many::<N>(comms_r.private_channel(r, s)),
+                batch_random_ot_receiver_many::<N>(comms_r.private_channel(r, s), OsRng),
             ),
         )
     }
@@ -380,9 +408,7 @@ mod test {
     #[test]
     fn test_batch_random_ot_many() {
         const N: usize = 10;
-        let res = run_batch_random_ot_many::<N>();
-        assert!(res.is_ok());
-        let (a, b) = res.unwrap();
+        let (a, b) = run_batch_random_ot_many::<N>().unwrap();
         for i in 0..N {
             let ((k0, k1), (delta, k_delta)) = (&a[i], &b[i]);
             // Check that we've gotten the right rows of the two matrices.

@@ -1,18 +1,14 @@
-use rand_core::CryptoRngCore;
-
+use super::strobe_transcript::Transcript;
 use crate::{
-    crypto::{
-        ciphersuite::{Ciphersuite, Element},
-        constants::{
-            NEAR_DLOGEQ_CHALLENGE_LABEL, NEAR_DLOGEQ_COMMITMENT_LABEL, NEAR_DLOGEQ_STATEMENT_LABEL,
-        },
+    crypto::constants::{
+        NEAR_DLOGEQ_CHALLENGE_LABEL, NEAR_DLOGEQ_COMMITMENT_LABEL, NEAR_DLOGEQ_STATEMENT_LABEL,
     },
     protocol::errors::ProtocolError,
+    Ciphersuite, Element, Scalar,
 };
-
-use frost_core::{serialization::SerializableScalar, Group, Scalar};
-
-use super::strobe_transcript::Transcript;
+use frost_core::{serialization::SerializableScalar, Group};
+use rand_core::CryptoRngCore;
+use subtle::ConstantTimeEq;
 
 /// A string used to extend an encoding
 const ENCODE_LABEL_STATEMENT: &[u8] = b"statement:";
@@ -47,7 +43,7 @@ fn element_into<C: Ciphersuite>(
         // and thus the points are well defined, or it is received
         // from someone and thus it is serializable.
         _ => return Err(ProtocolError::PointSerialization),
-    };
+    }
     Ok(enc)
 }
 
@@ -113,11 +109,44 @@ fn encode_two_points<C: Ciphersuite>(
 /// Prove that a witness satisfies a given statement.
 /// We need some randomness for the proof, and also a transcript, which is
 /// used for the Fiat-Shamir transform.
+#[allow(dead_code)]
 pub fn prove<C: Ciphersuite>(
     rng: &mut impl CryptoRngCore,
     transcript: &mut Transcript,
     statement: Statement<'_, C>,
     witness: Witness<C>,
+) -> Result<Proof<C>, ProtocolError>
+where
+    Element<C>: ConstantTimeEq,
+{
+    if statement.generator1.ct_eq(&C::Group::identity()).into() {
+        return Err(ProtocolError::IdentityElement);
+    }
+    transcript.message(STATEMENT_LABEL, &statement.encode()?);
+
+    let k = frost_core::random_nonzero::<C, _>(rng);
+    let (big_k_0, big_k_1) = statement.phi(&k);
+
+    // This will never raise error as k is not zero and generator1 is not the identity
+    let enc = encode_two_points::<C>(&big_k_0, &big_k_1)?;
+
+    transcript.message(COMMITMENT_LABEL, &enc);
+    let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
+    let e = frost_core::random_nonzero::<C, _>(&mut rng);
+
+    let s = k + e * witness.x.0;
+    Ok(Proof {
+        e: SerializableScalar::<C>(e),
+        s: SerializableScalar::<C>(s),
+    })
+}
+
+// Same as `prove` but using fixed nonce
+pub fn prove_with_nonce<C: Ciphersuite>(
+    transcript: &mut Transcript,
+    statement: Statement<'_, C>,
+    witness: Witness<C>,
+    k: Scalar<C>,
 ) -> Result<Proof<C>, ProtocolError> {
     transcript.message(NEAR_DLOGEQ_STATEMENT_LABEL, &statement.encode()?);
 
@@ -125,7 +154,6 @@ pub fn prove<C: Ciphersuite>(
         return Err(ProtocolError::IdentityElement);
     }
 
-    let k = frost_core::random_nonzero::<C, _>(rng);
     let (big_k_0, big_k_1) = statement.phi(&k);
 
     // This will never raise error as k is not zero and generator1 is not the identity
@@ -149,8 +177,11 @@ pub fn verify<C: Ciphersuite>(
     transcript: &mut Transcript,
     statement: Statement<'_, C>,
     proof: &Proof<C>,
-) -> Result<bool, ProtocolError> {
-    if *statement.generator1 == C::Group::identity() {
+) -> Result<bool, ProtocolError>
+where
+    Element<C>: ConstantTimeEq,
+{
+    if statement.generator1.ct_eq(&C::Group::identity()).into() {
         return Err(ProtocolError::IdentityElement);
     }
 
@@ -171,7 +202,10 @@ pub fn verify<C: Ciphersuite>(
 
 #[cfg(test)]
 mod test {
+    use elliptic_curve::{bigint::Uint, scalar::FromUintUnchecked};
     use rand_core::OsRng;
+
+    use crate::test::MockCryptoRng;
 
     use super::*;
     use frost_secp256k1::Secp256K1Sha256;
@@ -204,5 +238,132 @@ mod test {
         let ok = verify(&mut transcript.fork(b"party", &[1]), statement, &proof).unwrap();
 
         assert!(ok);
+    }
+
+    #[test]
+    fn test_prove_fixed_randomness() {
+        let mut rng = MockCryptoRng::new([1; 8]);
+        let x = Scalar::generate_biased(&mut rng);
+        let h = Scalar::generate_biased(&mut rng);
+        let big_h = ProjectivePoint::GENERATOR * h;
+
+        let statement = Statement::<Secp256K1Sha256> {
+            public0: &(ProjectivePoint::GENERATOR * x),
+            generator1: &big_h,
+            public1: &(big_h * x),
+        };
+        let witness = Witness {
+            x: SerializableScalar::<Secp256K1Sha256>(x),
+        };
+
+        let transcript = Transcript::new(b"protocol");
+
+        let proof = prove(
+            &mut rng,
+            &mut transcript.fork(b"party", &[1]),
+            statement,
+            witness,
+        )
+        .unwrap();
+        assert_eq!(
+            Scalar::from_uint_unchecked(Uint::from_be_hex(
+                "067B14308E1E96A782791C10179F1801B6764037141CBA0462A4D495EB78B2D0"
+            )),
+            proof.s.0
+        );
+        assert_eq!(
+            Scalar::from_uint_unchecked(Uint::from_be_hex(
+                "95B6C33214488D2F0429129E9AF2CB2943F9F064421BB270918CFA412CB680E2"
+            )),
+            proof.e.0
+        );
+    }
+
+    #[test]
+    fn test_verify_fixed_randomness() {
+        let x = Scalar::from_uint_unchecked(Uint::from_be_hex(
+            "FC9A011DF3753BD79D841C11F6521F25AD2AB1DECEB96B7E8C28D87EA3303A06",
+        ));
+        let h = Scalar::from_uint_unchecked(Uint::from_be_hex(
+            "FC9A011DF3753BD79D841C11F6521F25AD2AB1DECEB96B7E8C28D87EA3303A06",
+        ));
+        let big_h = ProjectivePoint::GENERATOR * h;
+        let transcript = Transcript::new(b"protocol");
+        let statement = Statement::<Secp256K1Sha256> {
+            public0: &(ProjectivePoint::GENERATOR * x),
+            generator1: &big_h,
+            public1: &(big_h * x),
+        };
+        let proof: Proof<Secp256K1Sha256> = Proof {
+            s: SerializableScalar(Scalar::from_uint_unchecked(Uint::from_be_hex(
+                "067B14308E1E96A782791C10179F1801B6764037141CBA0462A4D495EB78B2D0",
+            ))),
+            e: SerializableScalar(Scalar::from_uint_unchecked(Uint::from_be_hex(
+                "95B6C33214488D2F0429129E9AF2CB2943F9F064421BB270918CFA412CB680E2",
+            ))),
+        };
+        assert!(verify(&mut transcript.fork(b"party", &[1]), statement, &proof).unwrap());
+    }
+
+    #[test]
+    fn test_prove_with_identity_generator1_fails() {
+        let x = Scalar::generate_biased(&mut OsRng);
+
+        let statement = Statement::<Secp256K1Sha256> {
+            public0: &(ProjectivePoint::GENERATOR * x),
+            generator1: &<Secp256K1Sha256 as frost_core::Ciphersuite>::Group::identity(), // Identity element
+            public1: &(<Secp256K1Sha256 as frost_core::Ciphersuite>::Group::identity() * x),
+        };
+        let witness = Witness {
+            x: SerializableScalar::<Secp256K1Sha256>(x),
+        };
+
+        let transcript = Transcript::new(b"protocol");
+
+        let proof_result = prove(
+            &mut OsRng,
+            &mut transcript.fork(b"party", &[1]),
+            statement,
+            witness,
+        );
+
+        assert!(proof_result.is_err());
+        if let Err(e) = proof_result {
+            assert_eq!(e, ProtocolError::IdentityElement);
+        } else {
+            panic!("Expected an error, but got Ok");
+        }
+    }
+
+    #[test]
+    fn test_verify_with_identity_generator1_fails() {
+        let x = Scalar::generate_biased(&mut OsRng);
+
+        let statement = Statement::<Secp256K1Sha256> {
+            public0: &(ProjectivePoint::GENERATOR * x),
+            generator1: &<Secp256K1Sha256 as frost_core::Ciphersuite>::Group::identity(), // Identity element
+            public1: &(<Secp256K1Sha256 as frost_core::Ciphersuite>::Group::identity() * x),
+        };
+
+        // A dummy proof, its content doesn't matter for this test
+        let dummy_proof = Proof {
+            e: SerializableScalar::<Secp256K1Sha256>(Scalar::from(1u64)),
+            s: SerializableScalar::<Secp256K1Sha256>(Scalar::from(1u64)),
+        };
+
+        let transcript = Transcript::new(b"protocol");
+
+        let verify_result = verify(
+            &mut transcript.fork(b"party", &[1]),
+            statement,
+            &dummy_proof,
+        );
+
+        assert!(verify_result.is_err());
+        if let Err(e) = verify_result {
+            assert_eq!(e, ProtocolError::IdentityElement);
+        } else {
+            panic!("Expected an error, but got Ok");
+        }
     }
 }

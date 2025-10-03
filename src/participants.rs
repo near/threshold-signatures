@@ -4,13 +4,13 @@
 //! or getting the field values corresponding to each participant, etc.
 //! This module tries to provide useful data structures for doing that.
 
-use std::{collections::HashMap, mem, ops::Index};
+use std::{collections::HashMap, mem};
 
-use frost_core::Scalar;
 use serde::Serialize;
 
 use crate::crypto::{ciphersuite::Ciphersuite, polynomials::compute_lagrange_coefficient};
 use crate::protocol::{errors::ProtocolError, Participant};
+use crate::Scalar;
 
 /// Represents a sorted list of participants.
 ///
@@ -56,6 +56,10 @@ impl ParticipantList {
         self.participants.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.participants.is_empty()
+    }
+
     /// Check if this list has a given participant.
     pub fn contains(&self, participant: Participant) -> bool {
         self.indices.contains_key(&participant)
@@ -69,8 +73,11 @@ impl ParticipantList {
     /// Return the index of a given participant.
     ///
     /// Basically, the order they appear in a sorted list
-    pub fn index(&self, participant: &Participant) -> usize {
-        self.indices[participant]
+    pub fn index(&self, participant: Participant) -> Result<usize, ProtocolError> {
+        self.indices
+            .get(&participant)
+            .copied()
+            .ok_or(ProtocolError::InvalidIndex)
     }
 
     // Return a participant of a given index from the order they
@@ -90,13 +97,14 @@ impl ParticipantList {
         let identifiers: Vec<Scalar<C>> = self
             .participants()
             .iter()
-            .map(|p| p.scalar::<C>())
+            .map(super::protocol::Participant::scalar::<C>)
             .collect();
         Ok(compute_lagrange_coefficient::<C>(&identifiers, &p, None)?.0)
     }
 
     /// Return the intersection of this list with another list.
-    pub fn intersection(&self, others: &ParticipantList) -> Self {
+    #[allow(clippy::missing_panics_doc)]
+    pub fn intersection(&self, others: &Self) -> Self {
         let mut out = Vec::new();
         for &p in &self.participants {
             if others.contains(p) {
@@ -110,6 +118,18 @@ impl ParticipantList {
     // Returns all the participants in the list
     pub fn participants(&self) -> &[Participant] {
         self.participants.as_slice()
+    }
+
+    #[cfg(test)]
+    #[allow(clippy::missing_panics_doc)]
+    pub fn shuffle(&self, mut rng: impl rand_core::CryptoRngCore) -> Option<Self> {
+        let mut participants = self.participants().to_vec();
+        let len = self.participants.len();
+        for i in (1..len).rev() {
+            let j = usize::try_from(rng.next_u32()).unwrap() % (i + 1);
+            participants.swap(i, j);
+        }
+        Self::new(&participants)
     }
 }
 
@@ -192,13 +212,14 @@ impl<'a, T> ParticipantMap<'a, T> {
     pub fn participants(&self) -> &[Participant] {
         self.participants.participants()
     }
-}
 
-impl<T> Index<Participant> for ParticipantMap<'_, T> {
-    type Output = T;
-
-    fn index(&self, index: Participant) -> &Self::Output {
-        self.data[self.participants.index(&index)].as_ref().unwrap()
+    pub fn index(&self, index: Participant) -> Result<&T, ProtocolError> {
+        let index = self.participants.index(index)?;
+        self.data
+            .get(index)
+            .ok_or(ProtocolError::InvalidIndex)?
+            .as_ref()
+            .ok_or_else(|| ProtocolError::Other("No data found".to_string()))
     }
 }
 
@@ -251,7 +272,7 @@ impl<'a> ParticipantCounter<'a> {
     /// Clear the contents of this counter.
     pub fn clear(&mut self) {
         for x in &mut self.seen {
-            *x = false
+            *x = false;
         }
         self.counter = self.participants.len();
     }
@@ -259,5 +280,29 @@ impl<'a> ParticipantCounter<'a> {
     /// Check if this counter contains all participants
     pub fn full(&self) -> bool {
         self.counter == 0
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::test::generate_participants;
+
+    #[test]
+    fn test_get_index_participant_error() {
+        let participants = generate_participants(5);
+        let participants = ParticipantList::new(&participants).unwrap();
+        assert!(participants.index(Participant::from(1234_u32)).is_err());
+    }
+
+    #[test]
+    fn test_get_index_data_error() {
+        let participants = generate_participants(5);
+        let participants = ParticipantList::new(&participants).unwrap();
+        let map: ParticipantMap<'_, u32> = ParticipantMap::new(&participants);
+        // no participant test
+        assert!(map.index(Participant::from(1233_u32)).is_err());
+        // no data test
+        assert!(map.index(Participant::from(1_u32)).is_err());
     }
 }
