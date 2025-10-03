@@ -95,7 +95,7 @@ async fn do_sign_coordinator(
     let wait_round = chan.next_waitpoint();
 
     for (_, s_i) in
-        recv_from_others::<SerializableScalar<C>, _>(&mut chan, wait_round, participants.others(me))
+        recv_from_others::<SerializableScalar<C>, _>(&chan, wait_round, participants.others(me))
             .await?
     {
         // Sum the linearized shares

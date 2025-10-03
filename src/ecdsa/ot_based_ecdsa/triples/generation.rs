@@ -188,7 +188,7 @@ async fn do_generation(
 
         // Spec 3.1 + 3.2
         for (from, confirmation) in
-            recv_from_others::<HashOutput, _>(&mut chan, wait1, participants.others(me)).await?
+            recv_from_others::<HashOutput, _>(&chan, wait1, participants.others(me)).await?
         {
             if confirmation != my_confirmation {
                 return Err(ProtocolError::AssertionFailed(format!(
@@ -223,7 +223,7 @@ async fn do_generation(
                 _,
             ),
             _,
-        >(&mut chan, wait2, participants.others(me))
+        >(&chan, wait2, participants.others(me))
         .await?
         {
             if their_big_e.degree() != threshold - 1
@@ -286,7 +286,7 @@ async fn do_generation(
         for (_, (a_j_i, b_j_i)) in recv_from_others::<
             (SerializableScalar<C>, SerializableScalar<C>),
             _,
-        >(&mut chan, wait3, participants.others(me))
+        >(&chan, wait3, participants.others(me))
         .await?
         {
             a_i += &a_j_i.0;
@@ -327,12 +327,9 @@ async fn do_generation(
 
         // Spec 4.1 + 4.2 + 4.3
         let mut big_c = big_c_i;
-        for (from, (big_c_j, their_phi_proof)) in recv_from_others::<(CoefficientCommitment, _), _>(
-            &mut chan,
-            wait4,
-            participants.others(me),
-        )
-        .await?
+        for (from, (big_c_j, their_phi_proof)) in
+            recv_from_others::<(CoefficientCommitment, _), _>(&chan, wait4, participants.others(me))
+                .await?
         {
             let big_c_j = big_c_j.value();
 
@@ -417,7 +414,7 @@ async fn do_generation(
     let mut hat_big_c = hat_big_c_i;
 
     for (from, (their_hat_big_c, their_phi_proof)) in
-        recv_from_others::<(CoefficientCommitment, _), _>(&mut chan, wait5, participants.others(me))
+        recv_from_others::<(CoefficientCommitment, _), _>(&chan, wait5, participants.others(me))
             .await?
     {
         let their_hat_big_c = their_hat_big_c.value();
@@ -448,8 +445,7 @@ async fn do_generation(
 
     // Spec 5.5 + 5.6
     for (_, c_j_i) in
-        recv_from_others::<SerializableScalar<C>, _>(&mut chan, wait6, participants.others(me))
-            .await?
+        recv_from_others::<SerializableScalar<C>, _>(&chan, wait6, participants.others(me)).await?
     {
         c_i += c_j_i.0;
     }
@@ -686,8 +682,7 @@ async fn do_generation_many<const N: usize>(
 
         // Spec 3.1 + 3.2
         for (from, confirmation) in
-            recv_from_others::<Vec<HashOutput>, _>(&mut chan, wait1, participants.others(me))
-                .await?
+            recv_from_others::<Vec<HashOutput>, _>(&chan, wait1, participants.others(me)).await?
         {
             if confirmation != my_confirmations {
                 return Err(ProtocolError::AssertionFailed(format!(
@@ -728,7 +723,7 @@ async fn do_generation_many<const N: usize>(
                 Vec<dlog::Proof<C>>,
             ),
             _,
-        >(&mut chan, wait2, participants.others(me))
+        >(&chan, wait2, participants.others(me))
         .await?
         {
             for i in 0..N {
@@ -799,7 +794,7 @@ async fn do_generation_many<const N: usize>(
         for (_, (a_j_i_v, b_j_i_v)) in recv_from_others::<
             (Vec<SerializableScalar<C>>, Vec<SerializableScalar<C>>),
             _,
-        >(&mut chan, wait3, participants.others(me))
+        >(&chan, wait3, participants.others(me))
         .await?
         {
             for i in 0..N {
@@ -863,9 +858,7 @@ async fn do_generation_many<const N: usize>(
         for (from, (big_c_j_v, their_phi_proofs)) in recv_from_others::<
             (Vec<CoefficientCommitment>, Vec<dlogeq::Proof<C>>),
             _,
-        >(
-            &mut chan, wait4, participants.others(me)
-        )
+        >(&chan, wait4, participants.others(me))
         .await?
         {
             //#[allow(clippy::type_complexity)]
@@ -982,7 +975,7 @@ async fn do_generation_many<const N: usize>(
 
     for (from, (their_hat_big_c_i_points, their_phi_proofs)) in
         recv_from_others::<(Vec<CoefficientCommitment>, Vec<dlog::Proof<C>>), _>(
-            &mut chan,
+            &chan,
             wait5,
             participants.others(me),
         )
@@ -1026,7 +1019,7 @@ async fn do_generation_many<const N: usize>(
 
     // Spec 5.5 + 5.6
     for (_, c_j_i_v) in
-        recv_from_others::<Vec<SerializableScalar<C>>, _>(&mut chan, wait6, participants.others(me))
+        recv_from_others::<Vec<SerializableScalar<C>>, _>(&chan, wait6, participants.others(me))
             .await?
     {
         for i in 0..N {

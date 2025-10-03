@@ -100,8 +100,7 @@ async fn do_sign_coordinator(
     // Receive sj
     // Spec 1.5
     let mut s = s_i;
-    for (_, s_j) in recv_from_others::<Scalar, _>(&mut chan, wait0, participants.others(me)).await?
-    {
+    for (_, s_j) in recv_from_others::<Scalar, _>(&chan, wait0, participants.others(me)).await? {
         // Spec 1.6
         s += s_j;
     }

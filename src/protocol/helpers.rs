@@ -6,8 +6,8 @@ use super::{internal::SharedChannel, Participant, ProtocolError};
 /// Note: Result vector order depends on the order messages arrive.
 /// @dev If you ever need deterministic ordering (matching participant list), consider `BTreeMap`.
 pub async fn recv_from_others<T, P>(
-    chan: &mut SharedChannel,
-    wait: u64,
+    chan: &SharedChannel,
+    waitpoint: u64,
     participants: P,
 ) -> Result<Vec<(Participant, T)>, ProtocolError>
 where
@@ -18,7 +18,7 @@ where
     let mut messages = Vec::with_capacity(pending.len());
 
     while !pending.is_empty() {
-        let (from, msg) = chan.recv(wait).await?;
+        let (from, msg) = chan.recv(waitpoint).await?;
         // extra messages are silently ignored
         if pending.remove(&from) {
             messages.push((from, msg));
