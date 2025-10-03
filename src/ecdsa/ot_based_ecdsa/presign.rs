@@ -111,7 +111,7 @@ async fn do_presign(
     // Spec 1.3
     let mut e = e_i;
 
-    for (_, e_j) in recv_from_others::<Scalar, _>(&chan, wait0, participants.others(me)).await? {
+    for (_, e_j) in recv_from_others::<Scalar>(&chan, wait0, &participants, me).await? {
         if e_j.is_zero().into() {
             return Err(ProtocolError::AssertionFailed(
                 "Received zero share of kd, indicating a triple wasn't available.".to_string(),
@@ -149,7 +149,7 @@ async fn do_presign(
     let mut beta = beta_i;
 
     for (_, (alpha_j, beta_j)) in
-        recv_from_others::<(Scalar, Scalar), _>(&chan, wait1, participants.others(me)).await?
+        recv_from_others::<(Scalar, Scalar)>(&chan, wait1, &participants, me).await?
     {
         // Spec 2.4
         alpha += alpha_j;

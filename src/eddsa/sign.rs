@@ -67,9 +67,7 @@ async fn do_sign_coordinator(
 
     let commit_waitpoint = chan.next_waitpoint();
 
-    for (from, commitment) in
-        recv_from_others(&chan, commit_waitpoint, participants.others(me)).await?
-    {
+    for (from, commitment) in recv_from_others(&chan, commit_waitpoint, &participants, me).await? {
         commitments_map.insert(from.to_identifier(), commitment);
     }
 
@@ -93,8 +91,7 @@ async fn do_sign_coordinator(
         .map_err(|e| ProtocolError::AssertionFailed(e.to_string()))?;
     signature_shares.insert(me.to_identifier(), signature_share);
 
-    for (from, signature_share) in
-        recv_from_others(&chan, r2_wait_point, participants.others(me)).await?
+    for (from, signature_share) in recv_from_others(&chan, r2_wait_point, &participants, me).await?
     {
         signature_shares.insert(from.to_identifier(), signature_share);
     }
