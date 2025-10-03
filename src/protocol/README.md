@@ -11,27 +11,32 @@ Our protocols operate on two fundamental assumptions about the network channels:
 
 <details>
   <summary>Practical Implementation</summary>
-  In practice, we satisfy both requirements by running all protocols over a network where each participant is connected via a TLS channel with a certified key pair. This ensures all communication is both authenticated and encrypted.
+  In practice, we satisfy both requirements by running all protocols over a network where participants are connected via a TLS channel. This ensures both, authentication and confidentiality.
 </details>
 
 ## Communication Primitives
 
 The protocol implementation provides several communication primitives:
 
-- **`send_many`**: Sends a message to all other participants. This is a basic, non-blocking broadcast that does not guarantee message delivery or ordering. It's suitable for rounds where eventual delivery is sufficient.
+- **`send_many`**: Sends a message to participants except the sender itself. This is a peer-to-peer sending with no security guarantees used by one sender in destination to multiple receiver.
 
 - **`send_private`**: Sends a message to a single, specific participant. The underlying channel is assumed to be confidential.
 
-- **Reliable Broadcast (`echo_broadcast`)**: A higher-level protocol that ensures all honest participants agree on the same set of messages from senders. It is built using `send_many` and guarantees that a message is delivered if and only if all honest parties receive it. This is critical for rounds requiring consensus.
+- **Byzantine Reliable Broadcast (`echo_broadcast`)**: A complex protocol that ensures all honest participants agree on the same message, even in the presence of Byzantine faults. The protocol guarantees:
 
-## Documentation Notation
+  - **Validity**: If a correct process `p` broadcasts `a` message `m`, then `p` eventually delivers `m`.
+  
+  - **No duplication**: No message is delivered more than once.
+  
+  - **No creation**: If a process delivers a message `m` with sender `s`, then m was previously broadcast by process `s`.
 
-In our protocol specifications (particularly for ECDSA), we use the following symbols to describe actions:
+  - **Agreement**: If a message `m` is delivered by some correct process, then `m` is eventually delivered by every correct process.
 
-| Symbol | Meaning | Description |
-| :---: | :--- | :--- |
-| `⋆` | **Send** | A participant sends a message to one or more others. |
-| `⚫` | **Receive** | A participant waits to receive a message. |
-| `🔺` | **Assert** | A participant makes an assertion. The protocol aborts if it fails. |
-| `textcolor{red}{\star}` | **Send Private** | A participant sends a private, encrypted message. |
+  - **Totality**: If some message is delivered by any correct process, then every correct process eventually delivers some message.
 
+These guarantees hold under standard _threshold assumptions_ (where `n` = _total participants_, `f` = _maximum faulty nodes tolerated_):
+   - **DKG**: Threshold `t = f + 1`. Requires `f ≤ ⌊N/3⌋`. Example: with `n = 7`, `f = 2` -> `t = 3`.
+
+   - **OtBasedECDSA**: Threshold `t = f + 1`. No additional requirement. Example: with `n = 7`, `f = 2` -> `t = 3`.
+   
+   - **Robust ECDSA**: Threshold `t = f`. Requires `2f + 1 ≤ N`. Example: with `n = 7`, `f = 2` -> `t = 2`.
