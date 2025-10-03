@@ -34,12 +34,7 @@ The protocol implementation provides several communication primitives:
 
   - **Totality**: If some message is delivered by any correct process, then every correct process eventually delivers some message.
 
-These guarantees hold under standard _threshold assumptions_ (where `n` = _total participants_, `f` = _maximum faulty nodes tolerated_):
-   - **DKG**: Threshold `t = f + 1`. Requires `f ≤ ⌊N/3⌋`. Example: with `n = 7`, `f = 2` -> `t = 3`.
-
-   - **OtBasedECDSA**: Threshold `t = f + 1`. No additional requirement. Example: with `n = 7`, `f = 2` -> `t = 3`.
-   
-   - **Robust ECDSA**: Threshold `t = f`. Requires `2f + 1 ≤ N`. Example: with `n = 7`, `f = 2` -> `t = 2`.
+> To guarantee the security notions given by the Byzantine Reliable Broadcast, we assume that `N >= 3f +1`. This bound originates from the classical Byzantine fault tolerance model [LSP82](https://lamport.azurewebsites.net/pubs/byz.pdf), which ensures both safety and liveness under such faults.
 
 ## Documentation Notation
 In protocol specifications (particularly for ECDSA), we use the following symbols to describe actions:
