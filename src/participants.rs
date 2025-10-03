@@ -269,6 +269,7 @@ impl<'a> ParticipantCounter<'a> {
         inserted
     }
 
+    #[allow(dead_code)]
     /// Clear the contents of this counter.
     pub fn clear(&mut self) {
         for x in &mut self.seen {
