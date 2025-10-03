@@ -1,11 +1,8 @@
 use crate::{
-    crypto::{
-        ciphersuite::{Ciphersuite, Element},
-        proofs::strobe_transcript::TranscriptRng,
-    },
-    protocol::errors::ProtocolError,
+    crypto::proofs::strobe_transcript::TranscriptRng, protocol::errors::ProtocolError, Ciphersuite,
+    Element, Scalar,
 };
-use frost_core::{serialization::SerializableScalar, Group, Scalar};
+use frost_core::{serialization::SerializableScalar, Group};
 
 use super::strobe_transcript::Transcript;
 use rand_core::CryptoRngCore;
@@ -30,7 +27,7 @@ pub struct Statement<'a, C: Ciphersuite> {
 
 impl<C: Ciphersuite> Statement<'_, C> {
     /// Encode into Vec<u8>: some sort of serialization
-    fn encode(&self) -> Result<Vec<u8>, ProtocolError> {
+    fn encode(self) -> Result<Vec<u8>, ProtocolError> {
         let mut enc = Vec::new();
         enc.extend_from_slice(ENCODE_LABEL_STATEMENT);
 
@@ -40,7 +37,7 @@ impl<C: Ciphersuite> Statement<'_, C> {
                 enc.extend_from_slice(ser.as_ref());
             }
             _ => return Err(ProtocolError::PointSerialization),
-        };
+        }
         Ok(enc)
     }
 }

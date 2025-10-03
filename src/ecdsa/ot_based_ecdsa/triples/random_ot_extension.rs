@@ -101,7 +101,7 @@ pub async fn random_ot_extension_sender(
     }
 
     for (j, small_t_j) in small_t.iter().enumerate() {
-        let delta_j = Choice::from(delta.bit(j) as u8);
+        let delta_j = Choice::from(delta.bit(j));
 
         let mut small_q_j = DoubleBitVector::zero();
         for (q_i, chi_i) in q.column_chunks(j).zip(chi.iter()) {
@@ -121,7 +121,7 @@ pub async fn random_ot_extension_sender(
     for (i, q_i) in q.rows().take(params.batch_size).enumerate() {
         let v0_i = hash_to_scalar(i, q_i);
         let v1_i = hash_to_scalar(i, &(q_i ^ delta));
-        out.push((v0_i, v1_i))
+        out.push((v0_i, v1_i));
     }
 
     Ok(out)
@@ -227,7 +227,7 @@ mod test {
         let comms_r = Comms::new();
 
         let sid_s = sid.clone();
-        let sid_r = sid.clone();
+        let sid_r = sid;
 
         run_two_party_protocol(
             s,

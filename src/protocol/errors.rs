@@ -31,6 +31,9 @@ pub enum ProtocolError {
     #[error("the sent commitment_hash does not equal the hash of the commitment")]
     InvalidCommitmentHash,
 
+    #[error("The index you are looking for is invalid")]
+    InvalidIndex,
+
     #[error("invalid arguments for polynomial interpolation")]
     InvalidInterpolationArguments,
 
@@ -75,7 +78,7 @@ pub enum ProtocolError {
 
 impl From<Box<dyn error::Error + Send + Sync>> for ProtocolError {
     fn from(err: Box<dyn error::Error + Send + Sync>) -> Self {
-        ProtocolError::Other(err.to_string())
+        Self::Other(err.to_string())
     }
 }
 

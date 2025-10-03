@@ -1,6 +1,6 @@
 [tasks.check-all]
 description = "Run all checks"
-dependencies = ["check", "clippy", "fmt", "test"]
+dependencies = ["fmt", "check", "clippy", "test"]
 
 [tasks.check]
 command = "cargo"
@@ -8,7 +8,7 @@ args = ["check"]
 
 [tasks.clippy]
 command = "cargo"
-args = ["clippy", "--all-features", "--all-targets", "--locked"]
+args = ["clippy", "--all-features", "--all-targets", "--locked", "--", "-D", "warnings"]
 
 [tasks.fmt]
 command = "cargo"

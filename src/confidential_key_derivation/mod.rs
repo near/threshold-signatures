@@ -10,13 +10,14 @@
 
 pub mod app_id;
 pub mod ciphersuite;
-mod dkg;
 pub mod protocol;
+#[cfg(test)]
+mod test;
 
 pub use app_id::AppId;
 use serde::{Deserialize, Serialize};
 
-use crate::confidential_key_derivation::ciphersuite::BLS12381SHA256;
+pub use crate::confidential_key_derivation::ciphersuite::BLS12381SHA256;
 
 pub type ElementG1 = blstrs::G1Projective;
 pub type ElementG2 = blstrs::G2Projective;
@@ -33,21 +34,21 @@ pub struct CKDOutput {
 
 impl CKDOutput {
     pub fn new(big_y: ElementG1, big_c: ElementG1) -> Self {
-        CKDOutput { big_y, big_c }
+        Self { big_y, big_c }
     }
 
-    /// Outputs big_y
+    /// Outputs `big_y`
     pub fn big_y(&self) -> ElementG1 {
         self.big_y
     }
 
-    /// Outputs big_c
+    /// Outputs `big_c`
     pub fn big_c(&self) -> ElementG1 {
         self.big_c
     }
 
     /// Takes a secret scalar and returns
-    /// s <- C − a ⋅ Y = msk ⋅ H ( app_id )
+    /// s <- C − a ⋅ Y = msk ⋅ H ( `app_id` )
     pub fn unmask(&self, secret_scalar: Scalar) -> Signature {
         self.big_c - self.big_y * secret_scalar
     }
