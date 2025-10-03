@@ -1,18 +1,15 @@
+use super::strobe_transcript::Transcript;
+use crate::{
+    crypto::constants::{
+        NEAR_DLOGEQ_CHALLENGE_LABEL, NEAR_DLOGEQ_COMMITMENT_LABEL, NEAR_DLOGEQ_STATEMENT_LABEL,
+    },
+    protocol::errors::ProtocolError,
+    Ciphersuite, Element, Scalar,
+};
+use frost_core::{serialization::SerializableScalar, Group};
 use rand_core::CryptoRngCore;
 use subtle::ConstantTimeEq;
 
-use crate::{protocol::errors::ProtocolError, Ciphersuite, Element, Scalar};
-
-use frost_core::{serialization::SerializableScalar, Group};
-
-use super::strobe_transcript::Transcript;
-
-/// The label we use for hashing the statement.
-const STATEMENT_LABEL: &[u8] = b"dlogeq proof statement";
-/// The label we use for hashing the first prover message.
-const COMMITMENT_LABEL: &[u8] = b"dlogeq proof commitment";
-/// The label we use for generating the challenge.
-const CHALLENGE_LABEL: &[u8] = b"dlogeq proof challenge";
 /// A string used to extend an encoding
 const ENCODE_LABEL_STATEMENT: &[u8] = b"statement:";
 /// A string used to extend an encoding
@@ -151,7 +148,7 @@ pub fn prove_with_nonce<C: Ciphersuite>(
     witness: Witness<C>,
     k: Scalar<C>,
 ) -> Result<Proof<C>, ProtocolError> {
-    transcript.message(STATEMENT_LABEL, &statement.encode()?);
+    transcript.message(NEAR_DLOGEQ_STATEMENT_LABEL, &statement.encode()?);
 
     if *statement.generator1 == C::Group::identity() {
         return Err(ProtocolError::IdentityElement);
@@ -162,8 +159,8 @@ pub fn prove_with_nonce<C: Ciphersuite>(
     // This will never raise error as k is not zero and generator1 is not the identity
     let enc = encode_two_points::<C>(&big_k_0, &big_k_1)?;
 
-    transcript.message(COMMITMENT_LABEL, &enc);
-    let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
+    transcript.message(NEAR_DLOGEQ_COMMITMENT_LABEL, &enc);
+    let mut rng = transcript.challenge_then_build_rng(NEAR_DLOGEQ_CHALLENGE_LABEL);
     let e = frost_core::random_nonzero::<C, _>(&mut rng);
 
     let s = k + e * witness.x.0;
@@ -187,7 +184,8 @@ where
     if statement.generator1.ct_eq(&C::Group::identity()).into() {
         return Err(ProtocolError::IdentityElement);
     }
-    transcript.message(STATEMENT_LABEL, &statement.encode()?);
+
+    transcript.message(NEAR_DLOGEQ_STATEMENT_LABEL, &statement.encode()?);
 
     let (phi0, phi1) = statement.phi(&proof.s.0);
     let big_k0 = phi0 - *statement.public0 * proof.e.0;
@@ -195,8 +193,8 @@ where
 
     let enc = encode_two_points::<C>(&big_k0, &big_k1)?;
 
-    transcript.message(COMMITMENT_LABEL, &enc);
-    let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
+    transcript.message(NEAR_DLOGEQ_COMMITMENT_LABEL, &enc);
+    let mut rng = transcript.challenge_then_build_rng(NEAR_DLOGEQ_CHALLENGE_LABEL);
     let e = frost_core::random_nonzero::<C, _>(&mut rng);
 
     Ok(e == proof.e.0)

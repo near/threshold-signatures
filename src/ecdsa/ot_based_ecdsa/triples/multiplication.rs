@@ -1,5 +1,5 @@
+use crate::crypto::constants::{BITS, SECURITY_PARAMETER};
 use rand_core::{CryptoRngCore, OsRng};
-
 use crate::{
     crypto::hash::{hash, HashOutput},
     ecdsa::{
@@ -22,7 +22,6 @@ use std::sync::Arc;
 
 use super::{
     batch_random_ot::{batch_random_ot_receiver, batch_random_ot_sender},
-    constants::{BITS, SECURITY_PARAMETER},
     mta::{mta_receiver, mta_sender},
     random_ot_extension::{
         random_ot_extension_receiver, random_ot_extension_sender, RandomOtExtensionParams,
