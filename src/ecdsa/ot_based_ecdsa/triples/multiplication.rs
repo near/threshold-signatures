@@ -1,5 +1,4 @@
 use crate::crypto::constants::{BITS, SECURITY_PARAMETER};
-use rand_core::{CryptoRngCore, OsRng};
 use crate::{
     crypto::hash::{hash, HashOutput},
     ecdsa::{
@@ -18,6 +17,7 @@ use crate::{
         Participant,
     },
 };
+use rand_core::{CryptoRngCore, OsRng};
 use std::sync::Arc;
 
 use super::{

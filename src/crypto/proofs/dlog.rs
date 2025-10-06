@@ -1,7 +1,8 @@
 use crate::{
     crypto::{
         constants::{
-            NEAR_DLOG_CHALLENGE_LABEL, NEAR_DLOG_COMMITMENT_LABEL, NEAR_DLOG_STATEMENT_LABEL,
+            NEAR_DLOG_CHALLENGE_LABEL, NEAR_DLOG_COMMITMENT_LABEL, NEAR_DLOG_ENCODE_LABEL_PUBLIC,
+            NEAR_DLOG_ENCODE_LABEL_STATEMENT, NEAR_DLOG_STATEMENT_LABEL,
         },
         proofs::strobe_transcript::TranscriptRng,
     },
@@ -12,11 +13,6 @@ use frost_core::{serialization::SerializableScalar, Group};
 
 use super::strobe_transcript::Transcript;
 use rand_core::CryptoRngCore;
-
-/// A string used to extend an encoding
-const ENCODE_LABEL_STATEMENT: &[u8] = b"statement:";
-/// A string used to extend an encoding
-const ENCODE_LABEL_PUBLIC: &[u8] = b"public:";
 
 /// The public statement for this proof.
 /// This statement claims knowledge of the discrete logarithm of some point.
@@ -29,11 +25,11 @@ impl<C: Ciphersuite> Statement<'_, C> {
     /// Encode into Vec<u8>: some sort of serialization
     fn encode(self) -> Result<Vec<u8>, ProtocolError> {
         let mut enc = Vec::new();
-        enc.extend_from_slice(ENCODE_LABEL_STATEMENT);
+        enc.extend_from_slice(NEAR_DLOG_ENCODE_LABEL_STATEMENT);
 
         match <C::Group as Group>::serialize(self.public) {
             Ok(ser) => {
-                enc.extend_from_slice(ENCODE_LABEL_PUBLIC);
+                enc.extend_from_slice(NEAR_DLOG_ENCODE_LABEL_PUBLIC);
                 enc.extend_from_slice(ser.as_ref());
             }
             _ => return Err(ProtocolError::PointSerialization),
@@ -90,14 +86,14 @@ pub fn prove_with_nonce<C: Ciphersuite>(
     witness: Witness<C>,
     nonce: (Scalar<C>, Element<C>),
 ) -> Result<Proof<C>, ProtocolError> {
-    transcript.message(STATEMENT_LABEL, &statement.encode()?);
+    transcript.message(NEAR_DLOG_STATEMENT_LABEL, &statement.encode()?);
 
     let (k, big_k) = nonce;
 
     // Create a serialization of big_k
     let ser = C::Group::serialize(&big_k).map_err(|_| ProtocolError::IdentityElement)?;
-    transcript.message(COMMITMENT_LABEL, ser.as_ref());
-    let mut rng = transcript.challenge_then_build_rng(CHALLENGE_LABEL);
+    transcript.message(NEAR_DLOG_COMMITMENT_LABEL, ser.as_ref());
+    let mut rng = transcript.challenge_then_build_rng(NEAR_DLOG_CHALLENGE_LABEL);
     let e = frost_core::random_nonzero::<C, _>(&mut rng);
 
     let s = k + e * witness.x.0;

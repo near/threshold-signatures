@@ -23,7 +23,7 @@ pub const RANDOMIZER_LEN: usize = 32;
 
 // Confidential Key Derivation Constants
 /// Confidential key derivation domain separator.
-pub const NEAR_CKD_DOMAIN: &[u8] = b"NEAR CURVE_XOF:SHAKE-256_SSWU_RO_";
+pub const NEAR_CKD_DOMAIN: &[u8] = b"NEAR BLS12381G1_XMD:SHA-256_SSWU_RO_";
 
 // DLOG Proof Constants
 /// DLOG proof statement label.
@@ -32,6 +32,10 @@ pub const NEAR_DLOG_STATEMENT_LABEL: &[u8] = b"dlog proof statement";
 pub const NEAR_DLOG_COMMITMENT_LABEL: &[u8] = b"dlog proof commitment";
 /// DLOG proof challenge label.
 pub const NEAR_DLOG_CHALLENGE_LABEL: &[u8] = b"dlog proof challenge";
+/// A string used to extend an encoding
+pub const NEAR_DLOG_ENCODE_LABEL_STATEMENT: &[u8] = b"statement:";
+/// A string used to extend an encoding
+pub const NEAR_DLOG_ENCODE_LABEL_PUBLIC: &[u8] = b"public:";
 
 // DLOGEQ Proof Constants
 /// DLOGEQ proof statement label.
@@ -40,6 +44,14 @@ pub const NEAR_DLOGEQ_STATEMENT_LABEL: &[u8] = b"dlogeq proof statement";
 pub const NEAR_DLOGEQ_COMMITMENT_LABEL: &[u8] = b"dlogeq proof commitment";
 /// DLOGEQ proof challenge label.
 pub const NEAR_DLOGEQ_CHALLENGE_LABEL: &[u8] = b"dlogeq proof challenge";
+/// A string used to extend an encoding
+pub const NEAR_DLOGEQ_ENCODE_LABEL_STATEMENT: &[u8] = b"statement:";
+/// A string used to extend an encoding
+pub const NEAR_DLOGEQ_ENCODE_LABEL_PUBLIC0: &[u8] = b"public 0:";
+/// A string used to extend an encoding
+pub const NEAR_DLOGEQ_ENCODE_LABEL_PUBLIC1: &[u8] = b"public 1:";
+/// A string used to extend an encoding
+pub const NEAR_DLOGEQ_ENCODE_LABEL_GENERATOR1: &[u8] = b"generator 1:";
 
 // Strobe Constants
 /// Strobe R value; security level 128 is hardcoded
