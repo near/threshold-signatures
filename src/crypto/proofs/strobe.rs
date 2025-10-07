@@ -18,8 +18,32 @@ const FLAG_T: u8 = 1 << 3;
 const FLAG_M: u8 = 1 << 4;
 const FLAG_K: u8 = 1 << 5;
 
-fn transmute_state(st: &mut AlignedKeccakState) -> &mut [u64; 25] {
-    unsafe { &mut *std::ptr::from_mut::<AlignedKeccakState>(st).cast::<[u64; 25]>() }
+fn run_f1600(st: &mut AlignedKeccakState) {
+    #[cfg(target_endian = "little")]
+    {
+        // On little-endian architectures, we can safely transmute the byte array
+        // to a u64 array and pass it to keccak::f1600.
+        let state_u64 =
+            unsafe { &mut *std::ptr::from_mut::<AlignedKeccakState>(st).cast::<[u64; 25]>() };
+        keccak::f1600(state_u64);
+    }
+    #[cfg(target_endian = "big")]
+    {
+        // On big-endian architectures, we need to manually convert the byte
+        // array to a u64 array in little-endian format.
+        let mut state_u64 = [0u64; 25];
+        for (word, bytes) in state_u64.iter_mut().zip(st.0.chunks_exact(8)) {
+            *word = u64::from_le_bytes(bytes.try_into().unwrap());
+        }
+
+        keccak::f1600(&mut state_u64);
+
+        // After the permutation, we need to convert the u64 array back to the
+        // byte array in little-endian format.
+        for (word, bytes) in state_u64.iter().zip(st.0.chunks_exact_mut(8)) {
+            bytes.copy_from_slice(&word.to_le_bytes());
+        }
+    }
 }
 
 /// This is a wrapper around 200-byte buffer that's always 8-byte aligned
@@ -54,7 +78,7 @@ impl Strobe128 {
             let mut st = AlignedKeccakState([0u8; 200]);
             st[0..6].copy_from_slice(&[1, STROBE_R + 2, 1, 0, 1, 96]);
             st[6..18].copy_from_slice(b"STROBEv1.0.2");
-            keccak::f1600(transmute_state(&mut st));
+            run_f1600(&mut st);
 
             st
         };
@@ -97,7 +121,7 @@ impl Strobe128 {
         self.state[self.pos as usize] ^= self.pos_begin;
         self.state[(self.pos + 1) as usize] ^= 0x04;
         self.state[(STROBE_R + 1) as usize] ^= 0x80;
-        keccak::f1600(transmute_state(&mut self.state));
+        run_f1600(&mut self.state);
         self.pos = 0;
         self.pos_begin = 0;
     }
