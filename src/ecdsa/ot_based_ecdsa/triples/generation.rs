@@ -855,7 +855,6 @@ async fn do_generation_many<const N: usize>(
         )>(&chan, wait4, &participants, me)
         .await?
         {
-            //#[allow(clippy::type_complexity)]
             for i in 0..N {
                 let big_e_j_zero = &big_e_j_zero_v[i];
                 let big_f = &big_f_v[i];
