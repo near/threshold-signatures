@@ -63,15 +63,6 @@ async fn do_generation(
     threshold: usize,
     mut rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<TripleGenerationOutput, ProtocolError> {
-    struct ParallelToMultiplicationTaskOutput {
-        big_e: PolynomialCommitment,
-        big_f: PolynomialCommitment,
-        big_l: PolynomialCommitment,
-        big_c: ProjectivePoint,
-        a_i: Scalar,
-        b_i: Scalar,
-    }
-
     let mut chan = comms.shared_channel();
     let mut transcript = create_transcript(&participants, threshold)?;
 
@@ -128,6 +119,15 @@ async fn do_generation(
             f0.0,
         )
     };
+
+    struct ParallelToMultiplicationTaskOutput {
+        big_e: PolynomialCommitment,
+        big_f: PolynomialCommitment,
+        big_l: PolynomialCommitment,
+        big_c: ProjectivePoint,
+        a_i: Scalar,
+        b_i: Scalar,
+    }
 
     let parallel_to_multiplication_task =
         async {
@@ -474,6 +474,16 @@ async fn do_generation(
     ))
 }
 
+#[allow(clippy::struct_field_names)]
+struct ParallelToMultiplicationTaskOutputMany {
+    big_e_v: Vec<PolynomialCommitment>,
+    big_f_v: Vec<PolynomialCommitment>,
+    big_l_v: Vec<PolynomialCommitment>,
+    big_c_v: Vec<ProjectivePoint>,
+    a_i_v: Vec<Scalar>,
+    b_i_v: Vec<Scalar>,
+}
+
 #[allow(clippy::too_many_lines)]
 async fn do_generation_many<const N: usize>(
     comms: Comms,
@@ -482,16 +492,6 @@ async fn do_generation_many<const N: usize>(
     threshold: usize,
     mut rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<TripleGenerationOutputMany, ProtocolError> {
-    #[allow(clippy::struct_field_names)]
-    struct ParallelToMultiplicationTaskOutput {
-        big_e_v: Vec<PolynomialCommitment>,
-        big_f_v: Vec<PolynomialCommitment>,
-        big_l_v: Vec<PolynomialCommitment>,
-        big_c_v: Vec<ProjectivePoint>,
-        a_i_v: Vec<Scalar>,
-        b_i_v: Vec<Scalar>,
-    }
-
     assert!(N > 0);
 
     let mut chan = comms.shared_channel();
@@ -884,7 +884,7 @@ async fn do_generation_many<const N: usize>(
             .iter()
             .map(crate::crypto::polynomials::PolynomialCommitment::extend_with_identity)
             .collect::<Result<Vec<_>, _>>()?;
-        Ok(ParallelToMultiplicationTaskOutput {
+        Ok(ParallelToMultiplicationTaskOutputMany {
             big_e_v,
             big_f_v,
             big_l_v,
@@ -897,7 +897,7 @@ async fn do_generation_many<const N: usize>(
     // Spec 4.4
     let (
         l0_v,
-        ParallelToMultiplicationTaskOutput {
+        ParallelToMultiplicationTaskOutputMany {
             big_e_v,
             big_f_v,
             mut big_l_v,
