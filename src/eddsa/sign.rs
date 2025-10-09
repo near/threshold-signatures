@@ -1,8 +1,9 @@
 //! This module wraps a signature generation functionality from `Frost` library
 //!  into `cait-sith::Protocol` representation.
 use super::{KeygenOutput, SignatureOption};
-use crate::participants::{ParticipantCounter, ParticipantList};
+use crate::participants::ParticipantList;
 use crate::protocol::errors::{InitializationError, ProtocolError};
+use crate::protocol::helpers::recv_from_others;
 use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
 use crate::protocol::{Participant, Protocol};
 
@@ -52,8 +53,6 @@ async fn do_sign_coordinator(
     message: Vec<u8>,
     rng: &mut impl CryptoRngCore,
 ) -> Result<SignatureOption, ProtocolError> {
-    let mut seen = ParticipantCounter::new(&participants);
-
     // --- Round 1.
     // * Send acknowledgment to other participants.
     // * Wait for their commitments.
@@ -65,16 +64,10 @@ async fn do_sign_coordinator(
 
     let (nonces, commitments) = round1::commit(&signing_share, rng);
     commitments_map.insert(me.to_identifier(), commitments);
-    seen.put(me);
 
     let commit_waitpoint = chan.next_waitpoint();
-    while !seen.full() {
-        let (from, commitment): (_, round1::SigningCommitments) =
-            chan.recv(commit_waitpoint).await?;
 
-        if !seen.put(from) {
-            continue;
-        }
+    for (from, commitment) in recv_from_others(&chan, commit_waitpoint, &participants, me).await? {
         commitments_map.insert(from.to_identifier(), commitment);
     }
 
@@ -97,14 +90,9 @@ async fn do_sign_coordinator(
     let signature_share = round2::sign(&signing_package, &nonces, &key_package)
         .map_err(|e| ProtocolError::AssertionFailed(e.to_string()))?;
     signature_shares.insert(me.to_identifier(), signature_share);
-    seen.clear();
-    seen.put(me);
 
-    while !seen.full() {
-        let (from, signature_share): (_, round2::SignatureShare) = chan.recv(r2_wait_point).await?;
-        if !seen.put(from) {
-            continue;
-        }
+    for (from, signature_share) in recv_from_others(&chan, r2_wait_point, &participants, me).await?
+    {
         signature_shares.insert(from.to_identifier(), signature_share);
     }
 
