@@ -9,6 +9,9 @@ pub mod protocol;
 #[cfg(test)]
 mod test;
 
+#[cfg(feature="benchmarking")]
+mod benchmarking_utils;
+
 // TODO: We should probably no expose the full modules, but only the types
 // that make sense for our library
 pub use blstrs;

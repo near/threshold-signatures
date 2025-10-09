@@ -52,6 +52,11 @@ zeroize = "1.8.1"
 [features]
 default = ["actively_secure_robust_ecdsa"]
 actively_secure_robust_ecdsa = []
+benchmarking = ["fs2"]
+
+[dependencies.fs2]
+version = "0.4"
+optional = true
 
 [dev-dependencies]
 criterion = "0.7.0"
@@ -61,6 +66,7 @@ rand = "0.8.5"
 [[bench]]
 name = "main"
 harness = false
+required-features = ["benchmarking"]
 
 [profile.test-release]
 inherits = "release"

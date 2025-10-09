@@ -152,12 +152,21 @@ pub fn run_protocol<T>(
                                 continue;
                             }
                             let from = ps[i].0;
+                            #[cfg(feature="benchmarking")]
+                            {
+                                let path = "benches";
+                                crate::benchmarking_utils::io::append_with_lock(path, vec![]);
+                            }
                             ps[j].1.message(from, m.clone());
                         }
                         true
                     }
                     Action::SendPrivate(to, m) => {
                         let from = ps[i].0;
+                        #[cfg(feature="benchmarking")]
+                        {
+
+                        }
                         ps[indices[&to]].1.message(from, m);
                         true
                     }
