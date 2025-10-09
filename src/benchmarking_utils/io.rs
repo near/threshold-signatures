@@ -36,24 +36,24 @@ pub fn encode_send(from: Participant, to: Participant, message: &[u8]) -> Vec<u8
 }
 
 /// TODO
-pub fn decode_send(data: &[u8]) -> Result<(Participant, Participant, Vec<u8>), BenchmarkError> {
-    if data.len()<= 2 * PARTICIPANT_LEN {
-        return Err(BenchmarkError::SendDecodingFailure(data.to_vec()));
+pub fn decode_send(encoding: &[u8]) -> Result<(Participant, Participant, Vec<u8>), BenchmarkError> {
+    if encoding.len()<= 2 * PARTICIPANT_LEN {
+        return Err(BenchmarkError::SendDecodingFailure(encoding.to_vec()));
     }
 
     // Split the data into sender, receiver, and payload
     let from = Participant::from_le_bytes(
-        data[0..PARTICIPANT_LEN].try_into()
+        encoding[0..PARTICIPANT_LEN].try_into()
         .expect("The decoded data contains more than 9 bytes")
     );
 
 
     let to = Participant::from_le_bytes(
-        data[PARTICIPANT_LEN..2 * PARTICIPANT_LEN].try_into()
+        encoding[PARTICIPANT_LEN..2 * PARTICIPANT_LEN].try_into()
         .expect("The decoded data contains more than 9 bytes")
     );
 
-    let message = data[2 * PARTICIPANT_LEN..].to_vec();
+    let message = encoding[2 * PARTICIPANT_LEN..].to_vec();
 
     return Ok((from, to, message))
 }

@@ -18,6 +18,9 @@ use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite};
 use frost_core::serialization::SerializableScalar;
 use frost_core::{Identifier, Scalar};
 
+#[cfg(feature="benchmarking")]
+use crate::benchmarking_utils::io;
+
 /// Represents a participant in the protocol.
 ///
 /// Each participant should be uniquely identified by some number, which this
@@ -28,6 +31,15 @@ use frost_core::{Identifier, Scalar};
 pub struct Participant(u32);
 
 impl Participant {
+    #[cfg(feature="benchmarking")]
+    pub const BYTES_LEN: usize = 4;
+
+    #[cfg(feature="benchmarking")]
+    /// Return this participant as little endian bytes.
+    pub fn from_le_bytes(bytes: [u8; 4]) -> Self {
+        Self(u32::from_le_bytes(bytes))
+    }
+
     /// Return this participant as little endian bytes.
     pub fn bytes(&self) -> [u8; 4] {
         self.0.to_le_bytes()
@@ -152,21 +164,27 @@ pub fn run_protocol<T>(
                                 continue;
                             }
                             let from = ps[i].0;
-                            #[cfg(feature="benchmarking")]
-                            {
-                                let path = "benches";
-                                crate::benchmarking_utils::io::append_with_lock(path, vec![]);
+
+                            #[cfg(feature="benchmarking")]{
+                                let path = io::create_path(from);
+                                let to = ps[j].0;
+                                let message = io::encode_send(from, to, &m);
+                                io::append_with_lock(&path, &message).map_err(|e| ProtocolError::Other(e.to_string()))?;
                             }
+
                             ps[j].1.message(from, m.clone());
                         }
                         true
                     }
                     Action::SendPrivate(to, m) => {
                         let from = ps[i].0;
-                        #[cfg(feature="benchmarking")]
-                        {
 
+                        #[cfg(feature="benchmarking")]{
+                                let path = io::create_path(from);
+                                let message = io::encode_send(from, to, &m);
+                                io::append_with_lock(&path, &message).map_err(|e| ProtocolError::Other(e.to_string()))?;
                         }
+
                         ps[indices[&to]].1.message(from, m);
                         true
                     }
