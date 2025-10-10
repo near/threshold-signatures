@@ -7,6 +7,8 @@ use crate::protocol::errors::BenchmarkError;
 
 const DIR: &str = "snapshot_storage/";
 const PARTICIPANT_LEN:usize = Participant::BYTES_LEN;
+const SIZEOF_USIZE: usize =  std::mem::size_of::<usize>();
+
 
 /// TODO
 fn participant_to_str(participant: Participant) -> String{
@@ -18,44 +20,49 @@ fn participant_to_str(participant: Participant) -> String{
 
 /// TODO
 pub fn create_path(participant: Participant) -> String{
+    print!("{:?}",participant);
+
     let participant = participant_to_str(participant);
-     format!("{}{}.txt", DIR, participant)
+     format!("{}{}.raw", DIR, participant)
 }
 
 /// TODO
 pub fn encode_send(from: Participant, to: Participant, message: &[u8]) -> Vec<u8> {
-    let from = from.bytes();
-    let to = to.bytes();
-    let mut result = Vec::with_capacity(from.len() + to.len() + message.len());
+    // 4 bytes for the length of the message
+    let mut result = Vec::with_capacity(PARTICIPANT_LEN + SIZEOF_USIZE + message.len());
     // Append all the items
     // No need for special characters as the participant bytes are of fixed size
-    result.extend_from_slice(&from);
-    result.extend_from_slice(&to);
+    result.extend_from_slice(&to.bytes());
+    result.extend_from_slice(&message.len().to_le_bytes());
     result.extend_from_slice(message);
     result
 }
 
 /// TODO
-pub fn decode_send(encoding: &[u8]) -> Result<(Participant, Participant, Vec<u8>), BenchmarkError> {
-    if encoding.len()<= 2 * PARTICIPANT_LEN {
+pub fn decode_send(encoding: &[u8]) -> Result<(Participant, Vec<u8>), BenchmarkError> {
+    let fixed_size = PARTICIPANT_LEN+SIZEOF_USIZE;
+    if encoding.len()<= fixed_size {
         return Err(BenchmarkError::SendDecodingFailure(encoding.to_vec()));
     }
 
-    // Split the data into sender, receiver, and payload
-    let from = Participant::from_le_bytes(
-        encoding[0..PARTICIPANT_LEN].try_into()
-        .expect("The decoded data contains more than 9 bytes")
-    );
-
-
+    // Split the data into receiver, payload_len and payload
     let to = Participant::from_le_bytes(
-        encoding[PARTICIPANT_LEN..2 * PARTICIPANT_LEN].try_into()
-        .expect("The decoded data contains more than 9 bytes")
+        encoding[..PARTICIPANT_LEN].try_into()
+        .expect("The decoded data contains enough bytes")
     );
 
-    let message = encoding[2 * PARTICIPANT_LEN..].to_vec();
+    let message_len = usize::from_le_bytes(
+        encoding[PARTICIPANT_LEN..fixed_size].try_into()
+        .expect("The decoded data contains enough bytes")
+    );
 
-    return Ok((from, to, message))
+    if encoding.len()<= fixed_size + message_len {
+        return Err(BenchmarkError::SendDecodingFailure(encoding.to_vec()));
+    }
+
+    let message = encoding[fixed_size..fixed_size+message_len].to_vec();
+
+    return Ok((to, message))
 }
 
 /// TODO
