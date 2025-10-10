@@ -119,3 +119,44 @@ pub enum InitializationError {
     #[error("participant has an invalid index")]
     InvalidParticipantIndex,
 }
+
+/// Special errors used only during benchmarking
+#[cfg(feature = "benchmarking")]
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
+pub enum BenchmarkError {
+    #[error("failed to create a directory")]
+    DirCreationFailure,
+
+    #[error("failed to delete directory")]
+    DirDeletionFailure,
+
+    #[error("failed to find directory")]
+    DirNotFound,
+
+    #[error("failed to delete file")]
+    FileDeletionFailure,
+
+    #[error("failed to flush file")]
+    FileFlushingFailure,
+
+    #[error("failed to lock file")]
+    FileLockingFailure,
+
+    #[error("failed to find file")]
+    FileNotFound,
+
+    #[error("failed to open file")]
+    FileOpenFailure,
+
+    #[error("failed to read in file")]
+    FileReadingFailure,
+
+    #[error("failed to unlock file")]
+    FileUnlockingFailure,
+
+    #[error("failed to write in file")]
+    FileWritingFailure,
+
+    #[error("failed at decoding a send: {}", 0.to_string())]
+    SendDecodingFailure(Vec<u8>),
+}
