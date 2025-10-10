@@ -1,11 +1,10 @@
 mod crypto;
-mod dkg;
-mod participants;
+pub mod participants;
 
 pub mod confidential_key_derivation;
 pub mod ecdsa;
 pub mod eddsa;
-pub mod protocol;
+pub mod errors;
 #[cfg(test)]
 mod test;
 
@@ -23,15 +22,24 @@ pub use crypto::polynomials::{
     batch_compute_lagrange_coefficients, batch_invert, compute_lagrange_coefficient,
 };
 
+cfg_if::cfg_if! {
+    if #[cfg(feature = "protocol")] {
+        pub mod protocol;
+        mod dkg;
+        use crate::dkg::{assert_keygen_invariants, do_keygen, do_reshare, reshare_assertions};
+        use crate::protocol::internal::{make_protocol, Comms};
+        use crate::protocol::Protocol;
+        use std::marker::Send;
+        use rand_core::CryptoRngCore;
+        use crate::participants::Participant;
+        use crate::errors::InitializationError;
+    }
+}
+
 use frost_core::serialization::SerializableScalar;
 use frost_core::{keys::SigningShare, Group, VerifyingKey};
-use rand_core::CryptoRngCore;
-use serde::{Deserialize, Serialize};
-use std::marker::Send;
 
-use crate::dkg::{assert_keygen_invariants, do_keygen, do_reshare, reshare_assertions};
-use crate::protocol::internal::{make_protocol, Comms};
-use crate::protocol::{errors::InitializationError, Participant, Protocol};
+use serde::{Deserialize, Serialize};
 
 pub type Scalar<C> = frost_core::Scalar<C>;
 pub type Element<C> = frost_core::Element<C>;
@@ -75,6 +83,7 @@ impl<C: Ciphersuite> Tweak<C> {
 }
 
 /// Generic key generation function agnostic of the curve
+#[cfg(feature = "protocol")]
 pub fn keygen<C: Ciphersuite>(
     participants: &[Participant],
     me: Participant,
@@ -93,6 +102,7 @@ where
 
 /// Performs the key reshare protocol
 #[allow(clippy::too_many_arguments)]
+#[cfg(feature = "protocol")]
 pub fn reshare<C: Ciphersuite>(
     old_participants: &[Participant],
     old_threshold: usize,
@@ -131,6 +141,7 @@ where
 }
 
 /// Performs the refresh protocol
+#[cfg(feature = "protocol")]
 pub fn refresh<C: Ciphersuite>(
     old_signing_key: Option<SigningShare<C>>,
     old_public_key: VerifyingKey<C>,

@@ -1645,6 +1645,7 @@ dependencies = [
  "blstrs",
  "borsh",
  "byteorder",
+ "cfg-if",
  "criterion",
  "digest",
  "ecdsa",
