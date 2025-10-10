@@ -27,7 +27,7 @@ pub fn create_path(participant: Participant) -> String{
 }
 
 /// TODO
-pub fn encode_send(from: Participant, to: Participant, message: &[u8]) -> Vec<u8> {
+pub fn encode_send(to: Participant, message: &[u8]) -> Vec<u8> {
     // 4 bytes for the length of the message
     let mut result = Vec::with_capacity(PARTICIPANT_LEN + SIZEOF_USIZE + message.len());
     // Append all the items
@@ -66,7 +66,7 @@ pub fn decode_send(encoding: &[u8]) -> Result<(Participant, Vec<u8>), BenchmarkE
 }
 
 /// TODO
-pub fn append_with_lock(path: &str, data: &[u8]) -> Result<(), BenchmarkError> {
+pub fn file_append_with_lock(path: &str, data: &[u8]) -> Result<(), BenchmarkError> {
     let path = Path::new(path);
 
     // Create parent directories if needed

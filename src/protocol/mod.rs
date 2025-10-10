@@ -168,8 +168,9 @@ pub fn run_protocol<T>(
                             #[cfg(feature="benchmarking")]{
                                 let path = io::create_path(from);
                                 let to = ps[j].0;
-                                let message = io::encode_send(from, to, &m);
-                                io::append_with_lock(&path, &message).map_err(|e| ProtocolError::Other(e.to_string()))?;
+                                let message = io::encode_send(to, &m);
+                                io::file_append_with_lock(&path, &message)
+                                    .map_err(|e| ProtocolError::Other(e.to_string()))?;
                             }
 
                             ps[j].1.message(from, m.clone());
@@ -181,8 +182,9 @@ pub fn run_protocol<T>(
 
                         #[cfg(feature="benchmarking")]{
                                 let path = io::create_path(from);
-                                let message = io::encode_send(from, to, &m);
-                                io::append_with_lock(&path, &message).map_err(|e| ProtocolError::Other(e.to_string()))?;
+                                let message = io::encode_send(to, &m);
+                                io::file_append_with_lock(&path, &message)
+                                    .map_err(|e| ProtocolError::Other(e.to_string()))?;
                         }
 
                         ps[indices[&to]].1.message(from, m);
