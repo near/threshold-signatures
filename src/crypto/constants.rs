@@ -1,9 +1,5 @@
 //! This module contains cryptographic constants that are used throughout the codebase.
 
-// Confidential Key Derivation Constants
-/// Confidential key derivation domain separator.
-pub const NEAR_CKD_DOMAIN: &[u8] = b"NEAR BLS12381G1_XMD:SHA-256_SSWU_RO_";
-
 use ecdsa::elliptic_curve::{bigint::Bounded, Curve};
 use k256::Secp256k1;
 
@@ -24,6 +20,10 @@ pub const HASH_LEN: usize = 32;
 // Randomness Constants
 /// Length of the randomizer for commitments.
 pub const RANDOMIZER_LEN: usize = 32;
+
+// Confidential Key Derivation Constants
+/// Confidential key derivation domain separator.
+pub const NEAR_CKD_DOMAIN: &[u8] = b"NEAR BLS12381G1_XMD:SHA-256_SSWU_RO_";
 
 // DLOG Proof Constants
 /// DLOG proof statement label.
