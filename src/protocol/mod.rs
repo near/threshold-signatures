@@ -19,7 +19,7 @@ use frost_core::serialization::SerializableScalar;
 use frost_core::{Identifier, Scalar};
 
 #[cfg(feature = "benchmarking")]
-use crate::benchmarking_utils::io;
+use crate::benchmarking_utils::io::encode_in_file;
 
 /// Represents a participant in the protocol.
 ///
@@ -141,9 +141,7 @@ pub trait Protocol {
 /// Creates or opens in a file generated from the sender's information
 /// and encodes a message as <receiver message> in raw bytes
 fn write_in_file(from: Participant, to: Participant, message: &[u8]) -> Result<(), ProtocolError> {
-    let path = io::create_path(from);
-    let message = io::encode_send(to, message);
-    io::file_append_with_lock(&path, &message).map_err(|e| ProtocolError::Other(e.to_string()))
+    encode_in_file(from, to, message).map_err(|e| ProtocolError::Other(e.to_string()))
 }
 
 /// Run a protocol to completion, synchronously.

@@ -127,8 +127,14 @@ pub enum BenchmarkError {
     #[error("failed to create a directory")]
     DirCreationFailure,
 
+    #[error("failed to delete directory")]
+    DirDeletionFailure,
+
     #[error("failed to find directory")]
     DirNotFound,
+
+    #[error("failed to delete file")]
+    FileDeletionFailure,
 
     #[error("failed to flush file")]
     FileFlushingFailure,

@@ -1,7 +1,7 @@
 use crate::protocol::errors::BenchmarkError;
 use crate::Participant;
 use fs2::FileExt; // for file locking
-use std::fs::{create_dir_all, read, OpenOptions};
+use std::fs::{create_dir_all, read, remove_dir, remove_file, OpenOptions};
 use std::io::Write;
 use std::path::Path;
 
@@ -9,8 +9,9 @@ const DIR: &str = "snapshot_storage/";
 const PARTICIPANT_LEN: usize = Participant::BYTES_LEN;
 const SIZEOF_USIZE: usize = std::mem::size_of::<usize>();
 
-/// TODO
-pub fn encode_send(to: Participant, message: &[u8]) -> Vec<u8> {
+/// Encodes a `message` sent to a participant `to` in raw bytes
+/// following the format <`to` `message.len()` `message`>
+fn encode_send(to: Participant, message: &[u8]) -> Vec<u8> {
     // 4 bytes for the length of the message
     let mut result = Vec::with_capacity(PARTICIPANT_LEN + SIZEOF_USIZE + message.len());
     // Append all the items
@@ -21,8 +22,10 @@ pub fn encode_send(to: Participant, message: &[u8]) -> Vec<u8> {
     result
 }
 
-/// TODO
-pub fn decode_send(encoding: &[u8]) -> Result<(Participant, Vec<u8>, usize), BenchmarkError> {
+/// Decodes a sequence of encoded bytes `encoding` into a (participant, message)
+/// The encoding could be much longer than just participant and a message
+/// The function returns both participant and message and the size of the decoded data
+fn decode_send(encoding: &[u8]) -> Result<(Participant, Vec<u8>, usize), BenchmarkError> {
     let fixed_size = PARTICIPANT_LEN + SIZEOF_USIZE;
     if encoding.len() <= fixed_size {
         return Err(BenchmarkError::SendDecodingFailure(encoding.to_vec()));
@@ -52,15 +55,16 @@ pub fn decode_send(encoding: &[u8]) -> Result<(Participant, Vec<u8>, usize), Ben
     Ok((to, message, decoded_size))
 }
 
-/// TODO
-pub fn create_path(participant: Participant) -> String {
+/// Creates a file using a participant in a fixed directory
+/// Example of file created: `snapshot_storage/P1.raw`
+fn create_path(participant: Participant) -> String {
     // transforms a participant into a string
     let participant = u32::from_le_bytes(participant.bytes()).to_string();
     format!("{DIR}P{participant}.raw")
 }
 
-/// TODO
-pub fn file_append_with_lock(path: &str, data: &[u8]) -> Result<(), BenchmarkError> {
+/// Appends to a given file into a sequence of (participant, message)
+fn file_append_with_lock(path: &str, data: &[u8]) -> Result<(), BenchmarkError> {
     let path = Path::new(path);
 
     // Create parent directories if needed
@@ -90,7 +94,20 @@ pub fn file_append_with_lock(path: &str, data: &[u8]) -> Result<(), BenchmarkErr
     Ok(())
 }
 
-pub fn file_decode(path: &str) -> Result<Vec<(Participant, Vec<u8>)>, BenchmarkError> {
+/// Creates or opens in a file generated `from` the sender's information
+/// and encodes a message sent by `from` as <`to` `message.len()` `message`> in raw bytes
+pub fn encode_in_file(
+    from: Participant,
+    to: Participant,
+    message: &[u8],
+) -> Result<(), BenchmarkError> {
+    let path = create_path(from);
+    let message = encode_send(to, message);
+    file_append_with_lock(&path, &message)
+}
+
+/// Decodes a given encoded file into a sequence of (participant, message)
+fn decode_file(path: &str) -> Result<Vec<(Participant, Vec<u8>)>, BenchmarkError> {
     let path = Path::new(path);
 
     // Check if the directory exists
@@ -118,4 +135,22 @@ pub fn file_decode(path: &str) -> Result<Vec<(Participant, Vec<u8>)>, BenchmarkE
     }
 
     Ok(decoding_db)
+}
+
+/// The file is decoded into a sequence of (participant, message).
+/// The file is consumed (deleted) then the directory is delete if empty
+#[allow(dead_code)]
+pub fn consume_file(
+    participant: Participant,
+) -> Result<Vec<(Participant, Vec<u8>)>, BenchmarkError> {
+    let path = create_path(participant);
+    let decoding = decode_file(&path)?;
+    // consume the file
+    let path = Path::new(&path);
+    remove_file(path).map_err(|_| BenchmarkError::FileDeletionFailure)?;
+    // remove the parent directory if empty
+    if let Some(parent) = path.parent() {
+        remove_dir(parent).map_err(|_| BenchmarkError::DirDeletionFailure)?;
+    }
+    Ok(decoding)
 }
