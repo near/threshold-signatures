@@ -18,7 +18,7 @@ use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite};
 use frost_core::serialization::SerializableScalar;
 use frost_core::{Identifier, Scalar};
 
-#[cfg(feature="benchmarking")]
+#[cfg(feature = "benchmarking")]
 use crate::benchmarking_utils::io;
 
 /// Represents a participant in the protocol.
@@ -31,10 +31,10 @@ use crate::benchmarking_utils::io;
 pub struct Participant(u32);
 
 impl Participant {
-    #[cfg(feature="benchmarking")]
+    #[cfg(feature = "benchmarking")]
     pub const BYTES_LEN: usize = 4;
 
-    #[cfg(feature="benchmarking")]
+    #[cfg(feature = "benchmarking")]
     /// Return this participant as little endian bytes.
     pub fn from_le_bytes(bytes: [u8; 4]) -> Self {
         Self(u32::from_le_bytes(bytes))
@@ -137,14 +137,13 @@ pub trait Protocol {
     fn message(&mut self, from: Participant, data: MessageData);
 }
 
-#[cfg(feature="benchmarking")]
+#[cfg(feature = "benchmarking")]
 /// Creates or opens in a file generated from the sender's information
 /// and encodes a message as <receiver message> in raw bytes
 fn write_in_file(from: Participant, to: Participant, message: &[u8]) -> Result<(), ProtocolError> {
     let path = io::create_path(from);
     let message = io::encode_send(to, message);
-    io::file_append_with_lock(&path, &message)
-        .map_err(|e| ProtocolError::Other(e.to_string()))
+    io::file_append_with_lock(&path, &message).map_err(|e| ProtocolError::Other(e.to_string()))
 }
 
 /// Run a protocol to completion, synchronously.
@@ -175,7 +174,7 @@ pub fn run_protocol<T>(
                             }
                             let from = ps[i].0;
 
-                            #[cfg(feature="benchmarking")]
+                            #[cfg(feature = "benchmarking")]
                             write_in_file(from, ps[j].0, &m)?;
 
                             ps[j].1.message(from, m.clone());
@@ -185,7 +184,7 @@ pub fn run_protocol<T>(
                     Action::SendPrivate(to, m) => {
                         let from = ps[i].0;
 
-                        #[cfg(feature="benchmarking")]
+                        #[cfg(feature = "benchmarking")]
                         write_in_file(from, to, &m)?;
 
                         ps[indices[&to]].1.message(from, m);

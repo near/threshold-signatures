@@ -10,6 +10,4 @@
 // take any function
 // run it through the derandomizer
 
-
 // Modifying
-

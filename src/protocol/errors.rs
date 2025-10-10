@@ -120,9 +120,8 @@ pub enum InitializationError {
     InvalidParticipantIndex,
 }
 
-
 /// Special errors used only during benchmarking
-#[cfg(feature="benchmarking")]
+#[cfg(feature = "benchmarking")]
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum BenchmarkError {
     #[error("failed to create a directory")]
@@ -154,6 +153,4 @@ pub enum BenchmarkError {
 
     #[error("failed at decoding a send: {}", 0.to_string())]
     SendDecodingFailure(Vec<u8>),
-
-
 }

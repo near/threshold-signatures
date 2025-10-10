@@ -1,2 +1,2 @@
-pub(crate) mod inversion;
-pub(crate) mod lagrange;
+pub mod inversion;
+pub mod lagrange;

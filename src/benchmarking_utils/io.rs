@@ -1,14 +1,13 @@
-use std::fs::{OpenOptions, create_dir_all, read};
-use std::io::Write;
-use fs2::FileExt; // for file locking
-use std::path::Path;
-use crate::Participant;
 use crate::protocol::errors::BenchmarkError;
+use crate::Participant;
+use fs2::FileExt; // for file locking
+use std::fs::{create_dir_all, read, OpenOptions};
+use std::io::Write;
+use std::path::Path;
 
 const DIR: &str = "snapshot_storage/";
-const PARTICIPANT_LEN:usize = Participant::BYTES_LEN;
-const SIZEOF_USIZE: usize =  std::mem::size_of::<usize>();
-
+const PARTICIPANT_LEN: usize = Participant::BYTES_LEN;
+const SIZEOF_USIZE: usize = std::mem::size_of::<usize>();
 
 /// TODO
 pub fn encode_send(to: Participant, message: &[u8]) -> Vec<u8> {
@@ -25,19 +24,21 @@ pub fn encode_send(to: Participant, message: &[u8]) -> Vec<u8> {
 /// TODO
 pub fn decode_send(encoding: &[u8]) -> Result<(Participant, Vec<u8>, usize), BenchmarkError> {
     let fixed_size = PARTICIPANT_LEN + SIZEOF_USIZE;
-    if encoding.len()<= fixed_size {
+    if encoding.len() <= fixed_size {
         return Err(BenchmarkError::SendDecodingFailure(encoding.to_vec()));
     }
 
     // Split the data into receiver, payload_len and payload
     let to = Participant::from_le_bytes(
-        encoding[..PARTICIPANT_LEN].try_into()
-        .expect("The decoded data contains enough bytes")
+        encoding[..PARTICIPANT_LEN]
+            .try_into()
+            .expect("The decoded data contains enough bytes"),
     );
 
     let message_len = usize::from_le_bytes(
-        encoding[PARTICIPANT_LEN..fixed_size].try_into()
-        .expect("The decoded data contains enough bytes")
+        encoding[PARTICIPANT_LEN..fixed_size]
+            .try_into()
+            .expect("The decoded data contains enough bytes"),
     );
 
     let decoded_size = fixed_size + message_len;
@@ -46,22 +47,16 @@ pub fn decode_send(encoding: &[u8]) -> Result<(Participant, Vec<u8>, usize), Ben
         return Err(BenchmarkError::SendDecodingFailure(encoding.to_vec()));
     }
 
-    let message = encoding[fixed_size..fixed_size+message_len].to_vec();
+    let message = encoding[fixed_size..fixed_size + message_len].to_vec();
 
-    return Ok((to, message, decoded_size))
+    Ok((to, message, decoded_size))
 }
 
 /// TODO
-pub fn create_path(participant: Participant) -> String{
-    print!("{:?}",participant);
-
+pub fn create_path(participant: Participant) -> String {
     // transforms a participant into a string
-    let participant =  participant.bytes()
-        .iter()
-        .map(|b| format!("{:02x}", b))
-        .collect::<String>();
-
-     format!("{}{}.raw", DIR, participant)
+    let participant = u32::from_le_bytes(participant.bytes()).to_string();
+    format!("{DIR}P{participant}.raw")
 }
 
 /// TODO
@@ -82,16 +77,18 @@ pub fn file_append_with_lock(path: &str, data: &[u8]) -> Result<(), BenchmarkErr
         .map_err(|_| BenchmarkError::FileOpenFailure)?;
 
     // Lock the file exclusively using lock system
-    file.lock_exclusive().map_err(|_| BenchmarkError::FileLockingFailure)?;
+    file.lock_exclusive()
+        .map_err(|_| BenchmarkError::FileLockingFailure)?;
     // Write data
-    file.write_all(&data).map_err(|_| BenchmarkError::FileWritingFailure)?;
+    file.write_all(data)
+        .map_err(|_| BenchmarkError::FileWritingFailure)?;
     // Flush to ensure it's written
-    file.flush().map_err(|_| BenchmarkError::FileFlushingFailure)?;
+    file.flush()
+        .map_err(|_| BenchmarkError::FileFlushingFailure)?;
     // Unlock the file
     fs2::FileExt::unlock(&file).map_err(|_| BenchmarkError::FileUnlockingFailure)?;
     Ok(())
 }
-
 
 pub fn file_decode(path: &str) -> Result<Vec<(Participant, Vec<u8>)>, BenchmarkError> {
     let path = Path::new(path);
@@ -109,13 +106,12 @@ pub fn file_decode(path: &str) -> Result<Vec<(Participant, Vec<u8>)>, BenchmarkE
     }
 
     // Read the file
-    let encoded_contents = read(path)
-        .map_err(|_| BenchmarkError::FileReadingFailure)?;
+    let encoded_contents = read(path).map_err(|_| BenchmarkError::FileReadingFailure)?;
 
     let mut index = 0;
     let mut decoding_db: Vec<(Participant, Vec<u8>)> = Vec::new();
 
-    while index < encoded_contents.len(){
+    while index < encoded_contents.len() {
         let (to, message, decoded_size) = decode_send(&encoded_contents[index..])?;
         decoding_db.push((to, message));
         index += decoded_size;
