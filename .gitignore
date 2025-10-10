@@ -1,3 +1,4 @@
 /target
 .idea/
 codecov.json
+snapshot_storage
