@@ -128,14 +128,23 @@ pub enum BenchmarkError {
     #[error("failed to create a directory")]
     DirCreationFailure,
 
+    #[error("failed to find directory")]
+    DirNotFound,
+
     #[error("failed to flush file")]
     FileFlushingFailure,
 
     #[error("failed to lock file")]
     FileLockingFailure,
 
+    #[error("failed to find file")]
+    FileNotFound,
+
     #[error("failed to open file")]
     FileOpenFailure,
+
+    #[error("failed to read in file")]
+    FileReadingFailure,
 
     #[error("failed to unlock file")]
     FileUnlockingFailure,
