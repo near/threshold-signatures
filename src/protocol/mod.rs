@@ -137,6 +137,16 @@ pub trait Protocol {
     fn message(&mut self, from: Participant, data: MessageData);
 }
 
+#[cfg(feature="benchmarking")]
+/// Creates or opens in a file generated from the sender's information
+/// and encodes a message as <receiver message> in raw bytes
+fn write_in_file(from: Participant, to: Participant, message: &[u8]) -> Result<(), ProtocolError> {
+    let path = io::create_path(from);
+    let message = io::encode_send(to, message);
+    io::file_append_with_lock(&path, &message)
+        .map_err(|e| ProtocolError::Other(e.to_string()))
+}
+
 /// Run a protocol to completion, synchronously.
 ///
 /// This works by executing each participant in order.
@@ -165,13 +175,8 @@ pub fn run_protocol<T>(
                             }
                             let from = ps[i].0;
 
-                            #[cfg(feature="benchmarking")]{
-                                let path = io::create_path(from);
-                                let to = ps[j].0;
-                                let message = io::encode_send(to, &m);
-                                io::file_append_with_lock(&path, &message)
-                                    .map_err(|e| ProtocolError::Other(e.to_string()))?;
-                            }
+                            #[cfg(feature="benchmarking")]
+                            write_in_file(from, ps[j].0, &m)?;
 
                             ps[j].1.message(from, m.clone());
                         }
@@ -180,12 +185,8 @@ pub fn run_protocol<T>(
                     Action::SendPrivate(to, m) => {
                         let from = ps[i].0;
 
-                        #[cfg(feature="benchmarking")]{
-                                let path = io::create_path(from);
-                                let message = io::encode_send(to, &m);
-                                io::file_append_with_lock(&path, &message)
-                                    .map_err(|e| ProtocolError::Other(e.to_string()))?;
-                        }
+                        #[cfg(feature="benchmarking")]
+                        write_in_file(from, to, &m)?;
 
                         ps[indices[&to]].1.message(from, m);
                         true
