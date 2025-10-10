@@ -199,7 +199,7 @@ mod test {
     use crate::{
         ecdsa::{ot_based_ecdsa::triples::test::deal, KeygenOutput, Polynomial, ProjectivePoint},
         protocol::run_protocol,
-        test::generate_participants,
+        test::{generate_participants, GenProtocol},
     };
     use frost_secp256k1::{
         keys::{PublicKeyPackage, SigningShare},
@@ -207,23 +207,22 @@ mod test {
     };
     use rand_core::OsRng;
     use std::collections::BTreeMap;
-    use std::error::Error;
 
     #[test]
-    fn test_presign() -> Result<(), Box<dyn Error>> {
+    fn test_presign() {
         let participants = generate_participants(4);
         let original_threshold = 2;
-        let f = Polynomial::generate_polynomial(None, original_threshold - 1, &mut OsRng)?;
-        let big_x = ProjectivePoint::GENERATOR * f.eval_at_zero()?.0;
+        let f = Polynomial::generate_polynomial(None, original_threshold - 1, &mut OsRng).unwrap();
+        let big_x = ProjectivePoint::GENERATOR * f.eval_at_zero().unwrap().0;
 
         let threshold = 2;
 
-        let (triple0_pub, triple0_shares) = deal(&mut OsRng, &participants, original_threshold)?;
-        let (triple1_pub, triple1_shares) = deal(&mut OsRng, &participants, original_threshold)?;
+        let (triple0_pub, triple0_shares) =
+            deal(&mut OsRng, &participants, original_threshold).unwrap();
+        let (triple1_pub, triple1_shares) =
+            deal(&mut OsRng, &participants, original_threshold).unwrap();
 
-        #[allow(clippy::type_complexity)]
-        let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)> =
-            Vec::with_capacity(participants.len());
+        let mut protocols: GenProtocol<PresignOutput> = Vec::with_capacity(participants.len());
 
         for ((p, triple0), triple1) in participants
             .iter()
@@ -231,7 +230,7 @@ mod test {
             .zip(triple0_shares.into_iter())
             .zip(triple1_shares.into_iter())
         {
-            let private_share = f.eval_at_participant(*p)?.0;
+            let private_share = f.eval_at_participant(*p).unwrap().0;
             let verifying_key = VerifyingKey::new(big_x);
             let public_key_package = PublicKeyPackage::new(BTreeMap::new(), verifying_key);
             let keygen_out = KeygenOutput {
@@ -248,7 +247,8 @@ mod test {
                     keygen_out,
                     threshold,
                 },
-            )?;
+            )
+            .unwrap();
             protocols.push((*p, Box::new(protocol)));
         }
 
@@ -264,12 +264,11 @@ mod test {
         let k_shares = [result[0].1.k, result[1].1.k];
         let sigma_shares = [result[0].1.sigma, result[1].1.sigma];
         let p_list = ParticipantList::new(&participants).unwrap();
-        let k = p_list.lagrange::<Secp256>(participants[0])? * k_shares[0]
-            + p_list.lagrange::<Secp256>(participants[1])? * k_shares[1];
+        let k = p_list.lagrange::<Secp256>(participants[0]).unwrap() * k_shares[0]
+            + p_list.lagrange::<Secp256>(participants[1]).unwrap() * k_shares[1];
         assert_eq!(ProjectivePoint::GENERATOR * k.invert().unwrap(), big_k);
-        let sigma = p_list.lagrange::<Secp256>(participants[0])? * sigma_shares[0]
-            + p_list.lagrange::<Secp256>(participants[1])? * sigma_shares[1];
-        assert_eq!(sigma, k * f.eval_at_zero()?.0);
-        Ok(())
+        let sigma = p_list.lagrange::<Secp256>(participants[0]).unwrap() * sigma_shares[0]
+            + p_list.lagrange::<Secp256>(participants[1]).unwrap() * sigma_shares[1];
+        assert_eq!(sigma, k * f.eval_at_zero().unwrap().0);
     }
 }

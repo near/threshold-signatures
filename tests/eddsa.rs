@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used)]
 mod common;
 
 use common::{choose_coordinator_at_random, generate_participants, run_keygen};
@@ -7,8 +8,10 @@ use rand_core::OsRng;
 use threshold_signatures::{
     self,
     eddsa::{sign::sign, Ed25519Sha512, SignatureOption},
-    protocol::{run_protocol, Participant, Protocol},
+    protocol::{run_protocol, Participant},
 };
+
+use crate::common::GenProtocol;
 
 type C = Ed25519Sha512;
 type KeygenOutput = threshold_signatures::KeygenOutput<C>;
@@ -19,8 +22,7 @@ fn run_sign(
     coordinator: Participant,
     msg_hash: &[u8],
 ) -> Vec<(Participant, SignatureOption)> {
-    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)> =
-        Vec::with_capacity(participants.len());
+    let mut protocols: GenProtocol<SignatureOption> = Vec::with_capacity(participants.len());
 
     let participants_list: Vec<Participant> = participants.iter().map(|(p, _)| *p).collect();
     for (p, keygen_output) in participants {

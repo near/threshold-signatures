@@ -117,7 +117,10 @@ pub async fn mta_receiver(
     chi1.conditional_assign(&(-chi1), tv[0].0);
 
     // Step 5
-    let mut beta = chi1 * m.next().unwrap();
+    let mut beta = chi1
+        * m.next().ok_or_else(|| {
+            ProtocolError::AssertionFailed("Not enough elements received".to_string())
+        })?;
     for (&chi_i, m_i) in chi.iter().zip(m) {
         beta += chi_i * m_i;
     }
@@ -167,7 +170,7 @@ mod test {
     }
 
     #[test]
-    fn test_mta() -> Result<(), ProtocolError> {
+    fn test_mta() {
         let batch_size = BITS + SECURITY_PARAMETER;
 
         let v: Vec<_> = (0..batch_size)
@@ -188,10 +191,8 @@ mod test {
 
         let a = Scalar::generate_biased(&mut OsRng);
         let b = Scalar::generate_biased(&mut OsRng);
-        let (alpha, beta) = run_mta((v, a), (tv, b))?;
+        let (alpha, beta) = run_mta((v, a), (tv, b)).unwrap();
 
         assert_eq!(a * b, alpha + beta);
-
-        Ok(())
     }
 }

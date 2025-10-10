@@ -1,4 +1,5 @@
 /target
 .idea/
+.vscode/
 codecov.json
 snapshot_storage

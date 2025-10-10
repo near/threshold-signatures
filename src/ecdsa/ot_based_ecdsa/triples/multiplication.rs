@@ -17,7 +17,7 @@ use crate::{
         Participant,
     },
 };
-use rand_core::{CryptoRngCore, OsRng};
+use rand_core::CryptoRngCore;
 use std::sync::Arc;
 
 use super::{
@@ -34,10 +34,10 @@ pub async fn multiplication_sender(
     sid: &[u8],
     a_i: &Scalar,
     b_i: &Scalar,
-    rng: &mut impl CryptoRngCore,
+    mut rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<Scalar, ProtocolError> {
     // First, run a fresh batch random OT ourselves
-    let (delta, x) = batch_random_ot_receiver_random_helper(rng);
+    let (delta, x) = batch_random_ot_receiver_random_helper(&mut rng);
     let (delta, k) = batch_random_ot_receiver(chan.child(0), delta, x).await?;
 
     let batch_size = BITS + SECURITY_PARAMETER;
@@ -50,15 +50,15 @@ pub async fn multiplication_sender(
         },
         delta,
         &k,
-        rng,
+        &mut rng,
     )
     .await?;
     let res1 = res0.split_off(batch_size);
 
     // Step 2
-    let delta0 = mta_sender_random_helper(res0.len(), rng);
+    let delta0 = mta_sender_random_helper(res0.len(), &mut rng);
     let task0 = mta_sender(chan.child(2), res0, *a_i, delta0);
-    let delta1 = mta_sender_random_helper(res1.len(), rng);
+    let delta1 = mta_sender_random_helper(res1.len(), &mut rng);
     let task1 = mta_sender(chan.child(3), res1, *b_i, delta1);
 
     // Step 3
@@ -72,10 +72,10 @@ pub async fn multiplication_receiver(
     sid: &[u8],
     a_i: &Scalar,
     b_i: &Scalar,
-    rng: &mut impl CryptoRngCore,
+    mut rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<Scalar, ProtocolError> {
     // First, run a fresh batch random OT ourselves
-    let y = batch_random_ot_sender_helper(rng);
+    let y = batch_random_ot_sender_helper(&mut rng);
     let (k0, k1) = batch_random_ot_sender(chan.child(0), y).await?;
 
     let batch_size = BITS + SECURITY_PARAMETER;
@@ -88,15 +88,15 @@ pub async fn multiplication_receiver(
         },
         &k0,
         &k1,
-        rng,
+        &mut rng,
     )
     .await?;
     let res1 = res0.split_off(batch_size);
 
     // Step 2
-    let seed0 = mta_receiver_random_helper(rng);
+    let seed0 = mta_receiver_random_helper(&mut rng);
     let task0 = mta_receiver(chan.child(2), res0, *b_i, seed0);
-    let seed1 = mta_receiver_random_helper(rng);
+    let seed1 = mta_receiver_random_helper(&mut rng);
     let task1 = mta_receiver(chan.child(3), res1, *a_i, seed1);
 
     // Step 3
@@ -112,6 +112,7 @@ pub async fn multiplication(
     me: Participant,
     a_i: Scalar,
     b_i: Scalar,
+    rng: impl CryptoRngCore + Send + Copy + 'static,
 ) -> Result<Scalar, ProtocolError> {
     let mut tasks = Vec::with_capacity(participants.len() - 1);
     for p in participants.others(me) {
@@ -119,9 +120,9 @@ pub async fn multiplication(
             let chan = comms.private_channel(me, p);
             async move {
                 if p < me {
-                    multiplication_sender(chan, sid.as_ref(), &a_i, &b_i, &mut OsRng).await
+                    multiplication_sender(chan, sid.as_ref(), &a_i, &b_i, rng).await
                 } else {
-                    multiplication_receiver(chan, sid.as_ref(), &a_i, &b_i, &mut OsRng).await
+                    multiplication_receiver(chan, sid.as_ref(), &a_i, &b_i, rng).await
                 }
             }
         };
@@ -141,8 +142,13 @@ pub async fn multiplication_many<const N: usize>(
     me: Participant,
     av_iv: Vec<Scalar>,
     bv_iv: Vec<Scalar>,
+    rng: impl CryptoRngCore + Send + Copy + 'static,
 ) -> Result<Vec<Scalar>, ProtocolError> {
-    assert!(N > 0);
+    if N == 0 {
+        return Err(ProtocolError::AssertionFailed(
+            "N must be greater than 0".to_string(),
+        ));
+    }
     let sid_arc = Arc::new(sid);
     let av_iv_arc = Arc::new(av_iv);
     let bv_iv_arc = Arc::new(bv_iv);
@@ -168,7 +174,7 @@ pub async fn multiplication_many<const N: usize>(
                             sid_arc[i].as_ref(),
                             &av_iv_arc[i],
                             &bv_iv_arc[i],
-                            &mut OsRng,
+                            rng,
                         )
                         .await
                     } else {
@@ -177,7 +183,7 @@ pub async fn multiplication_many<const N: usize>(
                             sid_arc[i].as_ref(),
                             &av_iv_arc[i],
                             &bv_iv_arc[i],
-                            &mut OsRng,
+                            rng,
                         )
                         .await
                     }
@@ -201,8 +207,13 @@ pub async fn multiplication_many<const N: usize>(
 
     for oi in outs.iter_mut().take(N) {
         for _ in participants.others(me) {
-            let result = results.pop_front().unwrap();
-            *oi += result;
+            if let Some(result) = results.pop_front() {
+                *oi += result;
+            } else {
+                return Err(ProtocolError::AssertionFailed(
+                    "Received less values than expected".to_string(),
+                ));
+            }
         }
     }
 
@@ -217,10 +228,8 @@ mod test {
     use crate::{
         crypto::hash::hash,
         participants::ParticipantList,
-        protocol::{
-            errors::ProtocolError, internal::make_protocol, run_protocol, Participant, Protocol,
-        },
-        test::generate_participants,
+        protocol::{internal::make_protocol, run_protocol},
+        test::{generate_participants, GenProtocol},
     };
 
     use super::multiplication;
@@ -228,7 +237,7 @@ mod test {
     use crate::protocol::internal::Comms;
 
     #[test]
-    fn test_multiplication() -> Result<(), ProtocolError> {
+    fn test_multiplication() {
         let participants = generate_participants(3);
 
         let prep: Vec<_> = participants
@@ -242,10 +251,9 @@ mod test {
         let a = prep.iter().fold(Scalar::ZERO, |acc, (_, a_i, _)| acc + a_i);
         let b = prep.iter().fold(Scalar::ZERO, |acc, (_, _, b_i)| acc + b_i);
 
-        let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = Scalar>>)> =
-            Vec::with_capacity(prep.len());
+        let mut protocols: GenProtocol<Scalar> = Vec::with_capacity(prep.len());
 
-        let sid = hash(b"sid")?;
+        let sid = hash(b"sid").unwrap();
 
         for (p, a_i, b_i) in prep {
             let ctx = Comms::new();
@@ -258,23 +266,22 @@ mod test {
                     *p,
                     a_i,
                     b_i,
+                    OsRng,
                 ),
             );
             protocols.push((*p, Box::new(prot)));
         }
 
-        let result = run_protocol(protocols)?;
+        let result = run_protocol(protocols).unwrap();
         let c = result
             .into_iter()
             .fold(Scalar::ZERO, |acc, (_, c_i)| acc + c_i);
 
         assert_eq!(a * b, c);
-
-        Ok(())
     }
 
     #[test]
-    fn test_multiplication_many() -> Result<(), ProtocolError> {
+    fn test_multiplication_many() {
         const N: usize = 4;
         let participants = generate_participants(3);
 
@@ -308,13 +315,12 @@ mod test {
                     .collect()
             });
 
-        #[allow(clippy::type_complexity)]
-        let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = Vec<Scalar>>>)> =
-            Vec::with_capacity(prep.len());
+        let mut protocols: GenProtocol<Vec<Scalar>> = Vec::with_capacity(prep.len());
 
         let sids = (0..N)
             .map(|i| hash(&format!("sid{i}")))
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
         for (p, a_iv, b_iv) in prep {
             let ctx = Comms::new();
 
@@ -327,12 +333,13 @@ mod test {
                     *p,
                     a_iv,
                     b_iv,
+                    OsRng,
                 ),
             );
             protocols.push((*p, Box::new(prot)));
         }
 
-        let result = run_protocol(protocols)?;
+        let result = run_protocol(protocols).unwrap();
         let c_v: Vec<_> = result
             .into_iter()
             .fold(vec![Scalar::ZERO; N], |acc, (_, c_iv)| {
@@ -345,6 +352,5 @@ mod test {
         for i in 0..N {
             assert_eq!(a_v[i] * b_v[i], c_v[i]);
         }
-        Ok(())
     }
 }

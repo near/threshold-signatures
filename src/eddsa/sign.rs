@@ -19,7 +19,7 @@ fn construct_key_package(
     signing_share: &SigningShare,
     verifying_key: &VerifyingKey,
 ) -> Result<KeyPackage, ProtocolError> {
-    let identifier = me.to_identifier();
+    let identifier = me.to_identifier()?;
     let signing_share = *signing_share;
     let verifying_share = signing_share.into();
 
@@ -64,7 +64,7 @@ async fn do_sign_coordinator(
     let signing_share = SigningShare::new(keygen_output.private_share.to_scalar());
 
     let (nonces, commitments) = round1::commit(&signing_share, rng);
-    commitments_map.insert(me.to_identifier(), commitments);
+    commitments_map.insert(me.to_identifier()?, commitments);
     seen.put(me);
 
     let commit_waitpoint = chan.next_waitpoint();
@@ -75,7 +75,7 @@ async fn do_sign_coordinator(
         if !seen.put(from) {
             continue;
         }
-        commitments_map.insert(from.to_identifier(), commitment);
+        commitments_map.insert(from.to_identifier()?, commitment);
     }
 
     let signing_package = frost_ed25519::SigningPackage::new(commitments_map, message.as_slice());
@@ -96,7 +96,7 @@ async fn do_sign_coordinator(
 
     let signature_share = round2::sign(&signing_package, &nonces, &key_package)
         .map_err(|e| ProtocolError::AssertionFailed(e.to_string()))?;
-    signature_shares.insert(me.to_identifier(), signature_share);
+    signature_shares.insert(me.to_identifier()?, signature_share);
     seen.clear();
     seen.put(me);
 
@@ -105,7 +105,7 @@ async fn do_sign_coordinator(
         if !seen.put(from) {
             continue;
         }
-        signature_shares.insert(from.to_identifier(), signature_share);
+        signature_shares.insert(from.to_identifier()?, signature_share);
     }
 
     // --- Signature aggregation.
@@ -299,7 +299,6 @@ mod test {
     use crate::eddsa::test::{build_key_packages_with_dealer, test_run_signature_protocols};
     use crate::protocol::Participant;
     use crate::test::{assert_public_key_invariant, run_keygen, run_refresh, run_reshare};
-    use std::error::Error;
 
     fn assert_single_coordinator_result(
         data: &[(Participant, super::SignatureOption)],
@@ -363,7 +362,7 @@ mod test {
     }
 
     #[test]
-    fn dkg_sign_test() -> Result<(), Box<dyn Error>> {
+    fn dkg_sign_test() {
         let participants = vec![
             Participant::from(0u32),
             Participant::from(31u32),
@@ -373,10 +372,10 @@ mod test {
         let actual_signers = participants.len();
         let threshold = 2;
         let msg = "hello_near";
-        let msg_hash = hash(&msg)?;
+        let msg_hash = hash(&msg).unwrap();
 
         // test dkg
-        let key_packages = run_keygen(&participants, threshold)?;
+        let key_packages = run_keygen(&participants, threshold);
         assert_public_key_invariant(&key_packages);
         let coordinators = vec![key_packages[0].0];
         let data = test_run_signature_protocols(
@@ -385,7 +384,8 @@ mod test {
             &coordinators,
             threshold,
             msg_hash,
-        )?;
+        )
+        .unwrap();
         let signature = assert_single_coordinator_result(&data);
 
         assert!(key_packages[0]
@@ -395,17 +395,18 @@ mod test {
             .is_ok());
 
         // // test refresh
-        let key_packages1 = run_refresh(&participants, &key_packages, threshold)?;
+        let key_packages1 = run_refresh(&participants, &key_packages, threshold);
         assert_public_key_invariant(&key_packages1);
         let msg = "hello_near_2";
-        let msg_hash = hash(&msg)?;
+        let msg_hash = hash(&msg).unwrap();
         let data = test_run_signature_protocols(
             &key_packages1,
             actual_signers,
             &coordinators,
             threshold,
             msg_hash,
-        )?;
+        )
+        .unwrap();
         let signature = assert_single_coordinator_result(&data);
         let pub_key = key_packages1[2].1.public_key;
         assert!(key_packages1[0]
@@ -425,10 +426,10 @@ mod test {
             threshold,
             new_threshold,
             &new_participant,
-        )?;
+        );
         assert_public_key_invariant(&key_packages2);
         let msg = "hello_near_3";
-        let msg_hash = hash(&msg)?;
+        let msg_hash = hash(&msg).unwrap();
         let coordinators = vec![key_packages2[0].0];
         let data = test_run_signature_protocols(
             &key_packages2,
@@ -436,22 +437,21 @@ mod test {
             &coordinators,
             new_threshold,
             msg_hash,
-        )?;
+        )
+        .unwrap();
         let signature = assert_single_coordinator_result(&data);
         assert!(key_packages2[0]
             .1
             .public_key
             .verify(msg_hash.as_ref(), &signature)
             .is_ok());
-
-        Ok(())
     }
 
     #[test]
-    fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
+    fn test_reshare_sign_more_participants() {
         let participants = generate_participants(5);
         let threshold = 3;
-        let result0 = run_keygen(&participants, threshold)?;
+        let result0 = run_keygen(&participants, threshold);
         assert_public_key_invariant(&result0);
 
         let pub_key = result0[2].1.public_key;
@@ -469,7 +469,7 @@ mod test {
             threshold,
             new_threshold,
             &new_participant,
-        )?;
+        );
         assert_public_key_invariant(&key_packages);
 
         let participants: Vec<_> = key_packages
@@ -487,14 +487,14 @@ mod test {
         let p_list = ParticipantList::new(&participants).unwrap();
         let mut x = Ed25519ScalarField::zero();
         for (p, share) in participants.iter().zip(shares.iter()) {
-            x += p_list.lagrange::<Ed25519Sha512>(*p)? * share;
+            x += p_list.lagrange::<Ed25519Sha512>(*p).unwrap() * share;
         }
         assert_eq!(<Ed25519Group>::generator() * x, pub_key.to_element());
 
         // Sign
         let actual_signers = participants.len();
         let msg = "hello_near";
-        let msg_hash = hash(&msg)?;
+        let msg_hash = hash(&msg).unwrap();
 
         let coordinators = vec![key_packages[0].0];
         let data = test_run_signature_protocols(
@@ -503,21 +503,21 @@ mod test {
             &coordinators,
             new_threshold,
             msg_hash,
-        )?;
+        )
+        .unwrap();
         let signature = assert_single_coordinator_result(&data);
         assert!(key_packages[0]
             .1
             .public_key
             .verify(msg_hash.as_ref(), &signature)
             .is_ok());
-        Ok(())
     }
 
     #[test]
-    fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
+    fn test_reshare_sign_less_participants() {
         let participants = generate_participants(5);
         let threshold = 4;
-        let result0 = run_keygen(&participants, threshold)?;
+        let result0 = run_keygen(&participants, threshold);
         assert_public_key_invariant(&result0);
         let coordinators = vec![result0[0].0];
 
@@ -534,7 +534,7 @@ mod test {
             threshold,
             new_threshold,
             &new_participant,
-        )?;
+        );
         assert_public_key_invariant(&key_packages);
 
         let participants: Vec<_> = key_packages
@@ -552,13 +552,13 @@ mod test {
         let p_list = ParticipantList::new(&participants).unwrap();
         let mut x = Ed25519ScalarField::zero();
         for (p, share) in participants.iter().zip(shares.iter()) {
-            x += p_list.lagrange::<Ed25519Sha512>(*p)? * share;
+            x += p_list.lagrange::<Ed25519Sha512>(*p).unwrap() * share;
         }
         assert_eq!(<Ed25519Group>::generator() * x, pub_key.to_element());
 
         // Sign
         let msg = "hello_near";
-        let msg_hash = hash(&msg)?;
+        let msg_hash = hash(&msg).unwrap();
 
         let data = test_run_signature_protocols(
             &key_packages,
@@ -566,13 +566,13 @@ mod test {
             &coordinators,
             new_threshold,
             msg_hash,
-        )?;
+        )
+        .unwrap();
         let signature = assert_single_coordinator_result(&data);
         assert!(key_packages[0]
             .1
             .public_key
             .verify(msg_hash.as_ref(), &signature)
             .is_ok());
-        Ok(())
     }
 }
