@@ -200,7 +200,6 @@ impl From<ParticipantList> for Vec<Participant> {
 /// A map from participants to elements.
 ///
 /// The idea is that you have one element for each participant.
-#[cfg(feature = "protocol")]
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct ParticipantMap<'a, T> {
     #[serde(skip_serializing)]
@@ -210,7 +209,6 @@ pub(crate) struct ParticipantMap<'a, T> {
     count: usize,
 }
 
-#[cfg(feature = "protocol")]
 impl<'a, T> ParticipantMap<'a, T> {
     /// Create a new map from a list of participants.
     ///
@@ -285,7 +283,6 @@ impl<'a, T> ParticipantMap<'a, T> {
 /// This datastructure will let you put a participant in, and then tell you if this
 /// participant was newly inserted or not, allowing you to thus process the
 /// first message received from them.
-#[cfg(feature = "protocol")]
 #[derive(Debug, Clone)]
 pub(crate) struct ParticipantCounter<'a> {
     participants: &'a ParticipantList,
@@ -293,7 +290,6 @@ pub(crate) struct ParticipantCounter<'a> {
     counter: usize,
 }
 
-#[cfg(feature = "protocol")]
 impl<'a> ParticipantCounter<'a> {
     /// Create a new participant counter from the list of all participants.
     pub fn new(participants: &'a ParticipantList) -> Self {

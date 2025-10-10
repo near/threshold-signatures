@@ -10,7 +10,6 @@
 
 pub mod app_id;
 pub mod ciphersuite;
-#[cfg(feature = "protocol")]
 pub mod protocol;
 #[cfg(test)]
 mod test;

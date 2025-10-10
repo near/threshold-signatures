@@ -22,19 +22,15 @@ pub use crypto::polynomials::{
     batch_compute_lagrange_coefficients, batch_invert, compute_lagrange_coefficient,
 };
 
-cfg_if::cfg_if! {
-    if #[cfg(feature = "protocol")] {
-        pub mod protocol;
-        mod dkg;
-        use crate::dkg::{assert_keygen_invariants, do_keygen, do_reshare, reshare_assertions};
-        use crate::protocol::internal::{make_protocol, Comms};
-        use crate::protocol::Protocol;
-        use std::marker::Send;
-        use rand_core::CryptoRngCore;
-        use crate::participants::Participant;
-        use crate::errors::InitializationError;
-    }
-}
+mod dkg;
+pub mod protocol;
+use crate::dkg::{assert_keygen_invariants, do_keygen, do_reshare, reshare_assertions};
+use crate::errors::InitializationError;
+use crate::participants::Participant;
+use crate::protocol::internal::{make_protocol, Comms};
+use crate::protocol::Protocol;
+use rand_core::CryptoRngCore;
+use std::marker::Send;
 
 use frost_core::serialization::SerializableScalar;
 use frost_core::{keys::SigningShare, Group, VerifyingKey};
@@ -83,7 +79,6 @@ impl<C: Ciphersuite> Tweak<C> {
 }
 
 /// Generic key generation function agnostic of the curve
-#[cfg(feature = "protocol")]
 pub fn keygen<C: Ciphersuite>(
     participants: &[Participant],
     me: Participant,
@@ -102,7 +97,6 @@ where
 
 /// Performs the key reshare protocol
 #[allow(clippy::too_many_arguments)]
-#[cfg(feature = "protocol")]
 pub fn reshare<C: Ciphersuite>(
     old_participants: &[Participant],
     old_threshold: usize,
@@ -141,7 +135,6 @@ where
 }
 
 /// Performs the refresh protocol
-#[cfg(feature = "protocol")]
 pub fn refresh<C: Ciphersuite>(
     old_signing_key: Option<SigningShare<C>>,
     old_public_key: VerifyingKey<C>,

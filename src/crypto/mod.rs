@@ -1,11 +1,7 @@
 pub mod ciphersuite;
-#[cfg(feature = "protocol")]
 pub mod commitment;
 pub mod constants;
-#[cfg(feature = "protocol")]
 pub mod hash;
 pub mod polynomials;
-#[cfg(feature = "protocol")]
 pub mod proofs;
-#[cfg(feature = "protocol")]
 pub mod random;

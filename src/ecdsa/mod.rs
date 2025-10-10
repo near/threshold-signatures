@@ -1,7 +1,5 @@
 //! This module serves as a wrapper for ECDSA scheme.
-#[cfg(feature = "protocol")]
 pub mod ot_based_ecdsa;
-#[cfg(feature = "protocol")]
 pub mod robust_ecdsa;
 
 use hkdf::Hkdf;

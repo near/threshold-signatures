@@ -1,5 +1,4 @@
 //! This module serves as a wrapper for Ed25519 scheme.
-#[cfg(feature = "protocol")]
 pub mod sign;
 #[cfg(test)]
 mod test;
