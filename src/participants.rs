@@ -201,7 +201,7 @@ impl From<ParticipantList> for Vec<Participant> {
 ///
 /// The idea is that you have one element for each participant.
 #[derive(Debug, Clone, Serialize)]
-pub(crate) struct ParticipantMap<'a, T> {
+pub struct ParticipantMap<'a, T> {
     #[serde(skip_serializing)]
     participants: &'a ParticipantList,
     data: Vec<Option<T>>,
@@ -321,14 +321,6 @@ impl<'a> ParticipantCounter<'a> {
             self.counter -= 1;
         }
         inserted
-    }
-
-    /// Clear the contents of this counter.
-    pub fn clear(&mut self) {
-        for x in &mut self.seen {
-            *x = false;
-        }
-        self.counter = self.participants.len();
     }
 
     /// Check if this counter contains all participants

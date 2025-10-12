@@ -103,7 +103,7 @@ where
 /// of the broadcasts be the same as the input vote.
 /// `Reliable_broadcast_receive_all` is expected to be called right after `reliable_broadcast_send`.
 #[allow(clippy::too_many_lines)]
-pub async fn reliable_broadcast_receive_all<'a, T>(
+pub(crate) async fn reliable_broadcast_receive_all<'a, T>(
     chan: &SharedChannel,
     wait: Waitpoint,
     participants: &'a ParticipantList,
