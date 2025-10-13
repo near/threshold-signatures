@@ -1,6 +1,7 @@
 use frost_core::serialization::SerializableScalar;
 use frost_core::Ciphersuite;
 use rand_core::CryptoRngCore;
+use serde::{Deserialize, Serialize};
 
 use crate::participants::{Participant, ParticipantList, ParticipantMap};
 use crate::{
@@ -28,7 +29,7 @@ use super::{
 };
 
 /// Creates a transcript and internally encodes the following data:
-///     LABEL,  NAME, Participants, threshold
+///     LABEL, NAME, Participants, threshold
 fn create_transcript(
     participants: &ParticipantList,
     threshold: usize,
@@ -54,6 +55,25 @@ pub type TripleGenerationOutput = (TripleShare, TriplePub);
 
 pub type TripleGenerationOutputMany = Vec<(TripleShare, TriplePub)>;
 type C = Secp256K1Sha256;
+
+struct ParallelToMultiplicationTaskOutput {
+    big_e: PolynomialCommitment,
+    big_f: PolynomialCommitment,
+    big_l: PolynomialCommitment,
+    big_c: ProjectivePoint,
+    a_i: Scalar,
+    b_i: Scalar,
+}
+
+#[derive(Serialize, Deserialize)]
+struct PolynomialCommitmentsMessage {
+    big_e: PolynomialCommitment,
+    big_f: PolynomialCommitment,
+    big_l: PolynomialCommitment,
+    randomizer: Randomness,
+    phi_proof0: dlog::Proof<Secp256K1Sha256>,
+    phi_proof1: dlog::Proof<Secp256K1Sha256>,
+}
 
 use crate::crypto::constants::NEAR_TRIPLE_GENERATION_LABEL;
 const NAME: &[u8] = b"Secp256K1Sha256";
@@ -123,16 +143,6 @@ async fn do_generation(
         )
     };
 
-    #[allow(clippy::items_after_statements)]
-    struct ParallelToMultiplicationTaskOutput {
-        big_e: PolynomialCommitment,
-        big_f: PolynomialCommitment,
-        big_l: PolynomialCommitment,
-        big_c: ProjectivePoint,
-        a_i: Scalar,
-        b_i: Scalar,
-    }
-
     let parallel_to_multiplication_task =
         async {
             // Spec 2.5
@@ -170,14 +180,14 @@ async fn do_generation(
             {
                 chan.send_many(
                     wait2,
-                    &(
-                        &big_e_i,
-                        &big_f_i,
-                        &big_l_i,
-                        my_randomizer,
-                        my_phi_proof0,
-                        my_phi_proof1,
-                    ),
+                    &PolynomialCommitmentsMessage {
+                        big_e: big_e_i.clone(),
+                        big_f: big_f_i.clone(),
+                        big_l: big_l_i.clone(),
+                        randomizer: my_randomizer,
+                        phi_proof0: my_phi_proof0,
+                        phi_proof1: my_phi_proof1,
+                    },
                 )?;
             }
 
@@ -208,30 +218,14 @@ async fn do_generation(
             let mut big_l = big_l_i;
             let mut big_e_j_zero = ParticipantMap::new(&participants);
 
-            for (
-                from,
-                (
-                    their_big_e,
-                    their_big_f,
-                    their_big_l,
-                    their_randomizer,
-                    their_phi_proof0,
-                    their_phi_proof1,
-                ),
-            ) in recv_from_others::<(
-                PolynomialCommitment,
-                PolynomialCommitment,
-                PolynomialCommitment,
-                _,
-                _,
-                _,
-            )>(&chan, wait2, &participants, me)
-            .await?
+            for (from, their) in
+                recv_from_others::<PolynomialCommitmentsMessage>(&chan, wait2, &participants, me)
+                    .await?
             {
-                if their_big_e.degree() != threshold - 1
-            || their_big_f.degree() != threshold - 1
+                if their.big_e.degree() != threshold - 1
+            || their.big_f.degree() != threshold - 1
             // testing threshold - 2 because the identity element is non-serializable
-            || their_big_l.degree() != threshold - 2
+            || their.big_l.degree() != threshold - 2
                 {
                     return Err(ProtocolError::AssertionFailed(format!(
                         "polynomial from {from:?} has the wrong length"
@@ -241,8 +235,8 @@ async fn do_generation(
                 if !all_commitments
                     .index(from)?
                     .check(
-                        &(&their_big_e, &their_big_f, &their_big_l),
-                        &their_randomizer,
+                        &(&their.big_e, &their.big_f, &their.big_l),
+                        &their.randomizer,
                     )
                     .map_err(|_| ProtocolError::PointSerialization)?
                 {
@@ -252,13 +246,13 @@ async fn do_generation(
                 }
 
                 let statement0 = dlog::Statement::<C> {
-                    public: &their_big_e.eval_at_zero()?.value(),
+                    public: &their.big_e.eval_at_zero()?.value(),
                 };
 
                 if !dlog::verify(
                     &mut transcript.fork(b"dlog0", &from.bytes()),
                     statement0,
-                    &their_phi_proof0,
+                    &their.phi_proof0,
                 )? {
                     return Err(ProtocolError::AssertionFailed(format!(
                         "dlog proof from {from:?} failed to verify"
@@ -266,22 +260,22 @@ async fn do_generation(
                 }
 
                 let statement1 = dlog::Statement::<C> {
-                    public: &their_big_f.eval_at_zero()?.value(),
+                    public: &their.big_f.eval_at_zero()?.value(),
                 };
                 if !dlog::verify(
                     &mut transcript.fork(b"dlog1", &from.bytes()),
                     statement1,
-                    &their_phi_proof1,
+                    &their.phi_proof1,
                 )? {
                     return Err(ProtocolError::AssertionFailed(format!(
                         "dlog proof from {from:?} failed to verify"
                     )));
                 }
 
-                big_e_j_zero.put(from, their_big_e.eval_at_zero()?);
-                big_e = big_e.add(&their_big_e)?;
-                big_f = big_f.add(&their_big_f)?;
-                big_l = big_l.add(&their_big_l)?;
+                big_e_j_zero.put(from, their.big_e.eval_at_zero()?);
+                big_e = big_e.add(&their.big_e)?;
+                big_f = big_f.add(&their.big_f)?;
+                big_l = big_l.add(&their.big_l)?;
             }
 
             // Spec 3.5 + 3.6
@@ -488,6 +482,17 @@ struct ParallelToMultiplicationTaskOutputMany {
     b_i_v: Vec<Scalar>,
 }
 
+#[derive(Serialize, Deserialize)]
+#[allow(clippy::struct_field_names)]
+struct PolynomialCommitmentsMessageMany {
+    big_e_v: Vec<PolynomialCommitment>,
+    big_f_v: Vec<PolynomialCommitment>,
+    big_l_v: Vec<PolynomialCommitment>,
+    randomizer_v: Vec<Randomness>,
+    phi_proof0_v: Vec<dlog::Proof<Secp256K1Sha256>>,
+    phi_proof1_v: Vec<dlog::Proof<Secp256K1Sha256>>,
+}
+
 #[allow(clippy::too_many_lines)]
 async fn do_generation_many<const N: usize>(
     comms: Comms,
@@ -645,14 +650,14 @@ async fn do_generation_many<const N: usize>(
         {
             chan.send_many(
                 wait2,
-                &(
-                    &big_e_i_v,
-                    &big_f_i_v,
-                    &big_l_i_v,
-                    &my_randomizers,
-                    &my_phi_proof0v,
-                    &my_phi_proof1v,
-                ),
+                &PolynomialCommitmentsMessageMany {
+                    big_e_v: big_e_i_v.clone(),
+                    big_f_v: big_f_i_v.clone(),
+                    big_l_v: big_l_i_v.clone(),
+                    randomizer_v: my_randomizers,
+                    phi_proof0_v: my_phi_proof0v,
+                    phi_proof1_v: my_phi_proof1v,
+                },
             )?;
         }
 
@@ -693,7 +698,7 @@ async fn do_generation_many<const N: usize>(
             }
         }
 
-        // Spec 3.3 + 3.4, and also part of 3.6, 5.3, for summing up the Es, Fs, and Ls.
+        // Spec 3.3 + 3.4, and part of 3.6, 5.3, for summing up the Es, Fs, and Ls.
         let mut big_e_v = vec![];
         let mut big_f_v = vec![];
         let mut big_l_v = vec![];
@@ -705,34 +710,18 @@ async fn do_generation_many<const N: usize>(
             big_e_j_zero_v.push(ParticipantMap::new(&participants));
         }
 
-        for (
-            from,
-            (
-                their_big_e_v,
-                their_big_f_v,
-                their_big_l_v,
-                their_randomizers,
-                their_phi_proof0_v,
-                their_phi_proof1_v,
-            ),
-        ) in recv_from_others::<(
-            Vec<PolynomialCommitment>,
-            Vec<PolynomialCommitment>,
-            Vec<PolynomialCommitment>,
-            Vec<Randomness>,
-            Vec<dlog::Proof<C>>,
-            Vec<dlog::Proof<C>>,
-        )>(&chan, wait2, &participants, me)
-        .await?
+        for (from, their) in
+            recv_from_others::<PolynomialCommitmentsMessageMany>(&chan, wait2, &participants, me)
+                .await?
         {
             for i in 0..N {
                 let all_commitments = &all_commitments_vec[i];
-                let their_big_e = &their_big_e_v[i];
-                let their_big_f = &their_big_f_v[i];
-                let their_big_l = &their_big_l_v[i];
-                let their_randomizer = &their_randomizers[i];
-                let their_phi_proof0 = &their_phi_proof0_v[i];
-                let their_phi_proof1 = &their_phi_proof1_v[i];
+                let their_big_e = &their.big_e_v[i];
+                let their_big_f = &their.big_f_v[i];
+                let their_big_l = &their.big_l_v[i];
+                let their_randomizer = &their.randomizer_v[i];
+                let their_phi_proof0 = &their.phi_proof0_v[i];
+                let their_phi_proof1 = &their.phi_proof1_v[i];
                 if their_big_e.degree() != threshold - 1
                     || their_big_f.degree() != threshold - 1
                     // degree is threshold - 2 because the constant element identity is not serializable
