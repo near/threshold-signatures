@@ -201,7 +201,7 @@ impl From<ParticipantList> for Vec<Participant> {
 ///
 /// The idea is that you have one element for each participant.
 #[derive(Debug, Clone, Serialize)]
-pub struct ParticipantMap<'a, T> {
+pub(crate) struct ParticipantMap<'a, T> {
     #[serde(skip_serializing)]
     participants: &'a ParticipantList,
     data: Vec<Option<T>>,

@@ -5,7 +5,7 @@
 //! to deliver messages to and from that protocol, and eventually it will produce
 //! a result, without you having to worry about how many rounds it has, or how
 //! to serialize the emssages it produces.
-pub mod echo_broadcast;
+pub(crate) mod echo_broadcast;
 pub(crate) mod helpers;
 pub(crate) mod internal;
 
