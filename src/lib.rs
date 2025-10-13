@@ -6,8 +6,10 @@ pub mod confidential_key_derivation;
 pub mod ecdsa;
 pub mod eddsa;
 pub mod protocol;
-#[cfg(test)]
-mod test;
+
+#[cfg(any(test, feature = "benchmarking"))]
+#[allow(dead_code)] // needed when building with benchmarking feature
+pub mod test;
 
 #[cfg(feature = "benchmarking")]
 mod benchmarking_utils;

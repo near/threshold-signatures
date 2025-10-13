@@ -66,6 +66,7 @@ rand = "0.8.5"
 [[bench]]
 name = "main"
 harness = false
+features = ["benchmarking"]
 required-features = ["benchmarking"]
 
 [profile.test-release]

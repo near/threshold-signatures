@@ -18,9 +18,6 @@ use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite};
 use frost_core::serialization::SerializableScalar;
 use frost_core::{Identifier, Scalar};
 
-#[cfg(feature = "benchmarking")]
-use crate::benchmarking_utils::io::encode_in_file;
-
 /// Represents a participant in the protocol.
 ///
 /// Each participant should be uniquely identified by some number, which this
@@ -137,13 +134,6 @@ pub trait Protocol {
     fn message(&mut self, from: Participant, data: MessageData);
 }
 
-#[cfg(feature = "benchmarking")]
-/// Creates or opens in a file generated from the sender's information
-/// and encodes a message as <receiver message> in raw bytes
-fn write_in_file(from: Participant, to: Participant, message: &[u8]) -> Result<(), ProtocolError> {
-    encode_in_file(from, to, message).map_err(|e| ProtocolError::Other(e.to_string()))
-}
-
 /// Run a protocol to completion, synchronously.
 ///
 /// This works by executing each participant in order.
@@ -171,20 +161,12 @@ pub fn run_protocol<T>(
                                 continue;
                             }
                             let from = ps[i].0;
-
-                            #[cfg(feature = "benchmarking")]
-                            write_in_file(from, ps[j].0, &m)?;
-
                             ps[j].1.message(from, m.clone());
                         }
                         true
                     }
                     Action::SendPrivate(to, m) => {
                         let from = ps[i].0;
-
-                        #[cfg(feature = "benchmarking")]
-                        write_in_file(from, to, &m)?;
-
                         ps[indices[&to]].1.message(from, m);
                         true
                     }
@@ -196,7 +178,6 @@ pub fn run_protocol<T>(
             } {}
         }
     }
-
     Ok(out)
 }
 
@@ -253,5 +234,60 @@ pub mod test {
             out0.ok_or_else(|| ProtocolError::Other("out0 is None".to_string()))?,
             out1.ok_or_else(|| ProtocolError::Other("out1 is None".to_string()))?,
         ))
+    }
+}
+
+
+/// TODO
+#[cfg(feature = "benchmarking")]
+pub mod benchmarking {
+    use crate::benchmarking_utils::io::encode_in_file;
+    use super::*;
+
+    /// Creates or opens in a file generated from the sender's information
+    /// and encodes a message as <receiver message> in raw bytes
+    fn snapshot_reception(from: Participant, to: Participant, message: &[u8]) -> Result<(), ProtocolError> {
+        encode_in_file(from, to, message).map_err(|e| ProtocolError::Other(e.to_string()))
+    }
+
+    /// TODO
+    pub fn run_protocol<T>(
+        mut ps: Vec<(Participant, Box<dyn Protocol<Output = T>>)>,
+    ) -> Result<Vec<(Participant, T)>, ProtocolError> {
+        let indices: HashMap<Participant, usize> =
+            ps.iter().enumerate().map(|(i, (p, _))| (*p, i)).collect();
+
+        let size = ps.len();
+        let mut out = Vec::with_capacity(size);
+        while out.len() < size {
+            for i in 0..size {
+                while {
+                    let action = ps[i].1.poke()?;
+                    match action {
+                        Action::Wait => false,
+                        Action::SendMany(m) => {
+                            for j in 0..size {
+                                if i == j {
+                                    continue;
+                                }
+                                let from = ps[i].0;
+                                ps[j].1.message(from, m.clone());
+                            }
+                            true
+                        }
+                        Action::SendPrivate(to, m) => {
+                            let from = ps[i].0;
+                            ps[indices[&to]].1.message(from, m);
+                            true
+                        }
+                        Action::Return(r) => {
+                            out.push((ps[i].0, r));
+                            false
+                        }
+                    }
+                } {}
+            }
+        }
+        Ok(out)
     }
 }

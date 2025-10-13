@@ -1,15 +1,17 @@
-use criterion::{criterion_group, Criterion};
+use criterion::Criterion;
 use frost_core::Field;
 use frost_secp256k1::{Secp256K1ScalarField, Secp256K1Sha256};
 use rand_core::OsRng;
 use std::hint::black_box;
+
+extern crate threshold_signatures;
 use threshold_signatures::{
     batch_compute_lagrange_coefficients, compute_lagrange_coefficient, protocol::Participant,
 };
 
 type C = Secp256K1Sha256;
 
-fn bench_lagrange_computation(c: &mut Criterion) {
+pub fn bench_lagrange_computation(c: &mut Criterion) {
     let mut group = c.benchmark_group("Lagrange Computation");
 
     for degree in &[1u32, 100, 1_000] {
@@ -63,7 +65,7 @@ fn bench_lagrange_computation(c: &mut Criterion) {
     group.finish();
 }
 
-fn bench_inversion_vs_multiplication(c: &mut Criterion) {
+pub fn bench_inversion_vs_multiplication(c: &mut Criterion) {
     let mut group = c.benchmark_group("Inversion vs Multiplication");
 
     group.bench_function("single_inversion", |b| {
@@ -84,9 +86,3 @@ fn bench_inversion_vs_multiplication(c: &mut Criterion) {
 
     group.finish();
 }
-
-criterion_group!(
-    benches,
-    bench_lagrange_computation,
-    bench_inversion_vs_multiplication
-);
