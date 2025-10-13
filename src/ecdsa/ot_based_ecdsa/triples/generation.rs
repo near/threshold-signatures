@@ -229,9 +229,9 @@ async fn do_generation(
             .await?
             {
                 if their_big_e.degree() != threshold - 1
-                || their_big_f.degree() != threshold - 1
-                // testing threshold - 2 because the identity element is non-serializable
-                || their_big_l.degree() != threshold - 2
+            || their_big_f.degree() != threshold - 1
+            // testing threshold - 2 because the identity element is non-serializable
+            || their_big_l.degree() != threshold - 2
                 {
                     return Err(ProtocolError::AssertionFailed(format!(
                         "polynomial from {from:?} has the wrong length"
