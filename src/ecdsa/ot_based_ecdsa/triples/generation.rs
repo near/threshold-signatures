@@ -177,19 +177,17 @@ async fn do_generation(
 
             // Spec 2.7
             let wait2 = chan.next_waitpoint();
-            {
-                chan.send_many(
-                    wait2,
-                    &PolynomialCommitmentsMessage {
-                        big_e: big_e_i.clone(),
-                        big_f: big_f_i.clone(),
-                        big_l: big_l_i.clone(),
-                        randomizer: my_randomizer,
-                        phi_proof0: my_phi_proof0,
-                        phi_proof1: my_phi_proof1,
-                    },
-                )?;
-            }
+
+            let message = PolynomialCommitmentsMessage {
+                big_e: big_e_i,
+                big_f: big_f_i,
+                big_l: big_l_i,
+                randomizer: my_randomizer,
+                phi_proof0: my_phi_proof0,
+                phi_proof1: my_phi_proof1,
+            };
+            chan.send_many(wait2, &message)?;
+            let (big_e_i, big_f_i, big_l_i) = (message.big_e, message.big_f, message.big_l);
 
             // Spec 2.8
             let wait3 = chan.next_waitpoint();
@@ -647,19 +645,16 @@ async fn do_generation_many<const N: usize>(
 
         // Spec 2.7
         let wait2 = chan.next_waitpoint();
-        {
-            chan.send_many(
-                wait2,
-                &PolynomialCommitmentsMessageMany {
-                    big_e_v: big_e_i_v.clone(),
-                    big_f_v: big_f_i_v.clone(),
-                    big_l_v: big_l_i_v.clone(),
-                    randomizer_v: my_randomizers,
-                    phi_proof0_v: my_phi_proof0v,
-                    phi_proof1_v: my_phi_proof1v,
-                },
-            )?;
-        }
+        let message = PolynomialCommitmentsMessageMany {
+            big_e_v: big_e_i_v,
+            big_f_v: big_f_i_v,
+            big_l_v: big_l_i_v,
+            randomizer_v: my_randomizers,
+            phi_proof0_v: my_phi_proof0v,
+            phi_proof1_v: my_phi_proof1v,
+        };
+        chan.send_many(wait2, &message)?;
+        let (big_e_i_v, big_f_i_v, big_l_i_v) = (message.big_e_v, message.big_f_v, message.big_l_v);
 
         // Spec 2.8
         let wait3 = chan.next_waitpoint();
