@@ -152,7 +152,7 @@ fn prepare_sign(
 pub fn bench_triples(c: &mut Criterion) {
     let mut group = c.benchmark_group(
         &format!(
-            "Triples generation OT-based ECDSA with maximum number of malicious parties {} and participating parties {}",
+            "Triples generation OT-based ECDSA: {} malicious parties and {} participating parties",
             MAX_MALICIOUS,
             PARTICIPANTS_NUM
         )
@@ -174,7 +174,7 @@ pub fn bench_triples(c: &mut Criterion) {
 pub fn bench_presign(c: &mut Criterion) {
     let mut group = c.benchmark_group(
         &format!(
-            "Presign OT-based ECDSA with maximum number of malicious parties {} and participating parties {}",
+            "Presign OT-based ECDSA: {} malicious partie and {} participating parties",
             MAX_MALICIOUS,
             PARTICIPANTS_NUM
         )
@@ -205,7 +205,7 @@ pub fn bench_presign(c: &mut Criterion) {
 pub fn bench_sign(c: &mut Criterion) {
     let mut group = c.benchmark_group(
         &format!(
-            "Sign OT-based ECDSA with maximum number of malicious parties {} and participating parties {}",
+            "Sign OT-based ECDSA: {} malicious parties and {} participating parties",
             MAX_MALICIOUS,
             PARTICIPANTS_NUM
         )

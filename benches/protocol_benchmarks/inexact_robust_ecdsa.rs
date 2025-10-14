@@ -106,7 +106,7 @@ fn prepare_sign(
 pub fn bench_presign(c: &mut Criterion) {
     let mut group = c.benchmark_group(
         &format!(
-            "Presign Robust ECDSA with maximum number of malicious parties {} and participating parties {}",
+            "Presign Robust ECDSA: {} malicious parties and {} participating parties",
             MAX_MALICIOUS,
             PARTICIPANTS_NUM
         )
@@ -126,7 +126,7 @@ pub fn bench_presign(c: &mut Criterion) {
 pub fn bench_sign(c: &mut Criterion) {
     let mut group = c.benchmark_group(
         &format!(
-            "Sign Robust ECDSA with maximum number of malicious parties {} and participating parties {}",
+            "Sign Robust ECDSA: {} malicious parties and {} participating parties",
             MAX_MALICIOUS,
             PARTICIPANTS_NUM
         )
