@@ -22,7 +22,8 @@ use threshold_signatures::{
     ParticipantList,
 };
 
-const THRESHOLD: usize = 4;
+const MAX_MALICIOUS: usize = 6;
+const THRESHOLD: usize = MAX_MALICIOUS+1;
 const PARTICIPANTS_NUM: usize = 7;
 
 
@@ -125,7 +126,7 @@ fn prepare_sign(
         .iter()
         .map(|(p, presig)| {
             (   *p,
-                RerandomizedPresignOutput::new(presig, &tweak, &rerand_args).unwrap(),
+                RerandomizedPresignOutput::rerandomize_presign(presig, &tweak, &rerand_args).unwrap(),
             )
         })
         .collect::<Vec<_>>();
@@ -210,7 +211,7 @@ pub fn bench_sign(c: &mut Criterion) {
     result.sort_by_key(|(p, _)| *p);
 
 
-    group.bench_function("Presignature generation", |b| {
+    group.bench_function("Signature generation", |b| {
         b.iter_batched(||
             prepare_sign(&participants, &result, pk),
             |protocols| run_protocol(protocols),
