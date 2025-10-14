@@ -104,7 +104,13 @@ fn prepare_sign(
 }
 
 pub fn bench_presign(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Presign Robust ECSDA");
+    let mut group = c.benchmark_group(
+        &format!(
+            "Presign Robust ECDSA with maximum number of malicious parties {} and participating parties {}",
+            MAX_MALICIOUS,
+            PARTICIPANTS_NUM
+        )
+    );
     group.measurement_time(std::time::Duration::from_secs(300));
     let participants = generate_participants_with_random_ids(PARTICIPANTS_NUM, &mut OsRng);
 
@@ -118,7 +124,13 @@ pub fn bench_presign(c: &mut Criterion) {
 }
 
 pub fn bench_sign(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Sign Robust ECSDA");
+    let mut group = c.benchmark_group(
+        &format!(
+            "Sign Robust ECDSA with maximum number of malicious parties {} and participating parties {}",
+            MAX_MALICIOUS,
+            PARTICIPANTS_NUM
+        )
+    );
     group.measurement_time(std::time::Duration::from_secs(300));
 
     let participants = generate_participants_with_random_ids(PARTICIPANTS_NUM, &mut OsRng);
