@@ -80,7 +80,7 @@ The inputs to this phase are:
 3) A "fresh" public source of entropy $\rho$
 4) A tweak $\epsilon$ used during key derivation
 5) The message hash $h= H(m)$
-6) The derived public key $Y + \texttt{tweak} \cdot G$
+6) The derived public key $Y = X + \texttt{tweak} \cdot G$
 
 **Rerandomization & Key Derivation:**
 
