@@ -163,6 +163,10 @@ where
 
         is_simulated_vote = false;
 
+        if sid >= n {
+            continue;
+        }
+
         match vote.clone() {
             // Receive send vote then echo to everybody
             MessageType::Send(data) => {
