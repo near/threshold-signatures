@@ -174,3 +174,40 @@ where
     );
     Ok(make_protocol(comms, fut))
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::crypto::ciphersuite::Ciphersuite;
+    use crate::errors::InitializationError;
+    use crate::participants::Participant;
+    use frost_ed25519::Ed25519Ciphersuite;
+    use rand_core::OsRng;
+
+    #[test]
+    fn test_keygen_threshold_one() {
+        let participants = vec![Participant::new(1), Participant::new(2)];
+        let me = Participant::new(1);
+        let threshold = 1;
+
+        let result = keygen::<Ed25519Ciphersuite>(&participants, me, threshold, OsRng);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_keygen_threshold_invalid() {
+        let participants = vec![Participant::new(1), Participant::new(2)];
+        let me = Participant::new(1);
+        let threshold = 0;
+
+        let result = keygen::<Ed25519Ciphersuite>(&participants, me, threshold, OsRng);
+
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            InitializationError::BadParameters(_)
+        ));
+    }
+}
