@@ -11,6 +11,10 @@ use zeroize::Zeroize;
 use crate::crypto::constants::{FLAG_A, FLAG_C, FLAG_I, FLAG_K, FLAG_M, FLAG_T, STROBE_R};
 
 fn transmute_state(st: &mut AlignedKeccakState) -> &mut [u64; 25] {
+    assert!(
+        cfg!(target_endian = "little"),
+        "The Keccak implementation in strobe.rs requires a little-endian target"
+    );
     unsafe { &mut *std::ptr::from_mut::<AlignedKeccakState>(st).cast::<[u64; 25]>() }
 }
 
