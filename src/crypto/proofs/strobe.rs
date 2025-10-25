@@ -21,11 +21,17 @@ const FLAG_K: u8 = 1 << 5;
 fn run_f1600(st: &mut AlignedKeccakState) {
     #[cfg(target_endian = "little")]
     {
-        // On little-endian architectures, we can safely transmute the byte array
-        // to a u64 array and pass it to keccak::f1600.
-        let state_u64 =
-            unsafe { &mut *std::ptr::from_mut::<AlignedKeccakState>(st).cast::<[u64; 25]>() };
-        keccak::f1600(state_u64);
+        let mut state_u64 = [0u64; 25];
+        for (i, word) in state_u64.iter_mut().enumerate() {
+            let bytes = &st.0[8 * i..8 * i + 8];
+            *word = u64::from_le_bytes(bytes.try_into().unwrap());
+        }
+
+        keccak::f1600(&mut state_u64);
+
+        for (i, word) in state_u64.iter().enumerate() {
+            st.0[8 * i..8 * i + 8].copy_from_slice(&word.to_le_bytes());
+        }
     }
     #[cfg(target_endian = "big")]
     {
