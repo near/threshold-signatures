@@ -55,6 +55,9 @@ impl<C: Ciphersuite> Polynomial<C> {
         degree: usize,
         rng: &mut impl CryptoRngCore,
     ) -> Result<Self, ProtocolError> {
+        // @dev why not usize::MAX? https://github.com/near/threshold-signatures/pull/163#discussion_r2447505305
+        // Allocations must fit within isize range.
+        // This check conservatively prevents allocations beyond isize::MAX.
         if degree >= isize::MAX as usize {
             return Err(ProtocolError::IntegerOverflow);
         }
