@@ -214,6 +214,8 @@ impl frost_core::Group for BLS12381G1Group {
     }
 }
 
+/// BLS signature verification
+/// following the standard in <https://www.ietf.org/archive/id/draft-irtf-cfrg-bls-signature-05.html#name-coreverify>
 pub fn verify_signature(
     verifying_key: &VerifyingKey,
     msg: &[u8],
