@@ -89,6 +89,7 @@ pub type SignatureOption = Option<Signature>;
 /// Following [GS21] <https://eprint.iacr.org/2021/1330.pdf>, the entropy should
 /// be public, freshly generated, and unpredictable.
 pub struct RerandomizationArguments {
+    // Preferable (but non-binding) the master public key
     pub pk: AffinePoint,
     pub tweak: Tweak,
     pub msg_hash: [u8; 32],
