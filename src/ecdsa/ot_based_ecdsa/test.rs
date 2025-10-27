@@ -101,7 +101,8 @@ pub fn run_sign_with_rerandomization(
     let rerand_participants_presign = participants_presign
         .iter()
         .map(|(p, presig)| {
-            RerandomizedPresignOutput::rerandomize_presign(presig, &tweak, &rerand_args).map(|out| (*p, out))
+            RerandomizedPresignOutput::rerandomize_presign(presig, &tweak, &rerand_args)
+                .map(|out| (*p, out))
         })
         .collect::<Result<_, _>>()?;
 
