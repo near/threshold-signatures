@@ -1,12 +1,12 @@
 #![allow(clippy::unwrap_used)]
-use criterion::{criterion_group, Criterion};
+use criterion::Criterion;
 use frost_core::{Field, Group};
 use frost_secp256k1::{Secp256K1ScalarField, Secp256K1Sha256};
 use rand_core::OsRng;
 use std::hint::black_box;
 use threshold_signatures::batch_invert;
 
-fn bench_inversion(c: &mut Criterion) {
+pub fn bench_inversion(c: &mut Criterion) {
     let mut group = c.benchmark_group("inversion");
 
     group.measurement_time(std::time::Duration::from_secs(10));
@@ -32,5 +32,3 @@ fn bench_inversion(c: &mut Criterion) {
         b.iter(|| black_box(batch_invert::<Secp256K1Sha256>(&values).unwrap()));
     });
 }
-
-criterion_group!(benches, bench_inversion);
