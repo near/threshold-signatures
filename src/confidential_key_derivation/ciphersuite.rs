@@ -358,6 +358,27 @@ mod tests {
     }
 
     #[test]
+    fn test_verify_signature_invalid() {
+        let x = Scalar::random(OsRng);
+        let g2 = ElementG2::generator();
+        let g2x = g2 * Scalar::ZERO;
+        let hm = hash_to_curve(b"hello world");
+        let sigma = hm * x;
+
+        assert_eq!(
+            verify_signature(&VerifyingKey::new(g2x), b"hello world", &sigma).unwrap_err(),
+            frost_core::Error::MalformedVerifyingKey
+        );
+
+        let g2x = g2 * x;
+        let sigma = hm * Scalar::ZERO;
+        assert_eq!(
+            verify_signature(&VerifyingKey::new(g2x), b"hello world", &sigma).unwrap_err(),
+            frost_core::Error::InvalidSignature
+        );
+    }
+
+    #[test]
     // This test only makes sense if `overflow-checks` are enabled
     // This is guaranteed by the `test_verify_overflow_failure` below
     fn test_stress_test_scalarwrapper_from_le_bytes_mod_order() {
