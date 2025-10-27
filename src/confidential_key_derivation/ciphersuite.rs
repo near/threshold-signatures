@@ -1,7 +1,9 @@
 use crate::confidential_key_derivation::{ElementG1, Signature, VerifyingKey};
 use crate::crypto::ciphersuite::{BytesOrder, ScalarSerializationFormat};
 use crate::crypto::constants::NEAR_CKD_DOMAIN;
+use blstrs::{G1Affine, G2Affine};
 use digest::{consts::U48, generic_array::GenericArray};
+use elliptic_curve::group::prime::PrimeCurveAffine;
 use elliptic_curve::hash2curve::{hash_to_field, ExpandMsgXmd, FromOkm};
 use rand_core::{CryptoRng, RngCore};
 use sha2::Sha256;
@@ -217,13 +219,21 @@ pub fn verify_signature(
     msg: &[u8],
     signature: &Signature,
 ) -> Result<(), frost_core::Error<BLS12381SHA256>> {
+    let element1: G1Affine = signature.into();
+    if (!element1.is_on_curve() | !element1.is_torsion_free() | element1.is_identity()).into() {
+        return Err(frost_core::Error::InvalidSignature);
+    }
+    let element2: G2Affine = verifying_key.to_element().into();
+    if (!element2.is_on_curve() | !element2.is_torsion_free() | element2.is_identity()).into() {
+        return Err(frost_core::Error::MalformedVerifyingKey);
+    }
+
     let base1 = hash_to_curve(msg).into();
-    let element1 = verifying_key.to_element().into();
     let base2 =
         <<BLS12381SHA256 as frost_core::Ciphersuite>::Group as frost_core::Group>::generator()
             .into();
-    let element2 = signature.into();
-    if blstrs::pairing(&base1, &element1) == blstrs::pairing(&element2, &base2) {
+
+    if blstrs::pairing(&base1, &element2).eq(&blstrs::pairing(&element1, &base2)) {
         Ok(())
     } else {
         Err(frost_core::Error::InvalidSignature)
