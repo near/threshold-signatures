@@ -243,7 +243,6 @@ mod test {
     }
 
     #[test]
-    #[allow(non_snake_case)]
     fn keygen_output_should_be_serializable() {
         // Given
         let mut rng = MockCryptoRng::new([1; 8]);
