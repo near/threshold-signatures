@@ -2,13 +2,14 @@ use elliptic_curve::scalar::IsHigh;
 use subtle::ConditionallySelectable;
 
 use super::RerandomizedPresignOutput;
+use crate::errors::{InitializationError, ProtocolError};
+use crate::participants::{Participant, ParticipantList};
 use crate::{
     ecdsa::{x_coordinate, AffinePoint, Scalar, Secp256K1Sha256, Signature, SignatureOption},
-    participants::{ParticipantCounter, ParticipantList},
     protocol::{
-        errors::{InitializationError, ProtocolError},
+        helpers::recv_from_others,
         internal::{make_protocol, Comms, SharedChannel},
-        Participant, Protocol,
+        Protocol,
     },
 };
 
@@ -98,14 +99,8 @@ async fn do_sign_coordinator(
     let wait0 = chan.next_waitpoint();
     // Receive sj
     // Spec 1.5
-    let mut seen = ParticipantCounter::new(&participants);
     let mut s = s_i;
-    seen.put(me);
-    while !seen.full() {
-        let (from, s_j): (_, Scalar) = chan.recv(wait0).await?;
-        if !seen.put(from) {
-            continue;
-        }
+    for (_, s_j) in recv_from_others::<Scalar>(&chan, wait0, &participants, me).await? {
         // Spec 1.6
         s += s_j;
     }
@@ -194,21 +189,22 @@ mod test {
 
     #[test]
     fn test_sign_without_rerandomization() {
-        let threshold = 2;
+        let threshold: usize = 2;
         let msg = b"Hello? Is it me you're looking for?";
 
-        let f = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng).unwrap();
+        let degree = threshold.checked_sub(1).unwrap();
+        let f = Polynomial::generate_polynomial(None, degree, &mut OsRng).unwrap();
         let x = f.eval_at_zero().unwrap().0;
         let public_key = ProjectivePoint::GENERATOR * x;
 
-        let g = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng).unwrap();
+        let g = Polynomial::generate_polynomial(None, degree, &mut OsRng).unwrap();
 
         let k = g.eval_at_zero().unwrap().0;
         let big_r = (ProjectivePoint::GENERATOR * k.invert().unwrap()).to_affine();
 
         let sigma = k * x;
 
-        let h = Polynomial::generate_polynomial(Some(sigma), threshold - 1, &mut OsRng).unwrap();
+        let h = Polynomial::generate_polynomial(Some(sigma), degree, &mut OsRng).unwrap();
 
         let participants = generate_participants(2);
 
@@ -231,21 +227,22 @@ mod test {
 
     #[test]
     fn test_sign_with_rerandomization() {
-        let threshold = 2;
+        let threshold: usize = 2;
         let msg = b"Hello? Is it me you're looking for?";
 
-        let f = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng).unwrap();
+        let degree = threshold.checked_sub(1).unwrap();
+        let f = Polynomial::generate_polynomial(None, degree, &mut OsRng).unwrap();
         let x = f.eval_at_zero().unwrap().0;
         let public_key = frost_core::VerifyingKey::new(ProjectivePoint::GENERATOR * x);
 
-        let g = Polynomial::generate_polynomial(None, threshold - 1, &mut OsRng).unwrap();
+        let g = Polynomial::generate_polynomial(None, degree, &mut OsRng).unwrap();
 
         let k = g.eval_at_zero().unwrap().0;
         let big_r = (ProjectivePoint::GENERATOR * k.invert().unwrap()).to_affine();
 
         let sigma = k * x;
 
-        let h = Polynomial::generate_polynomial(Some(sigma), threshold - 1, &mut OsRng).unwrap();
+        let h = Polynomial::generate_polynomial(Some(sigma), degree, &mut OsRng).unwrap();
 
         let participants = generate_participants(2);
 

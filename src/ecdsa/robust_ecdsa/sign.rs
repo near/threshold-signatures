@@ -1,20 +1,20 @@
 use elliptic_curve::scalar::IsHigh;
 
-use frost_core::serialization::SerializableScalar;
-use subtle::ConditionallySelectable;
-
+use crate::errors::{InitializationError, ProtocolError};
+use crate::participants::{Participant, ParticipantList};
 use crate::{
     ecdsa::{
         robust_ecdsa::RerandomizedPresignOutput, x_coordinate, AffinePoint, Scalar,
         Secp256K1Sha256, Signature, SignatureOption,
     },
-    participants::{ParticipantCounter, ParticipantList},
     protocol::{
-        errors::{InitializationError, ProtocolError},
+        helpers::recv_from_others,
         internal::{make_protocol, Comms, SharedChannel},
-        Participant, Protocol,
+        Protocol,
     },
 };
+use frost_core::serialization::SerializableScalar;
+use subtle::ConditionallySelectable;
 type C = Secp256K1Sha256;
 
 /// Depending on whether the current participant is a coordinator or not,
@@ -93,14 +93,9 @@ async fn do_sign_coordinator(
     let mut s = compute_signature_share(&presignature, msg_hash, &participants, me)?.0;
     let wait_round = chan.next_waitpoint();
 
-    let mut seen = ParticipantCounter::new(&participants);
-
-    seen.put(me);
-    while !seen.full() {
-        let (from, s_i): (_, SerializableScalar<C>) = chan.recv(wait_round).await?;
-        if !seen.put(from) {
-            continue;
-        }
+    for (_, s_i) in
+        recv_from_others::<SerializableScalar<C>>(&chan, wait_round, &participants, me).await?
+    {
         // Sum the linearized shares
         s += s_i.0;
     }
@@ -195,18 +190,13 @@ mod test {
         // This sum would annihilate all the fb shares which make them useless in our case.
         let fk = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
         let fa = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
-        let fd = Polynomial::generate_polynomial(
-            Some(Secp256K1ScalarField::zero()),
-            2 * max_malicious,
-            &mut OsRng,
-        )
-        .unwrap();
-        let fe = Polynomial::generate_polynomial(
-            Some(Secp256K1ScalarField::zero()),
-            2 * max_malicious,
-            &mut OsRng,
-        )
-        .unwrap();
+        let degree = 2usize.checked_mul(max_malicious).unwrap();
+        let fd =
+            Polynomial::generate_polynomial(Some(Secp256K1ScalarField::zero()), degree, &mut OsRng)
+                .unwrap();
+        let fe =
+            Polynomial::generate_polynomial(Some(Secp256K1ScalarField::zero()), degree, &mut OsRng)
+                .unwrap();
 
         // computing k, R, Rx
         let k = fk.eval_at_zero().unwrap().0;

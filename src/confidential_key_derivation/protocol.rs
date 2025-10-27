@@ -2,9 +2,11 @@ use crate::confidential_key_derivation::ciphersuite::{hash_to_curve, BLS12381SHA
 use crate::confidential_key_derivation::{
     AppId, CKDOutput, CKDOutputOption, ElementG1, PublicKey, Scalar, SigningShare,
 };
-use crate::participants::{ParticipantCounter, ParticipantList};
+use crate::errors::{InitializationError, ProtocolError};
+use crate::participants::{Participant, ParticipantList};
+use crate::protocol::helpers::recv_from_others;
 use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
-use crate::protocol::{errors::InitializationError, errors::ProtocolError, Participant, Protocol};
+use crate::Protocol;
 
 use elliptic_curve::{Field, Group};
 use rand_core::CryptoRngCore;
@@ -41,17 +43,13 @@ async fn do_ckd_coordinator(
         compute_signature_share(&participants, me, private_share, app_id, app_pk, rng)?;
 
     // Receive everyone's inputs and add them together
-    let mut seen = ParticipantCounter::new(&participants);
     let waitpoint = chan.next_waitpoint();
 
-    seen.put(me);
-    while !seen.full() {
-        let (from, (big_y, big_c)): (_, (ElementG1, ElementG1)) = chan.recv(waitpoint).await?;
-        if !seen.put(from) {
-            continue;
-        }
-        norm_big_y += big_y;
-        norm_big_c += big_c;
+    for (_, participant_output) in
+        recv_from_others::<CKDOutput>(&chan, waitpoint, &participants, me).await?
+    {
+        norm_big_y += participant_output.big_y();
+        norm_big_c += participant_output.big_c();
     }
     let ckd_output = CKDOutput::new(norm_big_y, norm_big_c);
     Ok(Some(ckd_output))
@@ -182,8 +180,8 @@ fn compute_signature_share(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::test::{one_coordinator_output, GenProtocol};
-    use crate::{confidential_key_derivation::ciphersuite::hash_to_curve, protocol::run_protocol};
+    use crate::confidential_key_derivation::ciphersuite::hash_to_curve;
+    use crate::test::{one_coordinator_output, run_protocol, GenProtocol};
     use rand::Rng;
 
     #[test]

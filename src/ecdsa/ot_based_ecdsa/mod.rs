@@ -9,7 +9,7 @@ use crate::ecdsa::{
     ot_based_ecdsa::triples::{TriplePub, TripleShare},
     AffinePoint, KeygenOutput, RerandomizationArguments, Scalar, Tweak,
 };
-use crate::protocol::errors::ProtocolError;
+use crate::errors::ProtocolError;
 use serde::{Deserialize, Serialize};
 
 /// The arguments needed to create a presignature.
@@ -54,7 +54,7 @@ pub struct RerandomizedPresignOutput {
 }
 
 impl RerandomizedPresignOutput {
-    pub fn new(
+    pub fn rerandomize_presign(
         presignature: &PresignOutput,
         tweak: &Tweak,
         args: &RerandomizationArguments,

@@ -8,6 +8,7 @@ use elliptic_curve::{
     bigint::U256,
     ops::{Invert, Reduce},
     point::AffineCoordinates,
+    scalar::IsHigh,
     sec1::ToEncodedPoint,
     PrimeField,
 };
@@ -16,8 +17,8 @@ use frost_secp256k1::{Field, Group, Secp256K1Group, Secp256K1ScalarField};
 use k256::{AffinePoint, ProjectivePoint};
 
 use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat};
+use crate::errors::ProtocolError;
 use crate::participants::ParticipantList;
-use crate::protocol::errors::ProtocolError;
 
 pub use frost_secp256k1::Secp256K1Sha256;
 pub type KeygenOutput = crate::KeygenOutput<Secp256K1Sha256>;
@@ -65,6 +66,10 @@ impl Signature {
         if r.is_zero().into() || self.s.is_zero().into() {
             return false;
         }
+        // Check if s has been normalized
+        if self.s.is_high().into() {
+            return false;
+        }
         // tested earlier is not zero, so inversion will not raise an error and unwrap cannot panic
         let s_inv = self.s.invert_vartime().unwrap();
         let reproduced = (ProjectivePoint::GENERATOR * (*msg_hash * s_inv))
@@ -84,7 +89,9 @@ pub type SignatureOption = Option<Signature>;
 /// Following [GS21] <https://eprint.iacr.org/2021/1330.pdf>, the entropy should
 /// be public, freshly generated, and unpredictable.
 pub struct RerandomizationArguments {
+    // Preferable (but non-binding) the master public key
     pub pk: AffinePoint,
+    pub tweak: Tweak,
     pub msg_hash: [u8; 32],
     pub big_r: AffinePoint,
     pub participants: ParticipantList,
@@ -106,6 +113,7 @@ impl RerandomizationArguments {
 
     pub fn new(
         pk: AffinePoint,
+        tweak: Tweak,
         msg_hash: [u8; 32],
         big_r: AffinePoint,
         participants: ParticipantList,
@@ -113,6 +121,7 @@ impl RerandomizationArguments {
     ) -> Self {
         Self {
             pk,
+            tweak,
             msg_hash,
             big_r,
             participants,
@@ -120,7 +129,7 @@ impl RerandomizationArguments {
         }
     }
 
-    /// Derives a random string from the public key, message hash, presignature R,
+    /// Derives a random string from the public key, tweak, message hash, presignature R,
     /// set of participants and the entropy.
     ///
     /// Outputs a random string computed as HKDF(entropy, pk, hash, R, participants)
@@ -128,13 +137,17 @@ impl RerandomizationArguments {
         // create a string containing (pk, msg_hash, big_r, sorted(participants))
         let pk_encoded_point = self.pk.to_encoded_point(true);
         let encoded_pk: &[u8] = pk_encoded_point.as_bytes();
+        let encoded_tweak: &[u8] = &<Secp256K1ScalarField as Field>::serialize(&self.tweak.value());
         let encoded_msg_hash: &[u8] = &self.msg_hash;
         let big_r_encoded_point = self.big_r.to_encoded_point(true);
         let encoded_big_r: &[u8] = big_r_encoded_point.as_bytes();
 
         // concatenate all the bytes
         let mut concatenation = Vec::new();
+        // 1 byte counter, used in the unlikely case that the hash result is 0
+        concatenation.extend_from_slice(&[0u8, 1]);
         concatenation.extend_from_slice(encoded_pk);
+        concatenation.extend_from_slice(encoded_tweak);
         concatenation.extend_from_slice(encoded_msg_hash);
         concatenation.extend_from_slice(encoded_big_r);
         // Append each ParticipantId's
@@ -148,10 +161,9 @@ impl RerandomizationArguments {
         let mut delta = Scalar::ZERO;
         // If the randomness created is 0 then we want to generate a new randomness
         while bool::from(delta.is_zero()) {
-            // Generate randomization out of HKDF(entropy, pk, msg_hash, big_r, participants, nonce)
+            // Generate randomization out of HKDF(counter, entropy, pk, msg_hash, big_r, participants, )
             // where entropy is a public but unpredictable random string.
-            // The nonce is a succession of appended ones of growing length depending on the number of times
-            // we enter into this loop
+            // The counter depends on the number of times we enter into this loop
             let mut okm = [0u8; 32];
 
             hk.expand(&concatenation, &mut okm)
@@ -163,8 +175,8 @@ impl RerandomizationArguments {
                 // probability is negligible: in the order of 1/2^224
                 Scalar::ZERO,
             );
-            // append an extra 0 at the end of the concatenation every time delta is zero
-            concatenation.extend_from_slice(&[0u8, 1]);
+            // Increment the counter, the probability that this overflows is astronomically low
+            concatenation[0] += 1;
         }
         Ok(delta)
     }
@@ -231,8 +243,7 @@ mod test {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn keygen_output__should_be_serializable() {
+    fn keygen_output_should_be_serializable() {
         // Given
         let mut rng = MockCryptoRng::new([1; 8]);
         let signing_key = FrostSigningKey::<C>::new(&mut rng);
@@ -260,6 +271,7 @@ mod test {
     ) -> (RerandomizationArguments, Scalar) {
         let sk = SigningKey::random(&mut OsRng);
         let pk = *VerifyingKey::from(sk).as_affine();
+        let tweak = Tweak::new(frost_core::random_nonzero::<Secp256K1Sha256, _>(&mut OsRng));
         let (_, big_r) = <C>::generate_nonce(&mut OsRng);
         let big_r = big_r.to_affine();
 
@@ -269,7 +281,7 @@ mod test {
         let participants = generate_participants_with_random_ids(num_participants, rng);
         let participants = ParticipantList::new(&participants).unwrap();
 
-        let args = RerandomizationArguments::new(pk, msg_hash, big_r, participants, entropy);
+        let args = RerandomizationArguments::new(pk, tweak, msg_hash, big_r, participants, entropy);
         let delta = args.derive_randomness().unwrap();
         (args, delta)
     }
@@ -282,6 +294,17 @@ mod test {
         // different pk
         let (_, pk) = <C>::generate_nonce(&mut rng);
         args.pk = pk.to_affine();
+        let delta_prime = args.derive_randomness().unwrap();
+        assert_ne!(delta, delta_prime);
+    }
+
+    #[test]
+    fn test_different_tweak() {
+        let num_participants = 10;
+        let mut rng = OsRng;
+        let (mut args, delta) = compute_random_outputs(&mut rng, num_participants);
+        // different pk
+        args.tweak = Tweak::new(frost_core::random_nonzero::<Secp256K1Sha256, _>(&mut OsRng));
         let delta_prime = args.derive_randomness().unwrap();
         assert_ne!(delta, delta_prime);
     }

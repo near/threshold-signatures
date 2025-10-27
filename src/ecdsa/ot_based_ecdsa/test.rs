@@ -4,10 +4,11 @@ use super::{
     triples::{generate_triple_many, test::deal, TriplePub, TripleShare},
     PresignArguments, PresignOutput,
 };
-use crate::protocol::{run_protocol, Participant, Protocol};
+use crate::participants::Participant;
+use crate::protocol::Protocol;
 use crate::test::{
     assert_public_key_invariant, generate_participants, generate_participants_with_random_ids,
-    one_coordinator_output, run_keygen, run_refresh, run_reshare,
+    one_coordinator_output, run_keygen, run_protocol, run_refresh, run_reshare,
 };
 use crate::{
     crypto::hash::test::scalar_hash_secp256k1, ecdsa::ot_based_ecdsa::RerandomizedPresignOutput,
@@ -93,14 +94,15 @@ pub fn run_sign_with_rerandomization(
     .unwrap();
     let msg_hash_bytes: [u8; 32] = msg_hash.to_bytes().into();
     let rerand_args =
-        RerandomizationArguments::new(pk, msg_hash_bytes, big_r, participants, entropy);
+        RerandomizationArguments::new(pk, tweak, msg_hash_bytes, big_r, participants, entropy);
     let public_key = frost_core::VerifyingKey::new(public_key);
     let derived_pk = tweak.derive_verifying_key(&public_key).to_element();
 
     let rerand_participants_presign = participants_presign
         .iter()
         .map(|(p, presig)| {
-            RerandomizedPresignOutput::new(presig, &tweak, &rerand_args).map(|out| (*p, out))
+            RerandomizedPresignOutput::rerandomize_presign(presig, &tweak, &rerand_args)
+                .map(|out| (*p, out))
         })
         .collect::<Result<_, _>>()?;
 

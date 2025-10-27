@@ -8,10 +8,12 @@ use crate::ecdsa::{
     Element, ParticipantList, RerandomizationArguments, Secp256K1Sha256, Signature,
     SignatureOption, Tweak,
 };
-use crate::protocol::{run_protocol, Participant, Protocol};
+use crate::participants::Participant;
+use crate::protocol::Protocol;
 use crate::test::{
     assert_public_key_invariant, generate_participants, generate_participants_with_random_ids,
-    one_coordinator_output, run_keygen, run_refresh, run_reshare, GenOutput, GenProtocol,
+    one_coordinator_output, run_keygen, run_protocol, run_refresh, run_reshare, GenOutput,
+    GenProtocol,
 };
 
 use rand::rngs::OsRng;
@@ -69,7 +71,6 @@ pub fn run_sign_with_rerandomization(
     let mut entropy: [u8; 32] = [0u8; 32];
     OsRng.fill_bytes(&mut entropy);
 
-    let pk = public_key.to_affine();
     let big_r = participants_presign[0].1.big_r;
     let participants = ParticipantList::new(
         &participants_presign
@@ -79,10 +80,16 @@ pub fn run_sign_with_rerandomization(
     )
     .unwrap();
     let msg_hash_bytes: [u8; 32] = msg_hash.to_bytes().into();
-    let rerand_args =
-        RerandomizationArguments::new(pk, msg_hash_bytes, big_r, participants, entropy);
     let public_key = frost_core::VerifyingKey::new(public_key);
     let derived_pk = tweak.derive_verifying_key(&public_key).to_element();
+    let rerand_args = RerandomizationArguments::new(
+        derived_pk.to_affine(),
+        tweak,
+        msg_hash_bytes,
+        big_r,
+        participants,
+        entropy,
+    );
 
     let rerand_participants_presign = participants_presign
         .iter()

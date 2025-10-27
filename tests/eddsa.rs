@@ -8,10 +8,10 @@ use rand_core::OsRng;
 use threshold_signatures::{
     self,
     eddsa::{sign::sign, Ed25519Sha512, SignatureOption},
-    protocol::{run_protocol, Participant},
+    participants::Participant,
 };
 
-use crate::common::GenProtocol;
+use crate::common::{run_protocol, GenProtocol};
 
 type C = Ed25519Sha512;
 type KeygenOutput = threshold_signatures::KeygenOutput<C>;

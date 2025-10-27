@@ -4,12 +4,10 @@ use crate::crypto::{
     polynomials::{Polynomial, PolynomialCommitment},
 };
 
-use crate::participants::{ParticipantCounter, ParticipantList, ParticipantMap};
+use crate::errors::{InitializationError, ProtocolError};
+use crate::participants::{Participant, ParticipantList, ParticipantMap};
 use crate::protocol::{
-    echo_broadcast::do_broadcast,
-    errors::{InitializationError, ProtocolError},
-    internal::SharedChannel,
-    Participant,
+    echo_broadcast::do_broadcast, helpers::recv_from_others, internal::SharedChannel,
 };
 use crate::KeygenOutput;
 
@@ -363,8 +361,10 @@ async fn do_keyshare<C: Ciphersuite>(
     let session_id = domain_separate_hash(domain_separator, &session_ids)?;
     domain_separator += 1;
     // the degree of the polynomial is threshold - 1
-    let secret_coefficients =
-        Polynomial::<C>::generate_polynomial(Some(secret), threshold - 1, rng)?;
+    let degree = threshold
+        .checked_sub(1)
+        .ok_or(ProtocolError::IntegerOverflow)?;
+    let secret_coefficients = Polynomial::<C>::generate_polynomial(Some(secret), degree, rng)?;
 
     // Compute the multiplication of every coefficient of p with the generator G
     let coefficient_commitment = generate_coefficient_commitment::<C>(&secret_coefficients)?;
@@ -395,13 +395,17 @@ async fn do_keyshare<C: Ciphersuite>(
     // hash commitment and send it
     let commit_domain_separator = domain_separator;
     let commitment_hash = domain_separate_hash(domain_separator, &(&me, &commitment, &session_id))?;
+
     let wait_round_1 = chan.next_waitpoint();
     chan.send_many(wait_round_1, &commitment_hash)?;
     // receive commitment_hash
+
     let mut all_hash_commitments = ParticipantMap::new(&participants);
     all_hash_commitments.put(me, commitment_hash);
-    while !all_hash_commitments.full() {
-        let (from, their_commitment_hash) = chan.recv(wait_round_1).await?;
+
+    for (from, their_commitment_hash) in
+        recv_from_others(&chan, wait_round_1, &participants, me).await?
+    {
         all_hash_commitments.put(from, their_commitment_hash);
     }
 
@@ -485,15 +489,9 @@ async fn do_keyshare<C: Ciphersuite>(
     // should not panic as secret_coefficients are created internally
     let mut my_signing_share = secret_coefficients.eval_at_participant(me)?.0;
     // receive evaluations from all participants
-    let mut seen = ParticipantCounter::new(&participants);
-    seen.put(me);
-    while !seen.full() {
-        let (from, signing_share_from): (Participant, SigningShare<C>) =
-            chan.recv(wait_round_3).await?;
-        if !seen.put(from) {
-            continue;
-        }
-
+    for (from, signing_share_from) in
+        recv_from_others(&chan, wait_round_3, &participants, me).await?
+    {
         // Verify the share
         // this deviates from the original FROST DKG paper
         // however it matches the FROST implementation of ZCash
@@ -550,6 +548,9 @@ pub fn assert_keygen_invariants(
             threshold,
             max: participants.len(),
         });
+    }
+    if threshold < 1 {
+        return Err(InitializationError::ThresholdTooSmall { threshold, min: 1 });
     }
 
     // ensure uniqueness of participants in the participant list
@@ -657,8 +658,7 @@ pub mod test {
 
     use super::domain_separate_hash;
     use crate::crypto::ciphersuite::Ciphersuite;
-    use crate::participants::ParticipantList;
-    use crate::protocol::Participant;
+    use crate::participants::{Participant, ParticipantList};
     use crate::test::generate_participants;
     use crate::test::{assert_public_key_invariant, run_keygen, run_refresh, run_reshare};
     use frost_core::{Field, Group};

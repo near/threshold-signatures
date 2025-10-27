@@ -5,7 +5,7 @@ use rand_core::CryptoRngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 use super::ciphersuite::Ciphersuite;
-use crate::protocol::{errors::ProtocolError, Participant};
+use crate::{errors::ProtocolError, participants::Participant};
 
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -55,7 +55,15 @@ impl<C: Ciphersuite> Polynomial<C> {
         degree: usize,
         rng: &mut impl CryptoRngCore,
     ) -> Result<Self, ProtocolError> {
-        let poly_size = degree + 1;
+        // @dev why not usize::MAX? https://github.com/near/threshold-signatures/pull/163#discussion_r2447505305
+        // Allocations must fit within isize range.
+        // This check conservatively prevents allocations beyond isize::MAX.
+        if degree >= isize::MAX as usize {
+            return Err(ProtocolError::IntegerOverflow);
+        }
+        let poly_size = degree
+            .checked_add(1)
+            .ok_or(ProtocolError::IntegerOverflow)?;
         let mut coefficients = Vec::with_capacity(poly_size);
         // insert the secret share if exists
         let secret = secret.unwrap_or_else(|| <C::Group as Group>::Field::random(rng));
@@ -854,7 +862,7 @@ mod test {
         let participants = (0u32..=degree).map(Participant::from).collect::<Vec<_>>();
         let ids = participants
             .iter()
-            .map(crate::protocol::Participant::scalar::<C>)
+            .map(Participant::scalar::<C>)
             .collect::<Vec<_>>();
 
         let shares = participants
@@ -888,7 +896,7 @@ mod test {
         // interpolate the polynomial using the shares at arbitrary points
         let scalars = participants
             .iter()
-            .map(crate::protocol::Participant::scalar::<C>)
+            .map(Participant::scalar::<C>)
             .collect::<Vec<_>>();
         for _ in 0..100 {
             // create arbitrary point
@@ -924,7 +932,7 @@ mod test {
 
         let ids = participants
             .iter()
-            .map(crate::protocol::Participant::scalar::<C>)
+            .map(Participant::scalar::<C>)
             .collect::<Vec<_>>();
 
         let ref_point = Some(Secp256K1ScalarField::random(&mut rand_core::OsRng));
@@ -973,7 +981,7 @@ mod test {
         // interpolate the polynomial using the shares at arbitrary points
         let scalars = participants
             .iter()
-            .map(crate::protocol::Participant::scalar::<C>)
+            .map(Participant::scalar::<C>)
             .collect::<Vec<_>>();
         for _ in 0..100 {
             // create arbitrary point
@@ -1085,7 +1093,7 @@ mod test {
     fn test_compute_lagrange_coefficient_cubic_polynomial() {
         let points = generate_participants_with_random_ids(5, &mut OsRng)
             .iter()
-            .map(crate::protocol::Participant::scalar::<C>)
+            .map(Participant::scalar::<C>)
             .collect::<Vec<_>>();
         let mut result = Secp256K1ScalarField::zero();
         let target_point = Scalar::generate_biased(&mut OsRng);
@@ -1156,7 +1164,7 @@ mod test {
 
         let ids = participants
             .iter()
-            .map(crate::protocol::Participant::scalar::<C>)
+            .map(Participant::scalar::<C>)
             .collect::<Vec<_>>();
         let point = Some(Secp256K1ScalarField::random(&mut rand_core::OsRng));
 
@@ -1217,7 +1225,7 @@ mod test {
 
                 let ids = participants
                     .iter()
-                    .map(crate::protocol::Participant::scalar::<C>)
+                    .map(Participant::scalar::<C>)
                     .collect::<Vec<_>>();
 
                 // generate polynomial
@@ -1265,7 +1273,7 @@ mod test {
 
                 let ids = participants
                     .iter()
-                    .map(crate::protocol::Participant::scalar::<C>)
+                    .map(Participant::scalar::<C>)
                     .collect::<Vec<_>>();
 
                 // generate polynomial
@@ -1305,5 +1313,17 @@ mod test {
                 );
             }
         }
+    }
+
+    #[test]
+    fn test_generate_polynomial_overflow() {
+        let mut rng = OsRng;
+        // Test with a degree that would cause an overflow in `degree + 1`
+        let result = Polynomial::<C>::generate_polynomial(None, usize::MAX, &mut rng);
+        assert!(matches!(result, Err(ProtocolError::IntegerOverflow)));
+
+        // Test with a degree that is at the boundary of isize::MAX
+        let result = Polynomial::<C>::generate_polynomial(None, isize::MAX as usize, &mut rng);
+        assert!(matches!(result, Err(ProtocolError::IntegerOverflow)));
     }
 }

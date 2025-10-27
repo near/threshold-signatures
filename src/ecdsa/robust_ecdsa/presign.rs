@@ -1,22 +1,22 @@
-use frost_core::serialization::SerializableScalar;
-use frost_secp256k1::{Group, Secp256K1Group};
-use rand_core::CryptoRngCore;
-use subtle::ConstantTimeEq;
-
 use super::{PresignArguments, PresignOutput};
+use crate::participants::{Participant, ParticipantList, ParticipantMap};
 use crate::{
     ecdsa::{
         CoefficientCommitment, Field, Polynomial, PolynomialCommitment, Scalar,
         Secp256K1ScalarField, Secp256K1Sha256,
     },
-    participants::{ParticipantCounter, ParticipantList, ParticipantMap},
+    errors::{InitializationError, ProtocolError},
     protocol::{
-        errors::{InitializationError, ProtocolError},
+        helpers::recv_from_others,
         internal::{make_protocol, Comms, SharedChannel},
-        Participant, Protocol,
+        Protocol,
     },
     SigningShare,
 };
+use frost_core::serialization::SerializableScalar;
+use frost_secp256k1::{Group, Secp256K1Group};
+use rand_core::CryptoRngCore;
+use subtle::ConstantTimeEq;
 
 type C = Secp256K1Sha256;
 
@@ -49,8 +49,8 @@ pub fn presign(
     // this complex way prevents overflowing
     if args
         .threshold
-        .saturating_mul(2)
-        .checked_add(1)
+        .checked_mul(2)
+        .and_then(|v| v.checked_add(1))
         .ok_or_else(|| {
             InitializationError::BadParameters(
                 "2*threshold+1 must be less than usize::MAX".to_string(),
@@ -92,14 +92,17 @@ async fn do_presign(
     let threshold = args.threshold;
     // Round 0
 
+    let degree = threshold
+        .checked_mul(2)
+        .ok_or(ProtocolError::IntegerOverflow)?;
     let polynomials = [
         // degree t random secret shares where t is the max number of malicious parties
         Polynomial::generate_polynomial(None, threshold, rng)?, // fk
         Polynomial::generate_polynomial(None, threshold, rng)?, // fa
         // degree 2t zero secret shares where t is the max number of malicious parties
-        zero_secret_polynomial(2 * threshold, rng)?, // fb
-        zero_secret_polynomial(2 * threshold, rng)?, // fd
-        zero_secret_polynomial(2 * threshold, rng)?, // fe
+        zero_secret_polynomial(degree, rng)?, // fb
+        zero_secret_polynomial(degree, rng)?, // fd
+        zero_secret_polynomial(degree, rng)?, // fe
     ];
 
     // send polynomial evaluations to participants
@@ -121,14 +124,7 @@ async fn do_presign(
 
     // Round 1
     // Receive evaluations from all participants
-    let mut seen = ParticipantCounter::new(&participants);
-    seen.put(me);
-    while !seen.full() {
-        let (from, package): (_, Shares) = chan.recv(wait_round_0).await?;
-        if !seen.put(from) {
-            continue;
-        }
-
+    for (_, package) in recv_from_others(&chan, wait_round_0, &participants, me).await? {
         // calculate the respective sum of the different shares received from each participant
         shares.add_shares(&package);
     }
@@ -161,7 +157,7 @@ async fn do_presign(
     let identifiers: Vec<Scalar> = signingshares_map
         .participants()
         .iter()
-        .map(crate::protocol::Participant::scalar::<C>)
+        .map(Participant::scalar::<C>)
         .collect();
 
     let signingshares = signingshares_map
@@ -361,8 +357,8 @@ mod test {
     use super::*;
     use rand_core::OsRng;
 
-    use crate::test::GenProtocol;
-    use crate::{ecdsa::KeygenOutput, protocol::run_protocol, test::generate_participants};
+    use crate::ecdsa::KeygenOutput;
+    use crate::test::{generate_participants, run_protocol, GenProtocol};
     use frost_secp256k1::keys::PublicKeyPackage;
     use frost_secp256k1::VerifyingKey;
 
