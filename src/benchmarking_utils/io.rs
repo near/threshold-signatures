@@ -1,4 +1,4 @@
-use crate::protocol::errors::BenchmarkError;
+use crate::errors::BenchmarkError;
 use crate::Participant;
 use fs2::FileExt; // for file locking
 use std::fs::{create_dir_all, read, remove_dir, remove_file, OpenOptions};
@@ -96,6 +96,7 @@ fn file_append_with_lock(path: &str, data: &[u8]) -> Result<(), BenchmarkError> 
 
 /// Creates or opens in a file generated `from` the sender's information
 /// and encodes a message sent by `from` as <`to` `message.len()` `message`> in raw bytes
+#[allow(dead_code)]
 pub fn encode_in_file(
     from: Participant,
     to: Participant,

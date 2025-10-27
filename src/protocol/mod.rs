@@ -9,8 +9,6 @@ pub(crate) mod echo_broadcast;
 pub(crate) mod helpers;
 pub(crate) mod internal;
 
-use std::collections::HashMap;
-
 use crate::errors::ProtocolError;
 use crate::participants::Participant;
 
@@ -64,11 +62,4 @@ pub trait Protocol {
 
     /// Inform the protocol of a new message.
     fn message(&mut self, from: Participant, data: MessageData);
-}
-
-#[cfg(feature = "benchmarking")]
-/// Creates or opens in a file generated from the sender's information
-/// and encodes a message as <receiver message> in raw bytes
-fn write_in_file(from: Participant, to: Participant, message: &[u8]) -> Result<(), ProtocolError> {
-    encode_in_file(from, to, message).map_err(|e| ProtocolError::Other(e.to_string()))
 }

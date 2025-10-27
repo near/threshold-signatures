@@ -13,6 +13,16 @@ use crate::{keygen, refresh, reshare, Ciphersuite, Element, KeygenOutput, Scalar
 pub type GenProtocol<C> = Vec<(Participant, Box<dyn Protocol<Output = C>>)>;
 
 // +++++++++++++++++ Participants Utilities +++++++++++++++++ //
+#[cfg(feature = "benchmarking")]
+#[allow(dead_code)]
+/// Creates or opens in a file generated from the sender's information
+/// and encodes a message as <receiver message> in raw bytes
+fn write_in_file(from: Participant, to: Participant, message: &[u8]) -> Result<(), ProtocolError> {
+    crate::benchmarking_utils::io::encode_in_file(from, to, message)
+        .map_err(|e| ProtocolError::Other(e.to_string()))
+}
+
+// +++++++++++++++++ Participants Utilities +++++++++++++++++ //
 /// Generates a vector of `number` participants, sorted by the participant id.
 /// The participants ids range from 0 to `number`-1
 pub fn generate_participants(number: usize) -> Vec<Participant> {
