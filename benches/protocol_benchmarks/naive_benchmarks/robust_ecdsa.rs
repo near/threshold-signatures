@@ -1,16 +1,13 @@
 use criterion::Criterion;
-use frost_secp256k1::{Secp256K1Sha256, Secp256K1ScalarField, VerifyingKey};
-use rand_core::{OsRng, RngCore};
+use frost_secp256k1::{Secp256K1Sha256, VerifyingKey};
+use rand_core::OsRng;
 use rand::Rng;
 use crate::protocol_benchmarks::naive_benchmarks::generate_rerandpresig_args;
 
 extern crate threshold_signatures;
 use threshold_signatures::{
-    test::{
-        generate_participants_with_random_ids,
-        run_keygen, run_protocol,
-    },
-    ecdsa::{Tweak, RerandomizationArguments, SignatureOption},
+    test::{run_keygen, run_protocol, generate_participants_with_random_ids},
+    ecdsa::SignatureOption,
     ecdsa::robust_ecdsa::{
         presign::presign,
         sign::sign,
@@ -18,12 +15,12 @@ use threshold_signatures::{
     },
     protocol::Protocol,
     participants::Participant,
-    ParticipantList,
 };
 
 const MAX_MALICIOUS: usize = 6;
 const PARTICIPANTS_NUM: usize = 13;
 
+/// Benches the presigning protocol
 pub fn bench_presign(c: &mut Criterion) {
     let mut group = c.benchmark_group(
         &format!(
@@ -33,17 +30,17 @@ pub fn bench_presign(c: &mut Criterion) {
         )
     );
     group.measurement_time(std::time::Duration::from_secs(300));
-    let participants = generate_participants_with_random_ids(PARTICIPANTS_NUM, &mut OsRng);
 
     group.bench_function("Presignature generation", |b| {
         b.iter_batched(||
-            prepare_presign(&participants),
+            prepare_presign(PARTICIPANTS_NUM),
             |(protocols, _)| run_protocol(protocols),
             criterion::BatchSize::SmallInput, // Choose batch size based on your expected workload
             );
         });
 }
 
+/// Benches the signing protocol
 pub fn bench_sign(c: &mut Criterion) {
     let mut group = c.benchmark_group(
         &format!(
@@ -54,21 +51,22 @@ pub fn bench_sign(c: &mut Criterion) {
     );
     group.measurement_time(std::time::Duration::from_secs(300));
 
-    let participants = generate_participants_with_random_ids(PARTICIPANTS_NUM, &mut OsRng);
-    let (protocols, pk) = prepare_presign(&participants);
+    let (protocols, pk) = prepare_presign(PARTICIPANTS_NUM);
     let mut result = run_protocol(protocols).unwrap();
     result.sort_by_key(|(p, _)| *p);
 
     group.bench_function("Signature generation", |b| {
         b.iter_batched(||
-            prepare_sign(&participants, &result, pk),
+            prepare_sign(&result, pk),
             |protocols| run_protocol(protocols),
             criterion::BatchSize::SmallInput, // Choose batch size based on your expected workload
         );
     });
 }
 
-fn prepare_presign(participants: &[Participant]) -> (Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)>, VerifyingKey){
+/// Benches the presigning protocol
+fn prepare_presign(num_participants: usize) -> (Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)>, VerifyingKey){
+    let participants = generate_participants_with_random_ids(num_participants, &mut OsRng);
     let key_packages = run_keygen::<Secp256K1Sha256>(&participants, MAX_MALICIOUS + 1);
     let pk = key_packages[0].1.public_key.clone();
     let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)> =
@@ -76,7 +74,7 @@ fn prepare_presign(participants: &[Participant]) -> (Vec<(Participant, Box<dyn P
 
     for (p, keygen_out) in key_packages {
             let protocol = presign(
-                participants,
+                &participants,
                 p,
                 PresignArguments {
                     keygen_out,
@@ -90,43 +88,27 @@ fn prepare_presign(participants: &[Participant]) -> (Vec<(Participant, Box<dyn P
 }
 
 fn prepare_sign(
-    num_participants: usize,
     result: &[(Participant, PresignOutput)],
     pk: VerifyingKey,
 )-> Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)>{
 
-    let (args, delta) = generate_rerandpresig_args(&mut OsRng, num_participants);
-    // hash the message into secp256k1 field
-    // generate a random tweak
-    let tweak = Tweak::new(frost_core::random_nonzero::<Secp256K1Sha256, _>(&mut OsRng));
-    // generate a random public entropy
-    let mut entropy: [u8; 32] = [0u8; 32];
-    OsRng.fill_bytes(&mut entropy);
-
-    let participant_list = ParticipantList::new(participants).unwrap();
+    // To collect all participants:
+    let participants: Vec<Participant> = result.iter()
+    .map(|(participant, _)| participant.clone()) // or `.copied()` if `Participant: Copy`
+    .collect();
 
     // choose a coordinator at random
-    let index = OsRng.gen_range(0..participants.len());
+    let index = OsRng.gen_range(0..result.len());
     let coordinator = result[index].0;
 
-    let big_r = result[0].1.big_r;
-
-    let rerand_args = RerandomizationArguments::new(
-        pk.to_element().to_affine(),
-        tweak,
-        msg_hash_bytes,
-        big_r,
-        participant_list,
-        entropy
-    );
-
-    let derived_pk = tweak.derive_verifying_key(&pk).to_element();
+    let (args, msg_hash) = generate_rerandpresig_args(&mut OsRng, participants, pk);
+    let derived_pk = args.tweak.derive_verifying_key(&pk).to_element().to_affine();
 
     let result = result
         .iter()
         .map(|(p, presig)| {
             (   *p,
-                RerandomizedPresignOutput::rerandomize_presign(presig, &tweak, &args).unwrap(),
+                RerandomizedPresignOutput::rerandomize_presign(presig, &args).unwrap(),
             )
         })
         .collect::<Vec<_>>();
@@ -136,10 +118,10 @@ fn prepare_sign(
 
     for (p, presignature) in result {
         let protocol = sign(
-            &participants,
+            args.participants.participants(),
             coordinator,
             p,
-            derived_pk.to_affine(),
+            derived_pk,
             presignature,
             msg_hash,
         ).map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
