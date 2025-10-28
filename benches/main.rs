@@ -1,4 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
+use once_cell::sync::Lazy;
 use std::env;
 
 mod crypto_benchmarks;
@@ -6,6 +7,14 @@ mod protocol_benchmarks;
 
 use crypto_benchmarks::{inversion, lagrange};
 use protocol_benchmarks::naive_benchmarks::{ot_based_ecdsa, robust_ecdsa};
+
+// fix malicious number of participants
+const MAX_MALICIOUS: Lazy<usize> = Lazy::new(|| {
+    env::var("MAX_MALICIOUS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(6)
+});
 
 /// Can be ran using:
 /// BENCH=<option> cargo bench --features benchmarking

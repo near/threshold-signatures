@@ -1431,6 +1431,7 @@ dependencies = [
  "hkdf",
  "k256",
  "keccak",
+ "once_cell",
  "rand",
  "rand_core",
  "rmp-serde",

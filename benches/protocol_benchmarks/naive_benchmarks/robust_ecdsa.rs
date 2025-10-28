@@ -15,20 +15,24 @@ use threshold_signatures::{
     test::{generate_participants_with_random_ids, run_keygen, run_protocol},
 };
 
-const MAX_MALICIOUS: usize = 6;
-const PARTICIPANTS_NUM: usize = MAX_MALICIOUS * 2 + 1;
+use crate::MAX_MALICIOUS;
+
+fn participants_num() -> usize {
+    2 * *crate::MAX_MALICIOUS + 1
+}
 
 /// Benches the presigning protocol
 pub fn bench_presign(c: &mut Criterion) {
     let mut group = c.benchmark_group(&format!(
         "Presign: {} malicious parties and {} participating parties",
-        MAX_MALICIOUS, PARTICIPANTS_NUM
+        *MAX_MALICIOUS,
+        participants_num()
     ));
     group.measurement_time(std::time::Duration::from_secs(300));
 
     group.bench_function("Presignature generation", |b| {
         b.iter_batched(
-            || prepare_presign(PARTICIPANTS_NUM),
+            || prepare_presign(participants_num()),
             |(protocols, _)| run_protocol(protocols),
             criterion::BatchSize::SmallInput,
         );
@@ -39,11 +43,12 @@ pub fn bench_presign(c: &mut Criterion) {
 pub fn bench_sign(c: &mut Criterion) {
     let mut group = c.benchmark_group(&format!(
         "Sign: {} malicious parties and {} participating parties",
-        MAX_MALICIOUS, PARTICIPANTS_NUM
+        *MAX_MALICIOUS,
+        participants_num()
     ));
     group.measurement_time(std::time::Duration::from_secs(300));
 
-    let (protocols, pk) = prepare_presign(PARTICIPANTS_NUM);
+    let (protocols, pk) = prepare_presign(participants_num());
     let mut result = run_protocol(protocols).unwrap();
     result.sort_by_key(|(p, _)| *p);
 
@@ -64,7 +69,7 @@ fn prepare_presign(
     VerifyingKey,
 ) {
     let participants = generate_participants_with_random_ids(num_participants, &mut OsRng);
-    let key_packages = run_keygen::<Secp256K1Sha256>(&participants, MAX_MALICIOUS + 1);
+    let key_packages = run_keygen::<Secp256K1Sha256>(&participants, *MAX_MALICIOUS + 1);
     let pk = key_packages[0].1.public_key.clone();
     let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)> =
         Vec::with_capacity(participants.len());
@@ -75,7 +80,7 @@ fn prepare_presign(
             p,
             PresignArguments {
                 keygen_out,
-                threshold: MAX_MALICIOUS,
+                threshold: *MAX_MALICIOUS,
             },
             OsRng,
         )

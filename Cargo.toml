@@ -50,10 +50,14 @@ zeroize = "1.8.2"
 [features]
 default = ["actively_secure_robust_ecdsa"]
 actively_secure_robust_ecdsa = []
-benchmarking = ["fs2"]
+benchmarking = ["fs2", "once_cell"]
 
 [dependencies.fs2]
 version = "0.4"
+optional = true
+
+[dependencies.once_cell]
+version = "1.21.3"
 optional = true
 
 [dev-dependencies]

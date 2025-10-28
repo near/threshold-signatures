@@ -18,21 +18,28 @@ use threshold_signatures::{
     test::{generate_participants_with_random_ids, run_keygen, run_protocol},
 };
 
-const MAX_MALICIOUS: usize = 6;
-const THRESHOLD: usize = MAX_MALICIOUS + 1;
-const PARTICIPANTS_NUM: usize = THRESHOLD;
+use crate::MAX_MALICIOUS;
+
+fn threshold() -> usize {
+    *crate::MAX_MALICIOUS + 1
+}
+
+fn participants_num() -> usize {
+    *crate::MAX_MALICIOUS
+}
 
 /// Benches the triples protocol
 pub fn bench_triples(c: &mut Criterion) {
     let mut group = c.benchmark_group(&format!(
         "Triples generation: {} malicious parties and {} participating parties",
-        MAX_MALICIOUS, PARTICIPANTS_NUM
+        *MAX_MALICIOUS,
+        participants_num()
     ));
     group.measurement_time(std::time::Duration::from_secs(200));
 
     group.bench_function("Triple generation", |b| {
         b.iter_batched(
-            || prepare_triples(PARTICIPANTS_NUM),
+            || prepare_triples(participants_num()),
             |protocols| run_protocol(protocols),
             criterion::BatchSize::SmallInput,
         );
@@ -43,11 +50,12 @@ pub fn bench_triples(c: &mut Criterion) {
 pub fn bench_presign(c: &mut Criterion) {
     let mut group = c.benchmark_group(&format!(
         "Presign: {} malicious partie and {} participating parties",
-        MAX_MALICIOUS, PARTICIPANTS_NUM
+        *MAX_MALICIOUS,
+        participants_num()
     ));
     group.measurement_time(std::time::Duration::from_secs(300));
 
-    let protocols = prepare_triples(PARTICIPANTS_NUM);
+    let protocols = prepare_triples(participants_num());
     let two_triples = run_protocol(protocols).unwrap();
 
     group.bench_function("Presignature generation", |b| {
@@ -63,11 +71,12 @@ pub fn bench_presign(c: &mut Criterion) {
 pub fn bench_sign(c: &mut Criterion) {
     let mut group = c.benchmark_group(&format!(
         "Sign: {} malicious parties and {} participating parties",
-        MAX_MALICIOUS, PARTICIPANTS_NUM
+        *MAX_MALICIOUS,
+        participants_num()
     ));
     group.measurement_time(std::time::Duration::from_secs(300));
 
-    let protocols = prepare_triples(PARTICIPANTS_NUM);
+    let protocols = prepare_triples(participants_num());
     let two_triples = run_protocol(protocols).unwrap();
 
     let (protocols, pk) = prepare_presign(&two_triples);
@@ -94,7 +103,7 @@ fn prepare_triples(
     let participants = generate_participants_with_random_ids(participant_num, &mut OsRng);
 
     for p in participants.clone() {
-        let protocol = generate_triple_many::<2>(&participants, p, THRESHOLD, OsRng);
+        let protocol = generate_triple_many::<2>(&participants, p, threshold(), OsRng);
         let protocol = protocol.unwrap();
         protocols.push((p, Box::new(protocol)));
     }
@@ -122,7 +131,7 @@ fn prepare_presign(
     // split shares into shares0 and shares 1 and pubs into pubs0 and pubs1
     let (pub0, pub1) = split_even_odd(pubs);
 
-    let key_packages = run_keygen::<Secp256K1Sha256>(&participants, THRESHOLD);
+    let key_packages = run_keygen::<Secp256K1Sha256>(&participants, threshold());
     let pk = key_packages[0].1.public_key.clone();
 
     let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)> =
@@ -136,7 +145,7 @@ fn prepare_presign(
                 triple0: (share0, pub0[0].clone()),
                 triple1: (share1, pub1[0].clone()),
                 keygen_out,
-                threshold: THRESHOLD,
+                threshold: threshold(),
             },
         )
         .unwrap();
