@@ -73,7 +73,8 @@ impl RerandomizedPresignOutput {
         let rerandomized_big_r = presignature.big_r * delta;
 
         //  (sigma + tweak * k) * delta^{-1}
-        let rerandomized_sigma = (presignature.sigma + args.tweak.value() * presignature.k) * inv_delta;
+        let rerandomized_sigma =
+            (presignature.sigma + args.tweak.value() * presignature.k) * inv_delta;
 
         // k * delta^{-1}
         let rerandomized_k = presignature.k * inv_delta;

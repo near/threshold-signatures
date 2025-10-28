@@ -188,7 +188,7 @@ mod test {
     use crate::test::MockCryptoRng;
 
     use super::*;
-    use crate::test::{random_32_bytes, generate_participants_with_random_ids};
+    use crate::test::{generate_participants_with_random_ids, random_32_bytes};
     use elliptic_curve::ops::{Invert, LinearCombination, Reduce};
 
     use frost_core::{

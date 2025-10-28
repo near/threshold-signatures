@@ -70,7 +70,8 @@ impl RerandomizedPresignOutput {
         let rerandomized_alpha = presignature.alpha * inv_delta;
 
         // (beta + c*tweak) * delta^{-1}
-        let rerandomized_beta = (presignature.beta + presignature.c * args.tweak.value()) * inv_delta;
+        let rerandomized_beta =
+            (presignature.beta + presignature.c * args.tweak.value()) * inv_delta;
 
         Ok(Self {
             big_r: rerandomized_big_r.into(),

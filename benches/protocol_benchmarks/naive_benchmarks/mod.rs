@@ -1,16 +1,15 @@
 pub mod ot_based_ecdsa;
 pub mod robust_ecdsa;
 
-
 extern crate threshold_signatures;
 use threshold_signatures::{
-    test::random_32_bytes,
-    ecdsa::{Tweak, RerandomizationArguments, Secp256K1Sha256, Scalar},
+    ecdsa::{RerandomizationArguments, Scalar, Secp256K1Sha256, Tweak},
     participants::{Participant, ParticipantList},
+    test::random_32_bytes,
 };
 
-use frost_secp256k1::{Secp256K1ScalarField, VerifyingKey,};
 use frost_core::Ciphersuite;
+use frost_secp256k1::{Secp256K1ScalarField, VerifyingKey};
 use rand_core::{CryptoRngCore, OsRng};
 
 // Outputs pk, R, hash, participants, entropy, randomness
@@ -29,6 +28,13 @@ pub fn generate_rerandpresig_args(
     // Generate unique ten ParticipantId values
     let participants = ParticipantList::new(&participants).unwrap();
 
-    let args = RerandomizationArguments::new(pk, tweak, msg_hash.to_bytes().into(), big_r, participants, entropy);
+    let args = RerandomizationArguments::new(
+        pk,
+        tweak,
+        msg_hash.to_bytes().into(),
+        big_r,
+        participants,
+        entropy,
+    );
     (args, msg_hash)
 }
