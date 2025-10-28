@@ -12,7 +12,13 @@ use crate::{keygen, refresh, reshare, Ciphersuite, Element, KeygenOutput, Scalar
 
 pub type GenProtocol<C> = Vec<(Participant, Box<dyn Protocol<Output = C>>)>;
 
-// +++++++++++++++++ Participants Utilities +++++++++++++++++ //
+// +++++++++++++++++ General Utilities +++++++++++++++++ //
+pub fn random_32_bytes(rng: &mut impl CryptoRngCore) -> [u8; 32] {
+    let mut bytes: [u8; 32] = [0u8; 32];
+    rng.fill_bytes(&mut bytes);
+    bytes
+}
+
 #[cfg(feature = "benchmarking")]
 #[allow(dead_code)]
 /// Creates or opens in a file generated from the sender's information

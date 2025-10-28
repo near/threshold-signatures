@@ -188,7 +188,7 @@ mod test {
     use crate::test::MockCryptoRng;
 
     use super::*;
-    use crate::test::generate_participants_with_random_ids;
+    use crate::test::{random_32_bytes, generate_participants_with_random_ids};
     use elliptic_curve::ops::{Invert, LinearCombination, Reduce};
 
     use frost_core::{
@@ -203,12 +203,6 @@ mod test {
     use rand_core::{CryptoRngCore, OsRng, RngCore};
     use sha2::{digest::FixedOutput, Digest, Sha256};
     type C = Secp256K1Sha256;
-
-    fn random_32_bytes(rng: &mut impl CryptoRngCore) -> [u8; 32] {
-        let mut bytes: [u8; 32] = [0u8; 32];
-        rng.fill_bytes(&mut bytes);
-        bytes
-    }
 
     #[test]
     fn test_verify() {
@@ -265,7 +259,7 @@ mod test {
     }
 
     // Outputs pk, R, hash, participants, entropy, randomness
-    fn compute_random_outputs(
+    fn generate_rerandpresig_args(
         rng: &mut impl CryptoRngCore,
         num_participants: usize,
     ) -> (RerandomizationArguments, Scalar) {
@@ -290,7 +284,7 @@ mod test {
     fn test_different_pk() {
         let num_participants = 10;
         let mut rng = OsRng;
-        let (mut args, delta) = compute_random_outputs(&mut rng, num_participants);
+        let (mut args, delta) = generate_rerandpresig_args(&mut rng, num_participants);
         // different pk
         let (_, pk) = <C>::generate_nonce(&mut rng);
         args.pk = pk.to_affine();
@@ -302,7 +296,7 @@ mod test {
     fn test_different_tweak() {
         let num_participants = 10;
         let mut rng = OsRng;
-        let (mut args, delta) = compute_random_outputs(&mut rng, num_participants);
+        let (mut args, delta) = generate_rerandpresig_args(&mut rng, num_participants);
         // different pk
         args.tweak = Tweak::new(frost_core::random_nonzero::<Secp256K1Sha256, _>(&mut OsRng));
         let delta_prime = args.derive_randomness().unwrap();
@@ -313,7 +307,7 @@ mod test {
     fn test_different_msg_hash() {
         let num_participants = 10;
         let mut rng = OsRng;
-        let (mut args, delta) = compute_random_outputs(&mut rng, num_participants);
+        let (mut args, delta) = generate_rerandpresig_args(&mut rng, num_participants);
         // different msg_hash
         args.msg_hash = random_32_bytes(&mut rng);
         let delta_prime = args.derive_randomness().unwrap();
@@ -324,7 +318,7 @@ mod test {
     fn test_different_big_r() {
         let num_participants = 10;
         let mut rng = OsRng;
-        let (mut args, delta) = compute_random_outputs(&mut rng, num_participants);
+        let (mut args, delta) = generate_rerandpresig_args(&mut rng, num_participants);
         // different big_r
         let (_, big_r) = <C>::generate_nonce(&mut OsRng);
         args.big_r = big_r.to_affine();
@@ -336,7 +330,7 @@ mod test {
     fn test_different_participants() {
         let num_participants = 10;
         let mut rng = OsRng;
-        let (mut args, delta) = compute_random_outputs(&mut rng, num_participants);
+        let (mut args, delta) = generate_rerandpresig_args(&mut rng, num_participants);
         // different participants set
         let participants = generate_participants_with_random_ids(num_participants, &mut rng);
         args.participants = ParticipantList::new(&participants).unwrap();
@@ -348,7 +342,7 @@ mod test {
     fn test_different_entropy() {
         let num_participants = 10;
         let mut rng = OsRng;
-        let (mut args, delta) = compute_random_outputs(&mut rng, num_participants);
+        let (mut args, delta) = generate_rerandpresig_args(&mut rng, num_participants);
 
         // different entropy
         OsRng.fill_bytes(&mut args.entropy);
@@ -361,7 +355,7 @@ mod test {
     fn test_same_randomness() {
         let num_participants = 10;
         let mut rng = OsRng;
-        let (mut args, delta) = compute_random_outputs(&mut rng, num_participants);
+        let (mut args, delta) = generate_rerandpresig_args(&mut rng, num_participants);
 
         // reshuffle
         args.participants = args.participants.shuffle(rng).unwrap();

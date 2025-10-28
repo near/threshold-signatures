@@ -2,6 +2,7 @@ use criterion::Criterion;
 use frost_secp256k1::{Secp256K1Sha256, Secp256K1ScalarField, VerifyingKey};
 use rand_core::{OsRng, RngCore};
 use rand::Rng;
+use crate::protocol_benchmarks::naive_benchmarks::generate_rerandpresig_args;
 
 extern crate threshold_signatures;
 use threshold_signatures::{
@@ -22,88 +23,6 @@ use threshold_signatures::{
 
 const MAX_MALICIOUS: usize = 6;
 const PARTICIPANTS_NUM: usize = 13;
-
-fn prepare_presign(participants: &[Participant]) -> (Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)>, VerifyingKey){
-    let key_packages = run_keygen::<Secp256K1Sha256>(&participants, MAX_MALICIOUS + 1);
-    let pk = key_packages[0].1.public_key.clone();
-    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)> =
-            Vec::with_capacity(participants.len());
-
-    for (p, keygen_out) in key_packages {
-            let protocol = presign(
-                participants,
-                p,
-                PresignArguments {
-                    keygen_out,
-                    threshold: MAX_MALICIOUS,
-                },
-                OsRng,
-            ).unwrap();
-            protocols.push((p, Box::new(protocol)));
-        }
-        (protocols, pk)
-}
-
-fn prepare_sign(
-    participants: &[Participant],
-    result: &[(Participant, PresignOutput)],
-    pk: VerifyingKey,
-)-> Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)>{
-
-    // hash the message into secp256k1 field
-    // generate a random tweak
-    let tweak = Tweak::new(frost_core::random_nonzero::<Secp256K1Sha256, _>(&mut OsRng));
-    // generate a random public entropy
-    let mut entropy: [u8; 32] = [0u8; 32];
-    OsRng.fill_bytes(&mut entropy);
-
-    let participant_list = ParticipantList::new(participants).unwrap();
-
-    // choose a coordinator at random
-    let index = OsRng.gen_range(0..participants.len());
-    let coordinator = result[index].0;
-
-    let big_r = result[0].1.big_r;
-    let msg_hash = <Secp256K1ScalarField as frost_core::Field>::random(&mut OsRng);
-    let msg_hash_bytes: [u8; 32] = msg_hash.to_bytes().into();
-
-    let rerand_args = RerandomizationArguments::new(
-        pk.to_element().to_affine(),
-        tweak,
-        msg_hash_bytes,
-        big_r,
-        participant_list,
-        entropy
-    );
-
-    let derived_pk = tweak.derive_verifying_key(&pk).to_element();
-
-    let result = result
-        .iter()
-        .map(|(p, presig)| {
-            (   *p,
-                RerandomizedPresignOutput::rerandomize_presign(presig, &tweak, &rerand_args).unwrap(),
-            )
-        })
-        .collect::<Vec<_>>();
-
-    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)> =
-        Vec::with_capacity(result.len());
-
-    for (p, presignature) in result {
-        let protocol = sign(
-            &participants,
-            coordinator,
-            p,
-            derived_pk.to_affine(),
-            presignature,
-            msg_hash,
-        ).map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
-        .unwrap();
-        protocols.push((p, protocol));
-    }
-    protocols
-}
 
 pub fn bench_presign(c: &mut Criterion) {
     let mut group = c.benchmark_group(
@@ -147,4 +66,85 @@ pub fn bench_sign(c: &mut Criterion) {
             criterion::BatchSize::SmallInput, // Choose batch size based on your expected workload
         );
     });
+}
+
+fn prepare_presign(participants: &[Participant]) -> (Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)>, VerifyingKey){
+    let key_packages = run_keygen::<Secp256K1Sha256>(&participants, MAX_MALICIOUS + 1);
+    let pk = key_packages[0].1.public_key.clone();
+    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)> =
+            Vec::with_capacity(participants.len());
+
+    for (p, keygen_out) in key_packages {
+            let protocol = presign(
+                participants,
+                p,
+                PresignArguments {
+                    keygen_out,
+                    threshold: MAX_MALICIOUS,
+                },
+                OsRng,
+            ).unwrap();
+            protocols.push((p, Box::new(protocol)));
+        }
+        (protocols, pk)
+}
+
+fn prepare_sign(
+    num_participants: usize,
+    result: &[(Participant, PresignOutput)],
+    pk: VerifyingKey,
+)-> Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)>{
+
+    let (args, delta) = generate_rerandpresig_args(&mut OsRng, num_participants);
+    // hash the message into secp256k1 field
+    // generate a random tweak
+    let tweak = Tweak::new(frost_core::random_nonzero::<Secp256K1Sha256, _>(&mut OsRng));
+    // generate a random public entropy
+    let mut entropy: [u8; 32] = [0u8; 32];
+    OsRng.fill_bytes(&mut entropy);
+
+    let participant_list = ParticipantList::new(participants).unwrap();
+
+    // choose a coordinator at random
+    let index = OsRng.gen_range(0..participants.len());
+    let coordinator = result[index].0;
+
+    let big_r = result[0].1.big_r;
+
+    let rerand_args = RerandomizationArguments::new(
+        pk.to_element().to_affine(),
+        tweak,
+        msg_hash_bytes,
+        big_r,
+        participant_list,
+        entropy
+    );
+
+    let derived_pk = tweak.derive_verifying_key(&pk).to_element();
+
+    let result = result
+        .iter()
+        .map(|(p, presig)| {
+            (   *p,
+                RerandomizedPresignOutput::rerandomize_presign(presig, &tweak, &args).unwrap(),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)> =
+        Vec::with_capacity(result.len());
+
+    for (p, presignature) in result {
+        let protocol = sign(
+            &participants,
+            coordinator,
+            p,
+            derived_pk.to_affine(),
+            presignature,
+            msg_hash,
+        ).map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
+        .unwrap();
+        protocols.push((p, protocol));
+    }
+    protocols
 }
