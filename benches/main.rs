@@ -1,29 +1,38 @@
+use criterion::{Criterion, criterion_group, criterion_main};
+use std::env;
+
 mod crypto_benchmarks;
 mod protocol_benchmarks;
 
-use criterion::{criterion_group, criterion_main};
 use crypto_benchmarks::{inversion, lagrange};
 use protocol_benchmarks::naive_benchmarks::{ot_based_ecdsa, robust_ecdsa};
 
-criterion_group!(
-    crypto_benchmarks,
-    lagrange::bench_lagrange_computation,
-    lagrange::bench_inversion_vs_multiplication,
-    inversion::bench_inversion,
-);
+/// Can be ran using:
+/// BENCH=<option> cargo bench --features benchmarking
+/// Example: BENCH=crypto cargo bench --features benchmarking
+fn choose_benchmark(c: &mut Criterion) {
+    let group = env::var("BENCH").ok().unwrap_or("none".to_string());
 
-criterion_group!(
-    ot_based_ecdsa_naive,
-    ot_based_ecdsa::bench_triples,
-    ot_based_ecdsa::bench_presign,
-    ot_based_ecdsa::bench_sign,
-);
+    // Crypto benchmarks
+    if matches!(group.as_str(), "crypto" | "all") {
+        lagrange::bench_lagrange_computation(c);
+        lagrange::bench_inversion_vs_multiplication(c);
+        inversion::bench_inversion(c);
+    }
 
-criterion_group!(
-    robust_ecdsa_naive,
-    robust_ecdsa::bench_presign,
-    robust_ecdsa::bench_sign,
-);
+    // OT-based ECDSA benchmarks
+    if matches!(group.as_str(), "naive_ot_ecdsa" | "all") {
+        ot_based_ecdsa::bench_triples(c);
+        ot_based_ecdsa::bench_presign(c);
+        ot_based_ecdsa::bench_sign(c);
+    }
 
-// criterion_main!(crypto_benchmarks);
-criterion_main!(ot_based_ecdsa_naive, robust_ecdsa_naive);
+    // Robust ECDSA benchmarks
+    if matches!(group.as_str(), "naive_robust_ecdsa" | "all") {
+        robust_ecdsa::bench_presign(c);
+        robust_ecdsa::bench_sign(c);
+    }
+}
+
+criterion_group!(benches, choose_benchmark);
+criterion_main!(benches);
