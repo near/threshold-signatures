@@ -69,6 +69,7 @@ rand_core = { version = "0.6.4", features = ["getrandom"]}
 [[bench]]
 name = "main"
 harness = false
+required-features = ["benchmarking"]
 
 [profile.test-release]
 inherits = "release"
