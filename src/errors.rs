@@ -74,6 +74,9 @@ pub enum ProtocolError {
     #[error("integer overflow")]
     IntegerOverflow,
 
+    #[error("deserialization failed: {0}")]
+    DeserializationError(String),
+
     // catch-all for foreign errors
     #[error("{0}")]
     Other(String),

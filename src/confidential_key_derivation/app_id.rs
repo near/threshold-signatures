@@ -2,9 +2,14 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+use crate::errors::ProtocolError;
+
 /// Represents a unique identifier for an application in the confidential key derivation protocol
 #[derive(Clone, PartialEq, Eq, Debug, Hash, PartialOrd, Ord)]
 pub struct AppId(Arc<[u8]>);
+
+// Maximum allowed length for AppId to prevent DoS attacks during deserialization.
+const MAX_APP_ID_LEN: usize = 1024;
 
 impl Serialize for AppId {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -96,6 +101,18 @@ impl BorshSerialize for AppId {
 impl BorshDeserialize for AppId {
     fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
         let len = u32::deserialize_reader(reader)? as usize;
+
+        if len > MAX_APP_ID_LEN {
+            let err_msg =
+                format!("AppId length ({len}) exceeds maximum allowed length ({MAX_APP_ID_LEN})");
+
+            let protocol_error = ProtocolError::DeserializationError(err_msg);
+
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                protocol_error,
+            ));
+        }
         let mut buf = vec![0u8; len];
         reader.read_exact(&mut buf)?;
         Ok(Self::from(buf))
@@ -190,6 +207,18 @@ mod tests {
         // Corrupted JSON
         let invalid_json = "{ invalid json }";
         let result: Result<AppId, _> = serde_json::from_str(invalid_json);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_borsh_dos_attack() {
+        // This is a malicious payload that specifies a length of u32::MAX,
+        // which would cause a huge allocation.
+        let mut malicious_payload = Vec::new();
+        borsh::BorshSerialize::serialize(&u32::MAX, &mut malicious_payload).unwrap();
+
+        // Try to deserialize it. This should fail.
+        let result = AppId::deserialize_reader(&mut malicious_payload.as_slice());
         assert!(result.is_err());
     }
 
