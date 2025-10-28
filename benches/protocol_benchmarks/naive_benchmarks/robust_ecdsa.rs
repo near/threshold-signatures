@@ -18,13 +18,13 @@ use threshold_signatures::{
 };
 
 const MAX_MALICIOUS: usize = 6;
-const PARTICIPANTS_NUM: usize = 13;
+const PARTICIPANTS_NUM: usize = MAX_MALICIOUS*2+1;
 
 /// Benches the presigning protocol
 pub fn bench_presign(c: &mut Criterion) {
     let mut group = c.benchmark_group(
         &format!(
-            "Presign Robust ECDSA: {} malicious parties and {} participating parties",
+            "Presign: {} malicious parties and {} participating parties",
             MAX_MALICIOUS,
             PARTICIPANTS_NUM
         )
@@ -35,7 +35,7 @@ pub fn bench_presign(c: &mut Criterion) {
         b.iter_batched(||
             prepare_presign(PARTICIPANTS_NUM),
             |(protocols, _)| run_protocol(protocols),
-            criterion::BatchSize::SmallInput, // Choose batch size based on your expected workload
+            criterion::BatchSize::SmallInput,
             );
         });
 }
@@ -44,7 +44,7 @@ pub fn bench_presign(c: &mut Criterion) {
 pub fn bench_sign(c: &mut Criterion) {
     let mut group = c.benchmark_group(
         &format!(
-            "Sign Robust ECDSA: {} malicious parties and {} participating parties",
+            "Sign: {} malicious parties and {} participating parties",
             MAX_MALICIOUS,
             PARTICIPANTS_NUM
         )
@@ -59,7 +59,7 @@ pub fn bench_sign(c: &mut Criterion) {
         b.iter_batched(||
             prepare_sign(&result, pk),
             |protocols| run_protocol(protocols),
-            criterion::BatchSize::SmallInput, // Choose batch size based on your expected workload
+            criterion::BatchSize::SmallInput,
         );
     });
 }
@@ -92,9 +92,9 @@ fn prepare_sign(
     pk: VerifyingKey,
 )-> Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)>{
 
-    // To collect all participants:
+    // collect all participants
     let participants: Vec<Participant> = result.iter()
-    .map(|(participant, _)| participant.clone()) // or `.copied()` if `Participant: Copy`
+    .map(|(participant, _)| participant.clone())
     .collect();
 
     // choose a coordinator at random
