@@ -1,4 +1,5 @@
 mod crypto_benchmarks;
+mod protocol_benchmarks;
 
 use criterion::{criterion_group, criterion_main};
 use crypto_benchmarks::{inversion, lagrange};

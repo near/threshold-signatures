@@ -5,11 +5,14 @@ pub mod confidential_key_derivation;
 pub mod ecdsa;
 pub mod eddsa;
 pub mod errors;
-#[cfg(test)]
-mod test;
+
+#[cfg(any(test, feature = "benchmarking"))]
+#[cfg_attr(feature = "benchmarking", allow(dead_code))]
+pub mod test;
 
 #[cfg(feature = "benchmarking")]
 mod benchmarking_utils;
+
 
 // TODO: We should probably no expose the full modules, but only the types
 // that make sense for our library
