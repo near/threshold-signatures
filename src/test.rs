@@ -1,5 +1,6 @@
 // This module provides generic functions to be used
 // in the implemented schemes testing cases
+#![allow(clippy::panic, clippy::missing_panics_doc, clippy::unwrap_used)]
 
 use rand_core::{CryptoRng, CryptoRngCore, OsRng, RngCore};
 use std::collections::HashMap;
