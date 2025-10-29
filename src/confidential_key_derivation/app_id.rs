@@ -9,7 +9,7 @@ use crate::errors::ProtocolError;
 pub struct AppId(Arc<[u8]>);
 
 // Maximum allowed length for AppId to prevent DoS attacks during deserialization.
-const MAX_APP_ID_LEN: usize = 1024;
+const MAX_APP_ID_LEN: usize = 10_000;
 
 impl Serialize for AppId {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
