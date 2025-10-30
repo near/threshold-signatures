@@ -1442,6 +1442,7 @@ dependencies = [
  "sha3",
  "subtle",
  "thiserror",
+ "threshold-signatures",
  "zeroize",
 ]
 

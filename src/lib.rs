@@ -5,10 +5,8 @@ pub mod confidential_key_derivation;
 pub mod ecdsa;
 pub mod eddsa;
 pub mod errors;
-
-#[cfg(any(test, feature = "benchmarking"))]
-#[cfg_attr(feature = "benchmarking", allow(dead_code))]
-pub mod test;
+#[cfg(feature = "test-utils")]
+pub mod test_utils;
 
 #[cfg(feature = "benchmarking")]
 mod benchmarking_utils;
