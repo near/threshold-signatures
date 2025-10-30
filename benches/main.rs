@@ -16,30 +16,63 @@ const MAX_MALICIOUS: Lazy<usize> = Lazy::new(|| {
         .unwrap_or(6)
 });
 
+fn show_help() {
+    eprintln!(
+        r#"Usage:
+  BENCH=<benchgroupname> MAX_MALICIOUS=<n> cargo bench --features benchmarking [-- <criterion options>]
+
+Available BENCH groups:
+  crypto               Run crypto-related benchmarks
+  naive_ot_ecdsa       Run naive OT-based ECDSA benchmarks
+  naive_robust_ecdsa   Run naive robust ECDSA benchmarks
+  all                  Run all benchmarks
+
+Optional env vars:
+  MAX_MALICIOUS=<n>    Set max malicious participants (default: 6)
+
+Examples:
+  BENCH=crypto cargo bench --features benchmarking
+  BENCH=naive_robust_ecdsa MAX_MALICIOUS=10 cargo bench --features benchmarking -- --sample-size=50
+"#
+    );
+    std::process::exit(0);
+}
+
 /// Can be ran using:
 /// BENCH=<option> cargo bench --features benchmarking
 /// Example: BENCH=crypto cargo bench --features benchmarking
 fn choose_benchmark(c: &mut Criterion) {
-    let group = env::var("BENCH").ok().unwrap_or("none".to_string());
+    let group = env::var("BENCH").unwrap_or_default();
+    if group.is_empty() || group == "help" {
+        show_help();
+        return;
+    }
+    let run_all = group == "all";
 
-    // Crypto benchmarks
-    if matches!(group.as_str(), "crypto" | "all") {
+    // Cryptography tools benchmarks
+    if run_all || group == "crypto" {
         lagrange::bench_lagrange_computation(c);
         lagrange::bench_inversion_vs_multiplication(c);
         inversion::bench_inversion(c);
     }
 
     // OT-based ECDSA benchmarks
-    if matches!(group.as_str(), "naive_ot_ecdsa" | "all") {
+    if run_all || group == "naive_ot_ecdsa" {
         ot_based_ecdsa::bench_triples(c);
         ot_based_ecdsa::bench_presign(c);
         ot_based_ecdsa::bench_sign(c);
     }
 
     // Robust ECDSA benchmarks
-    if matches!(group.as_str(), "naive_robust_ecdsa" | "all") {
+    if run_all || group == "naive_robust_ecdsa" {
         robust_ecdsa::bench_presign(c);
         robust_ecdsa::bench_sign(c);
+    }
+
+    if !run_all && !matches!(group.as_str(),
+                "crypto" | "naive_ot_ecdsa" | "naive_robust_ecdsa"){
+        eprintln!("Please fix the environment variables properly.");
+        show_help();
     }
 }
 
