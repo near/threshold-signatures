@@ -12,7 +12,7 @@ use threshold_signatures::{
     ecdsa::SignatureOption,
     participants::Participant,
     protocol::Protocol,
-    test::{generate_participants_with_random_ids, run_keygen, run_protocol},
+    test_utils::{generate_participants_with_random_ids, run_keygen, run_protocol},
 };
 
 use crate::MAX_MALICIOUS;

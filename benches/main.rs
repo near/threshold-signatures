@@ -35,7 +35,6 @@ Examples:
   BENCH=naive_robust_ecdsa MAX_MALICIOUS=10 cargo bench --features benchmarking -- --sample-size=50
 "#
     );
-    std::process::exit(0);
 }
 
 /// Can be ran using:
@@ -89,5 +88,4 @@ fn main() {
             cargo bench --features benchmarking
         "#
     );
-    std::process::exit(1);
 }

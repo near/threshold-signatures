@@ -5,7 +5,7 @@ extern crate threshold_signatures;
 use threshold_signatures::{
     ecdsa::{RerandomizationArguments, Scalar, Secp256K1Sha256, Tweak},
     participants::{Participant, ParticipantList},
-    test::random_32_bytes,
+    test_utils::random_32_bytes,
 };
 
 use frost_core::Ciphersuite;
