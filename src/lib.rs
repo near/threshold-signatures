@@ -6,7 +6,7 @@ pub mod ecdsa;
 pub mod eddsa;
 pub mod errors;
 #[cfg(feature = "test-utils")]
-pub mod test;
+pub mod test_utils;
 
 // TODO: We should probably no expose the full modules, but only the types
 // that make sense for our library
