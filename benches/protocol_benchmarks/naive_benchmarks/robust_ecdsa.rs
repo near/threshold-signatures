@@ -84,8 +84,9 @@ fn prepare_presign(
             },
             OsRng,
         )
+        .map(|presig| Box::new(presig) as Box<dyn Protocol<Output = PresignOutput>>)
         .unwrap();
-        protocols.push((p, Box::new(protocol)));
+        protocols.push((p, protocol));
     }
     (protocols, pk)
 }
