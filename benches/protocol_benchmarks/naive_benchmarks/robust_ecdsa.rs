@@ -23,7 +23,7 @@ fn participants_num() -> usize {
 
 /// Benches the presigning protocol
 pub fn bench_presign(c: &mut Criterion) {
-    let mut group = c.benchmark_group(&format!(
+    let mut group = c.benchmark_group(format!(
         "Presign: {} malicious parties and {} participating parties",
         *MAX_MALICIOUS,
         participants_num()
@@ -41,7 +41,7 @@ pub fn bench_presign(c: &mut Criterion) {
 
 /// Benches the signing protocol
 pub fn bench_sign(c: &mut Criterion) {
-    let mut group = c.benchmark_group(&format!(
+    let mut group = c.benchmark_group(format!(
         "Sign: {} malicious parties and {} participating parties",
         *MAX_MALICIOUS,
         participants_num()
@@ -55,7 +55,7 @@ pub fn bench_sign(c: &mut Criterion) {
     group.bench_function("Signature generation", |b| {
         b.iter_batched(
             || prepare_sign(&result, pk),
-            |protocols| run_protocol(protocols),
+            run_protocol,
             criterion::BatchSize::SmallInput,
         );
     });
@@ -70,7 +70,7 @@ fn prepare_presign(
 ) {
     let participants = generate_participants_with_random_ids(num_participants, &mut OsRng);
     let key_packages = run_keygen::<Secp256K1Sha256>(&participants, *MAX_MALICIOUS + 1);
-    let pk = key_packages[0].1.public_key.clone();
+    let pk = key_packages[0].1.public_key;
     let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)> =
         Vec::with_capacity(participants.len());
 
@@ -98,14 +98,14 @@ fn prepare_sign(
     // collect all participants
     let participants: Vec<Participant> = result
         .iter()
-        .map(|(participant, _)| participant.clone())
+        .map(|(participant, _)| *participant)
         .collect();
 
     // choose a coordinator at random
     let index = OsRng.gen_range(0..result.len());
     let coordinator = result[index].0;
 
-    let (args, msg_hash) = generate_rerandpresig_args(&mut OsRng, participants, pk);
+    let (args, msg_hash) = generate_rerandpresig_args(&mut OsRng, &participants, pk);
     let derived_pk = args
         .tweak
         .derive_verifying_key(&pk)

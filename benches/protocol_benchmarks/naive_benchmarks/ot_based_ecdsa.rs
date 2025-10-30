@@ -30,7 +30,7 @@ fn participants_num() -> usize {
 
 /// Benches the triples protocol
 pub fn bench_triples(c: &mut Criterion) {
-    let mut group = c.benchmark_group(&format!(
+    let mut group = c.benchmark_group(format!(
         "Triples generation: {} malicious parties and {} participating parties",
         *MAX_MALICIOUS,
         participants_num()
@@ -40,7 +40,7 @@ pub fn bench_triples(c: &mut Criterion) {
     group.bench_function("Triple generation", |b| {
         b.iter_batched(
             || prepare_triples(participants_num()),
-            |protocols| run_protocol(protocols),
+            run_protocol,
             criterion::BatchSize::SmallInput,
         );
     });
@@ -48,7 +48,7 @@ pub fn bench_triples(c: &mut Criterion) {
 
 /// Benches the presigning protocol
 pub fn bench_presign(c: &mut Criterion) {
-    let mut group = c.benchmark_group(&format!(
+    let mut group = c.benchmark_group(format!(
         "Presign: {} malicious partie and {} participating parties",
         *MAX_MALICIOUS,
         participants_num()
@@ -69,7 +69,7 @@ pub fn bench_presign(c: &mut Criterion) {
 
 /// Benches the signing protocol
 pub fn bench_sign(c: &mut Criterion) {
-    let mut group = c.benchmark_group(&format!(
+    let mut group = c.benchmark_group(format!(
         "Sign: {} malicious parties and {} participating parties",
         *MAX_MALICIOUS,
         participants_num()
@@ -86,18 +86,16 @@ pub fn bench_sign(c: &mut Criterion) {
     group.bench_function("Signature generation", |b| {
         b.iter_batched(
             || prepare_sign(&result, pk),
-            |protocols| run_protocol(protocols),
+            run_protocol,
             criterion::BatchSize::SmallInput,
         );
     });
 }
 
+type PreparedTriples = Vec<(Participant, Box<dyn Protocol<Output = Vec<(TripleShare, TriplePub)>>>)>;
 fn prepare_triples(
     participant_num: usize,
-) -> Vec<(
-    Participant,
-    Box<dyn Protocol<Output = Vec<(TripleShare, TriplePub)>>>,
-)> {
+) -> PreparedTriples {
     let mut protocols: Vec<(_, Box<dyn Protocol<Output = _>>)> =
         Vec::with_capacity(participant_num);
     let participants = generate_participants_with_random_ids(participant_num, &mut OsRng);
@@ -110,19 +108,17 @@ fn prepare_triples(
     protocols
 }
 
+type PreparedPresig = (Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)>, VerifyingKey);
 fn prepare_presign(
     two_triples: &[(Participant, Vec<(TripleShare, TriplePub)>)],
-) -> (
-    Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)>,
-    VerifyingKey,
-) {
+) -> PreparedPresig {
     let mut two_triples = two_triples.to_owned();
     two_triples.sort_by_key(|(p, _)| *p);
 
     // collect all participants
     let participants: Vec<Participant> = two_triples
         .iter()
-        .map(|(participant, _)| participant.clone())
+        .map(|(participant, _)| *participant)
         .collect();
 
     let (shares, pubs): (Vec<_>, Vec<_>) = two_triples.into_iter().flat_map(|(_, vec)| vec).unzip();
@@ -132,7 +128,7 @@ fn prepare_presign(
     let (pub0, pub1) = split_even_odd(pubs);
 
     let key_packages = run_keygen::<Secp256K1Sha256>(&participants, threshold());
-    let pk = key_packages[0].1.public_key.clone();
+    let pk = key_packages[0].1.public_key;
 
     let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)> =
         Vec::with_capacity(participants.len());
@@ -161,14 +157,14 @@ fn prepare_sign(
     // collect all participants
     let participants: Vec<Participant> = result
         .iter()
-        .map(|(participant, _)| participant.clone())
+        .map(|(participant, _)| *participant)
         .collect();
 
     // choose a coordinator at random
     let index = OsRng.gen_range(0..result.len());
     let coordinator = result[index].0;
 
-    let (args, msg_hash) = generate_rerandpresig_args(&mut OsRng, participants, pk);
+    let (args, msg_hash) = generate_rerandpresig_args(&mut OsRng, &participants, pk);
     let derived_pk = args
         .tweak
         .derive_verifying_key(&pk)

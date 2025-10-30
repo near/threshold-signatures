@@ -15,7 +15,7 @@ use rand_core::{CryptoRngCore, OsRng};
 // Outputs pk, R, hash, participants, entropy, randomness
 pub fn generate_rerandpresig_args(
     rng: &mut impl CryptoRngCore,
-    participants: Vec<Participant>,
+    participants: &[Participant],
     pk: VerifyingKey,
 ) -> (RerandomizationArguments, Scalar) {
     let pk = pk.to_element().to_affine();
@@ -26,7 +26,7 @@ pub fn generate_rerandpresig_args(
     let msg_hash = <Secp256K1ScalarField as frost_core::Field>::random(&mut OsRng);
     let entropy = random_32_bytes(rng);
     // Generate unique ten ParticipantId values
-    let participants = ParticipantList::new(&participants).unwrap();
+    let participants = ParticipantList::new(participants).unwrap();
 
     let args = RerandomizationArguments::new(
         pk,

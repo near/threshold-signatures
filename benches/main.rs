@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use std::env;
 
 mod crypto_benchmarks;
@@ -9,7 +9,7 @@ use crypto_benchmarks::{inversion, lagrange};
 use protocol_benchmarks::naive_benchmarks::{ot_based_ecdsa, robust_ecdsa};
 
 // fix malicious number of participants
-const MAX_MALICIOUS: Lazy<usize> = Lazy::new(|| {
+static MAX_MALICIOUS: LazyLock<usize> = std::sync::LazyLock::new(|| {
     env::var("MAX_MALICIOUS")
         .ok()
         .and_then(|v| v.parse().ok())
@@ -18,7 +18,7 @@ const MAX_MALICIOUS: Lazy<usize> = Lazy::new(|| {
 
 fn show_help() {
     eprintln!(
-        r#"Usage:
+        r"Usage:
   BENCH=<benchgroupname> MAX_MALICIOUS=<n> cargo bench --features benchmarking [-- <criterion options>]
 
 Available BENCH groups:
@@ -33,7 +33,7 @@ Optional env vars:
 Examples:
   BENCH=crypto cargo bench --features benchmarking
   BENCH=naive_robust_ecdsa MAX_MALICIOUS=10 cargo bench --features benchmarking -- --sample-size=50
-"#
+"
     );
 }
 
