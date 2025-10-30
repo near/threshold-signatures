@@ -77,4 +77,17 @@ fn choose_benchmark(c: &mut Criterion) {
 }
 
 criterion_group!(benches, choose_benchmark);
+#[cfg(feature = "benchmarking")]
 criterion_main!(benches);
+
+/// This will only exist if the "benchmarking" feature is NOT enabled.
+#[cfg(not(feature = "benchmarking"))]
+fn main() {
+    eprintln!(
+        r#"The "benchmarking" feature is not enabled.
+        To run benchmarks, please use:
+            cargo bench --features benchmarking
+        "#
+    );
+    std::process::exit(1);
+}
