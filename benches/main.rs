@@ -1,4 +1,7 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+#[cfg(feature = "benchmarking")]
+use criterion::criterion_main;
+
+use criterion::{criterion_group, Criterion};
 use std::env;
 use std::sync::LazyLock;
 
@@ -88,7 +91,7 @@ criterion_main!(benches);
 fn main() {
     eprintln!(
         r#"The "benchmarking" feature is not enabled.
-        To run benchmarks, please use:
+To run benchmarks, please use:
             cargo bench --features benchmarking
         "#
     );
