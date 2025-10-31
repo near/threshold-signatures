@@ -27,7 +27,7 @@ fn threshold() -> usize {
 }
 
 fn participants_num() -> usize {
-    *crate::MAX_MALICIOUS
+    *crate::MAX_MALICIOUS + 1
 }
 
 /// Benches the triples protocol
@@ -51,7 +51,7 @@ pub fn bench_triples(c: &mut Criterion) {
 /// Benches the presigning protocol
 pub fn bench_presign(c: &mut Criterion) {
     let mut group = c.benchmark_group(format!(
-        "Presign: {} malicious partie and {} participating parties\n",
+        "Presign: {} malicious parties and {} participating parties\n",
         *MAX_MALICIOUS,
         participants_num()
     ));
@@ -166,7 +166,7 @@ fn prepare_sign(
     let index = OsRng.gen_range(0..result.len());
     let coordinator = result[index].0;
 
-    let (args, msg_hash) = generate_rerandpresig_args(&mut OsRng, &participants, pk);
+    let (args, msg_hash) = generate_rerandpresig_args(&mut OsRng, &participants, pk, result[0].1.big_r);
     let derived_pk = args
         .tweak
         .derive_verifying_key(&pk)
