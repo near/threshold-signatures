@@ -6,10 +6,13 @@ use rand_core::OsRng;
 
 extern crate threshold_signatures;
 use threshold_signatures::{
-    ecdsa::robust_ecdsa::{
-        presign::presign, sign::sign, PresignArguments, PresignOutput, RerandomizedPresignOutput,
+    ecdsa::{
+        robust_ecdsa::{
+            presign::presign, sign::sign, PresignArguments, PresignOutput,
+            RerandomizedPresignOutput,
+        },
+        SignatureOption,
     },
-    ecdsa::SignatureOption,
     participants::Participant,
     protocol::Protocol,
     test_utils::{generate_participants_with_random_ids, run_keygen, run_protocol},
@@ -49,7 +52,7 @@ pub fn bench_sign(c: &mut Criterion) {
     group.measurement_time(std::time::Duration::from_secs(300));
 
     let (protocols, pk) = prepare_presign(participants_num());
-    let mut result = run_protocol(protocols).unwrap();
+    let mut result = run_protocol(protocols).expect("Prepare sign should not");
     result.sort_by_key(|(p, _)| *p);
 
     group.bench_function("Signature generation", |b| {
@@ -62,12 +65,11 @@ pub fn bench_sign(c: &mut Criterion) {
 }
 
 /// Benches the presigning protocol
-fn prepare_presign(
-    num_participants: usize,
-) -> (
+type PreparedPresig = (
     Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)>,
     VerifyingKey,
-) {
+);
+fn prepare_presign(num_participants: usize) -> PreparedPresig {
     let participants = generate_participants_with_random_ids(num_participants, &mut OsRng);
     let key_packages = run_keygen::<Secp256K1Sha256>(&participants, *MAX_MALICIOUS + 1);
     let pk = key_packages[0].1.public_key;
@@ -85,7 +87,7 @@ fn prepare_presign(
             OsRng,
         )
         .map(|presig| Box::new(presig) as Box<dyn Protocol<Output = PresignOutput>>)
-        .unwrap();
+        .expect("Presignature should succeed");
         protocols.push((p, protocol));
     }
     (protocols, pk)
@@ -96,10 +98,8 @@ fn prepare_sign(
     pk: VerifyingKey,
 ) -> Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)> {
     // collect all participants
-    let participants: Vec<Participant> = result
-        .iter()
-        .map(|(participant, _)| *participant)
-        .collect();
+    let participants: Vec<Participant> =
+        result.iter().map(|(participant, _)| *participant).collect();
 
     // choose a coordinator at random
     let index = OsRng.gen_range(0..result.len());
@@ -117,7 +117,8 @@ fn prepare_sign(
         .map(|(p, presig)| {
             (
                 *p,
-                RerandomizedPresignOutput::rerandomize_presign(presig, &args).unwrap(),
+                RerandomizedPresignOutput::rerandomize_presign(presig, &args)
+                    .expect("Rerandomizing presignature should succeed"),
             )
         })
         .collect::<Vec<_>>();
@@ -135,7 +136,7 @@ fn prepare_sign(
             msg_hash,
         )
         .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
-        .unwrap();
+        .expect("Signing should succeed");
         protocols.push((p, protocol));
     }
     protocols

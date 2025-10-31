@@ -6,13 +6,15 @@ use rand_core::OsRng;
 
 extern crate threshold_signatures;
 use threshold_signatures::{
-    ecdsa::ot_based_ecdsa::{
-        presign::presign,
-        sign::sign,
-        triples::{generate_triple_many, TriplePub, TripleShare},
-        PresignArguments, PresignOutput, RerandomizedPresignOutput,
+    ecdsa::{
+        ot_based_ecdsa::{
+            presign::presign,
+            sign::sign,
+            triples::{generate_triple_many, TriplePub, TripleShare},
+            PresignArguments, PresignOutput, RerandomizedPresignOutput,
+        },
+        SignatureOption,
     },
-    ecdsa::SignatureOption,
     participants::Participant,
     protocol::Protocol,
     test_utils::{generate_participants_with_random_ids, run_keygen, run_protocol},
@@ -56,7 +58,7 @@ pub fn bench_presign(c: &mut Criterion) {
     group.measurement_time(std::time::Duration::from_secs(300));
 
     let protocols = prepare_triples(participants_num());
-    let two_triples = run_protocol(protocols).unwrap();
+    let two_triples = run_protocol(protocols).expect("Running triple preparations should succeed");
 
     group.bench_function("Presignature generation", |b| {
         b.iter_batched(
@@ -77,10 +79,10 @@ pub fn bench_sign(c: &mut Criterion) {
     group.measurement_time(std::time::Duration::from_secs(300));
 
     let protocols = prepare_triples(participants_num());
-    let two_triples = run_protocol(protocols).unwrap();
+    let two_triples = run_protocol(protocols).expect("Running triples preparation should succeed");
 
     let (protocols, pk) = prepare_presign(&two_triples);
-    let mut result = run_protocol(protocols).unwrap();
+    let mut result = run_protocol(protocols).expect("Running presign preparation should succeed");
     result.sort_by_key(|(p, _)| *p);
 
     group.bench_function("Signature generation", |b| {
@@ -92,26 +94,28 @@ pub fn bench_sign(c: &mut Criterion) {
     });
 }
 
-type PreparedTriples = Vec<(Participant, Box<dyn Protocol<Output = Vec<(TripleShare, TriplePub)>>>)>;
-fn prepare_triples(
-    participant_num: usize,
-) -> PreparedTriples {
+type PreparedTriples = Vec<(
+    Participant,
+    Box<dyn Protocol<Output = Vec<(TripleShare, TriplePub)>>>,
+)>;
+fn prepare_triples(participant_num: usize) -> PreparedTriples {
     let mut protocols: Vec<(_, Box<dyn Protocol<Output = _>>)> =
         Vec::with_capacity(participant_num);
     let participants = generate_participants_with_random_ids(participant_num, &mut OsRng);
 
     for p in participants.clone() {
-        let protocol = generate_triple_many::<2>(&participants, p, threshold(), OsRng);
-        let protocol = protocol.unwrap();
+        let protocol = generate_triple_many::<2>(&participants, p, threshold(), OsRng)
+            .expect("Triple generation should succeed");
         protocols.push((p, Box::new(protocol)));
     }
     protocols
 }
 
-type PreparedPresig = (Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)>, VerifyingKey);
-fn prepare_presign(
-    two_triples: &[(Participant, Vec<(TripleShare, TriplePub)>)],
-) -> PreparedPresig {
+type PreparedPresig = (
+    Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)>,
+    VerifyingKey,
+);
+fn prepare_presign(two_triples: &[(Participant, Vec<(TripleShare, TriplePub)>)]) -> PreparedPresig {
     let mut two_triples = two_triples.to_owned();
     two_triples.sort_by_key(|(p, _)| *p);
 
@@ -144,7 +148,7 @@ fn prepare_presign(
                 threshold: threshold(),
             },
         )
-        .unwrap();
+        .expect("Presigning should succeed");
         protocols.push((p, Box::new(protocol)));
     }
     (protocols, pk)
@@ -155,10 +159,8 @@ fn prepare_sign(
     pk: VerifyingKey,
 ) -> Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)> {
     // collect all participants
-    let participants: Vec<Participant> = result
-        .iter()
-        .map(|(participant, _)| *participant)
-        .collect();
+    let participants: Vec<Participant> =
+        result.iter().map(|(participant, _)| *participant).collect();
 
     // choose a coordinator at random
     let index = OsRng.gen_range(0..result.len());
@@ -176,7 +178,8 @@ fn prepare_sign(
         .map(|(p, presig)| {
             (
                 *p,
-                RerandomizedPresignOutput::rerandomize_presign(presig, &args).unwrap(),
+                RerandomizedPresignOutput::rerandomize_presign(presig, &args)
+                    .expect("Rerandomizing presignature should succeed"),
             )
         })
         .collect::<Vec<_>>();
@@ -194,7 +197,7 @@ fn prepare_sign(
             msg_hash,
         )
         .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
-        .unwrap();
+        .expect("Signing should succeed");
         protocols.push((p, protocol));
     }
     protocols

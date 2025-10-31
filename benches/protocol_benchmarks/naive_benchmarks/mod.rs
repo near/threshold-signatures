@@ -26,7 +26,8 @@ pub fn generate_rerandpresig_args(
     let msg_hash = <Secp256K1ScalarField as frost_core::Field>::random(&mut OsRng);
     let entropy = random_32_bytes(rng);
     // Generate unique ten ParticipantId values
-    let participants = ParticipantList::new(participants).unwrap();
+    let participants =
+        ParticipantList::new(participants).expect("Participant list generation should not fail");
 
     let args = RerandomizationArguments::new(
         pk,

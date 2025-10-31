@@ -1,6 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use std::sync::LazyLock;
 use std::env;
+use std::sync::LazyLock;
 
 mod crypto_benchmarks;
 mod protocol_benchmarks;
@@ -68,8 +68,12 @@ fn choose_benchmark(c: &mut Criterion) {
         robust_ecdsa::bench_sign(c);
     }
 
-    if !run_all && !matches!(group.as_str(),
-                "crypto" | "naive_ot_ecdsa" | "naive_robust_ecdsa"){
+    if !run_all
+        && !matches!(
+            group.as_str(),
+            "crypto" | "naive_ot_ecdsa" | "naive_robust_ecdsa"
+        )
+    {
         eprintln!("Please fix the environment variables properly.");
         show_help();
     }

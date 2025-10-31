@@ -136,6 +136,9 @@ pub enum BenchmarkError {
     #[error("failed to find directory")]
     DirNotFound,
 
+    #[error("the protocol you are running just failed")]
+    FailedProtocol,
+
     #[error("failed to delete file")]
     FileDeletionFailure,
 
