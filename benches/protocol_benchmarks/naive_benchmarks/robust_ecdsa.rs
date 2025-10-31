@@ -105,7 +105,8 @@ fn prepare_sign(
     let index = OsRng.gen_range(0..result.len());
     let coordinator = result[index].0;
 
-    let (args, msg_hash) = generate_rerandpresig_args(&mut OsRng, &participants, pk, result[0].1.big_r);
+    let (args, msg_hash) =
+        generate_rerandpresig_args(&mut OsRng, &participants, pk, result[0].1.big_r);
     let derived_pk = args
         .tweak
         .derive_verifying_key(&pk)
