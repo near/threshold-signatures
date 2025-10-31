@@ -27,7 +27,7 @@ fn participants_num() -> usize {
 /// Benches the presigning protocol
 pub fn bench_presign(c: &mut Criterion) {
     let mut group = c.benchmark_group(format!(
-        "Presign: {} malicious parties and {} participating parties",
+        "Presign: {} malicious parties and {} participating parties\n",
         *MAX_MALICIOUS,
         participants_num()
     ));
@@ -45,7 +45,7 @@ pub fn bench_presign(c: &mut Criterion) {
 /// Benches the signing protocol
 pub fn bench_sign(c: &mut Criterion) {
     let mut group = c.benchmark_group(format!(
-        "Sign: {} malicious parties and {} participating parties",
+        "Sign: {} malicious parties and {} participating parties\n",
         *MAX_MALICIOUS,
         participants_num()
     ));
