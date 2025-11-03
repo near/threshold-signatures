@@ -6,7 +6,6 @@ use rand::Rng;
 use rand_core::OsRng;
 use utils::generate_rerandpresig_args;
 
-extern crate threshold_signatures;
 use threshold_signatures::{
     ecdsa::{
         ot_based_ecdsa::{

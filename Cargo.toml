@@ -67,9 +67,12 @@ bench = false
 
 
 [[bench]]
-name = "crypto"
+name = "lagrange"
 harness = false
-required-features = ["test-utils"]
+
+[[bench]]
+name = "inversion"
+harness = false
 
 [[bench]]
 name = "robust_ecdsa"
