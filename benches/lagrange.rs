@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used)]
-use criterion::Criterion;
+use criterion::{criterion_group, criterion_main, Criterion};
 use frost_core::Field;
 use frost_secp256k1::{Secp256K1ScalarField, Secp256K1Sha256};
 use rand_core::OsRng;
@@ -10,7 +10,7 @@ use threshold_signatures::{
 
 type C = Secp256K1Sha256;
 
-pub fn bench_lagrange_computation(c: &mut Criterion) {
+fn bench_lagrange_computation(c: &mut Criterion) {
     let mut group = c.benchmark_group("Lagrange Computation");
 
     for degree in &[1u32, 100, 1_000] {
@@ -85,3 +85,7 @@ pub fn bench_inversion_vs_multiplication(c: &mut Criterion) {
 
     group.finish();
 }
+
+criterion_group!(benches, bench_lagrange_computation);
+
+criterion_main!(benches);

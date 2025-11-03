@@ -1,10 +1,11 @@
-use crate::protocol_benchmarks::naive_benchmarks::generate_rerandpresig_args;
-use criterion::Criterion;
+mod utils;
+
+use criterion::{criterion_group, Criterion};
 use frost_secp256k1::{Secp256K1Sha256, VerifyingKey};
 use rand::Rng;
 use rand_core::OsRng;
+use utils::generate_rerandpresig_args;
 
-extern crate threshold_signatures;
 use threshold_signatures::{
     ecdsa::{
         ot_based_ecdsa::{
@@ -20,7 +21,7 @@ use threshold_signatures::{
     test_utils::{generate_participants_with_random_ids, run_keygen, run_protocol},
 };
 
-use crate::MAX_MALICIOUS;
+use utils::MAX_MALICIOUS;
 
 fn threshold() -> usize {
     *crate::MAX_MALICIOUS + 1
@@ -31,7 +32,7 @@ fn participants_num() -> usize {
 }
 
 /// Benches the triples protocol
-pub fn bench_triples(c: &mut Criterion) {
+fn bench_triples(c: &mut Criterion) {
     let mut group = c.benchmark_group(format!(
         "Triples generation: {} malicious parties and {} participating parties\n",
         *MAX_MALICIOUS,
@@ -49,7 +50,7 @@ pub fn bench_triples(c: &mut Criterion) {
 }
 
 /// Benches the presigning protocol
-pub fn bench_presign(c: &mut Criterion) {
+fn bench_presign(c: &mut Criterion) {
     let mut group = c.benchmark_group(format!(
         "Presign: {} malicious parties and {} participating parties\n",
         *MAX_MALICIOUS,
@@ -70,7 +71,7 @@ pub fn bench_presign(c: &mut Criterion) {
 }
 
 /// Benches the signing protocol
-pub fn bench_sign(c: &mut Criterion) {
+fn bench_sign(c: &mut Criterion) {
     let mut group = c.benchmark_group(format!(
         "Sign: {} malicious parties and {} participating parties\n",
         *MAX_MALICIOUS,
@@ -215,4 +216,18 @@ fn split_even_odd<T: Clone>(v: Vec<T>) -> (Vec<T>, Vec<T>) {
         }
     }
     (even, odd)
+}
+
+criterion_group!(benches, bench_triples, bench_presign, bench_sign);
+#[cfg(feature = "benchmarking")]
+criterion::criterion_main!(benches);
+
+#[cfg(not(feature = "benchmarking"))]
+fn main() {
+    eprintln!(
+        r#"The "benchmarking" feature is not enabled.
+To run benchmarks, please use:
+            cargo bench --features benchmarking
+        "#
+    );
 }

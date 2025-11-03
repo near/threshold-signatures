@@ -1,12 +1,12 @@
 #![allow(clippy::unwrap_used)]
-use criterion::Criterion;
+use criterion::{criterion_group, criterion_main, Criterion};
 use frost_core::{Field, Group};
 use frost_secp256k1::{Secp256K1ScalarField, Secp256K1Sha256};
 use rand_core::OsRng;
 use std::hint::black_box;
 use threshold_signatures::batch_invert;
 
-pub fn bench_inversion(c: &mut Criterion) {
+fn bench_inversion(c: &mut Criterion) {
     let mut group = c.benchmark_group("inversion");
 
     group.measurement_time(std::time::Duration::from_secs(10));
@@ -32,3 +32,29 @@ pub fn bench_inversion(c: &mut Criterion) {
         b.iter(|| black_box(batch_invert::<Secp256K1Sha256>(&values).unwrap()));
     });
 }
+
+fn bench_inversion_vs_multiplication(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Inversion vs Multiplication");
+
+    group.bench_function("single_inversion", |b| {
+        b.iter(|| {
+            let value_to_invert = Secp256K1ScalarField::random(&mut OsRng);
+            black_box(value_to_invert.invert().unwrap());
+        });
+    });
+
+    group.bench_function("three_multiplications", |b| {
+        b.iter(|| {
+            let a = Secp256K1ScalarField::random(&mut OsRng);
+            let b = Secp256K1ScalarField::random(&mut OsRng);
+            let c = Secp256K1ScalarField::random(&mut OsRng);
+            black_box(a * b * c);
+        });
+    });
+
+    group.finish();
+}
+
+criterion_group!(benches, bench_inversion, bench_inversion_vs_multiplication,);
+
+criterion_main!(benches);
