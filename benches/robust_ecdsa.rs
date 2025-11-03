@@ -1,8 +1,9 @@
-use crate::protocol_benchmarks::naive_benchmarks::generate_rerandpresig_args;
-use criterion::Criterion;
+mod utils;
+use criterion::{criterion_group, Criterion};
 use frost_secp256k1::{Secp256K1Sha256, VerifyingKey};
 use rand::Rng;
 use rand_core::OsRng;
+use utils::generate_rerandpresig_args;
 
 extern crate threshold_signatures;
 use threshold_signatures::{
@@ -18,14 +19,14 @@ use threshold_signatures::{
     test_utils::{generate_participants_with_random_ids, run_keygen, run_protocol},
 };
 
-use crate::MAX_MALICIOUS;
+use utils::MAX_MALICIOUS;
 
 fn participants_num() -> usize {
     2 * *crate::MAX_MALICIOUS + 1
 }
 
 /// Benches the presigning protocol
-pub fn bench_presign(c: &mut Criterion) {
+fn bench_presign(c: &mut Criterion) {
     let mut group = c.benchmark_group(format!(
         "Presign: {} malicious parties and {} participating parties\n",
         *MAX_MALICIOUS,
@@ -43,7 +44,7 @@ pub fn bench_presign(c: &mut Criterion) {
 }
 
 /// Benches the signing protocol
-pub fn bench_sign(c: &mut Criterion) {
+fn bench_sign(c: &mut Criterion) {
     let mut group = c.benchmark_group(format!(
         "Sign: {} malicious parties and {} participating parties\n",
         *MAX_MALICIOUS,
@@ -141,4 +142,18 @@ fn prepare_sign(
         protocols.push((p, protocol));
     }
     protocols
+}
+
+criterion_group!(benches, bench_presign, bench_sign);
+#[cfg(feature = "benchmarking")]
+criterion::criterion_main!(benches);
+
+#[cfg(not(feature = "benchmarking"))]
+fn main() {
+    eprintln!(
+        r#"The "benchmarking" feature is not enabled.
+To run benchmarks, please use:
+            cargo bench --features benchmarking
+        "#
+    );
 }

@@ -1,16 +1,44 @@
 #![allow(clippy::unwrap_used)]
-use criterion::Criterion;
-use frost_core::Field;
+use criterion::{criterion_group, criterion_main, Criterion};
+use frost_core::{Field, Group};
 use frost_secp256k1::{Secp256K1ScalarField, Secp256K1Sha256};
 use rand_core::OsRng;
 use std::hint::black_box;
+use threshold_signatures::batch_invert;
 use threshold_signatures::{
     batch_compute_lagrange_coefficients, compute_lagrange_coefficient, participants::Participant,
 };
 
 type C = Secp256K1Sha256;
 
-pub fn bench_lagrange_computation(c: &mut Criterion) {
+fn bench_inversion(c: &mut Criterion) {
+    let mut group = c.benchmark_group("inversion");
+
+    group.measurement_time(std::time::Duration::from_secs(10));
+
+    let num_inversions = 10_000;
+    let values: Vec<_> = (0..num_inversions)
+        .map(|_| Secp256K1ScalarField::random(&mut OsRng))
+        .collect();
+
+    group.bench_function("individual inversion", |b| {
+        b.iter(|| {
+            black_box(values
+                .iter()
+                .map(|v| {
+                    <<Secp256K1Sha256 as frost_core::Ciphersuite>::Group as Group>::Field::invert(v)
+                        .unwrap()
+                })
+                .collect::<Vec<_>>())
+        });
+    });
+
+    group.bench_function("batch inversion", |b| {
+        b.iter(|| black_box(batch_invert::<Secp256K1Sha256>(&values).unwrap()));
+    });
+}
+
+fn bench_lagrange_computation(c: &mut Criterion) {
     let mut group = c.benchmark_group("Lagrange Computation");
 
     for degree in &[1u32, 100, 1_000] {
@@ -64,7 +92,7 @@ pub fn bench_lagrange_computation(c: &mut Criterion) {
     group.finish();
 }
 
-pub fn bench_inversion_vs_multiplication(c: &mut Criterion) {
+fn bench_inversion_vs_multiplication(c: &mut Criterion) {
     let mut group = c.benchmark_group("Inversion vs Multiplication");
 
     group.bench_function("single_inversion", |b| {
@@ -85,3 +113,12 @@ pub fn bench_inversion_vs_multiplication(c: &mut Criterion) {
 
     group.finish();
 }
+
+criterion_group!(
+    benches,
+    bench_inversion,
+    bench_inversion_vs_multiplication,
+    bench_lagrange_computation
+);
+
+criterion_main!(benches);

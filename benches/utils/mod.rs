@@ -1,7 +1,6 @@
-pub mod ot_based_ecdsa;
-pub mod robust_ecdsa;
+#![allow(clippy::missing_panics_doc)]
+use std::{env, sync::LazyLock};
 
-extern crate threshold_signatures;
 use k256::AffinePoint;
 use threshold_signatures::{
     ecdsa::{RerandomizationArguments, Scalar, Secp256K1Sha256, Tweak},
@@ -11,6 +10,14 @@ use threshold_signatures::{
 
 use frost_secp256k1::{Secp256K1ScalarField, VerifyingKey};
 use rand_core::{CryptoRngCore, OsRng};
+
+// fix malicious number of participants
+pub static MAX_MALICIOUS: LazyLock<usize> = std::sync::LazyLock::new(|| {
+    env::var("MAX_MALICIOUS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(6)
+});
 
 // Outputs pk, R, hash, participants, entropy, randomness
 pub fn generate_rerandpresig_args(
