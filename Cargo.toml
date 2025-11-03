@@ -75,12 +75,12 @@ name = "inversion"
 harness = false
 
 [[bench]]
-name = "robust_ecdsa"
+name = "naive_robust_ecdsa"
 harness = false
 required-features = ["test-utils"]
 
 [[bench]]
-name = "ot_based_ecdsa"
+name = "naive_ot_based_ecdsa"
 harness = false
 required-features = ["test-utils"]
 
