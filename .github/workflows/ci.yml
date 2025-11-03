@@ -69,9 +69,7 @@ jobs:
           cache-on-failure: true
           cache-all-crates: true
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@81ee1d48d9194cdcab880cbdc7d36e87d39874cb # v2.62.45
-        with:
-          tool: cargo-llm-cov@0.6.21
+        uses: taiki-e/install-action@cargo-llm-cov
       - name: Install cargo-nextest
         uses: taiki-e/install-action@81ee1d48d9194cdcab880cbdc7d36e87d39874cb # v2.62.45
         with:
