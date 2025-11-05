@@ -3,7 +3,7 @@
 This repository offers cryptographic implementations of **threshold ECDSA**,
 **threshold EdDSA** and **Confidential Key Derivation**. Prior to
 [PR#15](https://github.com/near/threshold-signatures/pull/15), the
-implementation had undergone professional *audit*audit.
+implementation had undergone professional *audit*.
 
 The ECDSA code implements an OT-based threshold protocol and a Secret-Sharing
 based one. The former is originally imported from the
