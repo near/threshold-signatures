@@ -33,6 +33,12 @@ pub enum ProtocolError {
 
     #[error("The index you are looking for is invalid")]
     InvalidIndex,
+    /// An error occurred during the protocol due to invalid input.
+    #[error("{0}")]
+    InvalidInput(String),
+    /// An error occurred during the protocol due to an IO error.
+    #[error("io error: {0}")]
+    IoError(String),
 
     #[error("invalid arguments for polynomial interpolation")]
     InvalidInterpolationArguments,
