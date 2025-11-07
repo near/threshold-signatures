@@ -33,14 +33,15 @@ fn participants_num() -> usize {
 
 /// Benches the triples protocol
 fn bench_triples(c: &mut Criterion) {
-    let mut group = c.benchmark_group(format!(
+    let description = format!(
         "Triples generation: {} malicious parties and {} participating parties\n",
         *MAX_MALICIOUS,
         participants_num()
-    ));
+    );
+    let mut group = c.benchmark_group("triples");
     group.measurement_time(std::time::Duration::from_secs(200));
 
-    group.bench_function("Triple generation", |b| {
+    group.bench_function(description, |b| {
         b.iter_batched(
             || prepare_triples(participants_num()),
             run_protocol,
@@ -51,17 +52,18 @@ fn bench_triples(c: &mut Criterion) {
 
 /// Benches the presigning protocol
 fn bench_presign(c: &mut Criterion) {
-    let mut group = c.benchmark_group(format!(
+    let description = format!(
         "Presign: {} malicious parties and {} participating parties\n",
         *MAX_MALICIOUS,
         participants_num()
-    ));
+    );
+    let mut group = c.benchmark_group("presign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
     let protocols = prepare_triples(participants_num());
     let two_triples = run_protocol(protocols).expect("Running triple preparations should succeed");
 
-    group.bench_function("Presignature generation", |b| {
+    group.bench_function(description, |b| {
         b.iter_batched(
             || prepare_presign(&two_triples),
             |(protocols, _)| run_protocol(protocols),
@@ -72,11 +74,12 @@ fn bench_presign(c: &mut Criterion) {
 
 /// Benches the signing protocol
 fn bench_sign(c: &mut Criterion) {
-    let mut group = c.benchmark_group(format!(
+    let description = format!(
         "Sign: {} malicious parties and {} participating parties\n",
         *MAX_MALICIOUS,
         participants_num()
-    ));
+    );
+    let mut group = c.benchmark_group("sign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
     let protocols = prepare_triples(participants_num());
@@ -86,7 +89,7 @@ fn bench_sign(c: &mut Criterion) {
     let mut result = run_protocol(protocols).expect("Running presign preparation should succeed");
     result.sort_by_key(|(p, _)| *p);
 
-    group.bench_function("Signature generation", |b| {
+    group.bench_function(description, |b| {
         b.iter_batched(
             || prepare_sign(&result, pk),
             run_protocol,

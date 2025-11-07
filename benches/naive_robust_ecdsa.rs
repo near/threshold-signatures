@@ -26,14 +26,15 @@ fn participants_num() -> usize {
 
 /// Benches the presigning protocol
 fn bench_presign(c: &mut Criterion) {
-    let mut group = c.benchmark_group(format!(
+    let description = format!(
         "Presign: {} malicious parties and {} participating parties\n",
         *MAX_MALICIOUS,
         participants_num()
-    ));
+    );
+    let mut group = c.benchmark_group("presign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
-    group.bench_function("Presignature generation", |b| {
+    group.bench_function(description, |b| {
         b.iter_batched(
             || prepare_presign(participants_num()),
             |(protocols, _)| run_protocol(protocols),
@@ -44,18 +45,19 @@ fn bench_presign(c: &mut Criterion) {
 
 /// Benches the signing protocol
 fn bench_sign(c: &mut Criterion) {
-    let mut group = c.benchmark_group(format!(
+    let descritption = format!(
         "Sign: {} malicious parties and {} participating parties\n",
         *MAX_MALICIOUS,
         participants_num()
-    ));
+    );
+    let mut group = c.benchmark_group("sign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
     let (protocols, pk) = prepare_presign(participants_num());
     let mut result = run_protocol(protocols).expect("Prepare sign should not");
     result.sort_by_key(|(p, _)| *p);
 
-    group.bench_function("Signature generation", |b| {
+    group.bench_function(descritption, |b| {
         b.iter_batched(
             || prepare_sign(&result, pk),
             run_protocol,
