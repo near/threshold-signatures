@@ -20,7 +20,7 @@ pub static MAX_MALICIOUS: LazyLock<usize> = std::sync::LazyLock::new(|| {
 });
 
 // Outputs pk, R, hash, participants, entropy, randomness
-pub fn generate_rerandpresig_args(
+pub fn ecdsa_generate_rerandpresig_args(
     rng: &mut impl CryptoRngCore,
     participants: &[Participant],
     pk: VerifyingKey,

@@ -3,7 +3,7 @@ use criterion::{criterion_group, Criterion};
 use frost_secp256k1::{Secp256K1Sha256, VerifyingKey};
 use rand::Rng;
 use rand_core::OsRng;
-use utils::generate_rerandpresig_args;
+use utils::ecdsa_generate_rerandpresig_args;
 
 use threshold_signatures::{
     ecdsa::{
@@ -108,7 +108,7 @@ fn prepare_sign(
     let coordinator = result[index].0;
 
     let (args, msg_hash) =
-        generate_rerandpresig_args(&mut OsRng, &participants, pk, result[0].1.big_r);
+        ecdsa_generate_rerandpresig_args(&mut OsRng, &participants, pk, result[0].1.big_r);
     let derived_pk = args
         .tweak
         .derive_verifying_key(&pk)
