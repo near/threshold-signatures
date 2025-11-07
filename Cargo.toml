@@ -52,7 +52,6 @@ zeroize = "1.8.2"
 default = ["actively_secure_robust_ecdsa"]
 actively_secure_robust_ecdsa = []
 test-utils = ["rand"]
-benchmarking = []
 
 [dev-dependencies]
 criterion = "0.7.0"

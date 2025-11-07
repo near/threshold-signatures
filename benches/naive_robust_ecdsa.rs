@@ -146,15 +146,4 @@ fn prepare_sign(
 }
 
 criterion_group!(benches, bench_presign, bench_sign);
-#[cfg(feature = "benchmarking")]
 criterion::criterion_main!(benches);
-
-#[cfg(not(feature = "benchmarking"))]
-fn main() {
-    eprintln!(
-        r#"The "benchmarking" feature is not enabled.
-To run benchmarks, please use:
-            cargo bench --features benchmarking
-        "#
-    );
-}
