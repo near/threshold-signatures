@@ -5,7 +5,7 @@ dependencies = ["fmt", "check", "clippy", "test", "deny"]
 [tasks.deny]
 description = "Run cargo deny"
 command = "cargo"
-args = ["deny", "check"]
+args = ["deny", "--all-features", "check"]
 
 [tasks.check]
 command = "cargo"
