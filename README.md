@@ -18,10 +18,10 @@ The EdDSA implementation is mainly a wrapper of the
 with Curve25519.
 
 The Confidential Key Derivation (CKD) code implements a threshold protocol to
-generate encrypted BLS signatures, that can then be used as secrets. Their main
-use case is to provide deterministic secrets to apps running inside a TEE. For
-more details, see the
-[docs](docs/confidential_key_derivation/confidential_key_derivation.md)
+generate deterministic keys in a confidential manner. The scheme is based on
+threshold BLS signatures and ElGamal encryption. Our intended use-case is to
+provide deterministic secrets to apps running inside a TEE. For more details,
+see the [docs](docs/confidential_key_derivation/confidential_key_derivation.md)
 
 ## Code organization
 
@@ -51,19 +51,23 @@ generate its own secret key shares and a corresponding master public key.
 
 2) **Key Resharing**: allows multiple parties to reshare their keys adding new
 members or kicking old members. If the sets of new/old participants is the same,
-then we talk about *key refreshing*.
+then we talk about *key refreshing*. A particular case is **Key Refresh**, which
+works in the same way but without any change in the member set.
 
 3) **Beaver Triple Generation (offline)**: Allows the distributive generation of
 multiplicative (Beaver) triples $(a,b,c)$ and their commitments $(A, B, C)$
 where $c = a\cdot b$ and where $(A,B,C) = (g^a, g^b, g^c)$. These triples are
-essential for creating the presignatures.
+essential for creating the presignatures. More details in
+[docs](docs/ecdsa/ot_based_ecdsa/triples.md)
 
 4) **Presigning (offline)**: Allows generating some presignatures during an
 offline signing phase that will be consumed during the online signing phase when
-the message to be signed is known to the signers.
+the message to be signed is known to the signers. More details in
+[docs](docs/ecdsa/ot_based_ecdsa/signing.md)
 
 5) **Signing (online)**: Corresponds to the online signing phase in which the
-signing parties produce a valid signature
+signing parties produce a valid signature. More details in
+[docs](docs/ecdsa/ot_based_ecdsa/signing.md)
 
 ### Threshold EdDSA Functionalities
 
@@ -73,12 +77,13 @@ The following functionalities are provided:
 
 1) **Distributed Key Generation (DKG)**: Same as in ECDSA.
 
-2) **Key Resharing**: Same as in ECDSA.
+2) **Key Resharing** and **Key Refresh**: Same as in ECDSA.
 
 3) **Signing (online)**: Threshold EdDSA is generally more efficient than
 threshold ECDSA due to the mathematical formula behind the signature
 computation. Our Ed25519 implementation does not necessitate an offline phase of
-computation.
+computation. More details in
+[docs](docs/ecdsa/robust_ecdsa/signing.md)
 
 ### CKD Functionalities
 
@@ -88,9 +93,11 @@ The following functionalities are provided:
 
 1) **Distributed Key Generation (DKG)**: Same as in ECDSA, over group $G_2$.
 
-2) **Key Resharing**: Same as in ECDSA.
+2) **Key Resharing** and **Key Refresh**: Same as in ECDSA.
 
-3) **CKD (online)**: see the
+3) **CKD (online)**: Corresponds to the online signing phase in which the
+signing parties produce a valid BLS signature encrypted with an ElGammal public
+key. More details in
 [docs](docs/confidential_key_derivation/confidential_key_derivation.md)
 
 ### Comments
@@ -107,8 +114,8 @@ The following functionalities are provided:
 * Our ECDSA signing scheme outsources the message hash to the function caller
   (i.e. expects a hashed message as input and does not internally hash the
   input). However, our EdDSA implementation does not outsource the message
-  hashing instead internally performs the message hash. This distinction is an
-  artifact of the multiple different verifiers implemented in the wild where
+  hashing. Instead, it internally performs the message hash. This distinction is
+  an artifact of the multiple different verifiers implemented in the wild where
   some might perform a "double hashing" and others not. (See
   \[[PoeRas24](https://link.springer.com/chapter/10.1007/978-3-031-57718-5_10)\]
   for an in-depth security study of ECDSA with outsourced hashing).
@@ -120,18 +127,21 @@ The following functionalities are provided:
   (Benchmarks to be added soon).
 
 * **🚨 Important 🚨:** Our DKG/Resharing protocol is the same for ECDSA, EdDSA
-  and CKD except the underlying elliptic curve instantiation. Internally, this
-  DKG makes use of a reliable broadcast channel implemented for asynchronous
-  peer-to-peer communication. Due to a fundamental impossibility theorem for
-  asynchronous broadcast channel, our DKG/Resharing protocol can only tolerate
-  $\frac{n}{3}$ malicious parties where $n$ is the total number of parties.
+  and CKD but differs depending on the underlying elliptic curve instantiation.
+  Internally, this DKG makes use of a reliable broadcast channel implemented for
+  asynchronous peer-to-peer communication. Due to a fundamental impossibility
+  theorem for asynchronous broadcast channel, our DKG/Resharing protocol can
+  only tolerate $\frac{n}{3}$ malicious parties where $n$ is the total number of
+  parties.
 
-* All our public functions that assume network interactions, such as `keygen`,
-  `reshare`, `sign`, `ckd`, may hang indefinitely if network issues occur, for
-  example if a message necessary to continue running the protocol is never
-  received. Therefore, the caller **MUST** handle these issues on their side,
-  for example by implementing timeouts or similar techniques to prevent
-  functions from running forever.
+* All our public functions that involve network interactions, such as `keygen`,
+  `reshare`, `sign`, and `ckd`, are designed to wait indefinitely for the
+  expected messages. For instance, if a message needed to proceed is never
+  received, the function will enter an infinite wait loop. This behavior is
+  intentional, allowing the caller to determine how long to wait in each
+  situation. Consequently, **the caller is responsible** for managing potential
+  issues, such as implementing timeouts or other mechanisms to prevent functions
+  from running indefinitely.
 
 ## Build and Test
 
