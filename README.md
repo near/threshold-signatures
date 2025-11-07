@@ -21,7 +21,8 @@ The Confidential Key Derivation (CKD) code implements a threshold protocol to
 generate deterministic keys in a confidential manner. The scheme is based on
 threshold BLS signatures and ElGamal encryption. Our intended use-case is to
 provide deterministic secrets to apps running inside a TEE. For more details,
-see the [docs](docs/confidential_key_derivation/confidential_key_derivation.md)
+see the
+[CKD docs](docs/confidential_key_derivation/confidential_key_derivation.md).
 
 ## Code organization
 
@@ -58,16 +59,16 @@ works in the same way but without any change in the member set.
 multiplicative (Beaver) triples $(a,b,c)$ and their commitments $(A, B, C)$
 where $c = a\cdot b$ and where $(A,B,C) = (g^a, g^b, g^c)$. These triples are
 essential for creating the presignatures. More details in
-[docs](docs/ecdsa/ot_based_ecdsa/triples.md)
+[docs](docs/ecdsa/ot_based_ecdsa/triples.md).
 
 4) **Presigning (offline)**: Allows generating some presignatures during an
 offline signing phase that will be consumed during the online signing phase when
 the message to be signed is known to the signers. More details in
-[docs](docs/ecdsa/ot_based_ecdsa/signing.md)
+[docs](docs/ecdsa/ot_based_ecdsa/signing.md).
 
 5) **Signing (online)**: Corresponds to the online signing phase in which the
 signing parties produce a valid signature. More details in
-[docs](docs/ecdsa/ot_based_ecdsa/signing.md)
+[docs](docs/ecdsa/ot_based_ecdsa/signing.md).
 
 ### Threshold EdDSA Functionalities
 
@@ -83,7 +84,7 @@ The following functionalities are provided:
 threshold ECDSA due to the mathematical formula behind the signature
 computation. Our Ed25519 implementation does not necessitate an offline phase of
 computation. More details in
-[docs](docs/ecdsa/robust_ecdsa/signing.md)
+[docs](docs/ecdsa/robust_ecdsa/signing.md).
 
 ### CKD Functionalities
 
@@ -98,7 +99,7 @@ The following functionalities are provided:
 3) **CKD (online)**: Corresponds to the online signing phase in which the
 signing parties produce a valid BLS signature encrypted with an ElGammal public
 key. More details in
-[docs](docs/confidential_key_derivation/confidential_key_derivation.md)
+[docs](docs/confidential_key_derivation/confidential_key_derivation.md).
 
 ### Comments
 
