@@ -33,8 +33,8 @@ fn bench_presign(c: &mut Criterion) {
     );
     let mut group = c.benchmark_group("presign");
     group.measurement_time(std::time::Duration::from_secs(300));
-
-    group.bench_function(description, |b| {
+    println!("{description}");
+    group.bench_function("robust_ecdsa_presign", |b| {
         b.iter_batched(
             || prepare_presign(participants_num()),
             |(protocols, _)| run_protocol(protocols),
@@ -45,19 +45,20 @@ fn bench_presign(c: &mut Criterion) {
 
 /// Benches the signing protocol
 fn bench_sign(c: &mut Criterion) {
-    let descritption = format!(
+    let description = format!(
         "Sign: {} malicious parties and {} participating parties\n",
         *MAX_MALICIOUS,
         participants_num()
     );
     let mut group = c.benchmark_group("sign");
     group.measurement_time(std::time::Duration::from_secs(300));
+    println!("{description}");
 
     let (protocols, pk) = prepare_presign(participants_num());
     let mut result = run_protocol(protocols).expect("Prepare sign should not");
     result.sort_by_key(|(p, _)| *p);
 
-    group.bench_function(descritption, |b| {
+    group.bench_function("robust_ecdsa_sign", |b| {
         b.iter_batched(
             || prepare_sign(&result, pk),
             run_protocol,

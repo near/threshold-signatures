@@ -38,10 +38,11 @@ fn bench_triples(c: &mut Criterion) {
         *MAX_MALICIOUS,
         participants_num()
     );
+    print!("{description}");
     let mut group = c.benchmark_group("triples");
     group.measurement_time(std::time::Duration::from_secs(200));
 
-    group.bench_function(description, |b| {
+    group.bench_function("ot_ecdsa_triples", |b| {
         b.iter_batched(
             || prepare_triples(participants_num()),
             run_protocol,
@@ -57,13 +58,14 @@ fn bench_presign(c: &mut Criterion) {
         *MAX_MALICIOUS,
         participants_num()
     );
+    print!("{description}");
     let mut group = c.benchmark_group("presign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
     let protocols = prepare_triples(participants_num());
     let two_triples = run_protocol(protocols).expect("Running triple preparations should succeed");
 
-    group.bench_function(description, |b| {
+    group.bench_function("ot_ecdsa_presign", |b| {
         b.iter_batched(
             || prepare_presign(&two_triples),
             |(protocols, _)| run_protocol(protocols),
@@ -79,6 +81,7 @@ fn bench_sign(c: &mut Criterion) {
         *MAX_MALICIOUS,
         participants_num()
     );
+    print!("{description}");
     let mut group = c.benchmark_group("sign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
@@ -89,7 +92,7 @@ fn bench_sign(c: &mut Criterion) {
     let mut result = run_protocol(protocols).expect("Running presign preparation should succeed");
     result.sort_by_key(|(p, _)| *p);
 
-    group.bench_function(description, |b| {
+    group.bench_function("ot_ecdsa_sign", |b| {
         b.iter_batched(
             || prepare_sign(&result, pk),
             run_protocol,
