@@ -33,55 +33,50 @@ fn participants_num() -> usize {
 
 /// Benches the triples protocol
 fn bench_triples(c: &mut Criterion) {
-    let description = format!(
-        "Triples generation: {} malicious parties and {} participating parties\n",
-        *MAX_MALICIOUS,
-        participants_num()
-    );
-    print!("{description}");
+    let num = participants_num();
+    let max_malicious = *MAX_MALICIOUS;
     let mut group = c.benchmark_group("triples");
     group.measurement_time(std::time::Duration::from_secs(200));
 
-    group.bench_function("ot_ecdsa_triples", |b| {
-        b.iter_batched(
-            || prepare_triples(participants_num()),
-            run_protocol,
-            criterion::BatchSize::SmallInput,
-        );
-    });
+    group.bench_function(
+        format!("ot_ecdsa_triples_naive_MAX_MALICIOUS{max_malicious}_PARTICIPANTS_{num}"),
+        |b| {
+            b.iter_batched(
+                || prepare_triples(participants_num()),
+                run_protocol,
+                criterion::BatchSize::SmallInput,
+            );
+        },
+    );
 }
 
 /// Benches the presigning protocol
 fn bench_presign(c: &mut Criterion) {
-    let description = format!(
-        "Presign: {} malicious parties and {} participating parties\n",
-        *MAX_MALICIOUS,
-        participants_num()
-    );
-    print!("{description}");
+    let num = participants_num();
+    let max_malicious = *MAX_MALICIOUS;
     let mut group = c.benchmark_group("presign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
     let protocols = prepare_triples(participants_num());
     let two_triples = run_protocol(protocols).expect("Running triple preparations should succeed");
 
-    group.bench_function("ot_ecdsa_presign", |b| {
-        b.iter_batched(
-            || prepare_presign(&two_triples),
-            |(protocols, _)| run_protocol(protocols),
-            criterion::BatchSize::SmallInput,
-        );
-    });
+    group.bench_function(
+        format!("ot_ecdsa_presign_naive_MAX_MALICIOUS{max_malicious}_PARTICIPANTS_{num}"),
+        |b| {
+            b.iter_batched(
+                || prepare_presign(&two_triples),
+                |(protocols, _)| run_protocol(protocols),
+                criterion::BatchSize::SmallInput,
+            );
+        },
+    );
 }
 
 /// Benches the signing protocol
 fn bench_sign(c: &mut Criterion) {
-    let description = format!(
-        "Sign: {} malicious parties and {} participating parties\n",
-        *MAX_MALICIOUS,
-        participants_num()
-    );
-    print!("{description}");
+    let num = participants_num();
+    let max_malicious = *MAX_MALICIOUS;
+
     let mut group = c.benchmark_group("sign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
@@ -92,13 +87,16 @@ fn bench_sign(c: &mut Criterion) {
     let mut result = run_protocol(protocols).expect("Running presign preparation should succeed");
     result.sort_by_key(|(p, _)| *p);
 
-    group.bench_function("ot_ecdsa_sign", |b| {
-        b.iter_batched(
-            || prepare_sign(&result, pk),
-            run_protocol,
-            criterion::BatchSize::SmallInput,
-        );
-    });
+    group.bench_function(
+        format!("ot_ecdsa_sign_naive_MAX_MALICIOUS{max_malicious}_PARTICIPANTS_{num}"),
+        |b| {
+            b.iter_batched(
+                || prepare_sign(&result, pk),
+                run_protocol,
+                criterion::BatchSize::SmallInput,
+            );
+        },
+    );
 }
 
 type PreparedTriples = Vec<(

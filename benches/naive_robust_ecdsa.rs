@@ -26,45 +26,43 @@ fn participants_num() -> usize {
 
 /// Benches the presigning protocol
 fn bench_presign(c: &mut Criterion) {
-    let description = format!(
-        "Presign: {} malicious parties and {} participating parties\n",
-        *MAX_MALICIOUS,
-        participants_num()
-    );
+    let num = participants_num();
+    let max_malicious = *MAX_MALICIOUS;
     let mut group = c.benchmark_group("presign");
     group.measurement_time(std::time::Duration::from_secs(300));
-    println!("{description}");
-    group.bench_function("robust_ecdsa_presign", |b| {
-        b.iter_batched(
-            || prepare_presign(participants_num()),
-            |(protocols, _)| run_protocol(protocols),
-            criterion::BatchSize::SmallInput,
-        );
-    });
+    group.bench_function(
+        format!("robust_ecdsa_presign_naive_MAX_MALICIOUS{max_malicious}_PARTICIPANTS_{num}"),
+        |b| {
+            b.iter_batched(
+                || prepare_presign(participants_num()),
+                |(protocols, _)| run_protocol(protocols),
+                criterion::BatchSize::SmallInput,
+            );
+        },
+    );
 }
 
 /// Benches the signing protocol
 fn bench_sign(c: &mut Criterion) {
-    let description = format!(
-        "Sign: {} malicious parties and {} participating parties\n",
-        *MAX_MALICIOUS,
-        participants_num()
-    );
+    let num = participants_num();
+    let max_malicious = *MAX_MALICIOUS;
     let mut group = c.benchmark_group("sign");
     group.measurement_time(std::time::Duration::from_secs(300));
-    println!("{description}");
 
     let (protocols, pk) = prepare_presign(participants_num());
     let mut result = run_protocol(protocols).expect("Prepare sign should not");
     result.sort_by_key(|(p, _)| *p);
 
-    group.bench_function("robust_ecdsa_sign", |b| {
-        b.iter_batched(
-            || prepare_sign(&result, pk),
-            run_protocol,
-            criterion::BatchSize::SmallInput,
-        );
-    });
+    group.bench_function(
+        format!("robust_ecdsa_sign_naive_MAX_MALICIOUS{max_malicious}_PARTICIPANTS_{num}"),
+        |b| {
+            b.iter_batched(
+                || prepare_sign(&result, pk),
+                run_protocol,
+                criterion::BatchSize::SmallInput,
+            );
+        },
+    );
 }
 
 /// Benches the presigning protocol
