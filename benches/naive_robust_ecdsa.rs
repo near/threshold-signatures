@@ -31,7 +31,7 @@ fn bench_presign(c: &mut Criterion) {
     let mut group = c.benchmark_group("presign");
     group.measurement_time(std::time::Duration::from_secs(300));
     group.bench_function(
-        format!("robust_ecdsa_presign_naive_MAX_MALICIOUS{max_malicious}_PARTICIPANTS_{num}"),
+        format!("robust_ecdsa_presign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
                 || prepare_presign(participants_num()),
@@ -54,7 +54,7 @@ fn bench_sign(c: &mut Criterion) {
     result.sort_by_key(|(p, _)| *p);
 
     group.bench_function(
-        format!("robust_ecdsa_sign_naive_MAX_MALICIOUS{max_malicious}_PARTICIPANTS_{num}"),
+        format!("robust_ecdsa_sign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
                 || prepare_sign(&result, pk),

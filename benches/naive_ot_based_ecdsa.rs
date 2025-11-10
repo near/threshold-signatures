@@ -39,7 +39,7 @@ fn bench_triples(c: &mut Criterion) {
     group.measurement_time(std::time::Duration::from_secs(200));
 
     group.bench_function(
-        format!("ot_ecdsa_triples_naive_MAX_MALICIOUS{max_malicious}_PARTICIPANTS_{num}"),
+        format!("ot_ecdsa_triples_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
                 || prepare_triples(participants_num()),
@@ -61,7 +61,7 @@ fn bench_presign(c: &mut Criterion) {
     let two_triples = run_protocol(protocols).expect("Running triple preparations should succeed");
 
     group.bench_function(
-        format!("ot_ecdsa_presign_naive_MAX_MALICIOUS{max_malicious}_PARTICIPANTS_{num}"),
+        format!("ot_ecdsa_presign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
                 || prepare_presign(&two_triples),
@@ -88,7 +88,7 @@ fn bench_sign(c: &mut Criterion) {
     result.sort_by_key(|(p, _)| *p);
 
     group.bench_function(
-        format!("ot_ecdsa_sign_naive_MAX_MALICIOUS{max_malicious}_PARTICIPANTS_{num}"),
+        format!("ot_ecdsa_sign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
                 || prepare_sign(&result, pk),
