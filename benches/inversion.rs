@@ -7,7 +7,7 @@ use std::hint::black_box;
 use threshold_signatures::batch_invert;
 
 fn bench_inversion(c: &mut Criterion) {
-    let mut group = c.benchmark_group("inversion");
+    let mut group = c.benchmark_group("Single_vs_Batch_Inversion");
 
     group.measurement_time(std::time::Duration::from_secs(10));
 
@@ -16,7 +16,7 @@ fn bench_inversion(c: &mut Criterion) {
         .map(|_| Secp256K1ScalarField::random(&mut OsRng))
         .collect();
 
-    group.bench_function("individual inversion", |b| {
+    group.bench_function("single_inversion", |b| {
         b.iter(|| {
             black_box(values
                 .iter()
@@ -28,13 +28,13 @@ fn bench_inversion(c: &mut Criterion) {
         });
     });
 
-    group.bench_function("batch inversion", |b| {
+    group.bench_function("batch_inversion", |b| {
         b.iter(|| black_box(batch_invert::<Secp256K1Sha256>(&values).unwrap()));
     });
 }
 
 fn bench_inversion_vs_multiplication(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Inversion vs Multiplication");
+    let mut group = c.benchmark_group("Inversion_vs_Multiplication");
 
     group.bench_function("single_inversion", |b| {
         b.iter(|| {

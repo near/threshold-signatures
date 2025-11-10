@@ -11,7 +11,7 @@ use threshold_signatures::{
 type C = Secp256K1Sha256;
 
 fn bench_lagrange_computation(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Lagrange Computation");
+    let mut group = c.benchmark_group("Lagrange");
 
     for degree in &[1u32, 100, 1_000] {
         let participants = (0..=*degree).map(Participant::from).collect::<Vec<_>>();
@@ -65,7 +65,7 @@ fn bench_lagrange_computation(c: &mut Criterion) {
 }
 
 pub fn bench_inversion_vs_multiplication(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Inversion vs Multiplication");
+    let mut group = c.benchmark_group("Inversion_vs_Multiplication");
 
     group.bench_function("single_inversion", |b| {
         b.iter(|| {
