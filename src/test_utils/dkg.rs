@@ -1,12 +1,13 @@
 use rand_core::OsRng;
 
 use crate::participants::Participant;
-use crate::test_utils::run_protocol;
-use crate::test_utils::common::GenProtocol;
+use crate::test_utils::{
+  run_protocol,
+  GenProtocol, GenOutput,
+};
 use crate::{keygen, refresh, reshare, Ciphersuite, Element, KeygenOutput, Scalar, VerifyingKey};
 
 // +++++++++++++++++ DKG Functions +++++++++++++++++ //
-pub type GenOutput<C> = Vec<(Participant, KeygenOutput<C>)>;
 type DKGGenProtocol<C> = GenProtocol<KeygenOutput<C>>;
 
 /// Runs distributed keygen

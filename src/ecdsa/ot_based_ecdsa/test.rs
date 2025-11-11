@@ -8,11 +8,11 @@ use crate::participants::Participant;
 use crate::protocol::Protocol;
 use crate::test_utils::common::{
     generate_participants, generate_participants_with_random_ids,
-    one_coordinator_output, run_sign,
 };
 use crate::test_utils::{
     run_protocol,
     assert_public_key_invariant, run_keygen, run_refresh, run_reshare,
+    check_one_coordinator_output, run_sign,
     GenOutput, GenProtocol
 };
 
@@ -62,7 +62,7 @@ pub fn run_sign_without_rerandomization(
     )
     .unwrap();
     // test one single some for the coordinator
-    let signature = one_coordinator_output(result, coordinator).unwrap();
+    let signature = check_one_coordinator_output(result, coordinator).unwrap();
     (coordinator, signature)
 }
 
@@ -124,7 +124,7 @@ pub fn run_sign_with_rerandomization(
     )?;
 
     // test one single some for the coordinator
-    let signature = one_coordinator_output(result, coordinator)?;
+    let signature = check_one_coordinator_output(result, coordinator)?;
     Ok((tweak, coordinator, signature))
 }
 

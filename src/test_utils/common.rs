@@ -11,21 +11,18 @@ use k256::elliptic_curve::PrimeField;
 use k256::AffinePoint;
 use rand_core::{CryptoRngCore, OsRng};
 use std::collections::HashMap;
-use std::error::Error;
 
 use crate::confidential_key_derivation as ckd;
 use crate::ecdsa::ot_based_ecdsa::triples::TripleGenerationOutput;
-use crate::errors::{InitializationError, ProtocolError};
 use crate::frost_ed25519::Ed25519Sha512;
 use crate::frost_secp256k1::Secp256K1Sha256;
 use crate::participants::Participant;
 use crate::protocol::Protocol;
 use crate::{ecdsa, eddsa, ParticipantList};
-use crate::{keygen, Ciphersuite, Element, Scalar, VerifyingKey};
+use crate::{keygen, Scalar, VerifyingKey};
 
 use crate::test_utils::run_protocol;
 
-pub type GenProtocol<C> = Vec<(Participant, Box<dyn Protocol<Output = C>>)>;
 
 // +++++++++++++++++ General Utilities +++++++++++++++++ //
 pub fn random_32_bytes(rng: &mut impl CryptoRngCore) -> [u8; 32] {
@@ -84,74 +81,6 @@ pub fn ecdsa_generate_rerandpresig_args(
         entropy,
     );
     (args, msg_hash)
-}
-
-// +++++++++++++++++ Signing Functions +++++++++++++++++ //
-/// Runs the signing algorithm for ECDSA.
-/// The scheme must be asymmetric as in: there exists a coordinator that is different than participants.
-/// Only used for unit tests.
-pub fn run_sign<C: Ciphersuite, PresignOutput, Signature: Clone, F>(
-    participants_presign: Vec<(Participant, PresignOutput)>,
-    coordinator: Participant,
-    public_key: Element<C>,
-    msg_hash: Scalar<C>,
-    sign: F,
-) -> Result<Vec<(Participant, Signature)>, Box<dyn Error>>
-where
-    F: Fn(
-        &[Participant],
-        Participant,
-        Participant,
-        Element<C>,
-        PresignOutput,
-        Scalar<C>,
-    ) -> Result<Box<dyn Protocol<Output = Signature>>, InitializationError>,
-{
-    let mut protocols: GenProtocol<Signature> = Vec::with_capacity(participants_presign.len());
-
-    let participants: Vec<Participant> = participants_presign.iter().map(|(p, _)| *p).collect();
-    let participants = participants.as_slice();
-    for (p, presignature) in participants_presign {
-        let protocol = sign(
-            participants,
-            coordinator,
-            p,
-            public_key,
-            presignature,
-            msg_hash,
-        )?;
-
-        protocols.push((p, protocol));
-    }
-
-    Ok(run_protocol(protocols)?)
-}
-
-/// Checks that the list contains all None but one element
-/// and verifies such element belongs to the coordinator
-pub fn one_coordinator_output<ProtocolOutput: Clone>(
-    all_sigs: Vec<(Participant, Option<ProtocolOutput>)>,
-    coordinator: Participant,
-) -> Result<ProtocolOutput, ProtocolError> {
-    let mut some_iter = all_sigs.into_iter().filter(|(_, sig)| sig.is_some());
-
-    // test there is at least one not None element
-    let (p, c_opt) = some_iter
-        .next()
-        .ok_or(ProtocolError::MismatchCoordinatorOutput)?;
-
-    // test the coordinator is the one owning the output
-    if coordinator != p {
-        return Err(ProtocolError::MismatchCoordinatorOutput);
-    }
-
-    // test the participant is unique
-    let out = c_opt.ok_or(ProtocolError::MismatchCoordinatorOutput)?;
-
-    if some_iter.next().is_some() {
-        return Err(ProtocolError::MismatchCoordinatorOutput);
-    }
-    Ok(out)
 }
 
 // Taken from https://github.com/ZcashFoundation/frost/blob/3ffc19d8f473d5bc4e07ed41bc884bdb42d6c29f/frost-secp256k1/tests/common_traits_tests.rs#L9

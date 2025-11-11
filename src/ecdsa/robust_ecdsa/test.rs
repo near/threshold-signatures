@@ -16,9 +16,11 @@ use crate::test_utils::{
 };
 use crate::test_utils::common::{
     generate_participants, generate_participants_with_random_ids,
-    one_coordinator_output, run_sign,
 };
-use crate::test_utils::run_protocol;
+use crate::test_utils::{
+    run_protocol,
+    check_one_coordinator_output, run_sign,
+};
 
 use rand::rngs::OsRng;
 use rand::Rng;
@@ -53,7 +55,7 @@ pub fn run_sign_without_rerandomization(
         },
     )?;
     // test one single some for the coordinator
-    let signature = one_coordinator_output(result, coordinator)?;
+    let signature = check_one_coordinator_output(result, coordinator)?;
 
     Ok((coordinator, signature))
 }
@@ -120,7 +122,7 @@ pub fn run_sign_with_rerandomization(
         },
     )?;
     // test one single some for the coordinator
-    let signature = one_coordinator_output(result, coordinator)?;
+    let signature = check_one_coordinator_output(result, coordinator)?;
     Ok((tweak, coordinator, signature))
 }
 
