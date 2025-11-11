@@ -191,8 +191,8 @@ mod test {
         participants::ParticipantList,
         test_utils::common::{
             generate_participants, generate_participants_with_random_ids, random_32_bytes,
-            MockCryptoRng,
         },
+        test_utils::MockCryptoRng,
     };
 
     use elliptic_curve::ops::{Invert, LinearCombination, Reduce};
