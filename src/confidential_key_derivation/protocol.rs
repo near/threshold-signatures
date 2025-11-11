@@ -182,7 +182,7 @@ mod test {
     use super::*;
     use crate::confidential_key_derivation::ciphersuite::hash_to_curve;
     use crate::test_utils::common::{one_coordinator_output, GenProtocol};
-    use crate::test_utils::run_protocol::run_protocol;
+    use crate::test_utils::run_protocol;
     use rand::Rng;
 
     #[test]

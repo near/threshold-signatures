@@ -228,7 +228,7 @@ mod test {
         participants::ParticipantList,
         protocol::internal::{make_protocol, Comms},
         test_utils::common::{generate_participants, GenProtocol},
-        test_utils::run_protocol::run_protocol,
+        test_utils::run_protocol,
     };
 
     #[test]

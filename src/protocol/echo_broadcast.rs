@@ -330,7 +330,7 @@ mod test {
     use crate::protocol::internal::{make_protocol, Comms};
     use crate::protocol::{Protocol, ProtocolError};
     use crate::test_utils::common::generate_participants;
-    use crate::test_utils::run_protocol::run_protocol;
+    use crate::test_utils::run_protocol;
 
     /// This function is similar to `do_broadcast` except it is tailored to
     /// consume the inputs instead of borrowing and become suitable for `make_protocol`

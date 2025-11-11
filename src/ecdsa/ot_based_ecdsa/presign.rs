@@ -192,7 +192,7 @@ mod test {
         ecdsa::{ot_based_ecdsa::triples::test::deal, KeygenOutput, Polynomial, ProjectivePoint},
         test_utils::common::{generate_participants, GenProtocol},
     };
-    use crate::test_utils::run_protocol::run_protocol;
+    use crate::test_utils::run_protocol;
     use frost_secp256k1::{
         keys::{PublicKeyPackage, SigningShare},
         VerifyingKey,
