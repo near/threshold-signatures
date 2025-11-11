@@ -245,7 +245,7 @@ mod test {
     #[test]
     fn keygen_output_should_be_serializable() {
         // Given
-        let mut rng = MockCryptoRng::new(&[1; 8]);
+        let mut rng = MockCryptoRng::seed_from_u64(42u64);
         let signing_key = FrostSigningKey::<C>::new(&mut rng);
 
         let keygen_output = KeygenOutput {
@@ -260,7 +260,7 @@ mod test {
         // Then
         assert_eq!(
             serialized_keygen_output,
-            "{\"private_share\":\"0000000000000000000000000000000000000000000000000000000000000001\",\"public_key\":\"02367fd00d5d124aafa1174e1250cdd6fd8ea2c81b16bec0689cba9f5abd15194b\"}"
+            "{\"private_share\":\"0000000000000000000000000000000000000000000000000000000000000001\",\"public_key\":\"0351177dde89242d9121d787a681bd2a0bd6013428a6b83e684a253815db96d8b3\"}"
         );
     }
 

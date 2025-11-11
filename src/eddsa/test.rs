@@ -107,7 +107,7 @@ pub fn test_run_signature_protocols(
 #[allow(non_snake_case)]
 fn keygen_output__should_be_serializable() {
     // Given
-    let mut rng = MockCryptoRng::new(&[1; 8]);
+    let mut rng = MockCryptoRng::seed_from_u64(42u64);
     let signing_key = FrostSigningKey::<C>::new(&mut rng);
 
     let keygen_output = KeygenOutput {
@@ -122,7 +122,7 @@ fn keygen_output__should_be_serializable() {
     // Then
     assert_eq!(
         serialized_keygen_output,
-        "{\"private_share\":\"0700000000000000000000000000000000000000000000000000000000000000\",\"public_key\":\"91ad35c85df5aa2a9fd55a545a9c80673d62e33a07710dfe5e5333da9bb48e38\"}"
+        "{\"private_share\":\"0700000000000000000000000000000000000000000000000000000000000000\",\"public_key\":\"a80ed62da91a8c6f266d82c4b2017cc0be13e6acba26af04494635b15ac86b57\"}"
     );
 }
 

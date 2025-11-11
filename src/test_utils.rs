@@ -9,7 +9,7 @@
 
 use k256::elliptic_curve::PrimeField;
 use k256::AffinePoint;
-use rand_core::{CryptoRng, CryptoRngCore, OsRng, RngCore};
+use rand_core::{CryptoRngCore, OsRng};
 use std::collections::HashMap;
 use std::error::Error;
 
@@ -22,11 +22,37 @@ use crate::participants::Participant;
 use crate::protocol::{Action, Protocol};
 use crate::{ecdsa, eddsa, ParticipantList};
 use crate::{keygen, refresh, reshare, Ciphersuite, Element, KeygenOutput, Scalar, VerifyingKey};
-use sha2::{Digest, Sha256};
 
 pub type GenProtocol<C> = Vec<(Participant, Box<dyn Protocol<Output = C>>)>;
+use rand::{CryptoRng, RngCore};
+use rand_chacha::{rand_core::SeedableRng, ChaCha12Rng};
 
 // +++++++++++++++++ General Utilities +++++++++++++++++ //
+pub struct MockCryptoRng(ChaCha12Rng);
+
+impl MockCryptoRng {
+    pub fn seed_from_u64(seed: u64) -> Self {
+        Self(ChaCha12Rng::seed_from_u64(seed))
+    }
+}
+
+impl RngCore for MockCryptoRng {
+    fn next_u32(&mut self) -> u32 {
+        self.0.next_u32()
+    }
+    fn next_u64(&mut self) -> u64 {
+        self.0.next_u64()
+    }
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        self.0.fill_bytes(dest);
+    }
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
+        self.0.try_fill_bytes(dest)
+    }
+}
+
+impl CryptoRng for MockCryptoRng {}
+
 pub fn random_32_bytes(rng: &mut impl CryptoRngCore) -> [u8; 32] {
     let mut bytes: [u8; 32] = [0u8; 32];
     rng.fill_bytes(&mut bytes);
@@ -339,73 +365,6 @@ pub fn one_coordinator_output<ProtocolOutput: Clone>(
         return Err(ProtocolError::MismatchCoordinatorOutput);
     }
     Ok(out)
-}
-
-pub struct MockCryptoRng {
-    state: [u8; 32],
-    buffer: [u8; 32],
-    index: usize,
-}
-
-impl CryptoRng for MockCryptoRng {}
-
-impl MockCryptoRng {
-    pub fn new(seed: &[u8]) -> Self {
-        let mut state = [0u8; 32];
-        let hash = Sha256::digest(seed);
-        state.copy_from_slice(&hash);
-        Self {
-            state,
-            buffer: [0u8; 32],
-            index: 32,
-        }
-    }
-
-    fn refill_buffer(&mut self) {
-        self.buffer = Sha256::digest(self.state).into();
-        // move forward with the state
-        self.state = self.buffer;
-        self.index = 0;
-    }
-
-    fn next_byte(&mut self) -> u8 {
-        // if you are at the end of the buffer then refil
-        if self.index >= self.buffer.len() {
-            self.refill_buffer();
-        }
-        let b = self.buffer[self.index];
-        self.index += 1;
-        b
-    }
-}
-
-impl RngCore for MockCryptoRng {
-    fn next_u32(&mut self) -> u32 {
-        let mut bytes = [0u8; 4];
-        for b in &mut bytes {
-            *b = self.next_byte();
-        }
-        u32::from_le_bytes(bytes)
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        let mut bytes = [0u8; 8];
-        for b in &mut bytes {
-            *b = self.next_byte();
-        }
-        u64::from_le_bytes(bytes)
-    }
-
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        for byte in dest {
-            *byte = self.next_byte();
-        }
-    }
-
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
-        self.fill_bytes(dest);
-        Ok(())
-    }
 }
 
 // Taken from https://github.com/ZcashFoundation/frost/blob/3ffc19d8f473d5bc4e07ed41bc884bdb42d6c29f/frost-secp256k1/tests/common_traits_tests.rs#L9
