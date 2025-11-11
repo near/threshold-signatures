@@ -178,7 +178,7 @@ mod test {
         robust_ecdsa::PresignOutput,
         Field, Polynomial, ProjectivePoint, Secp256K1ScalarField,
     };
-    use crate::test_utils::common::generate_participants;
+    use crate::test_utils::generate_participants;
 
     type PresigSimulationOutput = (Scalar, Polynomial, Polynomial, Polynomial, ProjectivePoint);
 

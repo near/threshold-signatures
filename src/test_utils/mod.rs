@@ -1,4 +1,4 @@
-pub mod common;
+pub mod mpc_interface;
 mod dkg;
 mod sign;
 mod presign;

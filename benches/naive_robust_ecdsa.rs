@@ -13,10 +13,10 @@ use threshold_signatures::{
     },
     participants::Participant,
     protocol::Protocol,
-    test_utils::common::generate_participants_with_random_ids,
     test_utils::{
         run_protocol,
         run_keygen,
+        generate_participants_with_random_ids,
         ecdsa_generate_rerandpresig_args,
     }
 };

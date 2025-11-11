@@ -227,8 +227,11 @@ mod test {
         ecdsa::ot_based_ecdsa::triples::multiplication::{multiplication, multiplication_many},
         participants::ParticipantList,
         protocol::internal::{make_protocol, Comms},
-        test_utils::common::generate_participants,
-        test_utils::{run_protocol, GenProtocol},
+        test_utils::{
+            run_protocol,
+            generate_participants,
+            GenProtocol
+        },
     };
 
     #[test]

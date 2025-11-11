@@ -190,7 +190,7 @@ mod test {
     use super::*;
     use crate::{
         ecdsa::{ot_based_ecdsa::triples::test::deal, KeygenOutput, Polynomial, ProjectivePoint},
-        test_utils::common::generate_participants,
+        test_utils::generate_participants,
     };
     use crate::test_utils::{
         run_protocol,

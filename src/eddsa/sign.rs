@@ -283,8 +283,8 @@ mod test {
     use crate::participants::{ParticipantList, Participant};
     use crate::test_utils::{
         assert_public_key_invariant,run_keygen, run_refresh, run_reshare,
+        generate_participants,
     };
-    use crate::test_utils::common::generate_participants;
     use frost_core::{Field, Group};
     use frost_ed25519::{Ed25519Group, Ed25519ScalarField, Ed25519Sha512};
 

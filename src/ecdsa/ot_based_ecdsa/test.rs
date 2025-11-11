@@ -6,12 +6,10 @@ use super::{
 };
 use crate::participants::Participant;
 use crate::protocol::Protocol;
-use crate::test_utils::common::{
-    generate_participants, generate_participants_with_random_ids,
-};
 use crate::test_utils::{
     run_protocol,
     assert_public_key_invariant, run_keygen, run_refresh, run_reshare,
+    generate_participants, generate_participants_with_random_ids,
     check_one_coordinator_output, run_sign,
     GenOutput, GenProtocol
 };

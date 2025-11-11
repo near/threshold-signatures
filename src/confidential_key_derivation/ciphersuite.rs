@@ -311,7 +311,7 @@ mod tests {
             },
             ElementG2, VerifyingKey
         },
-        test_utils::common::check_common_traits_for_type,
+        test_utils::mpc_interface::check_common_traits_for_type,
     };
 
     #[test]

@@ -189,11 +189,9 @@ mod test {
             KeygenOutput, RerandomizationArguments, Scalar, Secp256K1Sha256, Signature, Tweak,
         },
         participants::ParticipantList,
-        test_utils::common::{
-            generate_participants, generate_participants_with_random_ids,
-        },
         test_utils::{
             ecdsa_generate_rerandpresig_args,
+            generate_participants, generate_participants_with_random_ids,
             MockCryptoRng,
         }
     };

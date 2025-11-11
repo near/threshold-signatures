@@ -182,7 +182,7 @@ mod test {
             },
             Polynomial,
         },
-        test_utils::common::generate_participants,
+        test_utils::generate_participants,
     };
     use k256::{ecdsa::signature::Verifier, ecdsa::VerifyingKey, ProjectivePoint, PublicKey};
     use rand_core::OsRng;
