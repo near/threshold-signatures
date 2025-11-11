@@ -23,13 +23,6 @@ use crate::{keygen, VerifyingKey};
 
 use crate::test_utils::run_protocol;
 
-// +++++++++++++++++ General Utilities +++++++++++++++++ //
-pub fn random_32_bytes(rng: &mut impl CryptoRngCore) -> [u8; 32] {
-    let mut bytes: [u8; 32] = [0u8; 32];
-    rng.fill_bytes(&mut bytes);
-    bytes
-}
-
 // +++++++++++++++++ Participants Utilities +++++++++++++++++ //
 /// Generates a vector of `number` participants, sorted by the participant id.
 /// The participants ids range from 0 to `number`-1

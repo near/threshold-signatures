@@ -3,6 +3,7 @@ mod dkg;
 mod sign;
 mod presign;
 mod mockrng;
+mod participants;
 mod run_protocol;
 
 use crate::participants::Participant;
@@ -19,6 +20,6 @@ pub use mockrng::MockCryptoRng;
 pub use dkg::{run_keygen, run_refresh, run_reshare, assert_public_key_invariant};
 pub use sign::{run_sign, check_one_coordinator_output};
 pub use presign::ecdsa_generate_rerandpresig_args;
+pub use participants::{generate_participants, generate_participants_with_random_ids};
 pub use run_protocol::{run_protocol, run_two_party_protocol};
-
 
