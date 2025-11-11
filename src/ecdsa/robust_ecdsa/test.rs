@@ -12,9 +12,10 @@ use crate::participants::Participant;
 use crate::protocol::Protocol;
 use crate::test_utils::common::{
     assert_public_key_invariant, generate_participants, generate_participants_with_random_ids,
-    one_coordinator_output, run_keygen, run_protocol, run_refresh, run_reshare, run_sign,
+    one_coordinator_output, run_keygen, run_refresh, run_reshare, run_sign,
     GenOutput, GenProtocol,
 };
+use crate::test_utils::run_protocol::run_protocol;
 
 use rand::rngs::OsRng;
 use rand::Rng;

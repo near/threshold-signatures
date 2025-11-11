@@ -8,17 +8,18 @@ use crate::participants::Participant;
 use crate::protocol::Protocol;
 use crate::test_utils::common::{
     assert_public_key_invariant, generate_participants, generate_participants_with_random_ids,
-    one_coordinator_output, run_keygen, run_protocol, run_refresh, run_reshare, run_sign,
+    one_coordinator_output, run_keygen, run_refresh, run_reshare, run_sign,
     GenOutput, GenProtocol
 };
+use crate::test_utils::run_protocol::run_protocol;
+
 use crate::crypto::hash::test::scalar_hash_secp256k1;
 use crate::ecdsa::{
     Element, ParticipantList, RerandomizationArguments, Secp256K1Sha256, Signature,
     SignatureOption, Tweak,
 };
 
-use rand::rngs::OsRng;
-use rand::Rng;
+use rand::{rngs::OsRng, Rng};
 use rand_core::RngCore;
 use std::error::Error;
 

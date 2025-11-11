@@ -13,7 +13,8 @@ use threshold_signatures::{
     },
     participants::Participant,
     protocol::Protocol,
-    test_utils::common::{ecdsa_generate_rerandpresig_args, generate_participants_with_random_ids, run_keygen, run_protocol},
+    test_utils::common::{ecdsa_generate_rerandpresig_args, generate_participants_with_random_ids, run_keygen},
+    test_utils::run_protocol::run_protocol,
 };
 
 use std::{env, sync::LazyLock};
