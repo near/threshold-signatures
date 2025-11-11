@@ -1,5 +1,5 @@
-use rand_core::CryptoRngCore;
 use crate::participants::Participant;
+use rand_core::CryptoRngCore;
 
 // +++++++++++++++++ Participants Utilities +++++++++++++++++ //
 /// Generates a vector of `number` participants, sorted by the participant id.

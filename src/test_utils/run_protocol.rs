@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-use crate::protocol::{Action, Protocol};
-use crate::participants::Participant;
 use crate::errors::ProtocolError;
+use crate::participants::Participant;
+use crate::protocol::{Action, Protocol};
+use std::collections::HashMap;
 
 // +++++++++++++++++ Any Protocol +++++++++++++++++ //
 /// Run a protocol to completion, synchronously.

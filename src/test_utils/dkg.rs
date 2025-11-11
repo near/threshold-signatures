@@ -1,10 +1,7 @@
 use rand_core::OsRng;
 
 use crate::participants::Participant;
-use crate::test_utils::{
-  run_protocol,
-  GenProtocol, GenOutput,
-};
+use crate::test_utils::{run_protocol, GenOutput, GenProtocol};
 use crate::{keygen, refresh, reshare, Ciphersuite, Element, KeygenOutput, Scalar, VerifyingKey};
 
 // +++++++++++++++++ DKG Functions +++++++++++++++++ //

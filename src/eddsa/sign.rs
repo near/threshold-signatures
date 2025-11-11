@@ -280,10 +280,9 @@ async fn fut_wrapper(
 mod test {
     use crate::crypto::hash::hash;
     use crate::eddsa::test::{build_key_packages_with_dealer, test_run_signature_protocols};
-    use crate::participants::{ParticipantList, Participant};
+    use crate::participants::{Participant, ParticipantList};
     use crate::test_utils::{
-        assert_public_key_invariant,run_keygen, run_refresh, run_reshare,
-        generate_participants,
+        assert_public_key_invariant, generate_participants, run_keygen, run_refresh, run_reshare,
     };
     use frost_core::{Field, Group};
     use frost_ed25519::{Ed25519Group, Ed25519ScalarField, Ed25519Sha512};

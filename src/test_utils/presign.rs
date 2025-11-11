@@ -1,10 +1,9 @@
 use k256::AffinePoint;
 use rand_core::{CryptoRngCore, OsRng};
 
-use crate::{Scalar, VerifyingKey, ParticipantList, Participant};
-use crate::ecdsa::{Tweak, RerandomizationArguments};
+use crate::ecdsa::{RerandomizationArguments, Tweak};
 use crate::frost_secp256k1::Secp256K1Sha256;
-
+use crate::{Participant, ParticipantList, Scalar, VerifyingKey};
 
 /// Generates at random 32 bytes
 fn random_32_bytes(rng: &mut impl CryptoRngCore) -> [u8; 32] {

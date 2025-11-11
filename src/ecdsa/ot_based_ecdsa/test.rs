@@ -2,16 +2,14 @@ use super::{
     presign::presign,
     sign::sign,
     triples::{generate_triple_many, test::deal, TriplePub, TripleShare},
-    PresignArguments, PresignOutput,RerandomizedPresignOutput
+    PresignArguments, PresignOutput, RerandomizedPresignOutput,
 };
 use crate::participants::Participant;
 use crate::protocol::Protocol;
 use crate::test_utils::{
-    run_protocol,
-    assert_public_key_invariant, run_keygen, run_refresh, run_reshare,
-    generate_participants, generate_participants_with_random_ids,
-    check_one_coordinator_output, run_sign,
-    GenOutput, GenProtocol
+    assert_public_key_invariant, check_one_coordinator_output, generate_participants,
+    generate_participants_with_random_ids, run_keygen, run_protocol, run_refresh, run_reshare,
+    run_sign, GenOutput, GenProtocol,
 };
 
 use crate::crypto::hash::test::scalar_hash_secp256k1;

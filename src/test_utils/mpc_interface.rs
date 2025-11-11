@@ -1,15 +1,7 @@
-// This module provides generic functions to be used
-// in the implemented schemes testing cases
-#![allow(
-    clippy::panic,
-    clippy::missing_panics_doc,
-    clippy::unwrap_used,
-    clippy::cast_possible_truncation
-)]
-
+// This module provides generic functions to be used in the mpc repository
 use k256::elliptic_curve::PrimeField;
 use k256::AffinePoint;
-use rand_core::{CryptoRngCore, OsRng};
+use rand_core::OsRng;
 use std::collections::HashMap;
 
 use crate::confidential_key_derivation as ckd;
@@ -22,28 +14,6 @@ use crate::{ecdsa, eddsa, ParticipantList};
 use crate::{keygen, VerifyingKey};
 
 use crate::test_utils::run_protocol;
-
-// +++++++++++++++++ Participants Utilities +++++++++++++++++ //
-/// Generates a vector of `number` participants, sorted by the participant id.
-/// The participants ids range from 0 to `number`-1
-pub fn generate_participants(number: usize) -> Vec<Participant> {
-    (0..u32::try_from(number).unwrap())
-        .map(Participant::from)
-        .collect::<Vec<_>>()
-}
-
-/// Generates a vector of `number` participants, sorted by the participant id.
-/// The participants ids are drawn from rng.
-pub fn generate_participants_with_random_ids(
-    number: usize,
-    rng: &mut impl CryptoRngCore,
-) -> Vec<Participant> {
-    let mut participants = (0..number)
-        .map(|_| Participant::from(rng.next_u32()))
-        .collect::<Vec<_>>();
-    participants.sort();
-    participants
-}
 
 // Taken from https://github.com/ZcashFoundation/frost/blob/3ffc19d8f473d5bc4e07ed41bc884bdb42d6c29f/frost-secp256k1/tests/common_traits_tests.rs#L9
 #[allow(clippy::unnecessary_literal_unwrap)]

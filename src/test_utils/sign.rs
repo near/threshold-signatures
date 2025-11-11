@@ -1,12 +1,9 @@
-use std::error::Error;
-use crate::protocol::Protocol;
-use crate::participants::Participant;
-use crate::{Ciphersuite, Element, Scalar};
 use crate::errors::{InitializationError, ProtocolError};
-use crate::test_utils::{
-  run_protocol,
-  GenProtocol,
-};
+use crate::participants::Participant;
+use crate::protocol::Protocol;
+use crate::test_utils::{run_protocol, GenProtocol};
+use crate::{Ciphersuite, Element, Scalar};
+use std::error::Error;
 
 // +++++++++++++++++ Signing Functions +++++++++++++++++ //
 /// Runs the signing algorithm for ECDSA.

@@ -14,11 +14,9 @@ use threshold_signatures::{
     participants::Participant,
     protocol::Protocol,
     test_utils::{
+        ecdsa_generate_rerandpresig_args, generate_participants_with_random_ids, run_keygen,
         run_protocol,
-        run_keygen,
-        generate_participants_with_random_ids,
-        ecdsa_generate_rerandpresig_args,
-    }
+    },
 };
 
 use std::{env, sync::LazyLock};
@@ -30,7 +28,6 @@ pub static MAX_MALICIOUS: LazyLock<usize> = std::sync::LazyLock::new(|| {
         .and_then(|v| v.parse().ok())
         .unwrap_or(6)
 });
-
 
 fn participants_num() -> usize {
     2 * *crate::MAX_MALICIOUS + 1

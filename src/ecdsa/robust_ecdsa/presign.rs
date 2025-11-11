@@ -356,14 +356,10 @@ impl Shares {
 mod test {
     use super::*;
     use crate::ecdsa::KeygenOutput;
-    use crate::test_utils::{
-        run_protocol,
-        generate_participants,
-        GenProtocol
-    };
-    use rand_core::OsRng;
-    use k256::ProjectivePoint;
+    use crate::test_utils::{generate_participants, run_protocol, GenProtocol};
     use frost_secp256k1::VerifyingKey;
+    use k256::ProjectivePoint;
+    use rand_core::OsRng;
 
     #[test]
     fn test_presign() {

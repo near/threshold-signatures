@@ -660,8 +660,7 @@ pub mod test {
     use crate::crypto::ciphersuite::Ciphersuite;
     use crate::participants::{Participant, ParticipantList};
     use crate::test_utils::{
-        generate_participants,
-        assert_public_key_invariant, run_keygen, run_refresh, run_reshare,
+        assert_public_key_invariant, generate_participants, run_keygen, run_refresh, run_reshare,
     };
     use frost_core::{Field, Group};
 

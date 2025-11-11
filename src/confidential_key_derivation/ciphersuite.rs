@@ -299,17 +299,14 @@ impl FromOkm for ScalarWrapper {
 mod tests {
     use blstrs::Scalar;
     use digest::generic_array::GenericArray;
-    use elliptic_curve::{Field, Group, hash2curve::FromOkm};
+    use elliptic_curve::{hash2curve::FromOkm, Field, Group};
     use rand::{Rng, RngCore};
     use rand_core::OsRng;
 
     use crate::{
         confidential_key_derivation::{
-            ciphersuite::{
-                hash_to_curve, verify_signature,
-                BLS12381SHA256, ScalarWrapper
-            },
-            ElementG2, VerifyingKey
+            ciphersuite::{hash_to_curve, verify_signature, ScalarWrapper, BLS12381SHA256},
+            ElementG2, VerifyingKey,
         },
         test_utils::mpc_interface::check_common_traits_for_type,
     };

@@ -190,17 +190,14 @@ mod test {
         },
         participants::ParticipantList,
         test_utils::{
-            ecdsa_generate_rerandpresig_args,
-            generate_participants, generate_participants_with_random_ids,
-            MockCryptoRng,
-        }
+            ecdsa_generate_rerandpresig_args, generate_participants,
+            generate_participants_with_random_ids, MockCryptoRng,
+        },
     };
 
     use elliptic_curve::ops::{Invert, LinearCombination, Reduce};
 
-    use frost_core::{
-        keys::SigningShare, Ciphersuite, SigningKey as FrostSigningKey,
-    };
+    use frost_core::{keys::SigningShare, Ciphersuite, SigningKey as FrostSigningKey};
 
     use k256::{
         ecdsa::{signature::Verifier, SigningKey},
