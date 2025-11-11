@@ -299,6 +299,36 @@ pub fn assert_public_key_invariant<C: Ciphersuite>(
     }
 }
 
+// +++++++++++++++++ Presignature Rerandomization +++++++++++++++++ //
+/// Rerandomizes an ECDSA presignature.
+/// Takes pk and R as input and generates a random message hash and entropy.
+/// Outputs rerandomization arguments and the message hash
+pub fn ecdsa_generate_rerandpresig_args(
+    rng: &mut impl CryptoRngCore,
+    participants: &[Participant],
+    pk: VerifyingKey<Secp256K1Sha256>,
+    big_r: AffinePoint,
+) -> (ecdsa::RerandomizationArguments, Scalar<Secp256K1Sha256>) {
+    let pk = pk.to_element().to_affine();
+    let tweak = ecdsa::Tweak::new(frost_core::random_nonzero::<Secp256K1Sha256, _>(&mut OsRng));
+
+    let msg_hash = <frost_secp256k1::Secp256K1ScalarField as frost_core::Field>::random(&mut OsRng);
+    let entropy = random_32_bytes(rng);
+    // Generate unique ten ParticipantId values
+    let participants =
+        ParticipantList::new(participants).expect("Participant list generation should not fail");
+
+    let args = ecdsa::RerandomizationArguments::new(
+        pk,
+        tweak,
+        msg_hash.to_bytes().into(),
+        big_r,
+        participants,
+        entropy,
+    );
+    (args, msg_hash)
+}
+
 // +++++++++++++++++ Signing Functions +++++++++++++++++ //
 /// Runs the signing algorithm for ECDSA.
 /// The scheme must be asymmetric as in: there exists a coordinator that is different than participants.
