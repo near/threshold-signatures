@@ -15,10 +15,11 @@ use threshold_signatures::{
     },
     participants::Participant,
     protocol::Protocol,
-    test_utils::common::{generate_participants_with_random_ids, ecdsa_generate_rerandpresig_args},
+    test_utils::common::generate_participants_with_random_ids,
     test_utils::{
         run_keygen,
         run_protocol,
+        ecdsa_generate_rerandpresig_args,
     },
 };
 

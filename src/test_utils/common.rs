@@ -19,10 +19,9 @@ use crate::frost_secp256k1::Secp256K1Sha256;
 use crate::participants::Participant;
 use crate::protocol::Protocol;
 use crate::{ecdsa, eddsa, ParticipantList};
-use crate::{keygen, Scalar, VerifyingKey};
+use crate::{keygen, VerifyingKey};
 
 use crate::test_utils::run_protocol;
-
 
 // +++++++++++++++++ General Utilities +++++++++++++++++ //
 pub fn random_32_bytes(rng: &mut impl CryptoRngCore) -> [u8; 32] {
@@ -51,36 +50,6 @@ pub fn generate_participants_with_random_ids(
         .collect::<Vec<_>>();
     participants.sort();
     participants
-}
-
-// +++++++++++++++++ Presignature Rerandomization +++++++++++++++++ //
-/// Rerandomizes an ECDSA presignature.
-/// Takes pk and R as input and generates a random message hash and entropy.
-/// Outputs rerandomization arguments and the message hash
-pub fn ecdsa_generate_rerandpresig_args(
-    rng: &mut impl CryptoRngCore,
-    participants: &[Participant],
-    pk: VerifyingKey<Secp256K1Sha256>,
-    big_r: AffinePoint,
-) -> (ecdsa::RerandomizationArguments, Scalar<Secp256K1Sha256>) {
-    let pk = pk.to_element().to_affine();
-    let tweak = ecdsa::Tweak::new(frost_core::random_nonzero::<Secp256K1Sha256, _>(&mut OsRng));
-
-    let msg_hash = <frost_secp256k1::Secp256K1ScalarField as frost_core::Field>::random(&mut OsRng);
-    let entropy = random_32_bytes(rng);
-    // Generate unique ten ParticipantId values
-    let participants =
-        ParticipantList::new(participants).expect("Participant list generation should not fail");
-
-    let args = ecdsa::RerandomizationArguments::new(
-        pk,
-        tweak,
-        msg_hash.to_bytes().into(),
-        big_r,
-        participants,
-        entropy,
-    );
-    (args, msg_hash)
 }
 
 // Taken from https://github.com/ZcashFoundation/frost/blob/3ffc19d8f473d5bc4e07ed41bc884bdb42d6c29f/frost-secp256k1/tests/common_traits_tests.rs#L9
