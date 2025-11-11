@@ -2,23 +2,19 @@ use super::{
     presign::presign,
     sign::sign,
     triples::{generate_triple_many, test::deal, TriplePub, TripleShare},
-    PresignArguments, PresignOutput,
+    PresignArguments, PresignOutput,RerandomizedPresignOutput
 };
 use crate::participants::Participant;
 use crate::protocol::Protocol;
-use crate::test_utils::{
+use crate::test_utils::common::{
     assert_public_key_invariant, generate_participants, generate_participants_with_random_ids,
     one_coordinator_output, run_keygen, run_protocol, run_refresh, run_reshare, run_sign,
+    GenOutput, GenProtocol
 };
-use crate::{
-    crypto::hash::test::scalar_hash_secp256k1, ecdsa::ot_based_ecdsa::RerandomizedPresignOutput,
-};
-use crate::{
-    ecdsa::{
-        Element, ParticipantList, RerandomizationArguments, Secp256K1Sha256, Signature,
-        SignatureOption, Tweak,
-    },
-    test_utils::{GenOutput, GenProtocol},
+use crate::crypto::hash::test::scalar_hash_secp256k1;
+use crate::ecdsa::{
+    Element, ParticipantList, RerandomizationArguments, Secp256K1Sha256, Signature,
+    SignatureOption, Tweak,
 };
 
 use rand::rngs::OsRng;
@@ -111,7 +107,7 @@ pub fn run_sign_with_rerandomization(
     let coordinator = participants_presign[index].0;
 
     // run sign instanciation with the necessary arguments
-    let result = crate::test_utils::run_sign::<Secp256K1Sha256, _, _, _>(
+    let result = run_sign::<Secp256K1Sha256, _, _, _>(
         rerand_participants_presign,
         coordinator,
         derived_pk,

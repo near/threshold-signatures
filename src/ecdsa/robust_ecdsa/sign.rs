@@ -178,7 +178,7 @@ mod test {
         robust_ecdsa::PresignOutput,
         Field, Polynomial, ProjectivePoint, Secp256K1ScalarField,
     };
-    use crate::test_utils::generate_participants;
+    use crate::test_utils::common::generate_participants;
 
     type PresigSimulationOutput = (Scalar, Polynomial, Polynomial, Polynomial, ProjectivePoint);
 
@@ -300,9 +300,6 @@ mod test {
 
     #[test]
     fn test_sign_fails_if_s_is_zero() {
-        use crate::ecdsa::{ProjectivePoint, Secp256K1ScalarField};
-        use crate::test_utils::generate_participants;
-
         let participants = generate_participants(2);
 
         // presignatures with s_me = 0 for each participant

@@ -190,7 +190,7 @@ mod test {
     use super::*;
     use crate::{
         ecdsa::{ot_based_ecdsa::triples::test::deal, KeygenOutput, Polynomial, ProjectivePoint},
-        test_utils::{generate_participants, run_protocol, GenProtocol},
+        test_utils::common::{generate_participants, run_protocol, GenProtocol},
     };
     use frost_secp256k1::{
         keys::{PublicKeyPackage, SigningShare},

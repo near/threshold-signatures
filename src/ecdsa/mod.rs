@@ -189,7 +189,7 @@ mod test {
             KeygenOutput, RerandomizationArguments, Scalar, Secp256K1Sha256, Signature, Tweak,
         },
         participants::ParticipantList,
-        test_utils::{
+        test_utils::common::{
             generate_participants, generate_participants_with_random_ids, random_32_bytes,
             MockCryptoRng,
         },
