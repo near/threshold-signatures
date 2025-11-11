@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{
-    participants::Participant,
-    protocol::MessageData,
-};
+use crate::{participants::Participant, protocol::MessageData};
 
 /// Constructor for specific (sender, messages) pairs transmitted during a protocol run
 #[derive(Debug, PartialEq, Clone)]
@@ -100,7 +97,6 @@ impl ProtocolSnapshot {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -109,9 +105,7 @@ mod test {
         KeygenOutput, Polynomial,
     };
     use crate::test_utils::{
-        generate_participants,
-        run_protocol_with_snapshots,
-        GenProtocol, MockCryptoRng,
+        generate_participants, run_protocol_with_snapshots, GenProtocol, MockCryptoRng,
     };
     use crate::SigningShare;
     use frost_secp256k1::VerifyingKey;
