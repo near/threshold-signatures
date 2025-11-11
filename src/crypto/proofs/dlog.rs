@@ -163,7 +163,7 @@ mod test {
 
     #[test]
     fn test_prove_fixed_randomness() {
-        let mut rng = MockCryptoRng::new([1; 8]);
+        let mut rng = MockCryptoRng::new(&[1; 8]);
         let x = Scalar::generate_biased(&mut rng);
 
         let statement = Statement::<Secp256K1Sha256> {
@@ -184,13 +184,13 @@ mod test {
         .unwrap();
         assert_eq!(
             Scalar::from_uint_unchecked(Uint::from_be_hex(
-                "5086B275DC32C8CD1AAD377918E0B622BAF92844BDC46808BD5568D6E304DB33"
+                "0AD3DBF5B730B6DBF3B76F75E0160F409D08B9588F1C1F09DBA8BA629F9CFFD2"
             )),
             proof.s.0
         );
         assert_eq!(
             Scalar::from_uint_unchecked(Uint::from_be_hex(
-                "BA7718DDF60BC62FC6081B658322E908CD4FF161AB754748EC170CBC66898CDB"
+                "4AD88D4379E35C0C959A6591289DE20B39ABF1C5FE48BE0F2F6EA2EFBABFC3E1"
             )),
             proof.e.0
         );

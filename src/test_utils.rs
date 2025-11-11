@@ -340,39 +340,72 @@ pub fn one_coordinator_output<ProtocolOutput: Clone>(
     Ok(out)
 }
 
-// Taken from https://rust-random.github.io/book/guide-test-fn-rng.html
-#[derive(Clone, Copy, Debug)]
-pub struct MockCryptoRng {
-    data: [u8; 8],
-    index: usize,
-}
+use sha2::{Digest, Sha256};
 
-impl MockCryptoRng {
-    pub fn new(data: [u8; 8]) -> Self {
-        Self { data, index: 0 }
-    }
+pub struct MockCryptoRng {
+    state: [u8; 32],
+    buffer: [u8; 32],
+    index: usize,
 }
 
 impl CryptoRng for MockCryptoRng {}
 
-impl RngCore for MockCryptoRng {
-    fn next_u32(&mut self) -> u32 {
-        unimplemented!()
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        unimplemented!()
-    }
-
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        for byte in dest.iter_mut() {
-            *byte = self.data[self.index];
-            self.index = (self.index + 1) % self.data.len();
+impl MockCryptoRng {
+    pub fn new(seed: &[u8]) -> Self {
+        let mut state = [0u8; 32];
+        let hash = Sha256::digest(seed);
+        state.copy_from_slice(&hash);
+        Self {
+            state,
+            buffer: [0u8; 32],
+            index: 32,
         }
     }
 
-    fn try_fill_bytes(&mut self, _dest: &mut [u8]) -> Result<(), rand_core::Error> {
-        unimplemented!()
+    fn refill_buffer(&mut self) {
+        self.buffer = Sha256::digest(self.state).into();
+        // move forward with the state
+        self.state = self.buffer;
+        self.index = 0;
+    }
+
+    fn next_byte(&mut self) -> u8 {
+        // if you are at the end of the buffer then refil
+        if self.index >= self.buffer.len() {
+            self.refill_buffer();
+        }
+        let b = self.buffer[self.index];
+        self.index += 1;
+        b
+    }
+}
+
+impl RngCore for MockCryptoRng {
+    fn next_u32(&mut self) -> u32 {
+        let mut bytes = [0u8; 4];
+        for b in &mut bytes {
+            *b = self.next_byte();
+        }
+        u32::from_le_bytes(bytes)
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        let mut bytes = [0u8; 8];
+        for b in &mut bytes {
+            *b = self.next_byte();
+        }
+        u64::from_le_bytes(bytes)
+    }
+
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        for byte in dest {
+            *byte = self.next_byte();
+        }
+    }
+
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
+        self.fill_bytes(dest);
+        Ok(())
     }
 }
 

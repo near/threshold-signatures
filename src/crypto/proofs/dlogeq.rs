@@ -236,7 +236,7 @@ mod test {
 
     #[test]
     fn test_prove_fixed_randomness() {
-        let mut rng = MockCryptoRng::new([1; 8]);
+        let mut rng = MockCryptoRng::new(&[1; 8]);
         let x = Scalar::generate_biased(&mut rng);
         let h = Scalar::generate_biased(&mut rng);
         let big_h = ProjectivePoint::GENERATOR * h;
@@ -261,13 +261,13 @@ mod test {
         .unwrap();
         assert_eq!(
             Scalar::from_uint_unchecked(Uint::from_be_hex(
-                "067B14308E1E96A782791C10179F1801B6764037141CBA0462A4D495EB78B2D0"
+                "F71D2F355A0905A88437576D0D2C02337DF5D72B68AF54C4843B06A3D66AB0B3"
             )),
             proof.s.0
         );
         assert_eq!(
             Scalar::from_uint_unchecked(Uint::from_be_hex(
-                "95B6C33214488D2F0429129E9AF2CB2943F9F064421BB270918CFA412CB680E2"
+                "4DF85F7ADB8B0A27F9C60086BC0801A3B92877F6A5E961BF792C3BBF9676619D"
             )),
             proof.e.0
         );
