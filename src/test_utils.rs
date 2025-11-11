@@ -22,6 +22,7 @@ use crate::participants::Participant;
 use crate::protocol::{Action, Protocol};
 use crate::{ecdsa, eddsa, ParticipantList};
 use crate::{keygen, refresh, reshare, Ciphersuite, Element, KeygenOutput, Scalar, VerifyingKey};
+use sha2::{Digest, Sha256};
 
 pub type GenProtocol<C> = Vec<(Participant, Box<dyn Protocol<Output = C>>)>;
 
@@ -339,8 +340,6 @@ pub fn one_coordinator_output<ProtocolOutput: Clone>(
     }
     Ok(out)
 }
-
-use sha2::{Digest, Sha256};
 
 pub struct MockCryptoRng {
     state: [u8; 32],
