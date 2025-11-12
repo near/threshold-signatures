@@ -384,4 +384,14 @@ mod test {
         let threshold1 = 3;
         crate::dkg::test::test_reshare::<C>(&participants, threshold0, threshold1);
     }
+
+    #[test]
+    fn test_keygen_threshold_limits() {
+        crate::dkg::test::test_keygen_threshold_limits::<C>();
+    }
+
+    #[test]
+    fn test_reshare_threshold_limits() {
+        crate::dkg::test::test_reshare_threshold_limits::<C>();
+    }
 }
