@@ -9,7 +9,7 @@ use crate::participants::{Participant, ParticipantList, ParticipantMap};
 use crate::protocol::{
     echo_broadcast::do_broadcast, helpers::recv_from_others, internal::SharedChannel,
 };
-use crate::KeygenOutput;
+use crate::{KeygenOutput, ThresholdParameters};
 
 use frost_core::keys::{
     CoefficientCommitment, SecretShare, SigningShare, VerifiableSecretSharingCommitment,
@@ -509,6 +509,7 @@ async fn do_keyshare<C: Ciphersuite>(
     Ok(KeygenOutput {
         private_share: SigningShare::new(my_signing_share),
         public_key: verifying_key,
+        threshold_params: ThresholdParameters::new(threshold),
     })
 }
 
@@ -610,7 +611,7 @@ pub fn reshare_assertions<C: Ciphersuite>(
     me: Participant,
     threshold: usize,
     old_signing_key: Option<SigningShare<C>>,
-    old_threshold: usize,
+    old_params: ThresholdParameters,
     old_participants: &[Participant],
 ) -> Result<(ParticipantList, ParticipantList), InitializationError> {
     if participants.len() < 2 {
@@ -638,6 +639,7 @@ pub fn reshare_assertions<C: Ciphersuite>(
     let old_participants =
         ParticipantList::new(old_participants).ok_or(InitializationError::DuplicateParticipants)?;
 
+    let old_threshold = old_params.signing_threshold();
     if old_participants.intersection(&participants).len() < old_threshold {
         return Err(InitializationError::NotEnoughParticipantsForThreshold {
             threshold: old_threshold,
@@ -709,8 +711,11 @@ pub mod test {
 
         let pub_key = result0[0].1.public_key.to_element();
 
-        let result1 = run_refresh(participants, &result0, threshold);
+        let result1 = run_refresh(participants, &result0);
         assert_public_key_invariant(&result1);
+        assert!(result1
+            .iter()
+            .all(|(_, key)| key.threshold_params.signing_threshold() == threshold));
 
         let participants = result1.iter().map(|p| p.0).collect::<Vec<_>>();
         let shares = result1
@@ -745,11 +750,13 @@ pub mod test {
             participants,
             &pub_key,
             &result0,
-            threshold0,
             threshold1,
             &new_participant,
         );
         assert_public_key_invariant(&result1);
+        assert!(result1
+            .iter()
+            .all(|(_, key)| key.threshold_params.signing_threshold() == threshold1));
 
         let participants = result1.iter().map(|p| p.0).collect::<Vec<_>>();
         let shares = result1

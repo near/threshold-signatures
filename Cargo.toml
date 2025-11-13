@@ -2,7 +2,7 @@
 name = "threshold-signatures"
 description = "Threshold Signatures"
 repository = "https://github.com/near/threshold-signatures"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
 

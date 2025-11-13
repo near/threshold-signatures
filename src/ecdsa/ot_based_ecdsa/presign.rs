@@ -191,6 +191,7 @@ mod test {
     use crate::{
         ecdsa::{ot_based_ecdsa::triples::test::deal, KeygenOutput, Polynomial, ProjectivePoint},
         test_utils::{generate_participants, run_protocol, GenProtocol},
+        ThresholdParameters,
     };
     use frost_secp256k1::{
         keys::{PublicKeyPackage, SigningShare},
@@ -228,6 +229,7 @@ mod test {
             let keygen_out = KeygenOutput {
                 private_share: SigningShare::new(private_share),
                 public_key: *public_key_package.verifying_key(),
+                threshold_params: ThresholdParameters::new(original_threshold),
             };
 
             let protocol = presign(

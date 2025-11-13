@@ -359,6 +359,7 @@ mod test {
 
     use crate::ecdsa::KeygenOutput;
     use crate::test_utils::{generate_participants, run_protocol, GenProtocol};
+    use crate::ThresholdParameters;
     use frost_secp256k1::keys::PublicKeyPackage;
     use frost_secp256k1::VerifyingKey;
 
@@ -384,6 +385,7 @@ mod test {
             let keygen_out = KeygenOutput {
                 private_share: SigningShare::new(private_share.0),
                 public_key: *public_key_package.verifying_key(),
+                threshold_params: ThresholdParameters::new(max_malicious + 1),
             };
 
             let protocol = presign(
