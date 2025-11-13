@@ -504,7 +504,7 @@ async fn do_generation_many<const N: usize>(
     participants: ParticipantList,
     me: Participant,
     threshold: usize,
-    mut rng: impl CryptoRngCore + Send + Copy + 'static,
+    mut rng: impl CryptoRngCore + Clone + Send + 'static,
 ) -> Result<TripleGenerationOutputMany, ProtocolError> {
     assert!(N > 0);
 
@@ -1104,7 +1104,7 @@ pub fn generate_triple_many<const N: usize>(
     participants: &[Participant],
     me: Participant,
     threshold: usize,
-    rng: impl CryptoRngCore + Send + Copy + 'static,
+    rng: impl CryptoRngCore + Clone + Send + 'static,
 ) -> Result<impl Protocol<Output = TripleGenerationOutputMany>, InitializationError> {
     if participants.len() < 2 {
         return Err(InitializationError::NotEnoughParticipants {

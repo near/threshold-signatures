@@ -41,24 +41,24 @@ fn participants_num() -> usize {
     *crate::MAX_MALICIOUS + 1
 }
 
-// /// Benches the triples protocol
-// fn bench_triples(c: &mut Criterion) {
-//     let num = participants_num();
-//     let max_malicious = *MAX_MALICIOUS;
-//     let mut group = c.benchmark_group("triples");
-//     group.measurement_time(std::time::Duration::from_secs(200));
+/// Benches the triples protocol
+fn bench_triples(c: &mut Criterion) {
+    let num = participants_num();
+    let max_malicious = *MAX_MALICIOUS;
+    let mut group = c.benchmark_group("triples");
+    group.measurement_time(std::time::Duration::from_secs(200));
 
-//     group.bench_function(
-//         format!("ot_ecdsa_triples_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
-//         |b| {
-//             b.iter_batched(
-//                 || prepare_simulated_triples(participants_num()),
-//                 |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot),
-//                 criterion::BatchSize::SmallInput,
-//             );
-//         },
-//     );
-// }
+    group.bench_function(
+        format!("ot_ecdsa_triples_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
+        |b| {
+            b.iter_batched(
+                || prepare_simulated_triples(participants_num()),
+                |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot),
+                criterion::BatchSize::SmallInput,
+            );
+        },
+    );
+}
 
 /// Benches the presigning protocol
 fn bench_presign(c: &mut Criterion) {
@@ -126,39 +126,39 @@ fn prepare_triples(participant_num: usize) -> PreparedTriples {
     protocols
 }
 
-// type PreparedSimulatedTriples = (
-//     Participant,
-//     Box<dyn Protocol<Output = Vec<(TripleShare, TriplePub)>>>,
-//     Simulator,
-// );
-// fn prepare_simulated_triples(participant_num: usize) -> PreparedSimulatedTriples {
-//     let mut protocols: Vec<(_, Box<dyn Protocol<Output = _>>)> =
-//         Vec::with_capacity(participant_num);
-//     let participants = generate_participants_with_random_ids(participant_num, &mut OsRng);
+type PreparedSimulatedTriples = (
+    Participant,
+    Box<dyn Protocol<Output = Vec<(TripleShare, TriplePub)>>>,
+    Simulator,
+);
+fn prepare_simulated_triples(participant_num: usize) -> PreparedSimulatedTriples {
+    let mut protocols: Vec<(_, Box<dyn Protocol<Output = _>>)> =
+        Vec::with_capacity(participant_num);
+    let participants = generate_participants_with_random_ids(participant_num, &mut OsRng);
 
-//     let rngs = create_multiple_rngs(&participants);
+    let rngs = create_multiple_rngs(&participants);
 
-//     for (i, p) in participants.iter().enumerate() {
-//         let protocol = generate_triple_many::<2>(&participants, p, threshold(), rngs[i].clone())
-//             .expect("Triple generation should succeed");
-//         protocols.push((p, Box::new(protocol)));
-//     }
-//     let (_, protocolsnapshot) = run_protocol_with_snapshots(protocols)
-//         .expect("Running protocol with snapshot should not have issues");
+    for (i, p) in participants.iter().enumerate() {
+        let protocol = generate_triple_many::<2>(&participants, *p, threshold(), rngs[i].clone())
+            .expect("Triple generation should succeed");
+        protocols.push((*p, Box::new(protocol)));
+    }
+    let (_, protocolsnapshot) = run_protocol_with_snapshots(protocols)
+        .expect("Running protocol with snapshot should not have issues");
 
-//     // now preparing the simulator
-//     // choose the real_participant at random
-//     let index_real_participant = OsRng.gen_range(0..participant_num);
-//     let real_participant = participants[index_real_participant];
-//     let simulated_protocol = Simulator::new(real_participant, protocolsnapshot)
-//                             .expect("Simulator should not be empty");
-//     let real_protocol =
-//       generate_triple_many::<2>(&participants, real_participant, threshold(), rngs[index_real_participant].clone())
-//       .map(|prot| Box::new(prot) as Box<dyn Protocol<Output = Vec<(TripleShare, TriplePub)>>>)
-//       .expect("The rerun of the triple generation should not but raising error");
+    // now preparing the simulator
+    // choose the real_participant at random
+    let index_real_participant = OsRng.gen_range(0..participant_num);
+    let real_participant = participants[index_real_participant];
+    let simulated_protocol = Simulator::new(real_participant, protocolsnapshot)
+                            .expect("Simulator should not be empty");
+    let real_protocol =
+      generate_triple_many::<2>(&participants, real_participant, threshold(), rngs[index_real_participant].clone())
+      .map(|prot| Box::new(prot) as Box<dyn Protocol<Output = Vec<(TripleShare, TriplePub)>>>)
+      .expect("The rerun of the triple generation should not but raising error");
 
-//     (real_participant, real_protocol, simulated_protocol)
-// }
+    (real_participant, real_protocol, simulated_protocol)
+}
 
 // type PreparedPresig = (
 //     Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)>,
@@ -303,7 +303,7 @@ fn split_even_odd<T: Clone>(v: Vec<T>) -> (Vec<T>, Vec<T>) {
     (even, odd)
 }
 
-criterion_group!(benches, bench_presign);
-// criterion_group!(benches, bench_triples, bench_presign);
+// criterion_group!(benches, bench_presign);
+criterion_group!(benches, bench_triples, bench_presign);
 // criterion_group!(benches, bench_triples, bench_presign, bench_sign);
 criterion::criterion_main!(benches);
