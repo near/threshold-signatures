@@ -4,6 +4,7 @@ use crate::participants::{Participant, ParticipantList};
 use crate::test_utils::{
     generate_participants, run_protocol, GenOutput, GenProtocol, MockCryptoRng,
 };
+use crate::ThresholdParameters;
 
 use frost_core::keys::SigningShare;
 use frost_core::VerifyingKey as FrostVerifyingKey;
@@ -47,6 +48,7 @@ pub fn build_key_packages_with_dealer(max_signers: u16, min_signers: u16) -> Gen
                 KeygenOutput {
                     private_share: *share.signing_share(),
                     public_key: *pubkey_package.verifying_key(),
+                    threshold_params: ThresholdParameters::new(min_signers as usize),
                 },
             )
         })
@@ -113,6 +115,7 @@ fn keygen_output__should_be_serializable() {
     let keygen_output = KeygenOutput {
         private_share: SigningShare::<C>::new(FrostScalar::<C>::from(7_u32)),
         public_key: FrostVerifyingKey::<C>::from(signing_key),
+        threshold_params: ThresholdParameters::new(2),
     };
 
     // When
@@ -122,7 +125,7 @@ fn keygen_output__should_be_serializable() {
     // Then
     assert_eq!(
         serialized_keygen_output,
-        "{\"private_share\":\"0700000000000000000000000000000000000000000000000000000000000000\",\"public_key\":\"a80ed62da91a8c6f266d82c4b2017cc0be13e6acba26af04494635b15ac86b57\"}"
+        "{\"private_share\":\"0700000000000000000000000000000000000000000000000000000000000000\",\"public_key\":\"a80ed62da91a8c6f266d82c4b2017cc0be13e6acba26af04494635b15ac86b57\",\"threshold_params\":{\"signing_threshold\":2}}"
     );
 }
 

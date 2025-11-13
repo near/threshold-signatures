@@ -206,7 +206,6 @@ where
 pub fn run_refresh<C: Ciphersuite>(
     participants: &[Participant],
     keys: &[(Participant, KeygenOutput<C>)],
-    threshold: usize,
 ) -> GenOutput<C>
 where
     Element<C>: Send,
@@ -215,15 +214,7 @@ where
     let mut protocols: DKGGenProtocol<C> = Vec::with_capacity(participants.len());
 
     for (p, out) in keys {
-        let protocol = refresh::<C>(
-            Some(out.private_share),
-            out.public_key,
-            participants,
-            threshold,
-            *p,
-            OsRng,
-        )
-        .unwrap();
+        let protocol = refresh::<C>(out, participants, *p, OsRng).unwrap();
         protocols.push((*p, Box::new(protocol)));
     }
 
@@ -238,7 +229,6 @@ pub fn run_reshare<C: Ciphersuite>(
     participants: &[Participant],
     pub_key: &VerifyingKey<C>,
     keys: &[(Participant, KeygenOutput<C>)],
-    old_threshold: usize,
     new_threshold: usize,
     new_participants: &[Participant],
 ) -> GenOutput<C>
@@ -248,6 +238,10 @@ where
 {
     assert!(!new_participants.is_empty());
     let mut setup = vec![];
+    let old_params = keys
+        .first()
+        .map(|(_, key)| key.threshold_params)
+        .expect("keys cannot be empty");
 
     for new_participant in new_participants {
         let mut is_break = false;
@@ -268,7 +262,7 @@ where
     for (p, out) in &setup {
         let protocol = reshare(
             participants,
-            old_threshold,
+            old_params,
             out.0,
             out.1,
             new_participants,

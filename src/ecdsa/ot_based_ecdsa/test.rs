@@ -175,7 +175,7 @@ fn test_refresh() {
     let keys = run_keygen(&participants, threshold);
     assert_public_key_invariant(&keys);
     // run refresh on these
-    let key_packages = run_refresh(&participants, &keys, threshold);
+    let key_packages = run_refresh(&participants, &keys);
     let public_key = key_packages[0].1.public_key;
     assert_public_key_invariant(&key_packages);
     let (pub0, shares0) = deal(&mut OsRng, &participants, threshold).unwrap();
@@ -208,7 +208,6 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
         &participants,
         &pub_key,
         &result0,
-        threshold,
         new_threshold,
         &new_participant,
     );
@@ -246,7 +245,6 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
         &participants,
         &pub_key,
         &result0,
-        threshold,
         new_threshold,
         &new_participant,
     );

@@ -155,7 +155,7 @@ fn test_refresh() -> Result<(), Box<dyn Error>> {
     let keys = run_keygen(&participants, threshold);
     assert_public_key_invariant(&keys);
     // run refresh on these
-    let key_packages = run_refresh(&participants, &keys, threshold);
+    let key_packages = run_refresh(&participants, &keys);
     let public_key = key_packages[0].1.public_key;
     assert_public_key_invariant(&key_packages);
     let presign_result = run_presign(key_packages, max_malicious);
@@ -190,7 +190,6 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
         &participants,
         &pub_key,
         &result0,
-        threshold,
         new_threshold,
         &new_participant,
     );
@@ -226,7 +225,6 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
         &participants,
         &pub_key,
         &result0,
-        threshold,
         new_threshold,
         &new_participant,
     );

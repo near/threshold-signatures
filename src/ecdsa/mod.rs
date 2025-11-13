@@ -193,6 +193,7 @@ mod test {
             generate_participants, generate_participants_with_random_ids, random_32_bytes,
             MockCryptoRng,
         },
+        ThresholdParameters,
     };
 
     use elliptic_curve::ops::{Invert, LinearCombination, Reduce};
@@ -251,6 +252,7 @@ mod test {
         let keygen_output = KeygenOutput {
             private_share: SigningShare::<C>::new(Scalar::ONE),
             public_key: FrostVerifyingKey::<C>::from(signing_key),
+            threshold_params: ThresholdParameters::new(2),
         };
 
         // When
@@ -260,7 +262,7 @@ mod test {
         // Then
         assert_eq!(
             serialized_keygen_output,
-            "{\"private_share\":\"0000000000000000000000000000000000000000000000000000000000000001\",\"public_key\":\"0351177dde89242d9121d787a681bd2a0bd6013428a6b83e684a253815db96d8b3\"}"
+            "{\"private_share\":\"0000000000000000000000000000000000000000000000000000000000000001\",\"public_key\":\"0351177dde89242d9121d787a681bd2a0bd6013428a6b83e684a253815db96d8b3\",\"threshold_params\":{\"signing_threshold\":2}}"
         );
     }
 

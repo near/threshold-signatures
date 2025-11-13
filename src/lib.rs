@@ -46,6 +46,28 @@ pub type Element<C> = frost_core::Element<C>;
 pub struct KeygenOutput<C: Ciphersuite> {
     pub private_share: SigningShare<C>,
     pub public_key: VerifyingKey<C>,
+    pub threshold_params: ThresholdParameters,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, Eq, PartialEq)]
+/// Threshold metadata that travels with every key share.
+///
+/// Right now it only stores the signing threshold `t`, but it is structured so
+/// we can hang additional policy data off of it later (e.g., max malicious
+/// parties, subprotocol-specific minima, etc.).
+pub struct ThresholdParameters {
+    signing_threshold: usize,
+}
+
+impl ThresholdParameters {
+    pub(crate) fn new(signing_threshold: usize) -> Self {
+        Self { signing_threshold }
+    }
+
+    /// Returns the stored signing threshold `t`.
+    pub fn signing_threshold(&self) -> usize {
+        self.signing_threshold
+    }
 }
 
 /// This is a necessary element to be able to derive different keys
@@ -99,7 +121,7 @@ where
 #[allow(clippy::too_many_arguments)]
 pub fn reshare<C: Ciphersuite>(
     old_participants: &[Participant],
-    old_threshold: usize,
+    old_params: ThresholdParameters,
     old_signing_key: Option<SigningShare<C>>,
     old_public_key: VerifyingKey<C>,
     new_participants: &[Participant],
@@ -118,7 +140,7 @@ where
         me,
         threshold,
         old_signing_key,
-        old_threshold,
+        old_params,
         old_participants,
     )?;
     let fut = do_reshare(
@@ -136,10 +158,8 @@ where
 
 /// Performs the refresh protocol
 pub fn refresh<C: Ciphersuite>(
-    old_signing_key: Option<SigningShare<C>>,
-    old_public_key: VerifyingKey<C>,
+    key_package: &KeygenOutput<C>,
     old_participants: &[Participant],
-    old_threshold: usize,
     me: Participant,
     rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = KeygenOutput<C>>, InitializationError>
@@ -147,19 +167,16 @@ where
     Element<C>: Send,
     Scalar<C>: Send,
 {
-    if old_signing_key.is_none() {
-        return Err(InitializationError::BadParameters(format!(
-            "The participant {me:?} is running refresh without an old share",
-        )));
-    }
     let comms = Comms::new();
-    let threshold = old_threshold;
+    let threshold_params = key_package.threshold_params;
+    let threshold = threshold_params.signing_threshold();
+    let signing_share = key_package.private_share;
     let (participants, old_participants) = reshare_assertions::<C>(
         old_participants,
         me,
         threshold,
-        old_signing_key,
-        threshold,
+        Some(signing_share),
+        threshold_params,
         old_participants,
     )?;
     let fut = do_reshare(
@@ -167,8 +184,8 @@ where
         participants,
         me,
         threshold,
-        old_signing_key,
-        old_public_key,
+        Some(signing_share),
+        key_package.public_key,
         old_participants,
         rng,
     );

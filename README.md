@@ -24,6 +24,29 @@ provide deterministic secrets to apps running inside a TEE. For more details,
 see the
 [CKD docs](docs/confidential_key_derivation/confidential_key_derivation.md).
 
+## ⚠ Threshold Policies & Security Assumptions
+
+Threshold parameters are security-critical and **must not** be changed across
+subprotocols (keygen, presign, signing, refresh, resharing, etc.) unless a
+scheme explicitly documents the exception. See
+[`docs/threshold_policies.md`](docs/threshold_policies.md) for the full table of
+constraints. Highlights:
+
+* Refresh/reshare must reuse the exact threshold metadata embedded in the
+  original key material; lowering the threshold is treated as a bug.
+* DKG inherits the asynchronous broadcast bound `f <= floor(N/3)` and requires
+  `t = f + 1` for reconstruction.
+* OT-based ECDSA hardcodes `t = f + 1` and requires at least `t` live parties at
+  presign/sign time.
+* Robust ECDSA uses `threshold = f` and needs `2f + 1` active parties to sign.
+* Every `KeygenOutput` now includes `threshold_params`; APIs like `refresh` and
+  `reshare` read that metadata directly so callers can't accidentally change the
+  threshold between protocol stages.
+
+All subprotocols currently follow the "everything is invariant" policy. Future
+exceptions (for schemes that genuinely support parameter drift) will be listed
+in the same document along with their rationale.
+
 ## Code organization
 
 The repository provides implementations for ECDSA, EdDSA and CKD. Each signature

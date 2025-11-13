@@ -383,7 +383,7 @@ mod test {
             .is_ok());
 
         // // test refresh
-        let key_packages1 = run_refresh(&participants, &key_packages, threshold);
+        let key_packages1 = run_refresh(&participants, &key_packages);
         assert_public_key_invariant(&key_packages1);
         let msg = "hello_near_2";
         let msg_hash = hash(&msg).unwrap();
@@ -411,7 +411,6 @@ mod test {
             &participants,
             &pub_key,
             &key_packages1,
-            threshold,
             new_threshold,
             &new_participant,
         );
@@ -454,7 +453,6 @@ mod test {
             &participants,
             &pub_key,
             &result0,
-            threshold,
             new_threshold,
             &new_participant,
         );
@@ -519,7 +517,6 @@ mod test {
             &participants,
             &pub_key,
             &result0,
-            threshold,
             new_threshold,
             &new_participant,
         );
