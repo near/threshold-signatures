@@ -153,6 +153,8 @@ where
         )));
     }
     let comms = Comms::new();
+    // NOTE: this equality must be kept, as changing the threshold during `key refresh`
+    // might lead to insecure scenarios. For more information see https://github.com/near/threshold-signatures/security/dependabot/3
     let threshold = old_threshold;
     let (participants, old_participants) = reshare_assertions::<C>(
         old_participants,
