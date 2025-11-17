@@ -3,6 +3,9 @@ use frost_secp256k1::{Secp256K1Sha256, VerifyingKey};
 use rand::Rng;
 use rand_core::OsRng;
 
+mod bench_utils;
+use crate::bench_utils::MAX_MALICIOUS;
+
 use threshold_signatures::{
     ecdsa::{
         robust_ecdsa::{
@@ -20,18 +23,8 @@ use threshold_signatures::{
     },
 };
 
-use std::{env, sync::LazyLock};
-
-// fix malicious number of participants
-pub static MAX_MALICIOUS: LazyLock<usize> = std::sync::LazyLock::new(|| {
-    env::var("MAX_MALICIOUS")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(6)
-});
-
 fn participants_num() -> usize {
-    2 * *crate::MAX_MALICIOUS + 1
+    2 * *MAX_MALICIOUS + 1
 }
 
 /// Benches the presigning protocol
@@ -133,7 +126,7 @@ fn prepare_simulate_presign(num_participants: usize) -> PreparedPresig {
     (real_participant, real_protocol, simulated_protocol)
 }
 
-fn prepare_sign(
+fn prepare_simulated_sign(
     result: &[(Participant, PresignOutput)],
     pk: VerifyingKey,
 ) -> Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)> {

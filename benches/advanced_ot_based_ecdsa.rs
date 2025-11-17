@@ -3,6 +3,13 @@ use frost_secp256k1::{Secp256K1Sha256, VerifyingKey};
 use rand::Rng;
 use rand_core::OsRng;
 
+mod bench_utils;
+use crate::bench_utils::{
+    MAX_MALICIOUS,
+    split_even_odd,
+    ot_ecdsa_prepare_triples,
+};
+
 use threshold_signatures::{
     ecdsa::{
         ot_based_ecdsa::{
@@ -23,22 +30,12 @@ use threshold_signatures::{
     },
 };
 
-use std::{env, sync::LazyLock};
-
-// fix malicious number of participants
-pub static MAX_MALICIOUS: LazyLock<usize> = std::sync::LazyLock::new(|| {
-    env::var("MAX_MALICIOUS")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(6)
-});
-
 fn threshold() -> usize {
-    *crate::MAX_MALICIOUS + 1
+    *MAX_MALICIOUS + 1
 }
 
 fn participants_num() -> usize {
-    *crate::MAX_MALICIOUS + 1
+    *MAX_MALICIOUS + 1
 }
 
 /// Benches the triples protocol
@@ -67,7 +64,7 @@ fn bench_presign(c: &mut Criterion) {
     let mut group = c.benchmark_group("presign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
-    let protocols = prepare_triples(participants_num());
+    let protocols = ot_ecdsa_prepare_triples(participants_num(), threshold);
     let two_triples = run_protocol(protocols).expect("Running triple preparations should succeed");
 
     group.bench_function(
@@ -108,23 +105,6 @@ fn bench_presign(c: &mut Criterion) {
 //         },
 //     );
 // }
-
-type PreparedTriples = Vec<(
-    Participant,
-    Box<dyn Protocol<Output = Vec<(TripleShare, TriplePub)>>>,
-)>;
-fn prepare_triples(participant_num: usize) -> PreparedTriples {
-    let mut protocols: Vec<(_, Box<dyn Protocol<Output = _>>)> =
-        Vec::with_capacity(participant_num);
-    let participants = generate_participants_with_random_ids(participant_num, &mut OsRng);
-
-    for p in participants.clone() {
-        let protocol = generate_triple_many::<2>(&participants, p, threshold(), OsRng)
-            .expect("Triple generation should succeed");
-        protocols.push((p, Box::new(protocol)));
-    }
-    protocols
-}
 
 type PreparedSimulatedTriples = (
     Participant,
@@ -238,69 +218,6 @@ fn prepare_simulated_presign(two_triples: &[(Participant, Vec<(TripleShare, Trip
     let real_protocol = real_protocol.expect("The real participant should also be included in the protocol");
     (real_participant, real_protocol, simulated_protocol)
 
-}
-
-fn prepare_sign(
-    result: &[(Participant, PresignOutput)],
-    pk: VerifyingKey,
-) -> Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)> {
-    // collect all participants
-    let participants: Vec<Participant> =
-        result.iter().map(|(participant, _)| *participant).collect();
-
-    // choose a coordinator at random
-    let index = OsRng.gen_range(0..result.len());
-    let coordinator = result[index].0;
-
-    let (args, msg_hash) =
-        ecdsa_generate_rerandpresig_args(&mut OsRng, &participants, pk, result[0].1.big_r);
-    let derived_pk = args
-        .tweak
-        .derive_verifying_key(&pk)
-        .to_element()
-        .to_affine();
-
-    let result = result
-        .iter()
-        .map(|(p, presig)| {
-            (
-                *p,
-                RerandomizedPresignOutput::rerandomize_presign(presig, &args)
-                    .expect("Rerandomizing presignature should succeed"),
-            )
-        })
-        .collect::<Vec<_>>();
-
-    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)> =
-        Vec::with_capacity(result.len());
-
-    for (p, presignature) in result {
-        let protocol = sign(
-            args.participants.participants(),
-            coordinator,
-            p,
-            derived_pk,
-            presignature,
-            msg_hash,
-        )
-        .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
-        .expect("Signing should succeed");
-        protocols.push((p, protocol));
-    }
-    protocols
-}
-
-fn split_even_odd<T: Clone>(v: Vec<T>) -> (Vec<T>, Vec<T>) {
-    let mut even = Vec::with_capacity(v.len() / 2 + 1);
-    let mut odd = Vec::with_capacity(v.len() / 2);
-    for (i, x) in v.into_iter().enumerate() {
-        if i % 2 == 0 {
-            even.push(x);
-        } else {
-            odd.push(x);
-        }
-    }
-    (even, odd)
 }
 
 // criterion_group!(benches, bench_presign);
