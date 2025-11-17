@@ -4,7 +4,10 @@ use rand::Rng;
 use rand_core::OsRng;
 
 mod bench_utils;
-use crate::bench_utils::MAX_MALICIOUS;
+use crate::bench_utils::{
+    MAX_MALICIOUS,
+    robust_ecdsa_prepare_presign,
+};
 
 use threshold_signatures::{
     ecdsa::{
@@ -19,7 +22,8 @@ use threshold_signatures::{
     test_utils::{
         Simulator,
         ecdsa_generate_rerandpresig_args, generate_participants_with_random_ids, run_keygen,
-        run_protocol_with_snapshots, run_simulated_protocol, create_multiple_rngs
+        run_protocol_with_snapshots, run_simulated_protocol, create_multiple_rngs,
+        run_protocol
     },
 };
 
@@ -45,28 +49,28 @@ fn bench_presign(c: &mut Criterion) {
     );
 }
 
-// /// Benches the signing protocol
-// fn bench_sign(c: &mut Criterion) {
-//     let num = participants_num();
-//     let max_malicious = *MAX_MALICIOUS;
-//     let mut group = c.benchmark_group("sign");
-//     group.measurement_time(std::time::Duration::from_secs(300));
+/// Benches the signing protocol
+fn bench_sign(c: &mut Criterion) {
+    let num = participants_num();
+    let max_malicious = *MAX_MALICIOUS;
+    let mut group = c.benchmark_group("sign");
+    group.measurement_time(std::time::Duration::from_secs(300));
 
-//     let (protocols, pk) = prepare_presign(participants_num());
-//     let mut result = run_protocol(protocols).expect("Prepare sign should not");
-//     result.sort_by_key(|(p, _)| *p);
+    let (protocols, pk) = robust_ecdsa_prepare_presign(participants_num());
+    let mut result = run_protocol(protocols).expect("Prepare sign should not");
+    result.sort_by_key(|(p, _)| *p);
 
-//     group.bench_function(
-//         format!("robust_ecdsa_sign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
-//         |b| {
-//             b.iter_batched(
-//                 || prepare_sign(&result, pk),
-//                 run_protocol,
-//                 criterion::BatchSize::SmallInput,
-//             );
-//         },
-//     );
-// }
+    group.bench_function(
+        format!("robust_ecdsa_sign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
+        |b| {
+            b.iter_batched(
+                || prepare_simulated_sign(&result, pk),
+                |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot),
+                criterion::BatchSize::SmallInput,
+            );
+        },
+    );
+}
 
 /// Benches the presigning protocol
 type PreparedPresig = (
@@ -126,10 +130,17 @@ fn prepare_simulate_presign(num_participants: usize) -> PreparedPresig {
     (real_participant, real_protocol, simulated_protocol)
 }
 
+
+/// Benches the signing protocol
+type PreparedSimulatedSig = (
+    Participant,
+    Box<dyn Protocol<Output = SignatureOption>>,
+    Simulator,
+);
 fn prepare_simulated_sign(
     result: &[(Participant, PresignOutput)],
     pk: VerifyingKey,
-) -> Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)> {
+) -> PreparedSimulatedSig {
     // collect all participants
     let participants: Vec<Participant> =
         result.iter().map(|(participant, _)| *participant).collect();
@@ -160,7 +171,7 @@ fn prepare_simulated_sign(
     let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)> =
         Vec::with_capacity(result.len());
 
-    for (p, presignature) in result {
+    for (p, presignature) in result.clone() {
         let protocol = sign(
             args.participants.participants(),
             coordinator,
@@ -173,10 +184,34 @@ fn prepare_simulated_sign(
         .expect("Signing should succeed");
         protocols.push((p, protocol));
     }
-    protocols
+    let (_, protocolsnapshot) = run_protocol_with_snapshots(protocols)
+                .expect("Running protocol with snapshot should not have issues");
+
+    // now preparing the simulator
+    // choose the real_participant at random
+    let real_participant = coordinator;
+    let simulated_protocol = Simulator::new(real_participant, protocolsnapshot)
+                            .expect("Simulator should not be empty");
+    let mut real_protocol = None;
+    for (p, presignature) in result{
+        if p == real_participant{
+            real_protocol = Some(
+            sign(
+            args.participants.participants(),
+            coordinator,
+            p,
+            derived_pk,
+            presignature,
+            msg_hash,
+            ).map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
+          .expect("Presignature should succeed")
+          )
+        }
+    };
+    let real_protocol = real_protocol.expect("The real participant should also be included in the protocol");
+    (real_participant, real_protocol, simulated_protocol)
 }
 
 
-criterion_group!(benches, bench_presign);
-// criterion_group!(benches, bench_presign, bench_sign);
+criterion_group!(benches, bench_presign, bench_sign);
 criterion::criterion_main!(benches);
