@@ -8,6 +8,7 @@ use crate::bench_utils::{
     MAX_MALICIOUS,
     split_even_odd,
     ot_ecdsa_prepare_triples,
+    ot_ecdsa_prepare_presign,
 };
 
 use threshold_signatures::{
@@ -79,32 +80,32 @@ fn bench_presign(c: &mut Criterion) {
     );
 }
 
-// /// Benches the signing protocol
-// fn bench_sign(c: &mut Criterion) {
-//     let num = participants_num();
-//     let max_malicious = *MAX_MALICIOUS;
+/// Benches the signing protocol
+fn bench_sign(c: &mut Criterion) {
+    let num = participants_num();
+    let max_malicious = *MAX_MALICIOUS;
 
-//     let mut group = c.benchmark_group("sign");
-//     group.measurement_time(std::time::Duration::from_secs(300));
+    let mut group = c.benchmark_group("sign");
+    group.measurement_time(std::time::Duration::from_secs(300));
 
-//     let protocols = prepare_triples(participants_num());
-//     let two_triples = run_protocol(protocols).expect("Running triples preparation should succeed");
+    let protocols = ot_ecdsa_prepare_triples(participants_num(), threshold);
+    let two_triples = run_protocol(protocols).expect("Running triples preparation should succeed");
 
-//     let (protocols, pk) = prepare_presign(&two_triples);
-//     let mut result = run_protocol(protocols).expect("Running presign preparation should succeed");
-//     result.sort_by_key(|(p, _)| *p);
+    let (protocols, pk) = ot_ecdsa_prepare_presign(&two_triples, threshold);
+    let mut result = run_protocol(protocols).expect("Running presign preparation should succeed");
+    result.sort_by_key(|(p, _)| *p);
 
-//     group.bench_function(
-//         format!("ot_ecdsa_sign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
-//         |b| {
-//             b.iter_batched(
-//                 || prepare_sign(&result, pk),
-//                 run_protocol,
-//                 criterion::BatchSize::SmallInput,
-//             );
-//         },
-//     );
-// }
+    group.bench_function(
+        format!("ot_ecdsa_sign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
+        |b| {
+            b.iter_batched(
+                || prepare_simulated_sign(&result, pk),
+                |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot),
+                criterion::BatchSize::SmallInput,
+            );
+        },
+    );
+}
 
 type PreparedSimulatedTriples = (
     Participant,
@@ -140,10 +141,7 @@ fn prepare_simulated_triples(participant_num: usize) -> PreparedSimulatedTriples
     (real_participant, real_protocol, simulated_protocol)
 }
 
-// type PreparedPresig = (
-//     Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)>,
-//     VerifyingKey,
-// );
+
 type PreparedSimulatedPresig = (
     Participant,
     Box<dyn Protocol<Output = PresignOutput>>,
@@ -217,10 +215,92 @@ fn prepare_simulated_presign(two_triples: &[(Participant, Vec<(TripleShare, Trip
       }
     let real_protocol = real_protocol.expect("The real participant should also be included in the protocol");
     (real_participant, real_protocol, simulated_protocol)
+}
+
+
+type PreparedSimulatedSig = (
+    Participant,
+    Box<dyn Protocol<Output = SignatureOption>>,
+    Simulator,
+);
+pub fn prepare_simulated_sign(
+    result: &[(Participant, PresignOutput)],
+    pk: VerifyingKey,
+) -> PreparedSimulatedSig {
+    // collect all participants
+    let participants: Vec<Participant> =
+        result.iter().map(|(participant, _)| *participant).collect();
+
+    // choose a coordinator at random
+    let index = OsRng.gen_range(0..result.len());
+    let coordinator = result[index].0;
+
+    let (args, msg_hash) =
+        ecdsa_generate_rerandpresig_args(&mut OsRng, &participants, pk, result[0].1.big_r);
+    let derived_pk = args
+        .tweak
+        .derive_verifying_key(&pk)
+        .to_element()
+        .to_affine();
+
+    let result = result
+        .iter()
+        .map(|(p, presig)| {
+            (
+                *p,
+                RerandomizedPresignOutput::rerandomize_presign(presig, &args)
+                    .expect("Rerandomizing presignature should succeed"),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)> =
+        Vec::with_capacity(result.len());
+
+    for (p, presignature) in result.clone() {
+        let protocol = sign(
+            args.participants.participants(),
+            coordinator,
+            p,
+            derived_pk,
+            presignature,
+            msg_hash,
+        )
+        .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
+        .expect("Signing should succeed");
+        protocols.push((p, protocol));
+    }
+    let (_, protocolsnapshot) = run_protocol_with_snapshots(protocols)
+        .expect("Running protocol with snapshot should not have issues");
+
+    // now preparing the simulator
+    // choose the real_participant at random
+    let real_participant = coordinator;
+    let simulated_protocol = Simulator::new(real_participant, protocolsnapshot)
+                            .expect("Simulator should not be empty");
+
+    let mut real_protocol = None;
+
+    for (p, presignature) in result {
+        if p == real_participant{
+          real_protocol = Some(
+            sign(
+                args.participants.participants(),
+                coordinator,
+                p,
+                derived_pk,
+                presignature,
+                msg_hash,
+            ).map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
+            .expect("Simulated signing should succeed")
+          )
+        };
+      }
+    let real_protocol = real_protocol.expect("The real participant should also be included in the protocol");
+
+    (real_participant, real_protocol, simulated_protocol)
 
 }
 
-// criterion_group!(benches, bench_presign);
-criterion_group!(benches, bench_triples, bench_presign);
-// criterion_group!(benches, bench_triples, bench_presign, bench_sign);
+criterion_group!(benches, bench_triples, bench_presign, bench_sign);
 criterion::criterion_main!(benches);

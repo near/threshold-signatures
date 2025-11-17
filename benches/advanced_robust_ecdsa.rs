@@ -176,6 +176,7 @@ fn prepare_simulated_sign(
     protocols
 }
 
+
 criterion_group!(benches, bench_presign);
 // criterion_group!(benches, bench_presign, bench_sign);
 criterion::criterion_main!(benches);

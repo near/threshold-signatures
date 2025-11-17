@@ -119,7 +119,7 @@ pub fn run_protocol_with_snapshots<T>(
 ///
 /// This is more useful for testing two party protocols with assymetric results,
 /// since the return types for the two protocols can be different.
-pub fn run_two_party_protocol<T0: std::fmt::Debug, T1: std::fmt::Debug>(
+pub fn run_two_party_protocol<T0, T1>(
     p0: Participant,
     p1: Participant,
     prot0: &mut dyn Protocol<Output = T0>,
@@ -167,7 +167,7 @@ pub fn run_two_party_protocol<T0: std::fmt::Debug, T1: std::fmt::Debug>(
 
 /// Runs one real participant and one simulation representing the rest of participants
 /// The simulation has an internal storage of what to send to the real participant
-pub fn run_simulated_protocol<T: std::fmt::Debug>(
+pub fn run_simulated_protocol<T>(
     real_participant: Participant,
     mut real_prot: Box<dyn Protocol<Output = T>>,
     simulator: Simulator,
@@ -178,31 +178,18 @@ pub fn run_simulated_protocol<T: std::fmt::Debug>(
             .to_string())
             )
     }
-    let recorded_messages = simulator.get_recorded_messages();
 
     // fill the real_participant's buffer with the recorded messages
-    for (from, data) in recorded_messages{
+    for (from, data) in simulator.get_recorded_messages(){
         real_prot.message(from, data);
     }
 
     let mut out = None;
-
     while out.is_none() {
         let action = real_prot.poke()?;
         match action {
             Action::Return(output) => out = Some(output),
             _ => {},
-            // Action::Wait => {},
-            // Action::SendMany(m) =>
-            // {
-            //     let to_send = simulator.receive_many(real_participant, m);
-            //     for (from, recorded_msg) in to_send{
-            //         real_prot.message(from, recorded_msg)
-            //     }
-            // },
-            // Action::SendPrivate(to, m) => {
-            //     simulator.receive_private(to, m);
-            // }
         }
     }
 
