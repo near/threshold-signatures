@@ -5,10 +5,7 @@ use rand_core::OsRng;
 
 mod bench_utils;
 use crate::bench_utils::{
-    ot_ecdsa_prepare_triples,
-    ot_ecdsa_prepare_presign,
-    ot_ecdsa_prepare_sign,
-    MAX_MALICIOUS,
+    ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign, ot_ecdsa_prepare_triples, MAX_MALICIOUS,
 };
 
 use threshold_signatures::{
@@ -24,8 +21,7 @@ use threshold_signatures::{
     participants::Participant,
     protocol::Protocol,
     test_utils::{
-        create_multiple_rngs,
-        generate_participants_with_random_ids, run_protocol,
+        create_multiple_rngs, generate_participants_with_random_ids, run_protocol,
         run_protocol_with_snapshots, run_simulated_protocol, Simulator,
     },
 };
@@ -146,7 +142,8 @@ fn prepare_simulated_triples(participant_num: usize) -> PreparedSimulatedTriples
 fn prepare_simulated_presign(
     two_triples: &[(Participant, Vec<(TripleShare, TriplePub)>)],
 ) -> PreparedSimulatedPresig {
-    let (protocols, key_packages, participants) = ot_ecdsa_prepare_presign(two_triples, threshold());
+    let (protocols, key_packages, participants) =
+        ot_ecdsa_prepare_presign(two_triples, threshold());
     let (_, protocolsnapshot) = run_protocol_with_snapshots(protocols)
         .expect("Running protocol with snapshot should not have issues");
 
@@ -159,16 +156,17 @@ fn prepare_simulated_presign(
     let (share1, pub1) = shares[1].clone();
 
     let real_protocol = presign(
-            &participants,
-            real_participant,
-            PresignArguments {
-                triple0: (share0, pub0),
-                triple1: (share1, pub1),
-                keygen_out,
-                threshold: threshold(),
-            },
-        ).map(|presig| Box::new(presig) as Box<dyn Protocol<Output = PresignOutput>>)
-        .expect("Presigning should succeed");
+        &participants,
+        real_participant,
+        PresignArguments {
+            triple0: (share0, pub0),
+            triple1: (share1, pub1),
+            keygen_out,
+            threshold: threshold(),
+        },
+    )
+    .map(|presig| Box::new(presig) as Box<dyn Protocol<Output = PresignOutput>>)
+    .expect("Presigning should succeed");
 
     // now preparing the simulator
     let simulated_protocol =
@@ -184,7 +182,8 @@ pub fn prepare_simulated_sign(
     result: &[(Participant, PresignOutput)],
     pk: VerifyingKey,
 ) -> PreparedSimulatedSig {
-    let (protocols, coordinator_index, presignature, derived_pk, msg_hash,) = ot_ecdsa_prepare_sign(result, pk);
+    let (protocols, coordinator_index, presignature, derived_pk, msg_hash) =
+        ot_ecdsa_prepare_sign(result, pk);
     let (_, protocolsnapshot) = run_protocol_with_snapshots(protocols)
         .expect("Running protocol with snapshot should not have issues");
 
@@ -195,15 +194,15 @@ pub fn prepare_simulated_sign(
     let participants: Vec<Participant> =
         result.iter().map(|(participant, _)| *participant).collect();
     let real_protocol = sign(
-            &participants,
-            real_participant,
-            real_participant,
-            derived_pk,
-            presignature,
-            msg_hash,
-        )
-        .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
-        .expect("Simulated signing should succeed");
+        &participants,
+        real_participant,
+        real_participant,
+        derived_pk,
+        presignature,
+        msg_hash,
+    )
+    .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
+    .expect("Simulated signing should succeed");
 
     // now preparing the being the coordinator
     let simulated_protocol =

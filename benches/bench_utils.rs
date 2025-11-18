@@ -78,7 +78,9 @@ pub fn ot_ecdsa_prepare_presign(
         Box<dyn Protocol<Output = ot_based_ecdsa::PresignOutput>>,
     )> = Vec::with_capacity(participants.len());
 
-    for (((p, keygen_out), share0), share1) in key_packages.clone().into_iter().zip(shares0).zip(shares1) {
+    for (((p, keygen_out), share0), share1) in
+        key_packages.clone().into_iter().zip(shares0).zip(shares1)
+    {
         let protocol = ot_based_ecdsa::presign::presign(
             &participants,
             p,
@@ -145,11 +147,12 @@ pub fn ot_ecdsa_prepare_sign(
         .expect("Signing should succeed");
         protocols.push((p, protocol));
     }
-    (protocols,
+    (
+        protocols,
         index,
         result[index].1.clone(),
         derived_pk,
-        msg_hash
+        msg_hash,
     )
 }
 

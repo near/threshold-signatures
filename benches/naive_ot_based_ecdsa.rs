@@ -3,10 +3,7 @@ mod bench_utils;
 use crate::bench_utils::{
     ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign, ot_ecdsa_prepare_triples, MAX_MALICIOUS,
 };
-use threshold_signatures::test_utils::{
-    run_protocol,
-    create_multiple_rngs
-};
+use threshold_signatures::test_utils::{create_multiple_rngs, run_protocol};
 
 fn threshold() -> usize {
     *MAX_MALICIOUS + 1
