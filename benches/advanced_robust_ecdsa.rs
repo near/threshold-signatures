@@ -37,7 +37,7 @@ fn bench_presign(c: &mut Criterion) {
         format!("robust_ecdsa_presign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
-                || prepare_simulate_presign(participants_num()),
+                || prepare_simulate_presign(num),
                 |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot),
                 criterion::BatchSize::SmallInput,
             );
@@ -52,7 +52,8 @@ fn bench_sign(c: &mut Criterion) {
     let mut group = c.benchmark_group("sign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
-    let (protocols, pk) = robust_ecdsa_prepare_presign(participants_num());
+    let rngs = create_multiple_rngs(num);
+    let (protocols, pk) = robust_ecdsa_prepare_presign(num, rngs);
     let mut result = run_protocol(protocols).expect("Prepare sign should not");
     result.sort_by_key(|(p, _)| *p);
 
@@ -85,7 +86,7 @@ fn prepare_simulate_presign(num_participants: usize) -> PreparedPresig {
         Vec::with_capacity(participants.len());
 
     // Running presign a first time with snapshots
-    let rngs = create_multiple_rngs(&participants);
+    let rngs = create_multiple_rngs(num_participants);
     for (i, (p, keygen_out)) in key_packages.iter().enumerate() {
         let protocol = presign(
             &participants,

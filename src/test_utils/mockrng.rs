@@ -1,4 +1,3 @@
-use crate::participants::Participant;
 use rand::{CryptoRng, RngCore};
 use rand_chacha::{rand_core::SeedableRng, ChaCha12Rng};
 use rand_core::OsRng;
@@ -31,11 +30,9 @@ impl RngCore for MockCryptoRng {
 impl CryptoRng for MockCryptoRng {}
 
 /// Generates multiple rngs
-pub fn create_multiple_rngs(participants: &[Participant]) -> Vec<MockCryptoRng> {
+pub fn create_multiple_rngs(size: usize) -> Vec<MockCryptoRng> {
     let mut seed = OsRng;
-    let rngs = participants
-        .iter()
+    (0..size)
         .map(|_| MockCryptoRng::seed_from_u64(seed.next_u64()))
-        .collect::<Vec<_>>();
-    rngs
+        .collect()
 }

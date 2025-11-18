@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use frost_secp256k1::{Secp256K1Sha256, VerifyingKey};
 use rand::Rng;
-use rand_core::OsRng;
+use rand_core::{OsRng, CryptoRngCore};
 
 use threshold_signatures::{
     ecdsa::ot_based_ecdsa,
@@ -186,7 +186,12 @@ type RobustECDSAPreparedPresig = (
 /// Used to prepare robust ecdsa presignatures for benchmarking
 /// # Panics
 /// Would panic in case an abort happens stopping the entire benchmarking
-pub fn robust_ecdsa_prepare_presign(num_participants: usize) -> RobustECDSAPreparedPresig {
+pub fn robust_ecdsa_prepare_presign(
+    num_participants: usize,
+    rngs: Vec<impl CryptoRngCore + Send + Clone + 'static>,
+) -> RobustECDSAPreparedPresig {
+    assert_eq!(rngs.len(), num_participants, "There must be enought Rngs as participants");
+
     let participants = generate_participants_with_random_ids(num_participants, &mut OsRng);
     let key_packages = run_keygen::<Secp256K1Sha256>(&participants, *MAX_MALICIOUS + 1);
     let pk = key_packages[0].1.public_key;
@@ -195,19 +200,19 @@ pub fn robust_ecdsa_prepare_presign(num_participants: usize) -> RobustECDSAPrepa
         Box<dyn Protocol<Output = robust_ecdsa::PresignOutput>>,
     )> = Vec::with_capacity(participants.len());
 
-    for (p, keygen_out) in key_packages {
+    for  (i, (p, keygen_out)) in key_packages.iter().enumerate() {
         let protocol = robust_ecdsa::presign::presign(
             &participants,
-            p,
+            *p,
             robust_ecdsa::PresignArguments {
-                keygen_out,
+                keygen_out: keygen_out.clone(),
                 threshold: *MAX_MALICIOUS,
             },
-            OsRng,
+            rngs[i].clone(),
         )
         .map(|presig| Box::new(presig) as Box<dyn Protocol<Output = robust_ecdsa::PresignOutput>>)
         .expect("Presignature should succeed");
-        protocols.push((p, protocol));
+        protocols.push((*p, protocol));
     }
     (protocols, pk)
 }

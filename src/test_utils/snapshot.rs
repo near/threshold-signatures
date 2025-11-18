@@ -209,8 +209,8 @@ mod test {
 
     #[test]
     fn test_clone_rngs() {
-        let participants = generate_participants(5);
-        let mut rngs = create_multiple_rngs(&participants);
+        let num_participants = 5;
+        let mut rngs = create_multiple_rngs(num_participants);
         // Clone rng
         let mut clone_rngs = rngs.clone();
 
@@ -245,13 +245,14 @@ mod test {
     #[test]
     fn test_snapshot_on_ecdsa_protocol() {
         let max_malicious = 2;
-        let participants = generate_participants(5);
+        let num_participants = 5;
+        let participants = generate_participants(num_participants);
 
         let f = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
         let big_x = ProjectivePoint::GENERATOR * f.eval_at_zero().unwrap().0;
 
         // create rngs for first and second snapshots
-        let rngs = create_multiple_rngs(&participants);
+        let rngs = create_multiple_rngs(num_participants);
 
         let mut results = Vec::new();
         let mut snapshots = Vec::new();

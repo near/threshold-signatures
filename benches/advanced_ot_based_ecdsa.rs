@@ -46,7 +46,7 @@ fn bench_triples(c: &mut Criterion) {
         format!("ot_ecdsa_triples_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
-                || prepare_simulated_triples(participants_num()),
+                || prepare_simulated_triples(num),
                 |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot),
                 criterion::BatchSize::SmallInput,
             );
@@ -61,7 +61,7 @@ fn bench_presign(c: &mut Criterion) {
     let mut group = c.benchmark_group("presign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
-    let protocols = ot_ecdsa_prepare_triples(participants_num(), threshold());
+    let protocols = ot_ecdsa_prepare_triples(num, threshold());
     let two_triples = run_protocol(protocols).expect("Running triple preparations should succeed");
 
     group.bench_function(
@@ -84,7 +84,7 @@ fn bench_sign(c: &mut Criterion) {
     let mut group = c.benchmark_group("sign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
-    let protocols = ot_ecdsa_prepare_triples(participants_num(), threshold());
+    let protocols = ot_ecdsa_prepare_triples(num, threshold());
     let two_triples = run_protocol(protocols).expect("Running triples preparation should succeed");
 
     let (protocols, pk) = ot_ecdsa_prepare_presign(&two_triples, threshold());
@@ -116,7 +116,7 @@ fn prepare_simulated_triples(participant_num: usize) -> PreparedSimulatedTriples
         Vec::with_capacity(participant_num);
     let participants = generate_participants_with_random_ids(participant_num, &mut OsRng);
 
-    let rngs = create_multiple_rngs(&participants);
+    let rngs = create_multiple_rngs(participant_num);
 
     for (i, p) in participants.iter().enumerate() {
         let protocol = generate_triple_many::<2>(&participants, *p, threshold(), rngs[i].clone())
