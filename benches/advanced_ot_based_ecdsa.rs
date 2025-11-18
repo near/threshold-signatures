@@ -61,7 +61,8 @@ fn bench_presign(c: &mut Criterion) {
     let mut group = c.benchmark_group("presign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
-    let protocols = ot_ecdsa_prepare_triples(num, threshold());
+    let rngs = create_multiple_rngs(num);
+    let protocols = ot_ecdsa_prepare_triples(num, threshold(), &rngs);
     let two_triples = run_protocol(protocols).expect("Running triple preparations should succeed");
 
     group.bench_function(
@@ -84,7 +85,8 @@ fn bench_sign(c: &mut Criterion) {
     let mut group = c.benchmark_group("sign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
-    let protocols = ot_ecdsa_prepare_triples(num, threshold());
+    let rngs = create_multiple_rngs(num);
+    let protocols = ot_ecdsa_prepare_triples(num, threshold(), &rngs);
     let two_triples = run_protocol(protocols).expect("Running triples preparation should succeed");
 
     let (protocols, pk) = ot_ecdsa_prepare_presign(&two_triples, threshold());
@@ -102,26 +104,17 @@ fn bench_sign(c: &mut Criterion) {
     );
 }
 
-type PreparedSimulatedTriples = (
-    Participant,
-    Box<dyn Protocol<Output = Vec<(TripleShare, TriplePub)>>>,
-    Simulator,
-);
+criterion_group!(benches, bench_triples, bench_presign, bench_sign);
+criterion::criterion_main!(benches);
+
+/****************************** Helpers ******************************/
 /// Used to simulate ot based ecdsa triples for benchmarking
 /// # Panics
 /// Would panic in case an abort happens stopping the entire benchmarking
 fn prepare_simulated_triples(participant_num: usize) -> PreparedSimulatedTriples {
-    let mut protocols: Vec<(_, Box<dyn Protocol<Output = _>>)> =
-        Vec::with_capacity(participant_num);
     let participants = generate_participants_with_random_ids(participant_num, &mut OsRng);
-
     let rngs = create_multiple_rngs(participant_num);
-
-    for (i, p) in participants.iter().enumerate() {
-        let protocol = generate_triple_many::<2>(&participants, *p, threshold(), rngs[i].clone())
-            .expect("Triple generation should succeed");
-        protocols.push((*p, Box::new(protocol)));
-    }
+    let protocols = ot_ecdsa_prepare_triples(participant_num, threshold(), &rngs);
     let (_, protocolsnapshot) = run_protocol_with_snapshots(protocols)
         .expect("Running protocol with snapshot should not have issues");
 
@@ -143,11 +136,6 @@ fn prepare_simulated_triples(participant_num: usize) -> PreparedSimulatedTriples
     (real_participant, real_protocol, simulated_protocol)
 }
 
-type PreparedSimulatedPresig = (
-    Participant,
-    Box<dyn Protocol<Output = PresignOutput>>,
-    Simulator,
-);
 /// Used to simulate ot based ecdsa presignatures for benchmarking
 /// # Panics
 /// Would panic in case an abort happens stopping the entire benchmarking
@@ -228,12 +216,6 @@ fn prepare_simulated_presign(
         real_protocol.expect("The real participant should also be included in the protocol");
     (real_participant, real_protocol, simulated_protocol)
 }
-
-type PreparedSimulatedSig = (
-    Participant,
-    Box<dyn Protocol<Output = SignatureOption>>,
-    Simulator,
-);
 
 /// Used to simulate ot based ecdsa signatures for benchmarking
 /// # Panics
@@ -318,5 +300,20 @@ pub fn prepare_simulated_sign(
     (real_participant, real_protocol, simulated_protocol)
 }
 
-criterion_group!(benches, bench_triples, bench_presign, bench_sign);
-criterion::criterion_main!(benches);
+type PreparedSimulatedTriples = (
+    Participant,
+    Box<dyn Protocol<Output = Vec<(TripleShare, TriplePub)>>>,
+    Simulator,
+);
+
+type PreparedSimulatedPresig = (
+    Participant,
+    Box<dyn Protocol<Output = PresignOutput>>,
+    Simulator,
+);
+
+type PreparedSimulatedSig = (
+    Participant,
+    Box<dyn Protocol<Output = SignatureOption>>,
+    Simulator,
+);

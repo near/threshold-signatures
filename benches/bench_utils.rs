@@ -40,15 +40,16 @@ type OTECDSAPreparedTriples = Vec<(
 pub fn ot_ecdsa_prepare_triples(
     participant_num: usize,
     threshold: usize,
+    rngs: &[impl CryptoRngCore + Send + Clone + 'static],
 ) -> OTECDSAPreparedTriples {
     let mut protocols: Vec<(_, Box<dyn Protocol<Output = _>>)> =
         Vec::with_capacity(participant_num);
     let participants = generate_participants_with_random_ids(participant_num, &mut OsRng);
 
-    for p in participants.clone() {
-        let protocol = generate_triple_many::<2>(&participants, p, threshold, OsRng)
+    for (i, p) in participants.iter().enumerate() {
+        let protocol = generate_triple_many::<2>(&participants, *p, threshold, rngs[i].clone())
             .expect("Triple generation should succeed");
-        protocols.push((p, Box::new(protocol)));
+        protocols.push((*p, Box::new(protocol)));
     }
     protocols
 }

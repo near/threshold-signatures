@@ -68,6 +68,7 @@ fn bench_sign(c: &mut Criterion) {
 criterion_group!(benches, bench_presign, bench_sign);
 criterion::criterion_main!(benches);
 
+/****************************** Helpers ******************************/
 /// Used to simulate robust ecdsa presignatures for benchmarking
 /// # Panics
 /// Would panic in case an abort happens stopping the entire benchmarking
@@ -119,7 +120,6 @@ fn prepare_simulated_sign(
         result.iter().map(|(participant, _)| *participant).collect();
     // choose the real_participant being the coordinator
     let (real_participant, _) = result[coordinator_index];
-
     let real_protocol = sign(
         &participants,
         real_participant,
