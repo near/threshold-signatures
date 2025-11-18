@@ -48,7 +48,7 @@ fn bench_triples(c: &mut Criterion) {
 group.sample_size(*SAMPLE_SIZE);
 
     group.bench_function(
-        format!("ot_ecdsa_triples_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
+        format!("ot_ecdsa_triples_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
         |b| {
             b.iter_batched(
                 || prepare_simulated_triples(num),
@@ -72,7 +72,7 @@ group.sample_size(*SAMPLE_SIZE);
     let two_triples = run_protocol(protocols).expect("Running triple preparations should succeed");
 
     group.bench_function(
-        format!("ot_ecdsa_presign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
+        format!("ot_ecdsa_presign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
         |b| {
             b.iter_batched(
                 || prepare_simulated_presign(&two_triples),
@@ -101,7 +101,7 @@ group.sample_size(*SAMPLE_SIZE);
     let pk = key_packages[0].1.public_key;
 
     group.bench_function(
-        format!("ot_ecdsa_sign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
+        format!("ot_ecdsa_sign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
         |b| {
             b.iter_batched(
                 || prepare_simulated_sign(&result, pk),
