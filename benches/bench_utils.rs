@@ -36,6 +36,14 @@ pub static LATENCY: LazyLock<u64> = std::sync::LazyLock::new(|| {
         .unwrap_or(0)
 });
 
+// fix malicious number of participants
+pub static BATCH_SIZE: LazyLock<u64> = std::sync::LazyLock::new(|| {
+    env::var("BATCH_SIZE")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(50)
+});
+
 pub fn run_simulated_protocol<T>(
     rparticipant: Participant,
     rprot: Box<dyn Protocol<Output = T>>,

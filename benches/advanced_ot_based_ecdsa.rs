@@ -11,6 +11,7 @@ use crate::bench_utils::{
     ot_ecdsa_prepare_triples,
     MAX_MALICIOUS,
     LATENCY,
+    BATCH_SIZE,
 };
 
 use threshold_signatures::{
@@ -53,7 +54,7 @@ fn bench_triples(c: &mut Criterion) {
             b.iter_batched(
                 || prepare_simulated_triples(num),
                 |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot),
-                criterion::BatchSize::SmallInput,
+                criterion::BatchSize::NumBatches(*BATCH_SIZE),
             );
         },
     );
@@ -77,7 +78,7 @@ fn bench_presign(c: &mut Criterion) {
             b.iter_batched(
                 || prepare_simulated_presign(&two_triples),
                 |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot),
-                criterion::BatchSize::SmallInput,
+                criterion::BatchSize::NumBatches(*BATCH_SIZE),
             );
         },
     );
@@ -106,7 +107,7 @@ fn bench_sign(c: &mut Criterion) {
             b.iter_batched(
                 || prepare_simulated_sign(&result, pk),
                 |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot),
-                criterion::BatchSize::SmallInput,
+                criterion::BatchSize::NumBatches(*BATCH_SIZE),
             );
         },
     );

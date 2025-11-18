@@ -9,7 +9,8 @@ use crate::bench_utils::{
     robust_ecdsa_prepare_sign,
     run_simulated_protocol,
     MAX_MALICIOUS,
-    LATENCY
+    BATCH_SIZE,
+    LATENCY,
 };
 
 use threshold_signatures::{
@@ -42,7 +43,7 @@ fn bench_presign(c: &mut Criterion) {
             b.iter_batched(
                 || prepare_simulate_presign(num),
                 |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot),
-                criterion::BatchSize::SmallInput,
+                criterion::BatchSize::NumBatches(*BATCH_SIZE),
             );
         },
     );
@@ -67,7 +68,7 @@ fn bench_sign(c: &mut Criterion) {
             b.iter_batched(
                 || prepare_simulated_sign(&result, pk),
                 |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot),
-                criterion::BatchSize::SmallInput,
+                criterion::BatchSize::NumBatches(*BATCH_SIZE),
             );
         },
     );

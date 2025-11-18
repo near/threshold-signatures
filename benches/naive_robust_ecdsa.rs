@@ -1,6 +1,11 @@
 use criterion::{criterion_group, Criterion};
 mod bench_utils;
-use crate::bench_utils::{robust_ecdsa_prepare_presign, robust_ecdsa_prepare_sign, MAX_MALICIOUS};
+use crate::bench_utils::{
+    robust_ecdsa_prepare_presign,
+    robust_ecdsa_prepare_sign,
+    MAX_MALICIOUS,
+    BATCH_SIZE,
+};
 use threshold_signatures::test_utils::{create_multiple_rngs, run_protocol};
 
 fn participants_num() -> usize {
@@ -22,7 +27,7 @@ fn bench_presign(c: &mut Criterion) {
                     robust_ecdsa_prepare_presign(num, &rngs)
                 },
                 |(protocols, _, _)| run_protocol(protocols),
-                criterion::BatchSize::SmallInput,
+                criterion::BatchSize::NumBatches(*BATCH_SIZE),
             );
         },
     );
@@ -46,7 +51,7 @@ fn bench_sign(c: &mut Criterion) {
             b.iter_batched(
                 || robust_ecdsa_prepare_sign(&result, pk),
                 |(protocols, ..)| run_protocol(protocols),
-                criterion::BatchSize::SmallInput,
+                criterion::BatchSize::NumBatches(*BATCH_SIZE),
             );
         },
     );

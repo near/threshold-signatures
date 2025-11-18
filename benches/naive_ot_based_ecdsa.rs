@@ -1,7 +1,11 @@
 use criterion::{criterion_group, Criterion};
 mod bench_utils;
 use crate::bench_utils::{
-    ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign, ot_ecdsa_prepare_triples, MAX_MALICIOUS,
+    ot_ecdsa_prepare_triples,
+    ot_ecdsa_prepare_presign,
+    ot_ecdsa_prepare_sign,
+    MAX_MALICIOUS,
+    BATCH_SIZE,
 };
 use threshold_signatures::test_utils::{create_multiple_rngs, run_protocol};
 
@@ -29,7 +33,7 @@ fn bench_triples(c: &mut Criterion) {
                     ot_ecdsa_prepare_triples(participants_num(), threshold(), &rngs)
                 },
                 |(protocols, _)| run_protocol(protocols),
-                criterion::BatchSize::SmallInput,
+                criterion::BatchSize::NumBatches(*BATCH_SIZE),
             );
         },
     );
@@ -52,7 +56,7 @@ fn bench_presign(c: &mut Criterion) {
             b.iter_batched(
                 || ot_ecdsa_prepare_presign(&two_triples, threshold()),
                 |(protocols, ..)| run_protocol(protocols),
-                criterion::BatchSize::SmallInput,
+                criterion::BatchSize::NumBatches(*BATCH_SIZE),
             );
         },
     );
@@ -80,7 +84,7 @@ fn bench_sign(c: &mut Criterion) {
             b.iter_batched(
                 || ot_ecdsa_prepare_sign(&result, pk),
                 |(protocols, ..)| run_protocol(protocols),
-                criterion::BatchSize::SmallInput,
+                criterion::BatchSize::NumBatches(*BATCH_SIZE),
             );
         },
     );
