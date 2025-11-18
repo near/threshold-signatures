@@ -88,8 +88,7 @@ fn bench_sign(c: &mut Criterion) {
     let two_triples = run_protocol(protocols).expect("Running triples preparation should succeed");
 
     let (protocols, pk) = ot_ecdsa_prepare_presign(&two_triples, threshold());
-    let mut result = run_protocol(protocols).expect("Running presign preparation should succeed");
-    result.sort_by_key(|(p, _)| *p);
+    let result = run_protocol(protocols).expect("Running presign preparation should succeed");
 
     group.bench_function(
         format!("ot_ecdsa_sign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),

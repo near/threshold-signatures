@@ -142,9 +142,7 @@ pub fn run_presign(
         protocols.push((p, Box::new(protocol)));
     }
 
-    let mut result = run_protocol(protocols).unwrap();
-    result.sort_by_key(|(p, _)| *p);
-    result
+    run_protocol(protocols).unwrap()
 }
 
 #[test]

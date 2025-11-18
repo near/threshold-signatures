@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 // +++++++++++++++++ Any Protocol +++++++++++++++++ //
 /// Run a protocol to completion, synchronously.
-///
+/// Outputs sorted protocols based on the participants identifiers
 /// This works by executing each participant in order.
 ///
 /// The reason this function exists is as a convenient testing utility.
@@ -49,6 +49,7 @@ pub fn run_protocol<T>(
             } {}
         }
     }
+    out.sort_by_key(|(p, _)| *p);
     Ok(out)
 }
 
@@ -187,7 +188,7 @@ pub fn run_simulated_protocol<T>(
     while out.is_none() {
         let action = real_prot.poke()?;
         if let Action::Return(output) = action {
-            out = Some(output)
+            out = Some(output);
         }
         // match action {
         //     Action::Return(output) => out = Some(output),

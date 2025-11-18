@@ -1,14 +1,15 @@
 #![allow(dead_code)]
 use frost_secp256k1::{Secp256K1Sha256, VerifyingKey};
+use k256::AffinePoint;
 use rand::Rng;
-use rand_core::{OsRng, CryptoRngCore};
+use rand_core::{CryptoRngCore, OsRng};
 
 use threshold_signatures::{
     ecdsa::ot_based_ecdsa,
     ecdsa::robust_ecdsa,
     ecdsa::{
         ot_based_ecdsa::triples::{generate_triple_many, TriplePub, TripleShare},
-        SignatureOption,
+        KeygenOutput, Scalar, SignatureOption,
     },
     participants::Participant,
     protocol::Protocol,
@@ -174,33 +175,27 @@ pub fn split_even_odd<T: Clone>(v: Vec<T>) -> (Vec<T>, Vec<T>) {
 }
 
 /********************* Robust ECDSA *********************/
-/// Benches the presigning protocol
-type RobustECDSAPreparedPresig = (
-    Vec<(
-        Participant,
-        Box<dyn Protocol<Output = robust_ecdsa::PresignOutput>>,
-    )>,
-    VerifyingKey,
-);
-
 /// Used to prepare robust ecdsa presignatures for benchmarking
 /// # Panics
 /// Would panic in case an abort happens stopping the entire benchmarking
 pub fn robust_ecdsa_prepare_presign(
     num_participants: usize,
-    rngs: Vec<impl CryptoRngCore + Send + Clone + 'static>,
+    rngs: &[impl CryptoRngCore + Send + Clone + 'static],
 ) -> RobustECDSAPreparedPresig {
-    assert_eq!(rngs.len(), num_participants, "There must be enought Rngs as participants");
+    assert_eq!(
+        rngs.len(),
+        num_participants,
+        "There must be enought Rngs as participants"
+    );
 
     let participants = generate_participants_with_random_ids(num_participants, &mut OsRng);
     let key_packages = run_keygen::<Secp256K1Sha256>(&participants, *MAX_MALICIOUS + 1);
-    let pk = key_packages[0].1.public_key;
     let mut protocols: Vec<(
         Participant,
         Box<dyn Protocol<Output = robust_ecdsa::PresignOutput>>,
     )> = Vec::with_capacity(participants.len());
 
-    for  (i, (p, keygen_out)) in key_packages.iter().enumerate() {
+    for (i, (p, keygen_out)) in key_packages.iter().enumerate() {
         let protocol = robust_ecdsa::presign::presign(
             &participants,
             *p,
@@ -214,7 +209,7 @@ pub fn robust_ecdsa_prepare_presign(
         .expect("Presignature should succeed");
         protocols.push((*p, protocol));
     }
-    (protocols, pk)
+    (protocols, key_packages, participants)
 }
 
 /// Used to prepare robust ecdsa signatures for benchmarking
@@ -223,14 +218,14 @@ pub fn robust_ecdsa_prepare_presign(
 pub fn robust_ecdsa_prepare_sign(
     result: &[(Participant, robust_ecdsa::PresignOutput)],
     pk: VerifyingKey,
-) -> Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)> {
+) -> RobustECDSASig {
     // collect all participants
     let participants: Vec<Participant> =
         result.iter().map(|(participant, _)| *participant).collect();
 
     // choose a coordinator at random
-    let index = OsRng.gen_range(0..result.len());
-    let coordinator = result[index].0;
+    let coordinator_index = OsRng.gen_range(0..result.len());
+    let coordinator = result[coordinator_index].0;
 
     let (args, msg_hash) =
         ecdsa_generate_rerandpresig_args(&mut OsRng, &participants, pk, result[0].1.big_r);
@@ -254,9 +249,9 @@ pub fn robust_ecdsa_prepare_sign(
     let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)> =
         Vec::with_capacity(result.len());
 
-    for (p, presignature) in result {
+    for (p, presignature) in result.clone() {
         let protocol = robust_ecdsa::sign::sign(
-            args.participants.participants(),
+            &participants,
             coordinator,
             p,
             derived_pk,
@@ -267,5 +262,29 @@ pub fn robust_ecdsa_prepare_sign(
         .expect("Signing should succeed");
         protocols.push((p, protocol));
     }
-    protocols
+    (
+        protocols,
+        coordinator_index,
+        result[coordinator_index].1.clone(),
+        derived_pk,
+        msg_hash,
+    )
 }
+
+/// Benches the presigning protocol
+type RobustECDSAPreparedPresig = (
+    Vec<(
+        Participant,
+        Box<dyn Protocol<Output = robust_ecdsa::PresignOutput>>,
+    )>,
+    Vec<(Participant, KeygenOutput)>,
+    Vec<Participant>,
+);
+/// Benches the presigning protocol
+type RobustECDSASig = (
+    Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)>,
+    usize,
+    robust_ecdsa::RerandomizedPresignOutput,
+    AffinePoint,
+    Scalar,
+);
