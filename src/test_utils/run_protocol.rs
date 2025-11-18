@@ -174,6 +174,7 @@ pub fn run_simulated_protocol<T>(
     mut real_prot: Box<dyn Protocol<Output = T>>,
     simulator: Simulator,
     latency_time: u64,
+    number_participants: usize,
 ) -> Result<T, ProtocolError> {
     if simulator.real_participant() != real_participant {
         return Err(ProtocolError::AssertionFailed(
@@ -189,17 +190,20 @@ pub fn run_simulated_protocol<T>(
 
     let duration = std::time::Duration::from_millis(latency_time);
     let mut out = None;
-    let mut has_waited = false;
+    let mut counter = 0;
     while out.is_none() {
         let action = real_prot.poke()?;
         match action {
-            Action::Wait => {
-                if !has_waited {
+            Action::Wait => {}
+            Action::SendMany(..) => std::thread::sleep(duration),
+            Action::SendPrivate(..) => {
+                counter = counter + 1;
+                // minus one because me is not receiving anything
+                if counter == number_participants-1{
                     std::thread::sleep(duration);
-                    has_waited = true;
+                    counter = 0;
                 }
             }
-            Action::SendMany(..) | Action::SendPrivate(..) => has_waited = false,
             Action::Return(output) => out = Some(output),
         }
     }
