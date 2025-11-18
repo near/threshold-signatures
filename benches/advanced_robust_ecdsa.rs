@@ -54,7 +54,7 @@ fn bench_sign(c: &mut Criterion) {
     let pk = key_packages[0].1.public_key;
 
     group.bench_function(
-        format!("robust_ecdsa_sign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
+        format!("robust_ecdsa_sign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
                 || prepare_simulated_sign(&result, pk),
