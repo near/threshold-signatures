@@ -37,8 +37,8 @@ pub static LATENCY: LazyLock<u64> = std::sync::LazyLock::new(|| {
 });
 
 // fix malicious number of participants
-pub static BATCH_SIZE: LazyLock<u64> = std::sync::LazyLock::new(|| {
-    env::var("BATCH_SIZE")
+pub static SAMPLE_SIZE: LazyLock<usize> = std::sync::LazyLock::new(|| {
+    env::var("SAMPLE_SIZE")
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(50)

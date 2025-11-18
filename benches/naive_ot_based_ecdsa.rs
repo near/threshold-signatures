@@ -5,7 +5,7 @@ use crate::bench_utils::{
     ot_ecdsa_prepare_presign,
     ot_ecdsa_prepare_sign,
     MAX_MALICIOUS,
-    BATCH_SIZE,
+    SAMPLE_SIZE,
 };
 use threshold_signatures::test_utils::{create_multiple_rngs, run_protocol};
 
@@ -22,7 +22,7 @@ fn bench_triples(c: &mut Criterion) {
     let num = participants_num();
     let max_malicious = *MAX_MALICIOUS;
     let mut group = c.benchmark_group("triples");
-    group.measurement_time(std::time::Duration::from_secs(200));
+    group.sample_size(*SAMPLE_SIZE);
 
     group.bench_function(
         format!("ot_ecdsa_triples_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
@@ -33,7 +33,7 @@ fn bench_triples(c: &mut Criterion) {
                     ot_ecdsa_prepare_triples(participants_num(), threshold(), &rngs)
                 },
                 |(protocols, _)| run_protocol(protocols),
-                criterion::BatchSize::NumBatches(*BATCH_SIZE),
+                criterion::BatchSize::SmallInput,
             );
         },
     );
@@ -44,7 +44,7 @@ fn bench_presign(c: &mut Criterion) {
     let num = participants_num();
     let max_malicious = *MAX_MALICIOUS;
     let mut group = c.benchmark_group("presign");
-    group.measurement_time(std::time::Duration::from_secs(300));
+    group.sample_size(*SAMPLE_SIZE);
 
     let rngs = create_multiple_rngs(num);
     let (protocols, _) = ot_ecdsa_prepare_triples(participants_num(), threshold(), &rngs);
@@ -56,7 +56,7 @@ fn bench_presign(c: &mut Criterion) {
             b.iter_batched(
                 || ot_ecdsa_prepare_presign(&two_triples, threshold()),
                 |(protocols, ..)| run_protocol(protocols),
-                criterion::BatchSize::NumBatches(*BATCH_SIZE),
+                criterion::BatchSize::SmallInput,
             );
         },
     );
@@ -68,7 +68,7 @@ fn bench_sign(c: &mut Criterion) {
     let max_malicious = *MAX_MALICIOUS;
 
     let mut group = c.benchmark_group("sign");
-    group.measurement_time(std::time::Duration::from_secs(300));
+    group.sample_size(*SAMPLE_SIZE);
 
     let rngs = create_multiple_rngs(num);
     let (protocols, _) = ot_ecdsa_prepare_triples(participants_num(), threshold(), &rngs);
@@ -84,7 +84,7 @@ fn bench_sign(c: &mut Criterion) {
             b.iter_batched(
                 || ot_ecdsa_prepare_sign(&result, pk),
                 |(protocols, ..)| run_protocol(protocols),
-                criterion::BatchSize::NumBatches(*BATCH_SIZE),
+                criterion::BatchSize::SmallInput,
             );
         },
     );

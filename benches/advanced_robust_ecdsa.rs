@@ -9,8 +9,8 @@ use crate::bench_utils::{
     robust_ecdsa_prepare_sign,
     run_simulated_protocol,
     MAX_MALICIOUS,
-    BATCH_SIZE,
     LATENCY,
+    SAMPLE_SIZE,
 };
 
 use threshold_signatures::{
@@ -36,14 +36,14 @@ fn bench_presign(c: &mut Criterion) {
     let max_malicious = *MAX_MALICIOUS;
     let latency = *LATENCY;
     let mut group = c.benchmark_group("presign");
-    group.measurement_time(std::time::Duration::from_secs(300));
+    group.sample_size(*SAMPLE_SIZE);
     group.bench_function(
         format!("robust_ecdsa_presign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
         |b| {
             b.iter_batched(
                 || prepare_simulate_presign(num),
                 |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot),
-                criterion::BatchSize::NumBatches(*BATCH_SIZE),
+                criterion::BatchSize::SmallInput,
             );
         },
     );
@@ -55,7 +55,7 @@ fn bench_sign(c: &mut Criterion) {
     let max_malicious = *MAX_MALICIOUS;
     let latency = *LATENCY;
     let mut group = c.benchmark_group("sign");
-    group.measurement_time(std::time::Duration::from_secs(300));
+    group.sample_size(*SAMPLE_SIZE);
 
     let rngs = create_multiple_rngs(num);
     let (protocols, key_packages, _) = robust_ecdsa_prepare_presign(num, &rngs);
@@ -68,7 +68,7 @@ fn bench_sign(c: &mut Criterion) {
             b.iter_batched(
                 || prepare_simulated_sign(&result, pk),
                 |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot),
-                criterion::BatchSize::NumBatches(*BATCH_SIZE),
+                criterion::BatchSize::SmallInput,
             );
         },
     );
