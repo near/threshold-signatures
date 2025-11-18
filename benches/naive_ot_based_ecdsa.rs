@@ -54,7 +54,7 @@ fn bench_presign(c: &mut Criterion) {
         |b| {
             b.iter_batched(
                 || ot_ecdsa_prepare_presign(&two_triples, threshold()),
-                |(protocols, _)| run_protocol(protocols),
+                |(protocols, ..)| run_protocol(protocols),
                 criterion::BatchSize::SmallInput,
             );
         },
@@ -73,7 +73,8 @@ fn bench_sign(c: &mut Criterion) {
     let protocols = ot_ecdsa_prepare_triples(participants_num(), threshold(), &rngs);
     let two_triples = run_protocol(protocols).expect("Running triples preparation should succeed");
 
-    let (protocols, pk) = ot_ecdsa_prepare_presign(&two_triples, threshold());
+    let (protocols, key_packages, _) = ot_ecdsa_prepare_presign(&two_triples, threshold());
+    let pk = key_packages[0].1.public_key;
     let result = run_protocol(protocols).expect("Running presign preparation should succeed");
 
     group.bench_function(

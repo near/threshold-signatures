@@ -59,7 +59,8 @@ type OTECDSAPreparedPresig = (
         Participant,
         Box<dyn Protocol<Output = ot_based_ecdsa::PresignOutput>>,
     )>,
-    VerifyingKey,
+    Vec<(Participant, KeygenOutput)>,
+    Vec<Participant>,
 );
 
 /// Used to prepare ot based ecdsa presignatures for benchmarking
@@ -85,14 +86,13 @@ pub fn ot_ecdsa_prepare_presign(
     let (pub0, pub1) = split_even_odd(pubs);
 
     let key_packages = run_keygen::<Secp256K1Sha256>(&participants, threshold);
-    let pk = key_packages[0].1.public_key;
 
     let mut protocols: Vec<(
         Participant,
         Box<dyn Protocol<Output = ot_based_ecdsa::PresignOutput>>,
     )> = Vec::with_capacity(participants.len());
 
-    for (((p, keygen_out), share0), share1) in key_packages.into_iter().zip(shares0).zip(shares1) {
+    for (((p, keygen_out), share0), share1) in key_packages.clone().into_iter().zip(shares0).zip(shares1) {
         let protocol = ot_based_ecdsa::presign::presign(
             &participants,
             p,
@@ -106,7 +106,7 @@ pub fn ot_ecdsa_prepare_presign(
         .expect("Presigning should succeed");
         protocols.push((p, Box::new(protocol)));
     }
-    (protocols, pk)
+    (protocols, key_packages, participants)
 }
 
 /// Used to prepare ot based ecdsa signatures for benchmarking
