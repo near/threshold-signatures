@@ -1,12 +1,12 @@
 use crate::errors::ProtocolError;
 use crate::participants::Participant;
 use crate::protocol::{Action, Protocol};
-use crate::test_utils::ProtocolSnapshot;
+use crate::test_utils::{ProtocolSnapshot, Simulator};
 use std::collections::HashMap;
 
 // +++++++++++++++++ Any Protocol +++++++++++++++++ //
 /// Run a protocol to completion, synchronously.
-///
+/// Outputs sorted protocols based on the participants identifiers
 /// This works by executing each participant in order.
 ///
 /// The reason this function exists is as a convenient testing utility.
@@ -49,6 +49,7 @@ pub fn run_protocol<T>(
             } {}
         }
     }
+    out.sort_by_key(|(p, _)| *p);
     Ok(out)
 }
 
@@ -119,7 +120,7 @@ pub fn run_protocol_with_snapshots<T>(
 ///
 /// This is more useful for testing two party protocols with assymetric results,
 /// since the return types for the two protocols can be different.
-pub fn run_two_party_protocol<T0: std::fmt::Debug, T1: std::fmt::Debug>(
+pub fn run_two_party_protocol<T0, T1>(
     p0: Participant,
     p1: Participant,
     prot0: &mut dyn Protocol<Output = T0>,
@@ -162,4 +163,37 @@ pub fn run_two_party_protocol<T0: std::fmt::Debug, T1: std::fmt::Debug>(
         out0.ok_or_else(|| ProtocolError::Other("out0 is None".to_string()))?,
         out1.ok_or_else(|| ProtocolError::Other("out1 is None".to_string()))?,
     ))
+}
+
+/// Runs one real participant and one simulation representing the rest of participants
+/// The simulation has an internal storage of what to send to the real participant
+pub fn run_simulated_protocol<T>(
+    real_participant: Participant,
+    mut real_prot: Box<dyn Protocol<Output = T>>,
+    simulator: Simulator,
+) -> Result<T, ProtocolError> {
+    if simulator.real_participant() != real_participant {
+        return Err(ProtocolError::AssertionFailed(
+            "The given real participant does not match the simulator's internal real participant"
+                .to_string(),
+        ));
+    }
+
+    // fill the real_participant's buffer with the recorded messages
+    for (from, data) in simulator.get_recorded_messages() {
+        real_prot.message(from, data);
+    }
+
+    let mut out = None;
+    while out.is_none() {
+        let action = real_prot.poke()?;
+        if let Action::Return(output) = action {
+            out = Some(output);
+        }
+        // match action {
+        //     Action::Return(output) => out = Some(output),
+        //     _ => {}
+        // }
+    }
+    out.ok_or_else(|| ProtocolError::Other("out is None".to_string()))
 }

@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
 use crate::{participants::Participant, protocol::MessageData};
+use std::collections::HashMap;
 
 /// Constructor for specific (sender, messages) pairs transmitted during a protocol run
 #[derive(Debug, PartialEq, Clone)]
@@ -16,6 +15,7 @@ impl ReceivedMessageSnapshot {
 }
 
 /// Registers a particular participant's view of the received messages
+#[derive(Debug, Clone)]
 struct ParticipantSnapshot {
     snaps: Vec<ReceivedMessageSnapshot>,
     read_index: usize,
@@ -45,6 +45,17 @@ impl ParticipantSnapshot {
         let message_snap = &self.snaps[self.read_index];
         self.read_index += 1;
         Some((message_snap.from, message_snap.message.clone()))
+    }
+
+    fn read_all_messages(&self) -> Option<Vec<(Participant, MessageData)>> {
+        if self.snaps.is_empty() {
+            return None;
+        }
+        let mut out = Vec::new();
+        for snap in &self.snaps {
+            out.push((snap.from, snap.message.clone()));
+        }
+        Some(out)
     }
 
     fn refresh_read(&mut self) {
@@ -90,10 +101,26 @@ impl ProtocolSnapshot {
             .and_then(ParticipantSnapshot::read_next_message)
     }
 
+    /// Returns a vector of all received messages by a specific participant
+    pub fn get_received_messages(
+        self,
+        participant: &Participant,
+    ) -> Option<Vec<(Participant, MessageData)>> {
+        self.snapshots
+            .get(participant)
+            .and_then(ParticipantSnapshot::read_all_messages)
+    }
+
+    /// Refreshes the snapshots allowing reading them from the beginning
     pub fn refresh_read(&mut self) {
         for snapshot in self.snapshots.values_mut() {
             snapshot.refresh_read();
         }
+    }
+
+    /// Gives the number of participants that the current struct snapshotted
+    pub fn number_of_participants(&self) -> usize {
+        self.snapshots.len()
     }
 }
 
@@ -105,7 +132,7 @@ mod test {
         KeygenOutput, Polynomial,
     };
     use crate::test_utils::{
-        generate_participants, run_protocol_with_snapshots, GenProtocol, MockCryptoRng,
+        create_multiple_rngs, generate_participants, run_protocol_with_snapshots, GenProtocol,
     };
     use crate::SigningShare;
     use frost_secp256k1::VerifyingKey;
@@ -180,19 +207,10 @@ mod test {
         }
     }
 
-    fn create_rngs(participants: &[Participant]) -> Vec<MockCryptoRng> {
-        let mut seed = OsRng;
-        let rngs = participants
-            .iter()
-            .map(|_| MockCryptoRng::seed_from_u64(seed.next_u64()))
-            .collect::<Vec<_>>();
-        rngs
-    }
-
     #[test]
     fn test_clone_rngs() {
-        let participants = generate_participants(5);
-        let mut rngs = create_rngs(&participants);
+        let num_participants = 5;
+        let mut rngs = create_multiple_rngs(num_participants);
         // Clone rng
         let mut clone_rngs = rngs.clone();
 
@@ -227,13 +245,14 @@ mod test {
     #[test]
     fn test_snapshot_on_ecdsa_protocol() {
         let max_malicious = 2;
-        let participants = generate_participants(5);
+        let num_participants = 5;
+        let participants = generate_participants(num_participants);
 
         let f = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
         let big_x = ProjectivePoint::GENERATOR * f.eval_at_zero().unwrap().0;
 
         // create rngs for first and second snapshots
-        let rngs = create_rngs(&participants);
+        let rngs = create_multiple_rngs(num_participants);
 
         let mut results = Vec::new();
         let mut snapshots = Vec::new();

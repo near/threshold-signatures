@@ -139,7 +139,7 @@ pub async fn multiplication_many<const N: usize>(
     me: Participant,
     av_iv: Vec<Scalar>,
     bv_iv: Vec<Scalar>,
-    rng: impl CryptoRngCore + Send + Copy + 'static,
+    rng: impl CryptoRngCore + Clone + Send + 'static,
 ) -> Result<Vec<Scalar>, ProtocolError> {
     if N == 0 {
         return Err(ProtocolError::AssertionFailed(
@@ -159,7 +159,7 @@ pub async fn multiplication_many<const N: usize>(
             let fut = {
                 let chan = comms.private_channel(me, p).child(i as u64);
                 let order_key_other = hash(&(i, p))?;
-
+                let rng = rng.clone();
                 async move {
                     // Use a deterministic but random comparison function to decide who
                     // is the sender and who is the receiver. This allows the batched
