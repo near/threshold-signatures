@@ -29,11 +29,6 @@ pub static MAX_MALICIOUS: LazyLock<usize> = std::sync::LazyLock::new(|| {
 });
 
 /********************* OT Based ECDSA *********************/
-type OTECDSAPreparedTriples = Vec<(
-    Participant,
-    Box<dyn Protocol<Output = Vec<(TripleShare, TriplePub)>>>,
-)>;
-
 /// Used to prepare ot based ecdsa triples for benchmarking
 /// # Panics
 /// Would panic in case an abort happens stopping the entire benchmarking
@@ -53,15 +48,6 @@ pub fn ot_ecdsa_prepare_triples(
     }
     protocols
 }
-
-type OTECDSAPreparedPresig = (
-    Vec<(
-        Participant,
-        Box<dyn Protocol<Output = ot_based_ecdsa::PresignOutput>>,
-    )>,
-    Vec<(Participant, KeygenOutput)>,
-    Vec<Participant>,
-);
 
 /// Used to prepare ot based ecdsa presignatures for benchmarking
 /// # Panics
@@ -115,7 +101,7 @@ pub fn ot_ecdsa_prepare_presign(
 pub fn ot_ecdsa_prepare_sign(
     result: &[(Participant, ot_based_ecdsa::PresignOutput)],
     pk: VerifyingKey,
-) -> Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)> {
+) -> OTECDSAPreparedSig {
     // collect all participants
     let participants: Vec<Participant> =
         result.iter().map(|(participant, _)| *participant).collect();
@@ -146,7 +132,7 @@ pub fn ot_ecdsa_prepare_sign(
     let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)> =
         Vec::with_capacity(result.len());
 
-    for (p, presignature) in result {
+    for (p, presignature) in result.clone() {
         let protocol = ot_based_ecdsa::sign::sign(
             args.participants.participants(),
             coordinator,
@@ -159,7 +145,12 @@ pub fn ot_ecdsa_prepare_sign(
         .expect("Signing should succeed");
         protocols.push((p, protocol));
     }
-    protocols
+    (protocols,
+        index,
+        result[index].1.clone(),
+        derived_pk,
+        msg_hash
+    )
 }
 
 pub fn split_even_odd<T: Clone>(v: Vec<T>) -> (Vec<T>, Vec<T>) {
@@ -174,6 +165,28 @@ pub fn split_even_odd<T: Clone>(v: Vec<T>) -> (Vec<T>, Vec<T>) {
     }
     (even, odd)
 }
+
+type OTECDSAPreparedTriples = Vec<(
+    Participant,
+    Box<dyn Protocol<Output = Vec<(TripleShare, TriplePub)>>>,
+)>;
+
+type OTECDSAPreparedPresig = (
+    Vec<(
+        Participant,
+        Box<dyn Protocol<Output = ot_based_ecdsa::PresignOutput>>,
+    )>,
+    Vec<(Participant, KeygenOutput)>,
+    Vec<Participant>,
+);
+
+type OTECDSAPreparedSig = (
+    Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)>,
+    usize,
+    ot_based_ecdsa::RerandomizedPresignOutput,
+    AffinePoint,
+    Scalar,
+);
 
 /********************* Robust ECDSA *********************/
 /// Used to prepare robust ecdsa presignatures for benchmarking

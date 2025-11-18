@@ -7,6 +7,7 @@ mod bench_utils;
 use crate::bench_utils::{
     ot_ecdsa_prepare_triples,
     ot_ecdsa_prepare_presign,
+    ot_ecdsa_prepare_sign,
     MAX_MALICIOUS,
 };
 
@@ -16,14 +17,14 @@ use threshold_signatures::{
             presign::presign,
             sign::sign,
             triples::{generate_triple_many, TriplePub, TripleShare},
-            PresignArguments, PresignOutput, RerandomizedPresignOutput,
+            PresignArguments, PresignOutput,
         },
         SignatureOption,
     },
     participants::Participant,
     protocol::Protocol,
     test_utils::{
-        create_multiple_rngs, ecdsa_generate_rerandpresig_args,
+        create_multiple_rngs,
         generate_participants_with_random_ids, run_protocol,
         run_protocol_with_snapshots, run_simulated_protocol, Simulator,
     },
@@ -183,79 +184,30 @@ pub fn prepare_simulated_sign(
     result: &[(Participant, PresignOutput)],
     pk: VerifyingKey,
 ) -> PreparedSimulatedSig {
+    let (protocols, coordinator_index, presignature, derived_pk, msg_hash,) = ot_ecdsa_prepare_sign(result, pk);
+    let (_, protocolsnapshot) = run_protocol_with_snapshots(protocols)
+        .expect("Running protocol with snapshot should not have issues");
+
+    // choose the real_participant at random
+    let (real_participant, _) = result[coordinator_index];
+
     // collect all participants
     let participants: Vec<Participant> =
         result.iter().map(|(participant, _)| *participant).collect();
-
-    // choose a coordinator at random
-    let index = OsRng.gen_range(0..result.len());
-    let coordinator = result[index].0;
-
-    let (args, msg_hash) =
-        ecdsa_generate_rerandpresig_args(&mut OsRng, &participants, pk, result[0].1.big_r);
-    let derived_pk = args
-        .tweak
-        .derive_verifying_key(&pk)
-        .to_element()
-        .to_affine();
-
-    let result = result
-        .iter()
-        .map(|(p, presig)| {
-            (
-                *p,
-                RerandomizedPresignOutput::rerandomize_presign(presig, &args)
-                    .expect("Rerandomizing presignature should succeed"),
-            )
-        })
-        .collect::<Vec<_>>();
-
-    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)> =
-        Vec::with_capacity(result.len());
-
-    for (p, presignature) in result.clone() {
-        let protocol = sign(
-            args.participants.participants(),
-            coordinator,
-            p,
+    let real_protocol = sign(
+            &participants,
+            real_participant,
+            real_participant,
             derived_pk,
             presignature,
             msg_hash,
         )
         .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
-        .expect("Signing should succeed");
-        protocols.push((p, protocol));
-    }
-    let (_, protocolsnapshot) = run_protocol_with_snapshots(protocols)
-        .expect("Running protocol with snapshot should not have issues");
+        .expect("Simulated signing should succeed");
 
     // now preparing the being the coordinator
-    // choose the real_participant at random
-    let real_participant = coordinator;
     let simulated_protocol =
         Simulator::new(real_participant, protocolsnapshot).expect("Simulator should not be empty");
-
-    let mut real_protocol = None;
-
-    for (p, presignature) in result {
-        if p == real_participant {
-            real_protocol = Some(
-                sign(
-                    args.participants.participants(),
-                    coordinator,
-                    p,
-                    derived_pk,
-                    presignature,
-                    msg_hash,
-                )
-                .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
-                .expect("Simulated signing should succeed"),
-            );
-        }
-    }
-    let real_protocol =
-        real_protocol.expect("The real participant should also be included in the protocol");
-
     (real_participant, real_protocol, simulated_protocol)
 }
 

@@ -82,7 +82,7 @@ fn bench_sign(c: &mut Criterion) {
         |b| {
             b.iter_batched(
                 || ot_ecdsa_prepare_sign(&result, pk),
-                run_protocol,
+                |(protocols, ..)| run_protocol(protocols),
                 criterion::BatchSize::SmallInput,
             );
         },
