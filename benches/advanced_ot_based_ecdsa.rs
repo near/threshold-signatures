@@ -21,8 +21,8 @@ use threshold_signatures::{
     participants::Participant,
     protocol::Protocol,
     test_utils::{
-        create_multiple_rngs, generate_participants_with_random_ids, run_protocol,
-        run_protocol_with_snapshots, run_simulated_protocol, Simulator,
+        create_multiple_rngs, run_protocol, run_protocol_with_snapshots, run_simulated_protocol,
+        Simulator,
     },
 };
 
@@ -61,7 +61,7 @@ fn bench_presign(c: &mut Criterion) {
     group.measurement_time(std::time::Duration::from_secs(300));
 
     let rngs = create_multiple_rngs(num);
-    let protocols = ot_ecdsa_prepare_triples(num, threshold(), &rngs);
+    let (protocols, _) = ot_ecdsa_prepare_triples(num, threshold(), &rngs);
     let two_triples = run_protocol(protocols).expect("Running triple preparations should succeed");
 
     group.bench_function(
@@ -85,7 +85,7 @@ fn bench_sign(c: &mut Criterion) {
     group.measurement_time(std::time::Duration::from_secs(300));
 
     let rngs = create_multiple_rngs(num);
-    let protocols = ot_ecdsa_prepare_triples(num, threshold(), &rngs);
+    let (protocols, _) = ot_ecdsa_prepare_triples(num, threshold(), &rngs);
     let two_triples = run_protocol(protocols).expect("Running triples preparation should succeed");
 
     let (protocols, key_packages, _) = ot_ecdsa_prepare_presign(&two_triples, threshold());
@@ -112,9 +112,8 @@ criterion::criterion_main!(benches);
 /// # Panics
 /// Would panic in case an abort happens stopping the entire benchmarking
 fn prepare_simulated_triples(participant_num: usize) -> PreparedSimulatedTriples {
-    let participants = generate_participants_with_random_ids(participant_num, &mut OsRng);
     let rngs = create_multiple_rngs(participant_num);
-    let protocols = ot_ecdsa_prepare_triples(participant_num, threshold(), &rngs);
+    let (protocols, participants) = ot_ecdsa_prepare_triples(participant_num, threshold(), &rngs);
     let (_, protocolsnapshot) = run_protocol_with_snapshots(protocols)
         .expect("Running protocol with snapshot should not have issues");
 

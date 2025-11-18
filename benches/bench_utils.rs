@@ -46,7 +46,7 @@ pub fn ot_ecdsa_prepare_triples(
             .expect("Triple generation should succeed");
         protocols.push((*p, Box::new(protocol)));
     }
-    protocols
+    (protocols, participants)
 }
 
 /// Used to prepare ot based ecdsa presignatures for benchmarking
@@ -169,10 +169,13 @@ pub fn split_even_odd<T: Clone>(v: Vec<T>) -> (Vec<T>, Vec<T>) {
     (even, odd)
 }
 
-type OTECDSAPreparedTriples = Vec<(
-    Participant,
-    Box<dyn Protocol<Output = Vec<(TripleShare, TriplePub)>>>,
-)>;
+type OTECDSAPreparedTriples = (
+    Vec<(
+        Participant,
+        Box<dyn Protocol<Output = Vec<(TripleShare, TriplePub)>>>,
+    )>,
+    Vec<Participant>,
+);
 
 type OTECDSAPreparedPresig = (
     Vec<(

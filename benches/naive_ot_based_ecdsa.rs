@@ -28,7 +28,7 @@ fn bench_triples(c: &mut Criterion) {
                     let rngs = create_multiple_rngs(num);
                     ot_ecdsa_prepare_triples(participants_num(), threshold(), &rngs)
                 },
-                run_protocol,
+                |(protocols, _)| run_protocol(protocols),
                 criterion::BatchSize::SmallInput,
             );
         },
@@ -43,7 +43,7 @@ fn bench_presign(c: &mut Criterion) {
     group.measurement_time(std::time::Duration::from_secs(300));
 
     let rngs = create_multiple_rngs(num);
-    let protocols = ot_ecdsa_prepare_triples(participants_num(), threshold(), &rngs);
+    let (protocols, _) = ot_ecdsa_prepare_triples(participants_num(), threshold(), &rngs);
     let two_triples = run_protocol(protocols).expect("Running triple preparations should succeed");
 
     group.bench_function(
@@ -67,7 +67,7 @@ fn bench_sign(c: &mut Criterion) {
     group.measurement_time(std::time::Duration::from_secs(300));
 
     let rngs = create_multiple_rngs(num);
-    let protocols = ot_ecdsa_prepare_triples(participants_num(), threshold(), &rngs);
+    let (protocols, _) = ot_ecdsa_prepare_triples(participants_num(), threshold(), &rngs);
     let two_triples = run_protocol(protocols).expect("Running triples preparation should succeed");
 
     let (protocols, key_packages, _) = ot_ecdsa_prepare_presign(&two_triples, threshold());
