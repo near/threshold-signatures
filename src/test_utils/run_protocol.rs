@@ -167,10 +167,12 @@ pub fn run_two_party_protocol<T0, T1>(
 
 /// Runs one real participant and one simulation representing the rest of participants
 /// The simulation has an internal storage of what to send to the real participant
+/// Accepts a network latency in milliseconds say 100ms
 pub fn run_simulated_protocol<T>(
     real_participant: Participant,
     mut real_prot: Box<dyn Protocol<Output = T>>,
     simulator: Simulator,
+    latency_time: u64,
 ) -> Result<T, ProtocolError> {
     if simulator.real_participant() != real_participant {
         return Err(ProtocolError::AssertionFailed(
@@ -184,16 +186,21 @@ pub fn run_simulated_protocol<T>(
         real_prot.message(from, data);
     }
 
+    let duration = std::time::Duration::from_millis(latency_time);
     let mut out = None;
+    let mut has_waited = false;
     while out.is_none() {
         let action = real_prot.poke()?;
-        if let Action::Return(output) = action {
-            out = Some(output);
+        match action {
+            Action::Wait => {
+                if has_waited == false {
+                    std::thread::sleep(duration);
+                    has_waited = true;
+                }
+            },
+            Action::SendMany(..) | Action::SendPrivate(..)=> has_waited = false,
+            Action::Return(output) => out = Some(output),
         }
-        // match action {
-        //     Action::Return(output) => out = Some(output),
-        //     _ => {}
-        // }
     }
     out.ok_or_else(|| ProtocolError::Other("out is None".to_string()))
 }

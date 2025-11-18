@@ -5,7 +5,12 @@ use rand_core::OsRng;
 
 mod bench_utils;
 use crate::bench_utils::{
-    ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign, ot_ecdsa_prepare_triples, MAX_MALICIOUS,
+    run_simulated_protocol,
+    ot_ecdsa_prepare_presign,
+    ot_ecdsa_prepare_sign,
+    ot_ecdsa_prepare_triples,
+    MAX_MALICIOUS,
+    LATENCY,
 };
 
 use threshold_signatures::{
@@ -21,7 +26,7 @@ use threshold_signatures::{
     participants::Participant,
     protocol::Protocol,
     test_utils::{
-        create_multiple_rngs, run_protocol, run_protocol_with_snapshots, run_simulated_protocol,
+        create_multiple_rngs, run_protocol, run_protocol_with_snapshots,
         Simulator,
     },
 };
@@ -38,11 +43,12 @@ fn participants_num() -> usize {
 fn bench_triples(c: &mut Criterion) {
     let num = participants_num();
     let max_malicious = *MAX_MALICIOUS;
+    let latency = *LATENCY;
     let mut group = c.benchmark_group("triples");
     group.measurement_time(std::time::Duration::from_secs(200));
 
     group.bench_function(
-        format!("ot_ecdsa_triples_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
+        format!("ot_ecdsa_triples_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
         |b| {
             b.iter_batched(
                 || prepare_simulated_triples(num),
@@ -57,6 +63,7 @@ fn bench_triples(c: &mut Criterion) {
 fn bench_presign(c: &mut Criterion) {
     let num = participants_num();
     let max_malicious = *MAX_MALICIOUS;
+    let latency = *LATENCY;
     let mut group = c.benchmark_group("presign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
@@ -65,7 +72,7 @@ fn bench_presign(c: &mut Criterion) {
     let two_triples = run_protocol(protocols).expect("Running triple preparations should succeed");
 
     group.bench_function(
-        format!("ot_ecdsa_presign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
+        format!("ot_ecdsa_presign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
         |b| {
             b.iter_batched(
                 || prepare_simulated_presign(&two_triples),
@@ -80,6 +87,7 @@ fn bench_presign(c: &mut Criterion) {
 fn bench_sign(c: &mut Criterion) {
     let num = participants_num();
     let max_malicious = *MAX_MALICIOUS;
+    let latency = *LATENCY;
 
     let mut group = c.benchmark_group("sign");
     group.measurement_time(std::time::Duration::from_secs(300));
@@ -93,7 +101,7 @@ fn bench_sign(c: &mut Criterion) {
     let pk = key_packages[0].1.public_key;
 
     group.bench_function(
-        format!("ot_ecdsa_sign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
+        format!("ot_ecdsa_sign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
         |b| {
             b.iter_batched(
                 || prepare_simulated_sign(&result, pk),

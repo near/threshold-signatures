@@ -4,7 +4,13 @@ use rand::Rng;
 use rand_core::OsRng;
 
 mod bench_utils;
-use crate::bench_utils::{robust_ecdsa_prepare_presign, robust_ecdsa_prepare_sign, MAX_MALICIOUS};
+use crate::bench_utils::{
+    robust_ecdsa_prepare_presign,
+    robust_ecdsa_prepare_sign,
+    run_simulated_protocol,
+    MAX_MALICIOUS,
+    LATENCY
+};
 
 use threshold_signatures::{
     ecdsa::{
@@ -14,7 +20,7 @@ use threshold_signatures::{
     participants::Participant,
     protocol::Protocol,
     test_utils::{
-        create_multiple_rngs, run_protocol, run_protocol_with_snapshots, run_simulated_protocol,
+        create_multiple_rngs, run_protocol, run_protocol_with_snapshots,
         Simulator,
     },
 };
@@ -27,10 +33,11 @@ fn participants_num() -> usize {
 fn bench_presign(c: &mut Criterion) {
     let num = participants_num();
     let max_malicious = *MAX_MALICIOUS;
+    let latency = *LATENCY;
     let mut group = c.benchmark_group("presign");
     group.measurement_time(std::time::Duration::from_secs(300));
     group.bench_function(
-        format!("robust_ecdsa_presign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
+        format!("robust_ecdsa_presign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
         |b| {
             b.iter_batched(
                 || prepare_simulate_presign(num),
@@ -45,6 +52,7 @@ fn bench_presign(c: &mut Criterion) {
 fn bench_sign(c: &mut Criterion) {
     let num = participants_num();
     let max_malicious = *MAX_MALICIOUS;
+    let latency = *LATENCY;
     let mut group = c.benchmark_group("sign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
@@ -54,7 +62,7 @@ fn bench_sign(c: &mut Criterion) {
     let pk = key_packages[0].1.public_key;
 
     group.bench_function(
-        format!("robust_ecdsa_sign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
+        format!("robust_ecdsa_sign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
         |b| {
             b.iter_batched(
                 || prepare_simulated_sign(&result, pk),
