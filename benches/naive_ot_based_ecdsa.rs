@@ -1,10 +1,7 @@
 use criterion::{criterion_group, Criterion};
 mod bench_utils;
 use crate::bench_utils::{
-    ot_ecdsa_prepare_triples,
-    ot_ecdsa_prepare_presign,
-    ot_ecdsa_prepare_sign,
-    MAX_MALICIOUS,
+    ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign, ot_ecdsa_prepare_triples, MAX_MALICIOUS,
     SAMPLE_SIZE,
 };
 use threshold_signatures::test_utils::{create_multiple_rngs, run_protocol};

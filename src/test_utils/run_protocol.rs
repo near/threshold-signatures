@@ -165,8 +165,9 @@ pub fn run_two_party_protocol<T0, T1>(
     ))
 }
 
-/// Runs one real participant and one simulation representing the rest of participants
-/// The simulation has an internal storage of what to send to the real participant
+/// Runs one real participant and one simulation representing the rest of participants.
+/// The simulation has an internal storage of what to send to the real participant.
+///
 /// Accepts a network latency in milliseconds say 100ms
 pub fn run_simulated_protocol<T>(
     real_participant: Participant,
@@ -193,12 +194,12 @@ pub fn run_simulated_protocol<T>(
         let action = real_prot.poke()?;
         match action {
             Action::Wait => {
-                if has_waited == false {
+                if !has_waited {
                     std::thread::sleep(duration);
                     has_waited = true;
                 }
-            },
-            Action::SendMany(..) | Action::SendPrivate(..)=> has_waited = false,
+            }
+            Action::SendMany(..) | Action::SendPrivate(..) => has_waited = false,
             Action::Return(output) => out = Some(output),
         }
     }

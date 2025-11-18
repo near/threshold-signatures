@@ -5,12 +5,8 @@ use rand_core::OsRng;
 
 mod bench_utils;
 use crate::bench_utils::{
-    robust_ecdsa_prepare_presign,
-    robust_ecdsa_prepare_sign,
-    run_simulated_protocol,
-    MAX_MALICIOUS,
-    LATENCY,
-    SAMPLE_SIZE,
+    robust_ecdsa_prepare_presign, robust_ecdsa_prepare_sign, run_simulated_protocol, LATENCY,
+    MAX_MALICIOUS, SAMPLE_SIZE,
 };
 
 use threshold_signatures::{
@@ -20,10 +16,7 @@ use threshold_signatures::{
     },
     participants::Participant,
     protocol::Protocol,
-    test_utils::{
-        create_multiple_rngs, run_protocol, run_protocol_with_snapshots,
-        Simulator,
-    },
+    test_utils::{create_multiple_rngs, run_protocol, run_protocol_with_snapshots, Simulator},
 };
 
 fn participants_num() -> usize {

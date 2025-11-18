@@ -5,12 +5,8 @@ use rand_core::OsRng;
 
 mod bench_utils;
 use crate::bench_utils::{
-    run_simulated_protocol,
-    ot_ecdsa_prepare_presign,
-    ot_ecdsa_prepare_sign,
-    ot_ecdsa_prepare_triples,
-    MAX_MALICIOUS,
-    SAMPLE_SIZE,
+    ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign, ot_ecdsa_prepare_triples,
+    run_simulated_protocol, LATENCY, MAX_MALICIOUS, SAMPLE_SIZE,
 };
 
 use threshold_signatures::{
@@ -25,10 +21,7 @@ use threshold_signatures::{
     },
     participants::Participant,
     protocol::Protocol,
-    test_utils::{
-        create_multiple_rngs, run_protocol, run_protocol_with_snapshots,
-        Simulator,
-    },
+    test_utils::{create_multiple_rngs, run_protocol, run_protocol_with_snapshots, Simulator},
 };
 
 fn threshold() -> usize {
@@ -43,10 +36,10 @@ fn participants_num() -> usize {
 fn bench_triples(c: &mut Criterion) {
     let num = participants_num();
     let max_malicious = *MAX_MALICIOUS;
+    let latency = *LATENCY;
     let mut group = c.benchmark_group("triples");
 
-group.sample_size(*SAMPLE_SIZE);
-
+    group.sample_size(*SAMPLE_SIZE);
     group.bench_function(
         format!("ot_ecdsa_triples_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
         |b| {
@@ -63,9 +56,9 @@ group.sample_size(*SAMPLE_SIZE);
 fn bench_presign(c: &mut Criterion) {
     let num = participants_num();
     let max_malicious = *MAX_MALICIOUS;
+    let latency = *LATENCY;
     let mut group = c.benchmark_group("presign");
-
-group.sample_size(*SAMPLE_SIZE);
+    group.sample_size(*SAMPLE_SIZE);
 
     let rngs = create_multiple_rngs(num);
     let (protocols, _) = ot_ecdsa_prepare_triples(num, threshold(), &rngs);
@@ -87,10 +80,9 @@ group.sample_size(*SAMPLE_SIZE);
 fn bench_sign(c: &mut Criterion) {
     let num = participants_num();
     let max_malicious = *MAX_MALICIOUS;
-
+    let latency = *LATENCY;
     let mut group = c.benchmark_group("sign");
-
-group.sample_size(*SAMPLE_SIZE);
+    group.sample_size(*SAMPLE_SIZE);
 
     let rngs = create_multiple_rngs(num);
     let (protocols, _) = ot_ecdsa_prepare_triples(num, threshold(), &rngs);
