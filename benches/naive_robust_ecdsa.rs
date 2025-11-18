@@ -1,10 +1,6 @@
 use criterion::{criterion_group, Criterion};
 mod bench_utils;
-use crate::bench_utils::{
-    MAX_MALICIOUS,
-    robust_ecdsa_prepare_sign,
-    robust_ecdsa_prepare_presign
-};
+use crate::bench_utils::{robust_ecdsa_prepare_presign, robust_ecdsa_prepare_sign, MAX_MALICIOUS};
 use threshold_signatures::test_utils::run_protocol;
 
 fn participants_num() -> usize {

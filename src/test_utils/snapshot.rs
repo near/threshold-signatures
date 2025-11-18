@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::{participants::Participant, protocol::MessageData};
+use std::collections::HashMap;
 
 /// Constructor for specific (sender, messages) pairs transmitted during a protocol run
 #[derive(Debug, PartialEq, Clone)]
@@ -47,12 +47,12 @@ impl ParticipantSnapshot {
         Some((message_snap.from, message_snap.message.clone()))
     }
 
-    fn read_all_messages(&self) -> Option<Vec<(Participant, MessageData)>>{
-        if self.snaps.len() <= 0 {
-            return None
+    fn read_all_messages(&self) -> Option<Vec<(Participant, MessageData)>> {
+        if self.snaps.is_empty() {
+            return None;
         }
         let mut out = Vec::new();
-        for snap in self.snaps.iter(){
+        for snap in &self.snaps {
             out.push((snap.from, snap.message.clone()));
         }
         Some(out)
@@ -61,7 +61,6 @@ impl ParticipantSnapshot {
     fn refresh_read(&mut self) {
         self.read_index = 0;
     }
-
 }
 
 /// Used to store the snapshot of all the messages sent during
@@ -103,9 +102,12 @@ impl ProtocolSnapshot {
     }
 
     /// Returns a vector of all received messages by a specific participant
-    pub fn get_received_messages(self, participant: &Participant) -> Option<Vec<(Participant, MessageData)>>{
+    pub fn get_received_messages(
+        self,
+        participant: &Participant,
+    ) -> Option<Vec<(Participant, MessageData)>> {
         self.snapshots
-            .get(&participant)
+            .get(participant)
             .and_then(ParticipantSnapshot::read_all_messages)
     }
 
@@ -130,8 +132,7 @@ mod test {
         KeygenOutput, Polynomial,
     };
     use crate::test_utils::{
-        generate_participants, run_protocol_with_snapshots, GenProtocol,
-        create_multiple_rngs,
+        create_multiple_rngs, generate_participants, run_protocol_with_snapshots, GenProtocol,
     };
     use crate::SigningShare;
     use frost_secp256k1::VerifyingKey;

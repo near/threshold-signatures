@@ -4,10 +4,7 @@ use rand::Rng;
 use rand_core::OsRng;
 
 mod bench_utils;
-use crate::bench_utils::{
-    MAX_MALICIOUS,
-    robust_ecdsa_prepare_presign,
-};
+use crate::bench_utils::{robust_ecdsa_prepare_presign, MAX_MALICIOUS};
 
 use threshold_signatures::{
     ecdsa::{
@@ -20,10 +17,9 @@ use threshold_signatures::{
     participants::Participant,
     protocol::Protocol,
     test_utils::{
-        Simulator,
-        ecdsa_generate_rerandpresig_args, generate_participants_with_random_ids, run_keygen,
-        run_protocol_with_snapshots, run_simulated_protocol, create_multiple_rngs,
-        run_protocol
+        create_multiple_rngs, ecdsa_generate_rerandpresig_args,
+        generate_participants_with_random_ids, run_keygen, run_protocol,
+        run_protocol_with_snapshots, run_simulated_protocol, Simulator,
     },
 };
 
@@ -72,12 +68,16 @@ fn bench_sign(c: &mut Criterion) {
     );
 }
 
-/// Benches the presigning protocol
+/// Helps with the benches of the presigning protocol
 type PreparedPresig = (
     Participant,
     Box<dyn Protocol<Output = PresignOutput>>,
     Simulator,
 );
+
+/// Used to simulate robust ecdsa presignatures for benchmarking
+/// # Panics
+/// Would panic in case an abort happens stopping the entire benchmarking
 fn prepare_simulate_presign(num_participants: usize) -> PreparedPresig {
     let participants = generate_participants_with_random_ids(num_participants, &mut OsRng);
     let key_packages = run_keygen::<Secp256K1Sha256>(&participants, *MAX_MALICIOUS + 1);
@@ -86,7 +86,7 @@ fn prepare_simulate_presign(num_participants: usize) -> PreparedPresig {
 
     // Running presign a first time with snapshots
     let rngs = create_multiple_rngs(&participants);
-    for (i, (p, keygen_out)) in key_packages.iter().enumerate(){
+    for (i, (p, keygen_out)) in key_packages.iter().enumerate() {
         let protocol = presign(
             &participants,
             *p,
@@ -101,42 +101,46 @@ fn prepare_simulate_presign(num_participants: usize) -> PreparedPresig {
         protocols.push((*p, protocol));
     }
     let (_, protocolsnapshot) = run_protocol_with_snapshots(protocols)
-                .expect("Running protocol with snapshot should not have issues");
+        .expect("Running protocol with snapshot should not have issues");
 
     // now preparing the simulator
     // choose the real_participant at random
     let index_real_participant = OsRng.gen_range(0..num_participants);
     let real_participant = participants[index_real_participant];
-    let simulated_protocol = Simulator::new(real_participant, protocolsnapshot)
-                            .expect("Simulator should not be empty");
+    let simulated_protocol =
+        Simulator::new(real_participant, protocolsnapshot).expect("Simulator should not be empty");
     let mut real_protocol = None;
-    for (p, keygen_out) in key_packages{
-        if p == real_participant{
+    for (p, keygen_out) in key_packages {
+        if p == real_participant {
             real_protocol = Some(
-            presign(
-            &participants,
-            real_participant,
-            PresignArguments {
-              keygen_out,
-              threshold: *MAX_MALICIOUS,
-            },
-            rngs[index_real_participant].clone() // provide the exact same randomness
-          ).map(|presig| Box::new(presig) as Box<dyn Protocol<Output = PresignOutput>>)
-          .expect("Presignature should succeed")
-          )
+                presign(
+                    &participants,
+                    real_participant,
+                    PresignArguments {
+                        keygen_out,
+                        threshold: *MAX_MALICIOUS,
+                    },
+                    rngs[index_real_participant].clone(), // provide the exact same randomness
+                )
+                .map(|presig| Box::new(presig) as Box<dyn Protocol<Output = PresignOutput>>)
+                .expect("Presignature should succeed"),
+            );
         }
-    };
-    let real_protocol = real_protocol.expect("The real participant should also be included in the protocol");
+    }
+    let real_protocol =
+        real_protocol.expect("The real participant should also be included in the protocol");
     (real_participant, real_protocol, simulated_protocol)
 }
 
-
-/// Benches the signing protocol
+/// Helps with the benches of the signing protocol
 type PreparedSimulatedSig = (
     Participant,
     Box<dyn Protocol<Output = SignatureOption>>,
     Simulator,
 );
+/// Used to simulate robust ecdsa signatures for benchmarking
+/// # Panics
+/// Would panic in case an abort happens stopping the entire benchmarking
 fn prepare_simulated_sign(
     result: &[(Participant, PresignOutput)],
     pk: VerifyingKey,
@@ -184,34 +188,36 @@ fn prepare_simulated_sign(
         .expect("Signing should succeed");
         protocols.push((p, protocol));
     }
+
     let (_, protocolsnapshot) = run_protocol_with_snapshots(protocols)
-                .expect("Running protocol with snapshot should not have issues");
+        .expect("Running protocol with snapshot should not have issues");
 
     // now preparing the simulator
-    // choose the real_participant at random
+    // choose the real_participant being the coordinator
     let real_participant = coordinator;
-    let simulated_protocol = Simulator::new(real_participant, protocolsnapshot)
-                            .expect("Simulator should not be empty");
+    let simulated_protocol =
+        Simulator::new(real_participant, protocolsnapshot).expect("Simulator should not be empty");
     let mut real_protocol = None;
-    for (p, presignature) in result{
-        if p == real_participant{
+    for (p, presignature) in result {
+        if p == real_participant {
             real_protocol = Some(
-            sign(
-            args.participants.participants(),
-            coordinator,
-            p,
-            derived_pk,
-            presignature,
-            msg_hash,
-            ).map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
-          .expect("Presignature should succeed")
-          )
+                sign(
+                    args.participants.participants(),
+                    coordinator,
+                    p,
+                    derived_pk,
+                    presignature,
+                    msg_hash,
+                )
+                .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
+                .expect("Presignature should succeed"),
+            );
         }
-    };
-    let real_protocol = real_protocol.expect("The real participant should also be included in the protocol");
+    }
+    let real_protocol =
+        real_protocol.expect("The real participant should also be included in the protocol");
     (real_participant, real_protocol, simulated_protocol)
 }
-
 
 criterion_group!(benches, bench_presign, bench_sign);
 criterion::criterion_main!(benches);

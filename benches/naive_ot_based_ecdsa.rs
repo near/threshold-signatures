@@ -1,10 +1,7 @@
 use criterion::{criterion_group, Criterion};
 mod bench_utils;
 use crate::bench_utils::{
-    MAX_MALICIOUS,
-    ot_ecdsa_prepare_triples,
-    ot_ecdsa_prepare_presign,
-    ot_ecdsa_prepare_sign
+    ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign, ot_ecdsa_prepare_triples, MAX_MALICIOUS,
 };
 use threshold_signatures::test_utils::run_protocol;
 
@@ -27,7 +24,7 @@ fn bench_triples(c: &mut Criterion) {
         format!("ot_ecdsa_triples_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
-                || ot_ecdsa_prepare_triples(participants_num(), threshold),
+                || ot_ecdsa_prepare_triples(participants_num(), threshold()),
                 run_protocol,
                 criterion::BatchSize::SmallInput,
             );
@@ -42,14 +39,14 @@ fn bench_presign(c: &mut Criterion) {
     let mut group = c.benchmark_group("presign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
-    let protocols = ot_ecdsa_prepare_triples(participants_num(), threshold);
+    let protocols = ot_ecdsa_prepare_triples(participants_num(), threshold());
     let two_triples = run_protocol(protocols).expect("Running triple preparations should succeed");
 
     group.bench_function(
         format!("ot_ecdsa_presign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
-                || ot_ecdsa_prepare_presign(&two_triples, threshold),
+                || ot_ecdsa_prepare_presign(&two_triples, threshold()),
                 |(protocols, _)| run_protocol(protocols),
                 criterion::BatchSize::SmallInput,
             );
@@ -65,10 +62,10 @@ fn bench_sign(c: &mut Criterion) {
     let mut group = c.benchmark_group("sign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
-    let protocols = ot_ecdsa_prepare_triples(participants_num(), threshold);
+    let protocols = ot_ecdsa_prepare_triples(participants_num(), threshold());
     let two_triples = run_protocol(protocols).expect("Running triples preparation should succeed");
 
-    let (protocols, pk) = ot_ecdsa_prepare_presign(&two_triples, threshold);
+    let (protocols, pk) = ot_ecdsa_prepare_presign(&two_triples, threshold());
     let mut result = run_protocol(protocols).expect("Running presign preparation should succeed");
     result.sort_by_key(|(p, _)| *p);
 

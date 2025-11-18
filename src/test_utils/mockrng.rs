@@ -1,6 +1,6 @@
+use crate::participants::Participant;
 use rand::{CryptoRng, RngCore};
 use rand_chacha::{rand_core::SeedableRng, ChaCha12Rng};
-use crate::participants::Participant;
 use rand_core::OsRng;
 
 /// Used for deterministic Rngs and only in testing
@@ -29,7 +29,6 @@ impl RngCore for MockCryptoRng {
 }
 
 impl CryptoRng for MockCryptoRng {}
-
 
 /// Generates multiple rngs
 pub fn create_multiple_rngs(participants: &[Participant]) -> Vec<MockCryptoRng> {

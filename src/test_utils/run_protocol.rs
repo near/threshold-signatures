@@ -164,7 +164,6 @@ pub fn run_two_party_protocol<T0, T1>(
     ))
 }
 
-
 /// Runs one real participant and one simulation representing the rest of participants
 /// The simulation has an internal storage of what to send to the real participant
 pub fn run_simulated_protocol<T>(
@@ -172,28 +171,28 @@ pub fn run_simulated_protocol<T>(
     mut real_prot: Box<dyn Protocol<Output = T>>,
     simulator: Simulator,
 ) -> Result<T, ProtocolError> {
-    if simulator.real_participant() != real_participant{
+    if simulator.real_participant() != real_participant {
         return Err(ProtocolError::AssertionFailed(
             "The given real participant does not match the simulator's internal real participant"
-            .to_string())
-            )
+                .to_string(),
+        ));
     }
 
     // fill the real_participant's buffer with the recorded messages
-    for (from, data) in simulator.get_recorded_messages(){
+    for (from, data) in simulator.get_recorded_messages() {
         real_prot.message(from, data);
     }
 
     let mut out = None;
     while out.is_none() {
         let action = real_prot.poke()?;
-        match action {
-            Action::Return(output) => out = Some(output),
-            _ => {},
+        if let Action::Return(output) = action {
+            out = Some(output)
         }
+        // match action {
+        //     Action::Return(output) => out = Some(output),
+        //     _ => {}
+        // }
     }
-
-    Ok(
-        out.ok_or_else(|| ProtocolError::Other("out is None".to_string()))?,
-    )
+    out.ok_or_else(|| ProtocolError::Other("out is None".to_string()))
 }
