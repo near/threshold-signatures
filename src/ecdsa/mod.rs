@@ -387,11 +387,11 @@ mod test {
 
     #[test]
     fn test_keygen_threshold_limits() {
-        crate::dkg::test::test_keygen_threshold_limits::<C>();
+        crate::dkg::test::keygen__should_fail_if_threshold_is_below_limit::<C>();
     }
 
     #[test]
     fn test_reshare_threshold_limits() {
-        crate::dkg::test::test_reshare_threshold_limits::<C>();
+        crate::dkg::test::reshare__should_fail_if_threshold_is_below_limit::<C>();
     }
 }

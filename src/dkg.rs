@@ -706,7 +706,8 @@ pub mod test {
         assert_eq!(<C::Group as Group>::generator() * x, pub_key);
     }
 
-    pub fn test_keygen_threshold_limits<C: Ciphersuite>()
+    #[allow(non_snake_case)]
+    pub fn keygen__should_fail_if_threshold_is_below_limit<C: Ciphersuite>()
     where
         <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
         <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send,
@@ -790,7 +791,8 @@ pub mod test {
         assert_eq!(<C::Group as Group>::generator() * x, pub_key.to_element());
     }
 
-    pub fn test_reshare_threshold_limits<C: Ciphersuite>()
+    #[allow(non_snake_case)]
+    pub fn reshare__should_fail_if_threshold_is_below_limit<C: Ciphersuite>()
     where
         <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
         <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send,
