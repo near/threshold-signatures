@@ -122,12 +122,18 @@ async fn multiplication_receiver(
 
     let batch_size = BITS + SECURITY_PARAMETER;
     // Step 1
-    let params = RandomOtExtensionParams {
-        sid,
-        batch_size: 2 * batch_size,
-    };
     let b = precomputed_package.b;
-    let mut res0 = random_ot_extension_receiver(chan.child(1), params, &k0, &k1, b).await?;
+    let mut res0 = random_ot_extension_receiver(
+        chan.child(1),
+        RandomOtExtensionParams {
+            sid,
+            batch_size: 2 * batch_size,
+        },
+        &k0,
+        &k1,
+        b,
+    )
+    .await?;
     let res1 = res0.split_off(batch_size);
 
     // Step 2
