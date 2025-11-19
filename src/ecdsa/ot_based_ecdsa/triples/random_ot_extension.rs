@@ -55,10 +55,11 @@ pub type RandomOTExtensionSenderOut = Vec<(Scalar, Scalar)>;
 /// The result that the receiver gets.
 pub type RandomOTExtensionReceiverOut = Vec<(Choice, Scalar)>;
 
+/// Generates the random values needed in `random_ot_extension_sender`
 pub(super) fn random_ot_extension_sender_helper(rng: &mut impl CryptoRngCore) -> [u8; 32] {
-    let mut seed = [0u8; 32];
-    rng.fill_bytes(&mut seed);
-    seed
+    let mut transcript_seed = [0u8; 32];
+    rng.fill_bytes(&mut transcript_seed);
+    transcript_seed
 }
 
 pub async fn random_ot_extension_sender(
@@ -66,7 +67,7 @@ pub async fn random_ot_extension_sender(
     params: RandomOtExtensionParams<'_>,
     delta: BitVector,
     k: &SquareBitMatrix,
-    seed: [u8; 32],
+    transcript_seed: [u8; 32],
 ) -> Result<RandomOTExtensionSenderOut, ProtocolError> {
     let adjusted_size = adjust_size(params.batch_size);
 
@@ -84,12 +85,12 @@ pub async fn random_ot_extension_sender(
 
     // Step 5
     let wait0 = chan.next_waitpoint();
-    chan.send(wait0, &seed)?;
+    chan.send(wait0, &transcript_seed)?;
 
     let mu = adjusted_size / SECURITY_PARAMETER;
 
     // Step 7
-    let mut prng = TranscriptRng::new(&seed);
+    let mut prng = TranscriptRng::new(&transcript_seed);
     let chi: Vec<BitVector> = (0..mu).map(|_| BitVector::random(&mut prng)).collect();
 
     // Step 11
@@ -130,6 +131,7 @@ pub async fn random_ot_extension_sender(
     Ok(out)
 }
 
+/// Generates the random values needed in `random_ot_extension_receiver`
 pub(super) fn random_ot_extension_receiver_helper(
     batch_size: usize,
     rng: &mut impl CryptoRngCore,

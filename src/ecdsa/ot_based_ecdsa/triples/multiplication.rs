@@ -40,14 +40,16 @@ struct MultiplicationSenderRandomPackage {
     delta1: Vec<Scalar>,
 }
 
-fn multiplication_sender_helper(rng: &mut impl CryptoRngCore) -> MultiplicationSenderRandomPackage {
-    let (delta, x) = batch_random_ot_receiver_random_helper(rng);
-    let seed = random_ot_extension_sender_helper(rng);
-    // this is the `batch_size`` from `multiplication_sender`
-    let batch_size = BITS + SECURITY_PARAMETER;
-    let delta0 = mta_sender_random_helper(batch_size, rng);
-    let delta1 = mta_sender_random_helper(batch_size, rng);
-    MultiplicationSenderRandomPackage::new(delta, x, seed, delta0, delta1)
+impl MultiplicationSenderRandomPackage {
+    fn generate_random_package(rng: &mut impl CryptoRngCore) -> Self {
+        let (delta, x) = batch_random_ot_receiver_random_helper(rng);
+        let seed = random_ot_extension_sender_helper(rng);
+        // this is the `batch_size` from `multiplication_sender`
+        let batch_size = BITS + SECURITY_PARAMETER;
+        let delta0 = mta_sender_random_helper(batch_size, rng);
+        let delta1 = mta_sender_random_helper(batch_size, rng);
+        Self::new(delta, x, seed, delta0, delta1)
+    }
 }
 
 async fn multiplication_sender(
@@ -97,16 +99,16 @@ struct MultiplicationReceiverRandomPackage {
     seed1: [u8; 32],
 }
 
-fn multiplication_receiver_helper(
-    rng: &mut impl CryptoRngCore,
-) -> MultiplicationReceiverRandomPackage {
-    let y = batch_random_ot_sender_helper(rng);
-    // This value must coincide with params.batch_size in `multiplication_receiver`
-    let batch_size = 2 * (BITS + SECURITY_PARAMETER);
-    let b = random_ot_extension_receiver_helper(batch_size, rng);
-    let seed0 = mta_receiver_random_helper(rng);
-    let seed1 = mta_receiver_random_helper(rng);
-    MultiplicationReceiverRandomPackage::new(y, b, seed0, seed1)
+impl MultiplicationReceiverRandomPackage {
+    fn generate_random_package(rng: &mut impl CryptoRngCore) -> Self {
+        let y = batch_random_ot_sender_helper(rng);
+        // This value must coincide with params.batch_size in `multiplication_receiver`
+        let batch_size = 2 * (BITS + SECURITY_PARAMETER);
+        let b = random_ot_extension_receiver_helper(batch_size, rng);
+        let seed0 = mta_receiver_random_helper(rng);
+        let seed1 = mta_receiver_random_helper(rng);
+        Self::new(y, b, seed0, seed1)
+    }
 }
 
 async fn multiplication_receiver(
@@ -162,7 +164,8 @@ pub(super) async fn multiplication(
         let chan = comms.private_channel(me, p);
         let fut: Pin<Box<dyn Future<Output = _> + Send>> = {
             if p < me {
-                let precomputed_sender_package = multiplication_sender_helper(rng);
+                let precomputed_sender_package =
+                    MultiplicationSenderRandomPackage::generate_random_package(rng);
                 Box::pin(async move {
                     #[allow(clippy::large_futures)]
                     multiplication_sender(
@@ -175,7 +178,8 @@ pub(super) async fn multiplication(
                     .await
                 })
             } else {
-                let precomputed_receiver_package = multiplication_receiver_helper(rng);
+                let precomputed_receiver_package =
+                    MultiplicationReceiverRandomPackage::generate_random_package(rng);
                 Box::pin(async move {
                     multiplication_receiver(
                         chan,
@@ -229,7 +233,8 @@ pub(super) async fn multiplication_many<const N: usize>(
                 // multiplication operation to put even networking load between the
                 // participants.
                 if order_key_other.as_ref() < order_key_me.as_ref() {
-                    let precomputed_sender_package = multiplication_sender_helper(&mut rng);
+                    let precomputed_sender_package =
+                        MultiplicationSenderRandomPackage::generate_random_package(&mut rng);
                     Box::pin(async move {
                         #[allow(clippy::large_futures)]
                         multiplication_sender(
@@ -242,7 +247,8 @@ pub(super) async fn multiplication_many<const N: usize>(
                         .await
                     })
                 } else {
-                    let precomputed_receiver_package = multiplication_receiver_helper(&mut rng);
+                    let precomputed_receiver_package =
+                        MultiplicationReceiverRandomPackage::generate_random_package(&mut rng);
                     Box::pin(async move {
                         multiplication_receiver(
                             chan,
