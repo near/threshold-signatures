@@ -519,12 +519,11 @@ pub async fn do_keygen<C: Ciphersuite>(
     threshold: usize,
     mut rng: impl CryptoRngCore,
 ) -> Result<KeygenOutput<C>, ProtocolError> {
-    let rng = &mut rng;
     // pick share at random
-    let secret = SigningKey::<C>::new(rng).to_scalar();
+    let secret = SigningKey::<C>::new(&mut rng).to_scalar();
     // call keyshare
     let keygen_output =
-        do_keyshare::<C>(chan, participants, me, threshold, secret, None, rng).await?;
+        do_keyshare::<C>(chan, participants, me, threshold, secret, None, &mut rng).await?;
     Ok(keygen_output)
 }
 
@@ -573,7 +572,7 @@ pub async fn do_reshare<C: Ciphersuite>(
     chan: SharedChannel,
     participants: ParticipantList,
     me: Participant,
-    old_threshold: usize,
+    threshold: usize,
     old_signing_key: Option<SigningShare<C>>,
     old_public_key: VerifyingKey<C>,
     old_participants: ParticipantList,
@@ -595,7 +594,7 @@ pub async fn do_reshare<C: Ciphersuite>(
         chan,
         participants,
         me,
-        old_threshold,
+        threshold,
         secret,
         old_reshare_package,
         &mut rng,
