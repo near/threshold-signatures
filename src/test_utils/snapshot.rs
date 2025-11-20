@@ -127,7 +127,7 @@ mod test {
     fn test_read_next_message() {
         let mut psnap = ParticipantSnapshot::new_empty();
         let mut rvec = Vec::new();
-        let mut rng = MockCryptoRng::seed_from_u64(123123);
+        let mut rng = MockCryptoRng::seed_from_u64(123_123);
         for _ in 0..50 {
             let received_snap = generate_random_received_snap(&mut rng);
             rvec.push(received_snap.clone());
@@ -143,7 +143,7 @@ mod test {
     #[test]
     fn test_refresh_read_all() {
         let mut psnap = ParticipantSnapshot::new_empty();
-        let mut rng = MockCryptoRng::seed_from_u64(123123);
+        let mut rng = MockCryptoRng::seed_from_u64(123_123);
         for _ in 0..50 {
             let received_snap = generate_random_received_snap(&mut rng);
             psnap.push_received_message_snapshot(received_snap);
