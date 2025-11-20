@@ -28,17 +28,17 @@ impl RngCore for MockCryptoRng {
 
 impl CryptoRng for MockCryptoRng {}
 
-
 #[cfg(test)]
-pub mod test{
+pub mod test {
     use crate::participants::Participant;
-    use crate::test_utils::{
-        generate_participants, MockCryptoRng,
-    };
+    use crate::test_utils::{generate_participants, MockCryptoRng};
     use rand::RngCore;
     use rand_core::CryptoRngCore;
 
-    pub fn create_rngs(participants: &[Participant], seed: &mut impl CryptoRngCore) -> Vec<MockCryptoRng> {
+    pub fn create_rngs(
+        participants: &[Participant],
+        seed: &mut impl CryptoRngCore,
+    ) -> Vec<MockCryptoRng> {
         let rngs = participants
             .iter()
             .map(|_| MockCryptoRng::seed_from_u64(seed.next_u64()))
