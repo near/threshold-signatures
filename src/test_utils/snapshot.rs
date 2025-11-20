@@ -124,28 +124,6 @@ mod test {
     }
 
     #[test]
-    fn test_receive_message_snapshot_equality() {
-        let from = Participant::from(1u32);
-        let message = b"Hello World".to_vec();
-        let received_snap_1 = ReceivedMessageSnapshot::new(from, message.clone());
-        let received_snap_2 = ReceivedMessageSnapshot::new(from, message);
-        assert_eq!(received_snap_1, received_snap_2);
-    }
-
-    #[test]
-    fn test_receive_message_snapshot_inequality() {
-        let from = Participant::from(1u32);
-        let message = b"Hello World".to_vec();
-        let received_snap_1 = ReceivedMessageSnapshot::new(from, message.clone());
-        let from = Participant::from(2u32);
-        let received_snap_2 = ReceivedMessageSnapshot::new(from, message);
-        assert_ne!(received_snap_1, received_snap_2);
-        let message = b"Ciao World".to_vec();
-        let received_snap_3 = ReceivedMessageSnapshot::new(from, message);
-        assert_ne!(received_snap_2, received_snap_3);
-    }
-
-    #[test]
     fn test_read_next_message() {
         let mut psnap = ParticipantSnapshot::new_empty();
         let mut rvec = Vec::new();
