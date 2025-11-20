@@ -13,7 +13,9 @@ mod presign;
 mod run_protocol;
 mod sign;
 
+use rand_core::CryptoRngCore;
 use crate::participants::Participant;
+use crate::errors::ProtocolError;
 use crate::protocol::Protocol;
 use crate::KeygenOutput;
 
@@ -29,3 +31,19 @@ pub use participants::{generate_participants, generate_participants_with_random_
 pub use presign::ecdsa_generate_rerandpresig_args;
 pub use run_protocol::{run_protocol, run_two_party_protocol};
 pub use sign::{check_one_coordinator_output, run_sign};
+pub use mpc_interface::*;
+
+/// Checks that the list contains all None but one element
+/// and verifies such element belongs to the coordinator
+pub fn one_coordinator_output<ProtocolOutput: Clone>(
+    all_sigs: Vec<(Participant, Option<ProtocolOutput>)>,
+    coordinator: Participant,
+) -> Result<ProtocolOutput, ProtocolError> {
+    check_one_coordinator_output(all_sigs, coordinator)
+}
+
+pub fn random_32_bytes(rng: &mut impl CryptoRngCore) -> [u8; 32] {
+    let mut bytes: [u8; 32] = [0u8; 32];
+    rng.fill_bytes(&mut bytes);
+    bytes
+}
