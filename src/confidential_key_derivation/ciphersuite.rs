@@ -308,7 +308,7 @@ mod tests {
             ciphersuite::{hash_to_curve, verify_signature, ScalarWrapper, BLS12381SHA256},
             ElementG2, VerifyingKey,
         },
-        test_utils::mpc_interface::check_common_traits_for_type,
+        test_utils::check_common_traits_for_type,
     };
 
     #[test]
