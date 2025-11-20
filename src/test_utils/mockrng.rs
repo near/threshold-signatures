@@ -27,3 +27,41 @@ impl RngCore for MockCryptoRng {
 }
 
 impl CryptoRng for MockCryptoRng {}
+
+
+#[cfg(test)]
+pub mod test{
+    use crate::participants::Participant;
+    use crate::test_utils::{
+        generate_participants, MockCryptoRng,
+    };
+    use rand::RngCore;
+    use rand_core::CryptoRngCore;
+
+    pub fn create_rngs(participants: &[Participant], seed: &mut impl CryptoRngCore) -> Vec<MockCryptoRng> {
+        let rngs = participants
+            .iter()
+            .map(|_| MockCryptoRng::seed_from_u64(seed.next_u64()))
+            .collect::<Vec<_>>();
+        rngs
+    }
+
+    #[test]
+    fn test_clone_rngs() {
+        let participants = generate_participants(5);
+        let mut rng = MockCryptoRng::seed_from_u64(42u64);
+        let mut rngs = create_rngs(&participants, &mut rng);
+        // Clone rng
+        let mut clone_rngs = rngs.clone();
+
+        let consumption = rngs.iter_mut().map(RngCore::next_u64).collect::<Vec<_>>();
+        let clone_consumption = clone_rngs
+            .iter_mut()
+            .map(RngCore::next_u64)
+            .collect::<Vec<_>>();
+
+        for (c1, c2) in consumption.iter().zip(clone_consumption.iter()) {
+            assert_eq!(c1, c2);
+        }
+    }
+}

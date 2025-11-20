@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{participants::Participant, protocol::MessageData};
 
-/// Constructor for specific (sender, messages) pairs transmitted during a protocol run
+/// A single received message during a protocol run
 #[derive(Debug, PartialEq, Clone)]
 struct ReceivedMessageSnapshot {
     from: Participant,
@@ -15,9 +15,12 @@ impl ReceivedMessageSnapshot {
     }
 }
 
-/// Registers a particular participant's view of the received messages
+/// A participant's view of their received messages
 struct ParticipantSnapshot {
+    // `snaps` is a list of (participant, messages) pairs
     snaps: Vec<ReceivedMessageSnapshot>,
+    // `read_index` helps knowing which snap has been already
+    // output during the reading queries
     read_index: usize,
 }
 
@@ -47,7 +50,7 @@ impl ParticipantSnapshot {
         Some((message_snap.from, message_snap.message.clone()))
     }
 
-    fn refresh_read(&mut self) {
+    fn refresh_read_all(&mut self) {
         self.read_index = 0;
     }
 }
@@ -81,7 +84,7 @@ impl ProtocolSnapshot {
     }
 
     /// Reads the next message stored in the snapshot of a particular participant given as input
-    pub fn read_next_snapshot(
+    pub fn read_next_message_for_participant(
         &mut self,
         participant: Participant,
     ) -> Option<(Participant, MessageData)> {
@@ -90,9 +93,9 @@ impl ProtocolSnapshot {
             .and_then(ParticipantSnapshot::read_next_message)
     }
 
-    pub fn refresh_read(&mut self) {
+    pub fn refresh_read_all(&mut self) {
         for snapshot in self.snapshots.values_mut() {
-            snapshot.refresh_read();
+            snapshot.refresh_read_all();
         }
     }
 }
@@ -105,13 +108,12 @@ mod test {
         KeygenOutput, Polynomial,
     };
     use crate::test_utils::{
-        generate_participants, run_protocol_with_snapshots, GenProtocol, MockCryptoRng,
+        generate_participants, run_protocol_and_take_snapshots, GenProtocol, MockCryptoRng,
     };
     use crate::SigningShare;
     use frost_secp256k1::VerifyingKey;
     use k256::ProjectivePoint;
-    use rand::RngCore;
-    use rand_core::{CryptoRngCore, OsRng};
+    use rand_core::CryptoRngCore;
 
     fn generate_random_received_snap(rng: &mut impl CryptoRngCore) -> ReceivedMessageSnapshot {
         let from = Participant::from(rng.next_u32());
@@ -147,8 +149,9 @@ mod test {
     fn test_read_next_message() {
         let mut psnap = ParticipantSnapshot::new_empty();
         let mut rvec = Vec::new();
+        let mut rng = MockCryptoRng::seed_from_u64(123123);
         for _ in 0..50 {
-            let received_snap = generate_random_received_snap(&mut OsRng);
+            let received_snap = generate_random_received_snap(&mut rng);
             rvec.push(received_snap.clone());
             psnap.push_received_message_snapshot(received_snap);
         }
@@ -160,11 +163,12 @@ mod test {
     }
 
     #[test]
-    fn test_refresh_read() {
+    fn test_refresh_read_all() {
         let mut psnap = ParticipantSnapshot::new_empty();
         let mut rvec = Vec::new();
+        let mut rng = MockCryptoRng::seed_from_u64(123123);
         for _ in 0..50 {
-            let received_snap = generate_random_received_snap(&mut OsRng);
+            let received_snap = generate_random_received_snap(&mut rng);
             psnap.push_received_message_snapshot(received_snap);
         }
         for _ in 0..50 {
@@ -172,38 +176,11 @@ mod test {
             let read_message = ReceivedMessageSnapshot::new(from, message);
             rvec.push(read_message);
         }
-        psnap.refresh_read();
+        psnap.refresh_read_all();
         for r in rvec {
             let (from, message) = psnap.read_next_message().unwrap();
             let read_message = ReceivedMessageSnapshot::new(from, message);
             assert_eq!(r, read_message);
-        }
-    }
-
-    fn create_rngs(participants: &[Participant]) -> Vec<MockCryptoRng> {
-        let mut seed = OsRng;
-        let rngs = participants
-            .iter()
-            .map(|_| MockCryptoRng::seed_from_u64(seed.next_u64()))
-            .collect::<Vec<_>>();
-        rngs
-    }
-
-    #[test]
-    fn test_clone_rngs() {
-        let participants = generate_participants(5);
-        let mut rngs = create_rngs(&participants);
-        // Clone rng
-        let mut clone_rngs = rngs.clone();
-
-        let consumption = rngs.iter_mut().map(RngCore::next_u64).collect::<Vec<_>>();
-        let clone_consumption = clone_rngs
-            .iter_mut()
-            .map(RngCore::next_u64)
-            .collect::<Vec<_>>();
-
-        for (c1, c2) in consumption.iter().zip(clone_consumption.iter()) {
-            assert_eq!(c1, c2);
         }
     }
 
@@ -225,15 +202,16 @@ mod test {
     }
 
     #[test]
-    fn test_snapshot_on_ecdsa_protocol() {
+    fn ecdsa_presign_should_return_same_snapshot_when_executed_twice() {
         let max_malicious = 2;
         let participants = generate_participants(5);
 
-        let f = Polynomial::generate_polynomial(None, max_malicious, &mut OsRng).unwrap();
+        let mut rng = MockCryptoRng::seed_from_u64(42u64);
+        let f = Polynomial::generate_polynomial(None, max_malicious, &mut rng).unwrap();
         let big_x = ProjectivePoint::GENERATOR * f.eval_at_zero().unwrap().0;
 
         // create rngs for first and second snapshots
-        let rngs = create_rngs(&participants);
+        let rngs = crate::test_utils::mockrng::test::create_rngs(&participants, &mut rng);
 
         let mut results = Vec::new();
         let mut snapshots = Vec::new();
@@ -256,7 +234,7 @@ mod test {
                 .unwrap();
                 protocols.push((*p, Box::new(protocol)));
             }
-            let (result, snapshot) = run_protocol_with_snapshots(protocols).unwrap();
+            let (result, snapshot) = run_protocol_and_take_snapshots(protocols).unwrap();
             results.push(result);
             snapshots.push(snapshot);
         }
@@ -270,8 +248,8 @@ mod test {
 
         // Check the messages sent per participants are the same
         for p in participants {
-            while let Some((sender1, msg1)) = snapshots[0].read_next_snapshot(p) {
-                let (sender2, msg2) = snapshots[1].read_next_snapshot(p).unwrap();
+            while let Some((sender1, msg1)) = snapshots[0].read_next_message_for_participant(p) {
+                let (sender2, msg2) = snapshots[1].read_next_message_for_participant(p).unwrap();
                 assert!(sender1 == sender2 && msg1 == msg2);
             }
         }

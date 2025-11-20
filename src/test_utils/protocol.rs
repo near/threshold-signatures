@@ -53,8 +53,7 @@ pub fn run_protocol<T>(
 }
 
 /// Like [`run_protocol()`], except that it snapshots all the communication.
-/// Runs a protocol and snapshots all the communication
-pub fn run_protocol_with_snapshots<T>(
+pub fn run_protocol_and_take_snapshots<T>(
     mut ps: Vec<(Participant, Box<dyn Protocol<Output = T>>)>,
 ) -> Result<(Vec<(Participant, T)>, ProtocolSnapshot), ProtocolError> {
     // Get the participants
@@ -66,6 +65,7 @@ pub fn run_protocol_with_snapshots<T>(
     let indices: HashMap<Participant, usize> =
         ps.iter().enumerate().map(|(i, (p, _))| (*p, i)).collect();
 
+    // run the protocol
     let size = ps.len();
     let mut out = Vec::with_capacity(size);
     while out.len() < size {
@@ -81,6 +81,7 @@ pub fn run_protocol_with_snapshots<T>(
                             }
                             let from = ps[i].0;
                             let to = ps[j].0;
+                            // snapshot the message
                             protocol_snapshots
                                 .push_message(to, from, m.clone())
                                 .ok_or_else(|| {
@@ -94,6 +95,7 @@ pub fn run_protocol_with_snapshots<T>(
                     }
                     Action::SendPrivate(to, m) => {
                         let from = ps[i].0;
+                        // snapshot the message
                         protocol_snapshots
                             .push_message(to, from, m.clone())
                             .ok_or_else(|| {
