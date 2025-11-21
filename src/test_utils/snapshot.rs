@@ -16,6 +16,7 @@ impl ReceivedMessageSnapshot {
 }
 
 /// A participant's view of their received messages
+#[derive(Default)]
 struct ParticipantSnapshot {
     // `snaps` is a list of (participant, messages) pairs
     snaps: Vec<ReceivedMessageSnapshot>,
@@ -25,13 +26,6 @@ struct ParticipantSnapshot {
 }
 
 impl ParticipantSnapshot {
-    pub fn new_empty() -> Self {
-        Self {
-            snaps: Vec::new(),
-            read_index: 0,
-        }
-    }
-
     fn push_received_message_snapshot(&mut self, snap: ReceivedMessageSnapshot) {
         self.snaps.push(snap);
     }
@@ -66,7 +60,7 @@ impl ProtocolSnapshot {
     pub fn new_empty(participants: Vec<Participant>) -> Self {
         let snapshots = participants
             .into_iter()
-            .map(|p| (p, ParticipantSnapshot::new_empty()))
+            .map(|p| (p, ParticipantSnapshot::default()))
             .collect::<HashMap<_, _>>();
         Self { snapshots }
     }
@@ -125,7 +119,7 @@ mod test {
 
     #[test]
     fn test_read_next_message() {
-        let mut psnap = ParticipantSnapshot::new_empty();
+        let mut psnap = ParticipantSnapshot::default();
         let mut rvec = Vec::new();
         let mut rng = MockCryptoRng::seed_from_u64(123_123);
         for _ in 0..50 {
@@ -142,7 +136,7 @@ mod test {
 
     #[test]
     fn test_refresh_read_all() {
-        let mut psnap = ParticipantSnapshot::new_empty();
+        let mut psnap = ParticipantSnapshot::default();
         let mut rng = MockCryptoRng::seed_from_u64(123_123);
         for _ in 0..50 {
             let received_snap = generate_random_received_snap(&mut rng);
