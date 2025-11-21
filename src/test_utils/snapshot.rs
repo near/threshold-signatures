@@ -166,14 +166,6 @@ mod test {
         }
     }
 
-    fn compare_presign_outputs(o1: &PresignOutput, o2: &PresignOutput) -> bool {
-        o1.alpha == o2.alpha
-            && o1.beta == o2.beta
-            && o1.c == o2.c
-            && o1.e == o2.e
-            && o1.big_r == o2.big_r
-    }
-
     #[test]
     fn ecdsa_presign_should_return_same_snapshot_when_executed_twice() {
         let max_malicious = 2;
