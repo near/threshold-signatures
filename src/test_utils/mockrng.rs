@@ -30,7 +30,6 @@ impl RngCore for MockCryptoRng {
 
 impl CryptoRng for MockCryptoRng {}
 
-#[allow(dead_code)]
 /// Creates multiple Mock rngs for multiple participants using a seed
 pub fn create_rngs(
     participants: &[Participant],
