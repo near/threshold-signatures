@@ -205,11 +205,9 @@ mod test {
         }
 
         // Check the results are the same
-        assert!(results[0].iter().all(|(p1, o1)| {
-            results[1]
-                .iter()
-                .any(|(p2, o2)| p1 == p2 && compare_presign_outputs(o1, o2))
-        }));
+        assert!(results[0]
+            .iter()
+            .all(|(p1, o1)| { results[1].iter().any(|(p2, o2)| p1 == p2 && o1 == o2) }));
 
         // Check the messages sent per participants are the same
         for p in participants {
