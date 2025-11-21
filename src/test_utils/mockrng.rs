@@ -1,5 +1,7 @@
 use rand::{CryptoRng, RngCore};
 use rand_chacha::{rand_core::SeedableRng, ChaCha12Rng};
+use rand_core::CryptoRngCore;
+use crate::participants::Participant;
 
 /// Used for deterministic Rngs and only in testing
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,23 +30,24 @@ impl RngCore for MockCryptoRng {
 
 impl CryptoRng for MockCryptoRng {}
 
+#[allow(dead_code)]
+/// Creates multiple Mock rngs for multiple participants using a seed
+pub fn create_rngs(
+    participants: &[Participant],
+    seed: &mut impl CryptoRngCore,
+) -> Vec<MockCryptoRng> {
+    let rngs = participants
+        .iter()
+        .map(|_| MockCryptoRng::seed_from_u64(seed.next_u64()))
+        .collect::<Vec<_>>();
+    rngs
+}
+
 #[cfg(test)]
 pub mod test {
-    use crate::participants::Participant;
+    use super::create_rngs;
     use crate::test_utils::{generate_participants, MockCryptoRng};
     use rand::RngCore;
-    use rand_core::CryptoRngCore;
-
-    pub fn create_rngs(
-        participants: &[Participant],
-        seed: &mut impl CryptoRngCore,
-    ) -> Vec<MockCryptoRng> {
-        let rngs = participants
-            .iter()
-            .map(|_| MockCryptoRng::seed_from_u64(seed.next_u64()))
-            .collect::<Vec<_>>();
-        rngs
-    }
 
     #[test]
     fn test_clone_rngs() {

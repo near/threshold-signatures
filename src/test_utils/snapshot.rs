@@ -184,7 +184,7 @@ mod test {
         let big_x = ProjectivePoint::GENERATOR * f.eval_at_zero().unwrap().0;
 
         // create rngs for first and second snapshots
-        let rngs = crate::test_utils::mockrng::test::create_rngs(&participants, &mut rng);
+        let rngs = crate::test_utils::mockrng::create_rngs(&participants, &mut rng);
 
         let mut results = Vec::new();
         let mut snapshots = Vec::new();
