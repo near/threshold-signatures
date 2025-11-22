@@ -26,7 +26,9 @@ Changing thresholds at any stage can silently weaken security (e.g., reducing si
 
 ## Persistence Requirement
 
-All keys, shares, or transcripts that leave the protocol must embed `(N, f, t)` so future API calls can enforce invariants even if the caller did not store them.
+All keys, shares, or transcripts that leave the protocol must embed `(N, f, t)` so future API calls can enforce invariants even if the caller did not store them. Treat this as a `ThresholdMeta` record that every subprotocol must serialize and verify.
+
+Keep `f` explicit even when `t = f + 1`. The current schemes tie `t` to `f`, but future `SchemeRules` may relax that relation; persisting both prevents silent downgrades if a protocol later allows `t != f + 1`.
 
 ---
 
