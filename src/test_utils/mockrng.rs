@@ -51,7 +51,7 @@ pub fn create_rngs(
 pub mod test {
     use super::create_rngs;
     use crate::test_utils::{generate_participants, MockCryptoRng};
-    use rand::RngCore;
+    use rand::{RngCore, SeedableRng};
 
     #[test]
     fn test_clone_rngs() {

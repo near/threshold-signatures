@@ -107,7 +107,7 @@ mod test {
     use crate::SigningShare;
     use frost_secp256k1::VerifyingKey;
     use k256::ProjectivePoint;
-    use rand_core::CryptoRngCore;
+    use rand_core::{CryptoRngCore, SeedableRng};
 
     fn generate_random_received_snap(rng: &mut impl CryptoRngCore) -> ReceivedMessageSnapshot {
         let from = Participant::from(rng.next_u32());
