@@ -1,4 +1,5 @@
-use rand_core::OsRng;
+use rand::SeedableRng;
+use rand_core::CryptoRngCore;
 
 use crate::participants::Participant;
 use crate::test_utils::{run_protocol, GenOutput, GenProtocol};
@@ -9,7 +10,13 @@ type DKGGenProtocol<C> = GenProtocol<KeygenOutput<C>>;
 
 /// Runs distributed keygen
 /// If the protocol succeeds, returns a sorted vector based on participants id
-pub fn run_keygen<C: Ciphersuite>(participants: &[Participant], threshold: usize) -> GenOutput<C>
+/// Runs distributed keygen
+/// If the protocol succeeds, returns a sorted vector based on participants id
+pub fn run_keygen<C: Ciphersuite, R: CryptoRngCore + SeedableRng + Send + 'static>(
+    participants: &[Participant],
+    threshold: usize,
+    rng: &mut R,
+) -> GenOutput<C>
 where
     Element<C>: Send,
     Scalar<C>: Send,
@@ -17,7 +24,8 @@ where
     let mut protocols: DKGGenProtocol<C> = Vec::with_capacity(participants.len());
 
     for p in participants {
-        let protocol = keygen::<C>(participants, *p, threshold, OsRng).unwrap();
+        let rng_p = R::seed_from_u64(rng.next_u64());
+        let protocol = keygen::<C>(participants, *p, threshold, rng_p).unwrap();
         protocols.push((*p, Box::new(protocol)));
     }
 
@@ -26,10 +34,11 @@ where
 
 /// Runs distributed refresh
 /// If the protocol succeeds, returns a sorted vector based on participants id
-pub fn run_refresh<C: Ciphersuite>(
+pub fn run_refresh<C: Ciphersuite, R: CryptoRngCore + SeedableRng + Send + 'static>(
     participants: &[Participant],
     keys: &[(Participant, KeygenOutput<C>)],
     threshold: usize,
+    rng: &mut R,
 ) -> GenOutput<C>
 where
     Element<C>: Send,
@@ -38,13 +47,14 @@ where
     let mut protocols: DKGGenProtocol<C> = Vec::with_capacity(participants.len());
 
     for (p, out) in keys {
+        let rng_p = R::seed_from_u64(rng.next_u64());
         let protocol = refresh::<C>(
             Some(out.private_share),
             out.public_key,
             participants,
             threshold,
             *p,
-            OsRng,
+            rng_p,
         )
         .unwrap();
         protocols.push((*p, Box::new(protocol)));
@@ -55,13 +65,14 @@ where
 
 /// Runs distributed reshare
 /// If the protocol succeeds, returns a sorted vector based on participants id
-pub fn run_reshare<C: Ciphersuite>(
+pub fn run_reshare<C: Ciphersuite, R: CryptoRngCore + SeedableRng + Send + 'static>(
     participants: &[Participant],
     pub_key: &VerifyingKey<C>,
     keys: &[(Participant, KeygenOutput<C>)],
     old_threshold: usize,
     new_threshold: usize,
     new_participants: &[Participant],
+    rng: &mut R,
 ) -> GenOutput<C>
 where
     Element<C>: Send,
@@ -87,6 +98,7 @@ where
     let mut protocols: DKGGenProtocol<C> = Vec::with_capacity(participants.len());
 
     for (p, out) in &setup {
+        let rng_p = R::seed_from_u64(rng.next_u64());
         let protocol = reshare(
             participants,
             old_threshold,
@@ -95,7 +107,7 @@ where
             new_participants,
             new_threshold,
             *p,
-            OsRng,
+            rng_p,
         )
         .unwrap();
         protocols.push((*p, Box::new(protocol)));

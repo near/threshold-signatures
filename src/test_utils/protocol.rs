@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 // +++++++++++++++++ Any Protocol +++++++++++++++++ //
 /// Run a protocol to completion, synchronously.
-/// Outputs sorted protocols based on the participants identifiers
+///
 /// This works by executing each participant in order.
 ///
 /// The reason this function exists is as a convenient testing utility.
@@ -49,13 +49,11 @@ pub fn run_protocol<T>(
             } {}
         }
     }
-    out.sort_by_key(|(p, _)| *p);
     Ok(out)
 }
 
 /// Like [`run_protocol()`], except that it snapshots all the communication.
-/// Runs a protocol and snapshots all the communication
-pub fn run_protocol_with_snapshots<T>(
+pub fn run_protocol_and_take_snapshots<T>(
     mut ps: Vec<(Participant, Box<dyn Protocol<Output = T>>)>,
 ) -> Result<(Vec<(Participant, T)>, ProtocolSnapshot), ProtocolError> {
     // Get the participants
@@ -67,6 +65,7 @@ pub fn run_protocol_with_snapshots<T>(
     let indices: HashMap<Participant, usize> =
         ps.iter().enumerate().map(|(i, (p, _))| (*p, i)).collect();
 
+    // run the protocol
     let size = ps.len();
     let mut out = Vec::with_capacity(size);
     while out.len() < size {
@@ -82,6 +81,7 @@ pub fn run_protocol_with_snapshots<T>(
                             }
                             let from = ps[i].0;
                             let to = ps[j].0;
+                            // snapshot the message
                             protocol_snapshots
                                 .push_message(to, from, m.clone())
                                 .ok_or_else(|| {
@@ -95,6 +95,7 @@ pub fn run_protocol_with_snapshots<T>(
                     }
                     Action::SendPrivate(to, m) => {
                         let from = ps[i].0;
+                        // snapshot the message
                         protocol_snapshots
                             .push_message(to, from, m.clone())
                             .ok_or_else(|| {
@@ -120,7 +121,7 @@ pub fn run_protocol_with_snapshots<T>(
 ///
 /// This is more useful for testing two party protocols with assymetric results,
 /// since the return types for the two protocols can be different.
-pub fn run_two_party_protocol<T0, T1>(
+pub fn run_two_party_protocol<T0: std::fmt::Debug, T1: std::fmt::Debug>(
     p0: Participant,
     p1: Participant,
     prot0: &mut dyn Protocol<Output = T0>,

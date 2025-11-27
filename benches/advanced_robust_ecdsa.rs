@@ -1,7 +1,7 @@
 use criterion::{criterion_group, Criterion};
 use frost_secp256k1::VerifyingKey;
 use rand::Rng;
-use rand_core::OsRng;
+use rand_core::SeedableRng;
 
 mod bench_utils;
 use crate::bench_utils::{robust_ecdsa_prepare_presign, robust_ecdsa_prepare_sign, MAX_MALICIOUS};
@@ -14,8 +14,8 @@ use threshold_signatures::{
     participants::Participant,
     protocol::Protocol,
     test_utils::{
-        create_multiple_rngs, run_protocol, run_protocol_with_snapshots, run_simulated_protocol,
-        Simulator,
+        create_rngs, run_protocol, run_protocol_and_take_snapshots, run_simulated_protocol,
+        MockCryptoRng, Simulator,
     },
 };
 
@@ -48,8 +48,9 @@ fn bench_sign(c: &mut Criterion) {
     let mut group = c.benchmark_group("sign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
-    let rngs = create_multiple_rngs(num);
-    let (protocols, key_packages, _) = robust_ecdsa_prepare_presign(num, &rngs);
+    let mut rng = MockCryptoRng::seed_from_u64(42);
+    let rngs = create_rngs(num, &mut rng);
+    let (protocols, key_packages, _) = robust_ecdsa_prepare_presign(num, &rngs, &mut rng);
     let result = run_protocol(protocols).expect("Prepare sign should not");
     let pk = key_packages[0].1.public_key;
 
@@ -74,15 +75,16 @@ criterion::criterion_main!(benches);
 /// Would panic in case an abort happens stopping the entire benchmarking
 fn prepare_simulate_presign(num_participants: usize) -> PreparedPresig {
     // Running presign a first time with snapshots
-    let rngs = create_multiple_rngs(num_participants);
+    let mut rng = MockCryptoRng::seed_from_u64(42);
+    let rngs = create_rngs(num_participants, &mut rng);
     let (protocols, key_packages, participants) =
-        robust_ecdsa_prepare_presign(num_participants, &rngs);
+        robust_ecdsa_prepare_presign(num_participants, &rngs, &mut rng);
 
-    let (_, protocolsnapshot) = run_protocol_with_snapshots(protocols)
+    let (_, protocolsnapshot) = run_protocol_and_take_snapshots(protocols)
         .expect("Running protocol with snapshot should not have issues");
 
     // choose the real_participant at random
-    let index_real_participant = OsRng.gen_range(0..num_participants);
+    let index_real_participant = rng.gen_range(0..num_participants);
     let (real_participant, keygen_out) = key_packages[index_real_participant].clone();
     let real_protocol = presign(
         &participants,
@@ -110,9 +112,10 @@ fn prepare_simulated_sign(
     result: &[(Participant, PresignOutput)],
     pk: VerifyingKey,
 ) -> PreparedSimulatedSig {
+    let mut rng = MockCryptoRng::seed_from_u64(41);
     let (protocols, coordinator_index, presignature, derived_pk, msg_hash) =
-        robust_ecdsa_prepare_sign(result, pk);
-    let (_, protocolsnapshot) = run_protocol_with_snapshots(protocols)
+        robust_ecdsa_prepare_sign(result, pk, &mut rng);
+    let (_, protocolsnapshot) = run_protocol_and_take_snapshots(protocols)
         .expect("Running protocol with snapshot should not have issues");
 
     // collect all participants

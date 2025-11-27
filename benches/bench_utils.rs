@@ -1,8 +1,8 @@
 #![allow(dead_code)]
-use frost_secp256k1::{Secp256K1Sha256, VerifyingKey};
+use frost_secp256k1::VerifyingKey;
 use k256::AffinePoint;
 use rand::Rng;
-use rand_core::{CryptoRngCore, OsRng};
+use rand_core::{CryptoRngCore, SeedableRng};
 
 use threshold_signatures::{
     ecdsa::ot_based_ecdsa,
@@ -36,10 +36,11 @@ pub fn ot_ecdsa_prepare_triples(
     participant_num: usize,
     threshold: usize,
     rngs: &[impl CryptoRngCore + Send + Clone + 'static],
+    rng: &mut (impl CryptoRngCore + SeedableRng + Send + 'static),
 ) -> OTECDSAPreparedTriples {
     let mut protocols: Vec<(_, Box<dyn Protocol<Output = _>>)> =
         Vec::with_capacity(participant_num);
-    let participants = generate_participants_with_random_ids(participant_num, &mut OsRng);
+    let participants = generate_participants_with_random_ids(participant_num, rng);
 
     for (i, p) in participants.iter().enumerate() {
         let protocol = generate_triple_many::<2>(&participants, *p, threshold, rngs[i].clone())
@@ -55,6 +56,7 @@ pub fn ot_ecdsa_prepare_triples(
 pub fn ot_ecdsa_prepare_presign(
     two_triples: &[(Participant, Vec<(TripleShare, TriplePub)>)],
     threshold: usize,
+    rng: &mut (impl CryptoRngCore + SeedableRng + Send + 'static),
 ) -> OTECDSAPreparedPresig {
     let mut two_triples = two_triples.to_owned();
     two_triples.sort_by_key(|(p, _)| *p);
@@ -71,7 +73,7 @@ pub fn ot_ecdsa_prepare_presign(
     // split shares into shares0 and shares 1 and pubs into pubs0 and pubs1
     let (pub0, pub1) = split_even_odd(pubs);
 
-    let key_packages = run_keygen::<Secp256K1Sha256>(&participants, threshold);
+    let key_packages = run_keygen(&participants, threshold, rng);
 
     let mut protocols: Vec<(
         Participant,
@@ -103,17 +105,18 @@ pub fn ot_ecdsa_prepare_presign(
 pub fn ot_ecdsa_prepare_sign(
     result: &[(Participant, ot_based_ecdsa::PresignOutput)],
     pk: VerifyingKey,
+    rng: &mut (impl CryptoRngCore + SeedableRng),
 ) -> OTECDSAPreparedSig {
     // collect all participants
     let participants: Vec<Participant> =
         result.iter().map(|(participant, _)| *participant).collect();
 
     // choose a coordinator at random
-    let index = OsRng.gen_range(0..result.len());
+    let index = rng.gen_range(0..result.len());
     let coordinator = result[index].0;
 
     let (args, msg_hash) =
-        ecdsa_generate_rerandpresig_args(&mut OsRng, &participants, pk, result[0].1.big_r);
+        ecdsa_generate_rerandpresig_args(rng, &participants, pk, result[0].1.big_r);
     let derived_pk = args
         .tweak
         .derive_verifying_key(&pk)
@@ -201,6 +204,7 @@ type OTECDSAPreparedSig = (
 pub fn robust_ecdsa_prepare_presign(
     num_participants: usize,
     rngs: &[impl CryptoRngCore + Send + Clone + 'static],
+    rng: &mut (impl CryptoRngCore + SeedableRng + Send + 'static),
 ) -> RobustECDSAPreparedPresig {
     assert_eq!(
         rngs.len(),
@@ -208,8 +212,8 @@ pub fn robust_ecdsa_prepare_presign(
         "There must be enought Rngs as participants"
     );
 
-    let participants = generate_participants_with_random_ids(num_participants, &mut OsRng);
-    let key_packages = run_keygen::<Secp256K1Sha256>(&participants, *MAX_MALICIOUS + 1);
+    let participants = generate_participants_with_random_ids(num_participants, rng);
+    let key_packages = run_keygen(&participants, *MAX_MALICIOUS + 1, rng);
     let mut protocols: Vec<(
         Participant,
         Box<dyn Protocol<Output = robust_ecdsa::PresignOutput>>,
@@ -238,17 +242,18 @@ pub fn robust_ecdsa_prepare_presign(
 pub fn robust_ecdsa_prepare_sign(
     result: &[(Participant, robust_ecdsa::PresignOutput)],
     pk: VerifyingKey,
+    rng: &mut (impl CryptoRngCore + SeedableRng),
 ) -> RobustECDSASig {
     // collect all participants
     let participants: Vec<Participant> =
         result.iter().map(|(participant, _)| *participant).collect();
 
     // choose a coordinator at random
-    let coordinator_index = OsRng.gen_range(0..result.len());
+    let coordinator_index = rng.gen_range(0..result.len());
     let coordinator = result[coordinator_index].0;
 
     let (args, msg_hash) =
-        ecdsa_generate_rerandpresig_args(&mut OsRng, &participants, pk, result[0].1.big_r);
+        ecdsa_generate_rerandpresig_args(rng, &participants, pk, result[0].1.big_r);
     let derived_pk = args
         .tweak
         .derive_verifying_key(&pk)

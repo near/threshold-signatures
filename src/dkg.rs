@@ -519,12 +519,11 @@ pub async fn do_keygen<C: Ciphersuite>(
     threshold: usize,
     mut rng: impl CryptoRngCore,
 ) -> Result<KeygenOutput<C>, ProtocolError> {
-    let rng = &mut rng;
     // pick share at random
-    let secret = SigningKey::<C>::new(rng).to_scalar();
+    let secret = SigningKey::<C>::new(&mut rng).to_scalar();
     // call keyshare
     let keygen_output =
-        do_keyshare::<C>(chan, participants, me, threshold, secret, None, rng).await?;
+        do_keyshare::<C>(chan, participants, me, threshold, secret, None, &mut rng).await?;
     Ok(keygen_output)
 }
 
@@ -549,8 +548,8 @@ pub fn assert_keygen_invariants(
             max: participants.len(),
         });
     }
-    if threshold < 1 {
-        return Err(InitializationError::ThresholdTooSmall { threshold, min: 1 });
+    if threshold < 2 {
+        return Err(InitializationError::ThresholdTooSmall { threshold, min: 2 });
     }
 
     // ensure uniqueness of participants in the participant list
@@ -573,7 +572,7 @@ pub async fn do_reshare<C: Ciphersuite>(
     chan: SharedChannel,
     participants: ParticipantList,
     me: Participant,
-    old_threshold: usize,
+    threshold: usize,
     old_signing_key: Option<SigningShare<C>>,
     old_public_key: VerifyingKey<C>,
     old_participants: ParticipantList,
@@ -595,7 +594,7 @@ pub async fn do_reshare<C: Ciphersuite>(
         chan,
         participants,
         me,
-        old_threshold,
+        threshold,
         secret,
         old_reshare_package,
         &mut rng,
@@ -623,6 +622,10 @@ pub fn reshare_assertions<C: Ciphersuite>(
             threshold,
             max: participants.len(),
         });
+    }
+
+    if threshold < 2 {
+        return Err(InitializationError::ThresholdTooSmall { threshold, min: 2 });
     }
 
     let participants =
@@ -658,11 +661,14 @@ pub mod test {
 
     use super::domain_separate_hash;
     use crate::crypto::ciphersuite::Ciphersuite;
+    use crate::errors::InitializationError;
     use crate::participants::{Participant, ParticipantList};
-    use crate::test_utils::{
-        assert_public_key_invariant, generate_participants, run_keygen, run_refresh, run_reshare,
-    };
+    use crate::test_utils::{assert_public_key_invariant, run_keygen, run_refresh, run_reshare};
+    use crate::test_utils::{generate_participants, GenOutput};
+    use crate::KeygenOutput;
+    use crate::{keygen, reshare};
     use frost_core::{Field, Group};
+    use rand_core::{CryptoRngCore, SeedableRng};
 
     #[test]
     fn test_domain_separate_hash() {
@@ -676,92 +682,162 @@ pub mod test {
         assert!(hash_1 != hash_2);
     }
 
-    pub fn test_keygen<C: Ciphersuite>(participants: &[Participant], threshold: usize)
+    fn compute_private_key<C: Ciphersuite>(
+        keygen_result: &GenOutput<C>,
+    ) -> <<C::Group as Group>::Field as Field>::Scalar {
+        let participants = keygen_result.iter().map(|p| p.0).collect::<Vec<_>>();
+        let shares = keygen_result
+            .iter()
+            .map(|r| r.1.private_share.to_scalar())
+            .collect::<Vec<_>>();
+
+        let p_list = ParticipantList::new(&participants).unwrap();
+        let mut x = <<C::Group as Group>::Field>::zero();
+        for i in 0..participants.len() {
+            x = x + p_list.lagrange::<C>(participants[i]).unwrap() * shares[i];
+        }
+        x
+    }
+
+    pub fn test_keygen<C: Ciphersuite, R: CryptoRngCore + SeedableRng + Send + 'static>(
+        participants: &[Participant],
+        threshold: usize,
+        rng: &mut R,
+    ) -> Vec<(Participant, KeygenOutput<C>)>
     where
         <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
         <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send,
     {
-        let result = run_keygen::<C>(participants, threshold);
+        let result = run_keygen::<C, R>(participants, threshold, rng);
         assert!(result.len() == participants.len());
         assert_public_key_invariant(&result);
 
         let pub_key = result[0].1.public_key.to_element();
-        let participants = result.iter().map(|p| p.0).collect::<Vec<_>>();
-        let shares = result
-            .iter()
-            .map(|r| r.1.private_share.to_scalar())
-            .collect::<Vec<_>>();
-
-        let p_list = ParticipantList::new(&participants).unwrap();
-        let mut x = <<C::Group as Group>::Field>::zero();
-        for i in 0..participants.len() {
-            x = x + p_list.lagrange::<C>(participants[i]).unwrap() * shares[i];
-        }
+        let x = compute_private_key(&result);
         assert_eq!(<C::Group as Group>::generator() * x, pub_key);
+        result
     }
 
-    pub fn test_refresh<C: Ciphersuite>(participants: &[Participant], threshold: usize)
-    where
-        <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
-        <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send,
-    {
-        let result0 = run_keygen::<C>(participants, threshold);
-        assert_public_key_invariant(&result0);
-
-        let pub_key = result0[0].1.public_key.to_element();
-
-        let result1 = run_refresh(participants, &result0, threshold);
-        assert_public_key_invariant(&result1);
-
-        let participants = result1.iter().map(|p| p.0).collect::<Vec<_>>();
-        let shares = result1
-            .iter()
-            .map(|r| r.1.private_share.to_scalar())
-            .collect::<Vec<_>>();
-        let p_list = ParticipantList::new(&participants).unwrap();
-
-        let mut x = <C::Group as Group>::Field::zero();
-        for i in 0..participants.len() {
-            x = x + p_list.lagrange::<C>(participants[i]).unwrap() * shares[i];
-        }
-        assert_eq!(<C::Group as Group>::generator() * x, pub_key);
-    }
-
-    pub fn test_reshare<C: Ciphersuite>(
-        participants: &[Participant],
-        threshold0: usize,
-        threshold1: usize,
+    #[allow(non_snake_case)]
+    pub fn keygen__should_fail_if_threshold_is_below_limit<
+        C: Ciphersuite,
+        R: CryptoRngCore + SeedableRng + Send + 'static,
+    >(
+        rng: &mut R,
     ) where
         <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
         <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send,
     {
-        let result0 = run_keygen::<C>(participants, threshold0);
+        let threshold = 1;
+        let participants = generate_participants(2);
+
+        let rng_keygen = R::seed_from_u64(rng.next_u64());
+        let result = keygen::<C>(&participants, participants[0], threshold, rng_keygen);
+
+        assert_eq!(
+            result.err().unwrap(),
+            InitializationError::ThresholdTooSmall { threshold, min: 2 }
+        );
+
+        // this threshold should work correctly
+        test_keygen::<C, _>(&participants, 2, rng);
+    }
+
+    pub fn test_refresh<C: Ciphersuite, R: CryptoRngCore + SeedableRng + Send + 'static>(
+        participants: &[Participant],
+        threshold: usize,
+        rng: &mut R,
+    ) -> Vec<(Participant, KeygenOutput<C>)>
+    where
+        <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
+        <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send,
+    {
+        let result0 = run_keygen::<C, R>(participants, threshold, rng);
+        assert_public_key_invariant(&result0);
+        let pub_key0 = result0[0].1.public_key.to_element();
+
+        let result1 = run_refresh(participants, &result0, threshold, rng);
+        assert_public_key_invariant(&result1);
+        let x1 = compute_private_key(&result1);
+
+        assert_eq!(<C::Group as Group>::generator() * x1, pub_key0);
+        result1
+    }
+
+    pub fn test_reshare<C: Ciphersuite, R: CryptoRngCore + SeedableRng + Send + 'static>(
+        participants: &[Participant],
+        threshold0: usize,
+        threshold1: usize,
+        rng: &mut R,
+    ) -> Vec<(Participant, KeygenOutput<C>)>
+    where
+        <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
+        <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send,
+    {
+        let result0 = run_keygen::<C, R>(participants, threshold0, rng);
         assert_public_key_invariant(&result0);
 
-        let pub_key = result0[0].1.public_key;
+        let pub_key0 = result0[0].1.public_key;
 
         let mut new_participant = participants.to_vec();
         new_participant.push(Participant::from(31u32));
-        let result1 = run_reshare::<C>(
+        let result1 = run_reshare(
             participants,
-            &pub_key,
+            &pub_key0,
             &result0,
             threshold0,
             threshold1,
             &new_participant,
+            rng,
         );
         assert_public_key_invariant(&result1);
 
-        let participants = result1.iter().map(|p| p.0).collect::<Vec<_>>();
-        let shares = result1
-            .iter()
-            .map(|r| r.1.private_share.to_scalar())
-            .collect::<Vec<_>>();
-        let p_list = ParticipantList::new(&participants).unwrap();
-        let mut x = <<C::Group as Group>::Field>::zero();
-        for i in 0..participants.len() {
-            x = x + p_list.lagrange::<C>(participants[i]).unwrap() * shares[i];
-        }
-        assert_eq!(<C::Group as Group>::generator() * x, pub_key.to_element());
+        let x1 = compute_private_key(&result1);
+
+        assert_eq!(<C::Group as Group>::generator() * x1, pub_key0.to_element());
+        result1
+    }
+
+    #[allow(non_snake_case)]
+    pub fn reshare__should_fail_if_threshold_is_below_limit<
+        C: Ciphersuite,
+        R: CryptoRngCore + SeedableRng + Send + 'static,
+    >(
+        rng: &mut R,
+    ) where
+        <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
+        <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send,
+    {
+        let participants = generate_participants(2);
+        let threshold0 = 2;
+        let threshold1 = 1;
+
+        let mut rng_keygen = R::seed_from_u64(rng.next_u64());
+        let result0 = run_keygen(&participants, threshold0, &mut rng_keygen);
+
+        let pub_key = result0[0].1.public_key;
+
+        let rng_reshare = R::seed_from_u64(rng.next_u64());
+        let result = reshare::<C>(
+            &participants,
+            threshold0,
+            None,
+            pub_key,
+            &participants,
+            threshold1,
+            participants[0],
+            rng_reshare,
+        );
+
+        assert_eq!(
+            result.err().unwrap(),
+            InitializationError::ThresholdTooSmall {
+                threshold: threshold1,
+                min: 2
+            }
+        );
+
+        // These threshold parameters should work correctly
+        test_reshare::<C, _>(&participants, 2, 2, rng);
     }
 }

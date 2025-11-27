@@ -83,7 +83,7 @@ async fn do_generation(
     participants: ParticipantList,
     me: Participant,
     threshold: usize,
-    mut rng: impl CryptoRngCore + Send + Copy + 'static,
+    mut rng: impl CryptoRngCore,
 ) -> Result<TripleGenerationOutput, ProtocolError> {
     let mut chan = comms.shared_channel();
     let mut transcript = create_transcript(&participants, threshold)?;
@@ -146,7 +146,7 @@ async fn do_generation(
             me,
             e0.0,
             f0.0,
-            rng,
+            &mut rng,
         )
     };
 
@@ -504,7 +504,7 @@ async fn do_generation_many<const N: usize>(
     participants: ParticipantList,
     me: Participant,
     threshold: usize,
-    mut rng: impl CryptoRngCore + Clone + Send + 'static,
+    mut rng: impl CryptoRngCore,
 ) -> Result<TripleGenerationOutputMany, ProtocolError> {
     assert!(N > 0);
 
@@ -611,7 +611,7 @@ async fn do_generation_many<const N: usize>(
             me,
             e0_v,
             f0_v,
-            rng,
+            &mut rng,
         )
     };
 
@@ -1073,7 +1073,7 @@ pub fn generate_triple(
     participants: &[Participant],
     me: Participant,
     threshold: usize,
-    rng: impl CryptoRngCore + Send + Copy + 'static,
+    rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = TripleGenerationOutput>, InitializationError> {
     if participants.len() < 2 {
         return Err(InitializationError::NotEnoughParticipants {
@@ -1104,7 +1104,7 @@ pub fn generate_triple_many<const N: usize>(
     participants: &[Participant],
     me: Participant,
     threshold: usize,
-    rng: impl CryptoRngCore + Clone + Send + 'static,
+    rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = TripleGenerationOutputMany>, InitializationError> {
     if participants.len() < 2 {
         return Err(InitializationError::NotEnoughParticipants {
@@ -1132,30 +1132,32 @@ pub fn generate_triple_many<const N: usize>(
 
 #[cfg(test)]
 mod test {
-    use rand_core::OsRng;
+    use rand::{RngCore, SeedableRng};
 
     use crate::{
         ecdsa::{ot_based_ecdsa::triples::generate_triple, ProjectivePoint},
         participants::{Participant, ParticipantList},
         protocol::Protocol,
-        test_utils::{generate_participants, run_protocol},
+        test_utils::{generate_participants, run_protocol, MockCryptoRng},
     };
 
     use super::{generate_triple_many, TripleGenerationOutput, TripleGenerationOutputMany, C};
 
     #[test]
     fn test_triple_generation() {
+        let mut rng = MockCryptoRng::seed_from_u64(42);
+
         let participants = generate_participants(3);
         let threshold = 3;
 
-        #[allow(clippy::type_complexity)]
         let mut protocols: Vec<(
             Participant,
             Box<dyn Protocol<Output = TripleGenerationOutput>>,
         )> = Vec::with_capacity(participants.len());
 
         for &p in &participants {
-            let protocol = generate_triple(&participants, p, threshold, OsRng).unwrap();
+            let rng_p = MockCryptoRng::seed_from_u64(rng.next_u64());
+            let protocol = generate_triple(&participants, p, threshold, rng_p).unwrap();
             protocols.push((p, Box::new(protocol)));
         }
 
@@ -1191,21 +1193,25 @@ mod test {
         assert_eq!(ProjectivePoint::GENERATOR * c, triple_pub.big_c);
 
         assert_eq!(a * b, c);
+
+        insta::assert_json_snapshot!(result);
     }
 
     #[test]
     fn test_triple_generation_many() {
+        let mut rng = MockCryptoRng::seed_from_u64(42);
+
         let participants = generate_participants(3);
         let threshold = 3;
 
-        #[allow(clippy::type_complexity)]
         let mut protocols: Vec<(
             Participant,
             Box<dyn Protocol<Output = TripleGenerationOutputMany>>,
         )> = Vec::with_capacity(participants.len());
 
         for &p in &participants {
-            let protocol = generate_triple_many::<1>(&participants, p, threshold, OsRng).unwrap();
+            let rng_p = MockCryptoRng::seed_from_u64(rng.next_u64());
+            let protocol = generate_triple_many::<1>(&participants, p, threshold, rng_p).unwrap();
             protocols.push((p, Box::new(protocol)));
         }
 
@@ -1241,5 +1247,7 @@ mod test {
         assert_eq!(ProjectivePoint::GENERATOR * c, triple_pub.big_c);
 
         assert_eq!(a * b, c);
+
+        insta::assert_json_snapshot!(result);
     }
 }
