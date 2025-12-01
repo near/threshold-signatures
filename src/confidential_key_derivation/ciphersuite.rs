@@ -24,6 +24,8 @@ pub use blstrs::G1Projective;
 pub use blstrs::G2Projective;
 pub use elliptic_curve::{Field, Group};
 
+use crate::confidential_key_derivation::Scalar;
+
 impl ScalarSerializationFormat for BLS12381SHA256 {
     fn bytes_order() -> BytesOrder {
         BytesOrder::LittleEndian
@@ -85,16 +87,16 @@ impl frost_core::Ciphersuite for BLS12381SHA256 {
 }
 
 impl frost_core::Field for BLS12381ScalarField {
-    type Scalar = super::Scalar;
+    type Scalar = Scalar;
 
     type Serialization = [u8; 32];
 
     fn zero() -> Self::Scalar {
-        super::Scalar::ZERO
+        Scalar::ZERO
     }
 
     fn one() -> Self::Scalar {
-        super::Scalar::ONE
+        Scalar::ONE
     }
 
     fn invert(scalar: &Self::Scalar) -> Result<Self::Scalar, frost_core::FieldError> {
@@ -105,7 +107,7 @@ impl frost_core::Field for BLS12381ScalarField {
     }
 
     fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self::Scalar {
-        super::Scalar::random(rng)
+        Scalar::random(rng)
     }
 
     fn serialize(scalar: &Self::Scalar) -> Self::Serialization {
@@ -113,7 +115,7 @@ impl frost_core::Field for BLS12381ScalarField {
     }
 
     fn deserialize(buf: &Self::Serialization) -> Result<Self::Scalar, frost_core::FieldError> {
-        super::Scalar::from_bytes_le(buf)
+        Scalar::from_bytes_le(buf)
             .into_option()
             .ok_or(frost_core::FieldError::MalformedScalar)
     }
@@ -244,7 +246,7 @@ pub fn hash_to_curve(bytes: &[u8]) -> ElementG1 {
 }
 
 // From https://github.com/ZcashFoundation/frost/blob/3ffc19d8f473d5bc4e07ed41bc884bdb42d6c29f/frost-secp256k1/src/lib.rs#L161
-fn hash_to_scalar(domain: &[&[u8]], msg: &[u8]) -> super::Scalar {
+fn hash_to_scalar(domain: &[&[u8]], msg: &[u8]) -> Scalar {
     let mut u = [super::scalar_wrapper::ScalarWrapper(
         <BLS12381ScalarField as frost_core::Field>::zero(),
     )];

@@ -15,6 +15,7 @@ impl Zeroize for ScalarWrapper {
     /// optimize the function away
     /// See <https://docs.rs/zeroize/latest/zeroize/#what-guarantees-does-this-crate-provide>
     /// for more details
+    /// TODO(#238): push this feature upstream
     fn zeroize(&mut self) {
         unsafe {
             ptr::write_volatile(&mut self.0, blstrs::Scalar::default());
