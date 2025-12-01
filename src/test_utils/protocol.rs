@@ -169,11 +169,16 @@ pub fn run_two_party_protocol<T0: std::fmt::Debug, T1: std::fmt::Debug>(
 
 /// Runs one real participant and one simulation representing the rest of participants
 /// The simulation has an internal storage of what to send to the real participant
+///
+/// Accepts a network latency in milliseconds say 100ms
 pub fn run_simulated_protocol<T>(
     real_participant: Participant,
     mut real_prot: Box<dyn Protocol<Output = T>>,
     simulator: Simulator,
+    network_latency: u64,
+    round_number: u64,
 ) -> Result<T, ProtocolError> {
+    let duration = std::time::Duration::from_millis(network_latency * round_number);
     if simulator.real_participant() != real_participant {
         return Err(ProtocolError::AssertionFailed(
             "The given real participant does not match the simulator's internal real participant"
@@ -192,10 +197,7 @@ pub fn run_simulated_protocol<T>(
         if let Action::Return(output) = action {
             out = Some(output);
         }
-        // match action {
-        //     Action::Return(output) => out = Some(output),
-        //     _ => {}
-        // }
     }
+    std::thread::sleep(duration);
     out.ok_or_else(|| ProtocolError::Other("out is None".to_string()))
 }
