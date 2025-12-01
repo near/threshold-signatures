@@ -49,6 +49,7 @@ pub fn run_protocol<T>(
             } {}
         }
     }
+    out.sort_by_key(|(p, _)| *p);
     Ok(out)
 }
 
