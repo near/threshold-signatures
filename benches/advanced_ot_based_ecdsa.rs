@@ -5,8 +5,8 @@ use rand_core::SeedableRng;
 
 mod bench_utils;
 use crate::bench_utils::{
-    ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign, ot_ecdsa_prepare_triples,
-    run_simulated_protocol, LATENCY, MAX_MALICIOUS, SAMPLE_SIZE,
+    analyze_received_sizes, ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign,
+    ot_ecdsa_prepare_triples, run_simulated_protocol, LATENCY, MAX_MALICIOUS, SAMPLE_SIZE,
 };
 
 use threshold_signatures::{
@@ -40,6 +40,7 @@ fn bench_triples(c: &mut Criterion) {
     let max_malicious = *MAX_MALICIOUS;
     let latency = *LATENCY;
     let rounds = 8;
+    let mut sizes = Vec::with_capacity(*SAMPLE_SIZE);
 
     let mut group = c.benchmark_group("triples");
     group.sample_size(*SAMPLE_SIZE);
@@ -47,12 +48,18 @@ fn bench_triples(c: &mut Criterion) {
         format!("ot_ecdsa_triples_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
         |b| {
             b.iter_batched(
-                || prepare_simulated_triples(num),
+                || {
+                     let (rparticipant, rprot, sprot) = prepare_simulated_triples(num);
+                     // collecting data sizes
+                    sizes.push(sprot.get_size());
+                    (rparticipant, rprot, sprot)
+                },
                 |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot, rounds),
                 criterion::BatchSize::SmallInput,
             );
         },
     );
+    analyze_received_sizes(&mut sizes, true);
 }
 
 /// Benches the presigning protocol
@@ -61,6 +68,7 @@ fn bench_presign(c: &mut Criterion) {
     let max_malicious = *MAX_MALICIOUS;
     let latency = *LATENCY;
     let rounds = 2;
+    let mut sizes = Vec::with_capacity(*SAMPLE_SIZE);
 
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let rngs = create_rngs(num, &mut rng);
@@ -73,12 +81,18 @@ fn bench_presign(c: &mut Criterion) {
         format!("ot_ecdsa_presign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
         |b| {
             b.iter_batched(
-                || prepare_simulated_presign(&two_triples),
+                || {
+                    let (rparticipant, rprot, sprot) = prepare_simulated_presign(&two_triples);
+                    // collecting data sizes
+                    sizes.push(sprot.get_size());
+                    (rparticipant, rprot, sprot)
+                },
                 |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot, rounds),
                 criterion::BatchSize::SmallInput,
             );
         },
     );
+    analyze_received_sizes(&mut sizes, true);
 }
 
 /// Benches the signing protocol
@@ -87,6 +101,7 @@ fn bench_sign(c: &mut Criterion) {
     let max_malicious = *MAX_MALICIOUS;
     let latency = *LATENCY;
     let rounds = 1;
+    let mut sizes = Vec::with_capacity(*SAMPLE_SIZE);
 
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let rngs = create_rngs(num, &mut rng);
@@ -104,12 +119,18 @@ fn bench_sign(c: &mut Criterion) {
         format!("ot_ecdsa_sign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
         |b| {
             b.iter_batched(
-                || prepare_simulated_sign(&result, pk),
+                || {
+                    let (rparticipant, rprot, sprot) = prepare_simulated_sign(&result, pk);
+                    // collecting data sizes
+                    sizes.push(sprot.get_size());
+                    (rparticipant, rprot, sprot)
+                },
                 |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot, rounds),
                 criterion::BatchSize::SmallInput,
             );
         },
     );
+    analyze_received_sizes(&mut sizes, true);
 }
 
 criterion_group!(benches, bench_triples, bench_presign, bench_sign);

@@ -5,8 +5,8 @@ use rand_core::SeedableRng;
 
 mod bench_utils;
 use crate::bench_utils::{
-    robust_ecdsa_prepare_presign, robust_ecdsa_prepare_sign, run_simulated_protocol, LATENCY,
-    MAX_MALICIOUS, SAMPLE_SIZE,
+    analyze_received_sizes, robust_ecdsa_prepare_presign, robust_ecdsa_prepare_sign,
+    run_simulated_protocol, LATENCY, MAX_MALICIOUS, SAMPLE_SIZE,
 };
 use threshold_signatures::{
     ecdsa::{
@@ -30,6 +30,7 @@ fn bench_presign(c: &mut Criterion) {
     let max_malicious = *MAX_MALICIOUS;
     let latency = *LATENCY;
     let rounds = 3;
+    let mut sizes = Vec::with_capacity(*SAMPLE_SIZE);
 
     let mut group = c.benchmark_group("presign");
     group.sample_size(*SAMPLE_SIZE);
@@ -37,12 +38,18 @@ fn bench_presign(c: &mut Criterion) {
         format!("robust_ecdsa_presign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
         |b| {
             b.iter_batched(
-                || prepare_simulate_presign(num),
+                || {
+                    let (rparticipant, rprot, sprot) = prepare_simulate_presign(num);
+                    // collecting data sizes
+                    sizes.push(sprot.get_size());
+                    (rparticipant, rprot, sprot)
+                },
                 |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot, rounds),
                 criterion::BatchSize::SmallInput,
             );
         },
     );
+    analyze_received_sizes(&mut sizes, true);
 }
 
 /// Benches the signing protocol
@@ -51,6 +58,7 @@ fn bench_sign(c: &mut Criterion) {
     let max_malicious = *MAX_MALICIOUS;
     let latency = *LATENCY;
     let rounds = 1;
+    let mut sizes = Vec::with_capacity(*SAMPLE_SIZE);
 
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let rngs = create_rngs(num, &mut rng);
@@ -64,12 +72,18 @@ fn bench_sign(c: &mut Criterion) {
         format!("robust_ecdsa_sign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
         |b| {
             b.iter_batched(
-                || prepare_simulated_sign(&result, pk),
+                || {
+                    let (rparticipant, rprot, sprot) = prepare_simulated_sign(&result, pk);
+                     // collecting data sizes
+                    sizes.push(sprot.get_size());
+                    (rparticipant, rprot, sprot)
+                },
                 |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot, rounds),
                 criterion::BatchSize::SmallInput,
             );
         },
     );
+    analyze_received_sizes(&mut sizes, true);
 }
 
 criterion_group!(benches, bench_presign, bench_sign);
