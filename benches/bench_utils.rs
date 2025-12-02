@@ -59,6 +59,56 @@ pub fn run_simulated_protocol<T>(
     )
 }
 
+#[allow(clippy::cast_precision_loss)]
+/// Analyzes the size of the received data by a participant accross the entire protocol
+/// # Panics
+/// Should panic if the input sizes vector is empty
+pub fn analyze_received_sizes(
+    sizes: &mut [usize],
+    is_print: bool,
+) -> (usize, usize, f64, f64, f64, f64) {
+    let min = *sizes.iter().min().expect("Minimum should exist");
+    let max = *sizes.iter().max().expect("Maximum should exist");
+    let avg = sizes.iter().sum::<usize>() as f64 / sizes.len() as f64;
+
+    // median
+    sizes.sort_unstable();
+    let mid = sizes.len() / 2;
+    let median = if sizes.len() % 2 == 0 {
+        (sizes[mid - 1] as f64 + sizes[mid] as f64) / 2.0
+    } else {
+        sizes[mid] as f64
+    };
+
+    // variance & standard deviation
+    let mean = sizes.iter().sum::<usize>() as f64 / sizes.len() as f64;
+    let squared_sum = sizes
+        .iter()
+        .map(|v| {
+            let diff = *v as f64 - mean;
+            diff * diff
+        })
+        .sum::<f64>();
+    let variance = squared_sum / sizes.len() as f64;
+    let std_dev = variance.sqrt();
+
+    if is_print {
+        println!("Analysis for received messages:");
+        println!(
+            "\
+            min:{min}B\t\
+            max:{max}B\t\
+            average:{avg}B\t\
+            median:{median}B\t\
+            variance:{variance}B\t\
+            standard deviation:{std_dev}B
+        "
+        );
+    }
+
+    (min, max, avg, median, variance, std_dev)
+}
+
 /********************* OT Based ECDSA *********************/
 /// Used to prepare ot based ecdsa triples for benchmarking
 /// # Panics
