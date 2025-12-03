@@ -8,8 +8,6 @@ This document defines the **non-negotiable invariants** between participant coun
 (keygen → presign/offline → signing → refresh → resharing).  
 Any deviation **must be rejected** unless explicitly whitelisted by `SchemeRules`.
 
-_If a different threshold is needed, run a new DKG._
-
 ## Why invariance is mandatory
 
 Changing thresholds at any stage can silently weaken security (e.g., reducing signing quorum, increasing adversarial influence, or invalidating proofs from DKG). Recent industry incidents show this is a practical risk. The library therefore enforces all parameters unless explicitly allowed.
