@@ -70,8 +70,7 @@ Keep `f` explicit even when `t = f + 1`. The current schemes tie `t` to `f`, but
 
 # Refresh & Resharing Safety
 
-- Never change thresholds during refresh/resharing. Doing so breaks the assumptions of all supported schemes.
-- To adopt a new threshold: **Perform a new DKG**, archive the old key, and migrate intentionally.
+- Thresholds must *not* be changed during refresh/resharing unless explicitly permitted by `SchemeRules`. Unsanctioned changes break the assumptions of all supported schemes.
 - Threshold metadata must always be persisted together with key/share identifiers.
 
 ---
