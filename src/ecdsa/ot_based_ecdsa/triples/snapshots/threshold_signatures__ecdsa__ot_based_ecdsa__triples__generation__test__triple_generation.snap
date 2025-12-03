@@ -1,6 +1,5 @@
 ---
 source: src/ecdsa/ot_based_ecdsa/triples/generation.rs
-assertion_line: 1197
 expression: result
 ---
 [

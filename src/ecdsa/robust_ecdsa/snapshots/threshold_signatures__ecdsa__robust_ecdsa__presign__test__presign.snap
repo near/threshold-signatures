@@ -1,6 +1,5 @@
 ---
 source: src/ecdsa/robust_ecdsa/presign.rs
-assertion_line: 408
 expression: result
 ---
 [

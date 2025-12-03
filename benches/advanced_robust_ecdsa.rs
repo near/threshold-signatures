@@ -4,7 +4,9 @@ use rand::Rng;
 use rand_core::SeedableRng;
 
 mod bench_utils;
-use crate::bench_utils::{robust_ecdsa_prepare_presign, robust_ecdsa_prepare_sign, MAX_MALICIOUS};
+use crate::bench_utils::{
+    robust_ecdsa_prepare_presign, robust_ecdsa_prepare_sign, PreparedSimulatedSig, MAX_MALICIOUS,
+};
 
 use threshold_signatures::{
     ecdsa::{
@@ -145,12 +147,5 @@ fn prepare_simulated_sign(
 type PreparedPresig = (
     Participant,
     Box<dyn Protocol<Output = PresignOutput>>,
-    Simulator,
-);
-
-/// Helps with the benches of the signing protocol
-type PreparedSimulatedSig = (
-    Participant,
-    Box<dyn Protocol<Output = SignatureOption>>,
     Simulator,
 );

@@ -5,7 +5,8 @@ use rand_core::SeedableRng;
 
 mod bench_utils;
 use crate::bench_utils::{
-    ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign, ot_ecdsa_prepare_triples, MAX_MALICIOUS,
+    ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign, ot_ecdsa_prepare_triples,
+    PreparedSimulatedSig, MAX_MALICIOUS,
 };
 
 use threshold_signatures::{
@@ -226,11 +227,5 @@ type PreparedSimulatedTriples = (
 type PreparedSimulatedPresig = (
     Participant,
     Box<dyn Protocol<Output = PresignOutput>>,
-    Simulator,
-);
-
-type PreparedSimulatedSig = (
-    Participant,
-    Box<dyn Protocol<Output = SignatureOption>>,
     Simulator,
 );

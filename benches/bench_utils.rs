@@ -3,6 +3,7 @@ use frost_secp256k1::VerifyingKey;
 use k256::AffinePoint;
 use rand::Rng;
 use rand_core::{CryptoRngCore, SeedableRng};
+use std::{env, sync::LazyLock};
 
 use threshold_signatures::{
     ecdsa::ot_based_ecdsa,
@@ -15,10 +16,9 @@ use threshold_signatures::{
     protocol::Protocol,
     test_utils::{
         ecdsa_generate_rerandpresig_args, generate_participants_with_random_ids, run_keygen,
+        Simulator,
     },
 };
-
-use std::{env, sync::LazyLock};
 
 // fix malicious number of participants
 pub static MAX_MALICIOUS: LazyLock<usize> = std::sync::LazyLock::new(|| {
@@ -27,6 +27,13 @@ pub static MAX_MALICIOUS: LazyLock<usize> = std::sync::LazyLock::new(|| {
         .and_then(|v| v.parse().ok())
         .unwrap_or(6)
 });
+
+/// Helps with the benches of the signing protocol
+pub type PreparedSimulatedSig = (
+    Participant,
+    Box<dyn Protocol<Output = SignatureOption>>,
+    Simulator,
+);
 
 /********************* OT Based ECDSA *********************/
 /// Used to prepare ot based ecdsa triples for benchmarking
