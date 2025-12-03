@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![allow(clippy::missing_panics_doc)]
 use frost_secp256k1::VerifyingKey;
 use k256::AffinePoint;
 use rand::Rng;
@@ -37,8 +38,6 @@ pub type PreparedSimulatedSig = (
 
 /********************* OT Based ECDSA *********************/
 /// Used to prepare ot based ecdsa triples for benchmarking
-/// # Panics
-/// Would panic in case an abort happens stopping the entire benchmarking
 pub fn ot_ecdsa_prepare_triples(
     participant_num: usize,
     threshold: usize,
@@ -58,8 +57,6 @@ pub fn ot_ecdsa_prepare_triples(
 }
 
 /// Used to prepare ot based ecdsa presignatures for benchmarking
-/// # Panics
-/// Would panic in case an abort happens stopping the entire benchmarking
 pub fn ot_ecdsa_prepare_presign(
     two_triples: &[(Participant, Vec<(TripleShare, TriplePub)>)],
     threshold: usize,
@@ -107,8 +104,6 @@ pub fn ot_ecdsa_prepare_presign(
 }
 
 /// Used to prepare ot based ecdsa signatures for benchmarking
-/// # Panics
-/// Would panic in case an abort happens stopping the entire benchmarking
 pub fn ot_ecdsa_prepare_sign<R: CryptoRngCore + SeedableRng>(
     result: &[(Participant, ot_based_ecdsa::PresignOutput)],
     pk: VerifyingKey,
@@ -206,8 +201,6 @@ type OTECDSAPreparedSig = (
 
 /********************* Robust ECDSA *********************/
 /// Used to prepare robust ecdsa presignatures for benchmarking
-/// # Panics
-/// Would panic in case an abort happens stopping the entire benchmarking
 pub fn robust_ecdsa_prepare_presign(
     num_participants: usize,
     rngs: &[impl CryptoRngCore + Send + Clone + 'static],
@@ -238,8 +231,6 @@ pub fn robust_ecdsa_prepare_presign(
 }
 
 /// Used to prepare robust ecdsa signatures for benchmarking
-/// # Panics
-/// Would panic in case an abort happens stopping the entire benchmarking
 pub fn robust_ecdsa_prepare_sign<R: CryptoRngCore + SeedableRng>(
     result: &[(Participant, robust_ecdsa::PresignOutput)],
     pk: VerifyingKey,
