@@ -192,10 +192,6 @@ pub fn run_simulated_protocol<T>(
         if let Action::Return(output) = action {
             out = Some(output);
         }
-        // match action {
-        //     Action::Return(output) => out = Some(output),
-        //     _ => {}
-        // }
     }
     out.ok_or_else(|| ProtocolError::Other("out is None".to_string()))
 }
