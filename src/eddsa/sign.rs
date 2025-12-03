@@ -55,8 +55,7 @@ async fn do_sign_coordinator(
     rng: &mut impl CryptoRngCore,
 ) -> Result<SignatureOption, ProtocolError> {
     // --- Round 1.
-    // * Send acknowledgment to other participants.
-    // * Wait for their commitments.
+    // * Wait for other parties' commitments.
 
     let mut commitments_map: BTreeMap<frost_ed25519::Identifier, round1::SigningCommitments> =
         BTreeMap::new();

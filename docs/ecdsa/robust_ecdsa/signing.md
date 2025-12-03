@@ -99,7 +99,7 @@ The inputs to this phase are:
 
 **Round 1 (Coordinator):**
 
-3. $\bullet$ The coordinator waits to receive $s_j$ from every other party.
+3. $\bullet$ The coordinator waits to receive $s_j$ from every party.
 4. The coordinator sums the received elements $s \gets \sum_j s_j$.
 5. $\blacktriangle$ The coordinator *asserts* that $s\neq 0$
 6. Perform the low-S normalization, i.e. $s \gets -s$ if $s\in\\{\frac{q}{2}..~q-1\\}$
