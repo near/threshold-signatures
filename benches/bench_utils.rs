@@ -109,10 +109,10 @@ pub fn ot_ecdsa_prepare_presign(
 /// Used to prepare ot based ecdsa signatures for benchmarking
 /// # Panics
 /// Would panic in case an abort happens stopping the entire benchmarking
-pub fn ot_ecdsa_prepare_sign(
+pub fn ot_ecdsa_prepare_sign<R: CryptoRngCore + SeedableRng>(
     result: &[(Participant, ot_based_ecdsa::PresignOutput)],
     pk: VerifyingKey,
-    rng: &mut (impl CryptoRngCore + SeedableRng),
+    rng: &mut R,
 ) -> OTECDSAPreparedSig {
     // collect all participants
     let participants: Vec<Participant> =
@@ -213,12 +213,6 @@ pub fn robust_ecdsa_prepare_presign(
     rngs: &[impl CryptoRngCore + Send + Clone + 'static],
     rng: &mut (impl CryptoRngCore + SeedableRng + Send + 'static),
 ) -> RobustECDSAPreparedPresig {
-    assert_eq!(
-        rngs.len(),
-        num_participants,
-        "There must be enought Rngs as participants"
-    );
-
     let participants = generate_participants_with_random_ids(num_participants, rng);
     let key_packages = run_keygen(&participants, *MAX_MALICIOUS + 1, rng);
     let mut protocols: Vec<(
@@ -246,10 +240,10 @@ pub fn robust_ecdsa_prepare_presign(
 /// Used to prepare robust ecdsa signatures for benchmarking
 /// # Panics
 /// Would panic in case an abort happens stopping the entire benchmarking
-pub fn robust_ecdsa_prepare_sign(
+pub fn robust_ecdsa_prepare_sign<R: CryptoRngCore + SeedableRng>(
     result: &[(Participant, robust_ecdsa::PresignOutput)],
     pk: VerifyingKey,
-    rng: &mut (impl CryptoRngCore + SeedableRng),
+    rng: &mut R,
 ) -> RobustECDSASig {
     // collect all participants
     let participants: Vec<Participant> =

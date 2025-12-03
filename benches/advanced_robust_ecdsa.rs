@@ -21,6 +21,13 @@ use threshold_signatures::{
     },
 };
 
+/// Helps with the benches of the presigning protocol
+type PreparedPresig = (
+    Participant,
+    Box<dyn Protocol<Output = PresignOutput>>,
+    Simulator,
+);
+
 fn participants_num() -> usize {
     2 * *MAX_MALICIOUS + 1
 }
@@ -142,10 +149,3 @@ fn prepare_simulated_sign(
 
     (real_participant, real_protocol, simulated_protocol)
 }
-
-/// Helps with the benches of the presigning protocol
-type PreparedPresig = (
-    Participant,
-    Box<dyn Protocol<Output = PresignOutput>>,
-    Simulator,
-);

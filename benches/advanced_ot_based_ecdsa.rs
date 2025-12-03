@@ -27,6 +27,18 @@ use threshold_signatures::{
     },
 };
 
+type PreparedSimulatedTriples = (
+    Participant,
+    Box<dyn Protocol<Output = Vec<(TripleShare, TriplePub)>>>,
+    Simulator,
+);
+
+type PreparedSimulatedPresig = (
+    Participant,
+    Box<dyn Protocol<Output = PresignOutput>>,
+    Simulator,
+);
+
 fn threshold() -> usize {
     *MAX_MALICIOUS + 1
 }
@@ -217,15 +229,3 @@ pub fn prepare_simulated_sign(
         Simulator::new(real_participant, protocolsnapshot).expect("Simulator should not be empty");
     (real_participant, real_protocol, simulated_protocol)
 }
-
-type PreparedSimulatedTriples = (
-    Participant,
-    Box<dyn Protocol<Output = Vec<(TripleShare, TriplePub)>>>,
-    Simulator,
-);
-
-type PreparedSimulatedPresig = (
-    Participant,
-    Box<dyn Protocol<Output = PresignOutput>>,
-    Simulator,
-);
