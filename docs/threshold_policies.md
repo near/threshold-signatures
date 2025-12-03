@@ -41,7 +41,7 @@ Keep `f` explicit even when `t = f + 1`. The current schemes tie `t` to `f`, but
 - **Threshold:**  
   `t = f + 1` (design choice; distinct from `N - f`).
 - **Required checks:**
-  - Reject if `f >= N / 3`.
+  - Reject if `f >= floor(N / 3)`.
   - Reject if `t != f + 1`.
 - **Invariance:**  
   DKG → refresh → resharing all reuse the exact `(N, f, t)`.
@@ -82,7 +82,7 @@ Keep `f` explicit even when `t = f + 1`. The current schemes tie `t` to `f`, but
 
 | Misconfiguration                            | Failure Mode                                                          |
 | ------------------------------------------- | --------------------------------------------------------------------- |
-| `f >= N/3` in DKG                           | Broadcast assumptions break; safety and liveness lost.                |
+| `f >= floor(N/3)` in DKG                           | Broadcast assumptions break; safety and liveness lost.                |
 | `t != f + 1` in DKG or OT-ECDSA             | Scheme assumptions violated; security/liveness not guaranteed.        |
 | Threshold lowered during refresh            | Old shares become over-powerful; confidentiality/unforgeability fail. |
 | Robust ECDSA signing with `N_live < 2f + 1` | Protocol aborts or risks leakage/invalid signatures.                  |
