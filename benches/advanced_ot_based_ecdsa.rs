@@ -1,6 +1,6 @@
 use criterion::{criterion_group, Criterion};
 use frost_secp256k1::VerifyingKey;
-use rand::Rng;
+use rand::{Rng, RngCore};
 use rand_core::SeedableRng;
 
 mod bench_utils;
@@ -138,11 +138,19 @@ fn prepare_simulated_triples(participant_num: usize) -> PreparedSimulatedTriples
     // choose the real_participant at random
     let index_real_participant = rng.gen_range(0..participant_num);
     let real_participant = participants[index_real_participant];
+
+    // recreate rng using by real_participant to generate triples
+    let mut rng_copy = MockCryptoRng::seed_from_u64(42);
+    for _ in 0..index_real_participant - 1 {
+        rng_copy.next_u64();
+    }
+    let real_participant_rng = MockCryptoRng::seed_from_u64(rng_copy.next_u64());
+
     let real_protocol = generate_triple_many::<2>(
         &participants,
         real_participant,
         threshold(),
-        rngs[index_real_participant].clone(),
+        real_participant_rng,
     )
     .map(|prot| Box::new(prot) as Box<dyn Protocol<Output = Vec<(TripleShare, TriplePub)>>>)
     .expect("The rerun of the triple generation should not but raising error");
