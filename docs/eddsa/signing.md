@@ -21,14 +21,16 @@ of size $N_1 > t$ wishes to generate an EdDSA signature. Following the
 domain separated hash functions $H_1, H_2, H_3, H_4$.
 
 The inputs to this phase are:
-1) The secret key share $x_i$.
-2) The public key $X$
-5) The message $m$
+
+1. The secret key share $x_i$.
+2. The public key $X$
+3. The message $m$
 
 **Round 1:**
 
 1. Each $P_i$ commits to its secret share $x_i$ following the
 [RFC9591](https://datatracker.ietf.org/doc/html/rfc9591#name-round-one-commitment) standards. In short, the following cryptographic steps are executed:
+
 * Pick two $32$ bytes seeds uniformly at random $\mathit{seed}_1$ and $\mathit{seed}_2$.
 * Compute the following binding and hiding nonces:
 
@@ -62,10 +64,10 @@ $$
 7. Each $P_i$ verifies that $h = h^*$
 8. Each $P_i$ computes a signature share using following [RFC9591](https://datatracker.ietf.org/doc/html/rfc9591#name-round-two-signature-share-g).
 In short, the following cryptographic steps are executed:
-~    * $\blacktriangle$ Assert that $(i, A_i, B_i) \in \mathit{commits}$.
-  * Compute the hash $h\gets H_4(m)$.
-  * Compute the multiple hashes for all $j\in\set{1.. N_1}$:
 
+* $\blacktriangle$ Assert that $(i, A_i, B_i) \in \mathit{commits}$.
+* Compute the hash $h\gets H_4(m)$.
+* Compute the multiple hashes for all $j\in\set{1.. N_1}$:
 
 $$
 \rho_j \gets H_1(X, h, \mathit{commits}, j)
@@ -103,6 +105,5 @@ $$
 12. $\blacktriangle$ The coordinator asserts that $(R, s)$ is a valid Ed25519 signature for message $m$.
 
 **Output:** the signature $(R, s)$.
-
 
 *Note: We do not make use of the cheater detection feature which requires additional computation and potentially and extra round of communicating the cheater to the rest of the participant.*
