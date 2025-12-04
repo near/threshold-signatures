@@ -62,31 +62,32 @@ The inputs to this phase are:
 7. Each $P_i$ verifies that $h = h^*$
 8. Each $P_i$ computes a signature share using following [RFC9591](https://datatracker.ietf.org/doc/html/rfc9591#name-round-two-signature-share-g).
 In short, the following cryptographic steps are executed:
-   * $\blacktriangle$ Assert that $(i, A_i, B_i) \in \mathit{commits}$.
-   * Compute the hash $h\gets H_4(m)$.
-   * Compute the multiple hashes for all $j\in\set{1.. N_1}$:
+  * $\blacktriangle$ Assert that $(i, A_i, B_i) \in \mathit{commits}$.
+  * Compute the hash $h\gets H_4(m)$.
+  * Compute the multiple hashes for all $j\in\set{1.. N_1}$:
 
-   $$
-   \rho_j \gets H_1(X, h, \mathit{commits}, j)
-   $$
+  <div>
+  $$
+  \rho_j \gets H_1(X, h, \mathit{commits}, j)
+  $$
+  </div>
+  * Compute the following group commitment
 
-   * Compute the following group commitment
+  $$
+  R\gets \sum_j (A_j+ \rho_j \cdot B_j)
+  $$
 
-    $$
-    R\gets \sum_j (A_j+ \rho_j \cdot B_j)
-    $$
+  * Compute the following challenge:
 
-    * Compute the following challenge:
+  $$
+  c\gets H_2(R, X, m)
+  $$
 
-    $$
-    c\gets H_2(R, X, m)
-    $$
+  * Compute the following signature share:
 
-    * Compute the following signature share:
-
-    $$
-    s_i = a_i + b_i * \rho_i+ \lambda(\mathcal{P}_1)_i * x_i * c
-    $$
+  $$
+  s_i = a_i + b_i * \rho_i+ \lambda(\mathcal{P}_1)_i * x_i * c
+  $$
 
 9. Each $P_i$ sends its signature share $s_i$ **only to the coordinator**.
 
