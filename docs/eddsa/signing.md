@@ -88,7 +88,7 @@ $$
 $$
 s_i = a_i + b_i * \rho_i+ \lambda(\mathcal{P}_1)_i * x_i * c
 $$
-~
+
 9. Each $P_i$ sends its signature share $s_i$ **only to the coordinator**.
 
 **Round 2 (Coordinator):**
