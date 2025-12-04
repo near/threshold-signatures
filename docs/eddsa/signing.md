@@ -31,7 +31,8 @@ The inputs to this phase are:
 [RFC9591](https://datatracker.ietf.org/doc/html/rfc9591#name-round-one-commitment) standards. In short, the following cryptographic steps are executed:
     * Pick two $32$ bytes seeds uniformly at random $\mathit{seed}_1$ and $\mathit{seed}_2$.
     * Compute the following binding and hiding nonces:
-    $$
+
+    $$\
     \begin{aligned}
       a_i &\gets H_3(\mathit{seed}_1, x_i)\cr
       b_i &\gets H_3(\mathit{seed}_2, x_i)
@@ -39,7 +40,8 @@ The inputs to this phase are:
     $$
 
     * Compute the following binding and hiding points:
-    $$
+
+    $$\
     \begin{aligned}
       A_i&\gets a_i \cdot G\cr
       B_i &\gets b_i \cdot G
