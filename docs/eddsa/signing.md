@@ -32,21 +32,21 @@ The inputs to this phase are:
     * Pick two $32$ bytes seeds uniformly at random $\mathit{seed}_1$ and $\mathit{seed}_2$.
     * Compute the following binding and hiding nonces:
 
-    $$\
-    \begin{aligned}
-      a_i &\gets H_3(\mathit{seed}_1, x_i)\cr
-      b_i &\gets H_3(\mathit{seed}_2, x_i)
-    \end{aligned}
-    $$
+      $$
+      \begin{aligned}
+        a_i &\gets H_3(\mathit{seed}_1, x_i)\cr
+        b_i &\gets H_3(\mathit{seed}_2, x_i)
+      \end{aligned}
+      $$
 
     * Compute the following binding and hiding points:
 
-    $$\
-    \begin{aligned}
-      A_i&\gets a_i \cdot G\cr
-      B_i &\gets b_i \cdot G
-    \end{aligned}
-    $$
+      $$
+      \begin{aligned}
+        A_i&\gets a_i \cdot G\cr
+        B_i &\gets b_i \cdot G
+      \end{aligned}
+      $$
 
 2. $\star$ Each $P_i$ sends $(A_i, B_i)$ **only to the coordinator**.
 
@@ -66,27 +66,27 @@ In short, the following cryptographic steps are executed:
     * Compute the hash $h\gets H_4(m)$.
     * Compute the multiple hashes for all $j\in\set{1.. N_1}$:
 
-    $$
-    \rho_j \gets H_1(X, h, \mathit{commits}, j)
-    $$
+      $$
+      \rho_j \gets H_1(X, h, \mathit{commits}, j)
+      $$
 
     * Compute the following group commitment
 
-    $$
-    R\gets \sum_j (A_j+ \rho_j \cdot B_j)
-    $$
+      $$
+      R\gets \sum_j (A_j+ \rho_j \cdot B_j)
+      $$
 
     * Compute the following challenge:
 
-    $$
-    c\gets H_2(R, X, m)
-    $$
+      $$
+      c\gets H_2(R, X, m)
+      $$
 
     * Compute the following signature share:
 
-    $$
-    s_i = a_i + b_i * \rho_i+ \lambda(\mathcal{P}_1)_i * x_i * c
-    $$
+      $$
+      s_i = a_i + b_i * \rho_i+ \lambda(\mathcal{P}_1)_i * x_i * c
+      $$
 
 9. Each $P_i$ sends its signature share $s_i$ **only to the coordinator**.
 
