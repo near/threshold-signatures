@@ -16,9 +16,8 @@ use threshold_signatures::{
     participants::Participant,
     protocol::Protocol,
     test_utils::{
-        create_rngs,
-        ecdsa_generate_rerandpresig_args, generate_participants_with_random_ids, run_keygen,
-        Simulator,
+        create_rngs, ecdsa_generate_rerandpresig_args, generate_participants_with_random_ids,
+        run_keygen, Simulator,
     },
 };
 

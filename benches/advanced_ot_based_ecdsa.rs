@@ -22,8 +22,8 @@ use threshold_signatures::{
     participants::Participant,
     protocol::Protocol,
     test_utils::{
-        run_protocol, run_protocol_and_take_snapshots, run_simulated_protocol,
-        MockCryptoRng, Simulator,
+        run_protocol, run_protocol_and_take_snapshots, run_simulated_protocol, MockCryptoRng,
+        Simulator,
     },
 };
 
