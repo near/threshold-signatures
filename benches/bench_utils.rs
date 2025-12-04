@@ -16,6 +16,7 @@ use threshold_signatures::{
     participants::Participant,
     protocol::Protocol,
     test_utils::{
+        create_rngs,
         ecdsa_generate_rerandpresig_args, generate_participants_with_random_ids, run_keygen,
         Simulator,
     },
@@ -41,11 +42,11 @@ pub struct PreparedOutputs<T> {
 pub fn ot_ecdsa_prepare_triples(
     participant_num: usize,
     threshold: usize,
-    rngs: &[impl CryptoRngCore + Send + Clone + 'static],
     rng: &mut (impl CryptoRngCore + SeedableRng + Send + 'static),
 ) -> OTECDSAPreparedTriples {
     let mut protocols: Vec<(_, Box<dyn Protocol<Output = _>>)> =
         Vec::with_capacity(participant_num);
+    let rngs = create_rngs(participant_num, rng);
     let participants = generate_participants_with_random_ids(participant_num, rng);
 
     for (i, p) in participants.iter().enumerate() {

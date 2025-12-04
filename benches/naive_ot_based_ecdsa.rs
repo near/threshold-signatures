@@ -4,7 +4,7 @@ use crate::bench_utils::{
     ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign, ot_ecdsa_prepare_triples, MAX_MALICIOUS,
 };
 use rand_core::SeedableRng;
-use threshold_signatures::test_utils::{create_rngs, run_protocol, MockCryptoRng};
+use threshold_signatures::test_utils::{run_protocol, MockCryptoRng};
 
 fn threshold() -> usize {
     *MAX_MALICIOUS + 1
@@ -26,10 +26,7 @@ fn bench_triples(c: &mut Criterion) {
         format!("ot_ecdsa_triples_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
-                || {
-                    let rngs = create_rngs(num, &mut rng);
-                    ot_ecdsa_prepare_triples(participants_num(), threshold(), &rngs, &mut rng)
-                },
+                || ot_ecdsa_prepare_triples(participants_num(), threshold(), &mut rng),
                 |(protocols, _)| run_protocol(protocols),
                 criterion::BatchSize::SmallInput,
             );
@@ -45,8 +42,7 @@ fn bench_presign(c: &mut Criterion) {
     let mut group = c.benchmark_group("presign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
-    let rngs = create_rngs(num, &mut rng);
-    let (protocols, _) = ot_ecdsa_prepare_triples(participants_num(), threshold(), &rngs, &mut rng);
+    let (protocols, _) = ot_ecdsa_prepare_triples(participants_num(), threshold(), &mut rng);
     let two_triples = run_protocol(protocols).expect("Running triple preparations should succeed");
 
     group.bench_function(
@@ -70,8 +66,7 @@ fn bench_sign(c: &mut Criterion) {
     let mut group = c.benchmark_group("sign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
-    let rngs = create_rngs(num, &mut rng);
-    let (protocols, _) = ot_ecdsa_prepare_triples(participants_num(), threshold(), &rngs, &mut rng);
+    let (protocols, _) = ot_ecdsa_prepare_triples(participants_num(), threshold(), &mut rng);
     let two_triples = run_protocol(protocols).expect("Running triples preparation should succeed");
 
     let (protocols, key_packages, _) =
