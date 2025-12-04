@@ -29,24 +29,24 @@ The inputs to this phase are:
 
 1. Each $P_i$ commits to its secret share $x_i$ following the
 [RFC9591](https://datatracker.ietf.org/doc/html/rfc9591#name-round-one-commitment) standards. In short, the following cryptographic steps are executed:
-    * Pick two $32$ bytes seeds uniformly at random $\mathit{seed}_1$ and $\mathit{seed}_2$.
-    * Compute the following binding and hiding nonces:
+* Pick two $32$ bytes seeds uniformly at random $\mathit{seed}_1$ and $\mathit{seed}_2$.
+* Compute the following binding and hiding nonces:
 
-    $$
-    \begin{aligned}
-      a_i &\gets H_3(\mathit{seed}_1, x_i)\cr
-      b_i &\gets H_3(\mathit{seed}_2, x_i)
-    \end{aligned}
-    $$
+$$
+\begin{aligned}
+  a_i &\gets H_3(\mathit{seed}_1, x_i)\cr
+  b_i &\gets H_3(\mathit{seed}_2, x_i)
+\end{aligned}
+$$
 
-    * Compute the following binding and hiding points:
+* Compute the following binding and hiding points:
 
-    $$
-    \begin{aligned}
-      A_i&\gets a_i \cdot G\cr
-      B_i &\gets b_i \cdot G
-    \end{aligned}
-    $$
+$$
+\begin{aligned}
+  A_i&\gets a_i \cdot G\cr
+  B_i &\gets b_i \cdot G
+\end{aligned}
+$$
 
 2. $\star$ Each $P_i$ sends $(A_i, B_i)$ **only to the coordinator**.
 
@@ -62,36 +62,33 @@ The inputs to this phase are:
 7. Each $P_i$ verifies that $h = h^*$
 8. Each $P_i$ computes a signature share using following [RFC9591](https://datatracker.ietf.org/doc/html/rfc9591#name-round-two-signature-share-g).
 In short, the following cryptographic steps are executed:
-  * $\blacktriangle$ Assert that $(i, A_i, B_i) \in \mathit{commits}$.
+~    * $\blacktriangle$ Assert that $(i, A_i, B_i) \in \mathit{commits}$.
   * Compute the hash $h\gets H_4(m)$.
   * Compute the multiple hashes for all $j\in\set{1.. N_1}$:
 
-<div>
 
 $$
 \rho_j \gets H_1(X, h, \mathit{commits}, j)
 $$
 
-</div>
+* Compute the following group commitment
 
-  * Compute the following group commitment
+$$
+R\gets \sum_j (A_j+ \rho_j \cdot B_j)
+$$
 
-  $$
-  R\gets \sum_j (A_j+ \rho_j \cdot B_j)
-  $$
+* Compute the following challenge:
 
-  * Compute the following challenge:
+$$
+c\gets H_2(R, X, m)
+$$
 
-  $$
-  c\gets H_2(R, X, m)
-  $$
+* Compute the following signature share:
 
-  * Compute the following signature share:
-
-  $$
-  s_i = a_i + b_i * \rho_i+ \lambda(\mathcal{P}_1)_i * x_i * c
-  $$
-
+$$
+s_i = a_i + b_i * \rho_i+ \lambda(\mathcal{P}_1)_i * x_i * c
+$$
+~
 9. Each $P_i$ sends its signature share $s_i$ **only to the coordinator**.
 
 **Round 2 (Coordinator):**
@@ -99,9 +96,9 @@ $$
 10. $\bullet$ The coordinator waits to receive the signature share $s_j$ from every party $P_j$.
 11. The coordinator runs the aggregation following [RFC9591](https://datatracker.ietf.org/doc/html/rfc9591#name-signature-share-aggregation). In short, the following sum is executed:
 
-    $$
-    s\gets \sum_j s_j
-    $$
+$$
+s\gets \sum_j s_j
+$$
 
 12. $\blacktriangle$ The coordinator asserts that $(R, s)$ is a valid Ed25519 signature for message $m$.
 
