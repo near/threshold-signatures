@@ -66,11 +66,14 @@ In short, the following cryptographic steps are executed:
   * Compute the hash $h\gets H_4(m)$.
   * Compute the multiple hashes for all $j\in\set{1.. N_1}$:
 
-  <div>
-  $$
-  \rho_j \gets H_1(X, h, \mathit{commits}, j)
-  $$
-  </div>
+<div>
+
+$$
+\rho_j \gets H_1(X, h, \mathit{commits}, j)
+$$
+
+</div>
+
   * Compute the following group commitment
 
   $$
