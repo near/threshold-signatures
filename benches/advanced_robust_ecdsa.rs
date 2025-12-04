@@ -5,7 +5,7 @@ use rand_core::SeedableRng;
 
 mod bench_utils;
 use crate::bench_utils::{
-    robust_ecdsa_prepare_presign, robust_ecdsa_prepare_sign, PreparedSimulatedSig, MAX_MALICIOUS,
+    robust_ecdsa_prepare_presign, robust_ecdsa_prepare_sign, PreparedOutputs, MAX_MALICIOUS,
 };
 
 use threshold_signatures::{
@@ -21,12 +21,8 @@ use threshold_signatures::{
     },
 };
 
-/// Helps with the benches of the presigning protocol
-type PreparedPresig = (
-    Participant,
-    Box<dyn Protocol<Output = PresignOutput>>,
-    Simulator,
-);
+type PreparedPresig = PreparedOutputs<PresignOutput>;
+type PreparedSimulatedSig = PreparedOutputs<SignatureOption>;
 
 fn participants_num() -> usize {
     2 * *MAX_MALICIOUS + 1
@@ -43,7 +39,7 @@ fn bench_presign(c: &mut Criterion) {
         |b| {
             b.iter_batched(
                 || prepare_simulate_presign(num),
-                |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot),
+                |preps| run_simulated_protocol(preps.p, preps.out, preps.sim),
                 criterion::BatchSize::SmallInput,
             );
         },
@@ -68,7 +64,7 @@ fn bench_sign(c: &mut Criterion) {
         |b| {
             b.iter_batched(
                 || prepare_simulated_sign(&result, pk),
-                |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot),
+                |preps| run_simulated_protocol(preps.p, preps.out, preps.sim),
                 criterion::BatchSize::SmallInput,
             );
         },
@@ -111,7 +107,11 @@ fn prepare_simulate_presign(num_participants: usize) -> PreparedPresig {
     let simulated_protocol =
         Simulator::new(real_participant, protocolsnapshot).expect("Simulator should not be empty");
 
-    (real_participant, real_protocol, simulated_protocol)
+    PreparedPresig {
+        p: real_participant,
+        out: real_protocol,
+        sim: simulated_protocol,
+    }
 }
 
 /// Used to simulate robust ecdsa signatures for benchmarking
@@ -147,5 +147,9 @@ fn prepare_simulated_sign(
     let simulated_protocol =
         Simulator::new(real_participant, protocolsnapshot).expect("Simulator should not be empty");
 
-    (real_participant, real_protocol, simulated_protocol)
+    PreparedSimulatedSig {
+        p: real_participant,
+        out: real_protocol,
+        sim: simulated_protocol,
+    }
 }

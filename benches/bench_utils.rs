@@ -29,12 +29,12 @@ pub static MAX_MALICIOUS: LazyLock<usize> = std::sync::LazyLock::new(|| {
         .unwrap_or(6)
 });
 
-/// Helps with the benches of the signing protocol
-pub type PreparedSimulatedSig = (
-    Participant,
-    Box<dyn Protocol<Output = SignatureOption>>,
-    Simulator,
-);
+/// This helps defining a generic type for the benchmarks prepared outputs
+pub struct PreparedOutputs<T> {
+    pub p: Participant,
+    pub out: Box<dyn Protocol<Output = T>>,
+    pub sim: Simulator,
+}
 
 /********************* OT Based ECDSA *********************/
 /// Used to prepare ot based ecdsa triples for benchmarking

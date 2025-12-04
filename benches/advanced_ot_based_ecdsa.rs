@@ -5,8 +5,8 @@ use rand_core::SeedableRng;
 
 mod bench_utils;
 use crate::bench_utils::{
-    ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign, ot_ecdsa_prepare_triples,
-    PreparedSimulatedSig, MAX_MALICIOUS,
+    ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign, ot_ecdsa_prepare_triples, PreparedOutputs,
+    MAX_MALICIOUS,
 };
 
 use threshold_signatures::{
@@ -27,17 +27,9 @@ use threshold_signatures::{
     },
 };
 
-type PreparedSimulatedTriples = (
-    Participant,
-    Box<dyn Protocol<Output = Vec<(TripleShare, TriplePub)>>>,
-    Simulator,
-);
-
-type PreparedSimulatedPresig = (
-    Participant,
-    Box<dyn Protocol<Output = PresignOutput>>,
-    Simulator,
-);
+type PreparedSimulatedTriples = PreparedOutputs<Vec<(TripleShare, TriplePub)>>;
+type PreparedSimulatedPresig = PreparedOutputs<PresignOutput>;
+type PreparedSimulatedSig = PreparedOutputs<SignatureOption>;
 
 fn threshold() -> usize {
     *MAX_MALICIOUS + 1
@@ -59,7 +51,7 @@ fn bench_triples(c: &mut Criterion) {
         |b| {
             b.iter_batched(
                 || prepare_simulated_triples(num),
-                |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot),
+                |preps| run_simulated_protocol(preps.p, preps.out, preps.sim),
                 criterion::BatchSize::SmallInput,
             );
         },
@@ -83,7 +75,7 @@ fn bench_presign(c: &mut Criterion) {
         |b| {
             b.iter_batched(
                 || prepare_simulated_presign(&two_triples),
-                |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot),
+                |preps| run_simulated_protocol(preps.p, preps.out, preps.sim),
                 criterion::BatchSize::SmallInput,
             );
         },
@@ -113,7 +105,7 @@ fn bench_sign(c: &mut Criterion) {
         |b| {
             b.iter_batched(
                 || prepare_simulated_sign(&result, pk),
-                |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot),
+                |preps| run_simulated_protocol(preps.p, preps.out, preps.sim),
                 criterion::BatchSize::SmallInput,
             );
         },
@@ -150,7 +142,11 @@ fn prepare_simulated_triples(participant_num: usize) -> PreparedSimulatedTriples
     // now preparing the simulator
     let simulated_protocol =
         Simulator::new(real_participant, protocolsnapshot).expect("Simulator should not be empty");
-    (real_participant, real_protocol, simulated_protocol)
+    PreparedSimulatedTriples {
+        p: real_participant,
+        out: real_protocol,
+        sim: simulated_protocol,
+    }
 }
 
 /// Used to simulate ot based ecdsa presignatures for benchmarking
@@ -191,7 +187,11 @@ fn prepare_simulated_presign(
     let simulated_protocol =
         Simulator::new(real_participant, protocolsnapshot).expect("Simulator should not be empty");
 
-    (real_participant, real_protocol, simulated_protocol)
+    PreparedSimulatedPresig {
+        p: real_participant,
+        out: real_protocol,
+        sim: simulated_protocol,
+    }
 }
 
 /// Used to simulate ot based ecdsa signatures for benchmarking
@@ -227,5 +227,9 @@ pub fn prepare_simulated_sign(
     // now preparing the being the coordinator
     let simulated_protocol =
         Simulator::new(real_participant, protocolsnapshot).expect("Simulator should not be empty");
-    (real_participant, real_protocol, simulated_protocol)
+    PreparedSimulatedSig {
+        p: real_participant,
+        out: real_protocol,
+        sim: simulated_protocol,
+    }
 }
