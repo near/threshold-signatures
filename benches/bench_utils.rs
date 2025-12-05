@@ -210,9 +210,9 @@ pub type OTECDSAPreparedSig = PreparedSig<ot_based_ecdsa::RerandomizedPresignOut
 /// Used to prepare robust ecdsa presignatures for benchmarking
 pub fn robust_ecdsa_prepare_presign<R: CryptoRngCore + SeedableRng + Send + 'static>(
     num_participants: usize,
-    rngs: &[impl CryptoRngCore + Send + Clone + 'static],
     rng: &mut R,
 ) -> RobustECDSAPreparedPresig {
+    let rngs = create_rngs(num_participants, rng);
     let participants = generate_participants_with_random_ids(num_participants, rng);
     let key_packages = run_keygen(&participants, *MAX_MALICIOUS + 1, rng);
     let mut protocols: Vec<(

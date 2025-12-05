@@ -2,7 +2,7 @@ use criterion::{criterion_group, Criterion};
 mod bench_utils;
 use crate::bench_utils::{robust_ecdsa_prepare_presign, robust_ecdsa_prepare_sign, MAX_MALICIOUS};
 use rand_core::SeedableRng;
-use threshold_signatures::test_utils::{create_rngs, run_protocol, MockCryptoRng};
+use threshold_signatures::test_utils::{run_protocol, MockCryptoRng};
 
 fn participants_num() -> usize {
     2 * *MAX_MALICIOUS + 1
@@ -19,10 +19,7 @@ fn bench_presign(c: &mut Criterion) {
         format!("robust_ecdsa_presign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
-                || {
-                    let rngs = create_rngs(num, &mut rng);
-                    robust_ecdsa_prepare_presign(num, &rngs, &mut rng)
-                },
+                || robust_ecdsa_prepare_presign(num, &mut rng),
                 |preps| run_protocol(preps.protocols),
                 criterion::BatchSize::SmallInput,
             );
@@ -38,8 +35,7 @@ fn bench_sign(c: &mut Criterion) {
     let mut group = c.benchmark_group("sign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
-    let rngs = create_rngs(num, &mut rng);
-    let preps = robust_ecdsa_prepare_presign(num, &rngs, &mut rng);
+    let preps = robust_ecdsa_prepare_presign(num, &mut rng);
     let result = run_protocol(preps.protocols).expect("Prepare sign should not");
     let pk = preps.key_packages[0].1.public_key;
 
