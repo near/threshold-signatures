@@ -38,10 +38,10 @@ pub struct PreparedOutputs<T> {
 
 /********************* OT Based ECDSA *********************/
 /// Used to prepare ot based ecdsa triples for benchmarking
-pub fn ot_ecdsa_prepare_triples(
+pub fn ot_ecdsa_prepare_triples<R: CryptoRngCore + SeedableRng + Send + 'static>(
     participant_num: usize,
     threshold: usize,
-    rng: &mut (impl CryptoRngCore + SeedableRng + Send + 'static),
+    rng: &mut R,
 ) -> OTECDSAPreparedTriples {
     let mut protocols: Vec<(_, Box<dyn Protocol<Output = _>>)> =
         Vec::with_capacity(participant_num);
@@ -57,10 +57,10 @@ pub fn ot_ecdsa_prepare_triples(
 }
 
 /// Used to prepare ot based ecdsa presignatures for benchmarking
-pub fn ot_ecdsa_prepare_presign(
+pub fn ot_ecdsa_prepare_presign<R: CryptoRngCore + SeedableRng + Send + 'static>(
     two_triples: &[(Participant, Vec<(TripleShare, TriplePub)>)],
     threshold: usize,
-    rng: &mut (impl CryptoRngCore + SeedableRng + Send + 'static),
+    rng: &mut R,
 ) -> OTECDSAPreparedPresig {
     let mut two_triples = two_triples.to_owned();
     two_triples.sort_by_key(|(p, _)| *p);
@@ -201,10 +201,10 @@ type OTECDSAPreparedSig = (
 
 /********************* Robust ECDSA *********************/
 /// Used to prepare robust ecdsa presignatures for benchmarking
-pub fn robust_ecdsa_prepare_presign(
+pub fn robust_ecdsa_prepare_presign<R: CryptoRngCore + SeedableRng + Send + 'static>(
     num_participants: usize,
     rngs: &[impl CryptoRngCore + Send + Clone + 'static],
-    rng: &mut (impl CryptoRngCore + SeedableRng + Send + 'static),
+    rng: &mut R,
 ) -> RobustECDSAPreparedPresig {
     let participants = generate_participants_with_random_ids(num_participants, rng);
     let key_packages = run_keygen(&participants, *MAX_MALICIOUS + 1, rng);
