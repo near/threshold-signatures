@@ -55,9 +55,9 @@ fn bench_sign(c: &mut Criterion) {
 
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let rngs = create_rngs(num, &mut rng);
-    let (protocols, key_packages, _) = robust_ecdsa_prepare_presign(num, &rngs, &mut rng);
-    let result = run_protocol(protocols).expect("Prepare sign should not");
-    let pk = key_packages[0].1.public_key;
+    let preps = robust_ecdsa_prepare_presign(num, &rngs, &mut rng);
+    let result = run_protocol(preps.protocols).expect("Prepare sign should not");
+    let pk = preps.key_packages[0].1.public_key;
 
     group.bench_function(
         format!("robust_ecdsa_sign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
@@ -82,17 +82,16 @@ fn prepare_simulate_presign(num_participants: usize) -> PreparedPresig {
     // Running presign a first time with snapshots
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let rngs = create_rngs(num_participants, &mut rng);
-    let (protocols, key_packages, participants) =
-        robust_ecdsa_prepare_presign(num_participants, &rngs, &mut rng);
+    let preps = robust_ecdsa_prepare_presign(num_participants, &rngs, &mut rng);
 
-    let (_, protocolsnapshot) = run_protocol_and_take_snapshots(protocols)
+    let (_, protocolsnapshot) = run_protocol_and_take_snapshots(preps.protocols)
         .expect("Running protocol with snapshot should not have issues");
 
     // choose the real_participant at random
     let index_real_participant = rng.gen_range(0..num_participants);
-    let (real_participant, keygen_out) = key_packages[index_real_participant].clone();
+    let (real_participant, keygen_out) = preps.key_packages[index_real_participant].clone();
     let real_protocol = presign(
-        &participants,
+        &preps.participants,
         real_participant,
         PresignArguments {
             keygen_out,
@@ -122,23 +121,22 @@ fn prepare_simulated_sign(
     pk: VerifyingKey,
 ) -> PreparedSimulatedSig {
     let mut rng = MockCryptoRng::seed_from_u64(41);
-    let (protocols, coordinator_index, presignature, derived_pk, msg_hash) =
-        robust_ecdsa_prepare_sign(result, pk, &mut rng);
-    let (_, protocolsnapshot) = run_protocol_and_take_snapshots(protocols)
+    let preps = robust_ecdsa_prepare_sign(result, pk, &mut rng);
+    let (_, protocolsnapshot) = run_protocol_and_take_snapshots(preps.protocols)
         .expect("Running protocol with snapshot should not have issues");
 
     // collect all participants
     let participants: Vec<Participant> =
         result.iter().map(|(participant, _)| *participant).collect();
     // choose the real_participant being the coordinator
-    let (real_participant, _) = result[coordinator_index];
+    let (real_participant, _) = result[preps.index];
     let real_protocol = sign(
         &participants,
         real_participant,
         real_participant,
-        derived_pk,
-        presignature,
-        msg_hash,
+        preps.derived_pk,
+        preps.presig,
+        preps.msg_hash,
     )
     .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
     .expect("Presignature should succeed");

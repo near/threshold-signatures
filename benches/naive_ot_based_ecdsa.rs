@@ -27,7 +27,7 @@ fn bench_triples(c: &mut Criterion) {
         |b| {
             b.iter_batched(
                 || ot_ecdsa_prepare_triples(participants_num(), threshold(), &mut rng),
-                |(protocols, _)| run_protocol(protocols),
+                |preps| run_protocol(preps.protocols),
                 criterion::BatchSize::SmallInput,
             );
         },
@@ -42,15 +42,16 @@ fn bench_presign(c: &mut Criterion) {
     let mut group = c.benchmark_group("presign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
-    let (protocols, _) = ot_ecdsa_prepare_triples(participants_num(), threshold(), &mut rng);
-    let two_triples = run_protocol(protocols).expect("Running triple preparations should succeed");
+    let preps = ot_ecdsa_prepare_triples(participants_num(), threshold(), &mut rng);
+    let two_triples =
+        run_protocol(preps.protocols).expect("Running triple preparations should succeed");
 
     group.bench_function(
         format!("ot_ecdsa_presign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
                 || ot_ecdsa_prepare_presign(&two_triples, threshold(), &mut rng),
-                |(protocols, ..)| run_protocol(protocols),
+                |preps| run_protocol(preps.protocols),
                 criterion::BatchSize::SmallInput,
             );
         },
@@ -66,20 +67,20 @@ fn bench_sign(c: &mut Criterion) {
     let mut group = c.benchmark_group("sign");
     group.measurement_time(std::time::Duration::from_secs(300));
 
-    let (protocols, _) = ot_ecdsa_prepare_triples(participants_num(), threshold(), &mut rng);
-    let two_triples = run_protocol(protocols).expect("Running triples preparation should succeed");
+    let preps = ot_ecdsa_prepare_triples(participants_num(), threshold(), &mut rng);
+    let two_triples =
+        run_protocol(preps.protocols).expect("Running triples preparation should succeed");
 
-    let (protocols, key_packages, _) =
-        ot_ecdsa_prepare_presign(&two_triples, threshold(), &mut rng);
-    let pk = key_packages[0].1.public_key;
-    let result = run_protocol(protocols).expect("Running presign preparation should succeed");
+    let preps = ot_ecdsa_prepare_presign(&two_triples, threshold(), &mut rng);
+    let pk = preps.key_packages[0].1.public_key;
+    let result = run_protocol(preps.protocols).expect("Running presign preparation should succeed");
 
     group.bench_function(
         format!("ot_ecdsa_sign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
                 || ot_ecdsa_prepare_sign(&result, pk, &mut rng),
-                |(protocols, ..)| run_protocol(protocols),
+                |preps| run_protocol(preps.protocols),
                 criterion::BatchSize::SmallInput,
             );
         },

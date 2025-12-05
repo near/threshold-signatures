@@ -23,7 +23,7 @@ fn bench_presign(c: &mut Criterion) {
                     let rngs = create_rngs(num, &mut rng);
                     robust_ecdsa_prepare_presign(num, &rngs, &mut rng)
                 },
-                |(protocols, _, _)| run_protocol(protocols),
+                |preps| run_protocol(preps.protocols),
                 criterion::BatchSize::SmallInput,
             );
         },
@@ -39,16 +39,16 @@ fn bench_sign(c: &mut Criterion) {
     group.measurement_time(std::time::Duration::from_secs(300));
 
     let rngs = create_rngs(num, &mut rng);
-    let (protocols, key_packages, _) = robust_ecdsa_prepare_presign(num, &rngs, &mut rng);
-    let result = run_protocol(protocols).expect("Prepare sign should not");
-    let pk = key_packages[0].1.public_key;
+    let preps = robust_ecdsa_prepare_presign(num, &rngs, &mut rng);
+    let result = run_protocol(preps.protocols).expect("Prepare sign should not");
+    let pk = preps.key_packages[0].1.public_key;
 
     group.bench_function(
         format!("robust_ecdsa_sign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
                 || robust_ecdsa_prepare_sign(&result, pk, &mut rng),
-                |(protocols, ..)| run_protocol(protocols),
+                |preps| run_protocol(preps.protocols),
                 criterion::BatchSize::SmallInput,
             );
         },

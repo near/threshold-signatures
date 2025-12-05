@@ -35,6 +35,19 @@ pub struct PreparedOutputs<T> {
     pub protocol: Box<dyn Protocol<Output = T>>,
     pub simulator: Simulator,
 }
+pub struct PreparedPresig<PresignOutput> {
+    pub protocols: Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)>,
+    pub key_packages: Vec<(Participant, KeygenOutput)>,
+    pub participants: Vec<Participant>,
+}
+
+pub struct PreparedSig<RerandomizedPresignOutput> {
+    pub protocols: Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)>,
+    pub index: usize,
+    pub presig: RerandomizedPresignOutput,
+    pub derived_pk: AffinePoint,
+    pub msg_hash: Scalar,
+}
 
 /********************* OT Based ECDSA *********************/
 /// Used to prepare ot based ecdsa triples for benchmarking
@@ -53,7 +66,10 @@ pub fn ot_ecdsa_prepare_triples<R: CryptoRngCore + SeedableRng + Send + 'static>
             .expect("Triple generation should succeed");
         protocols.push((*p, Box::new(protocol)));
     }
-    (protocols, participants)
+    OTECDSAPreparedTriples {
+        protocols,
+        participants,
+    }
 }
 
 /// Used to prepare ot based ecdsa presignatures for benchmarking
@@ -100,7 +116,11 @@ pub fn ot_ecdsa_prepare_presign<R: CryptoRngCore + SeedableRng + Send + 'static>
         .expect("Presigning should succeed");
         protocols.push((p, Box::new(protocol)));
     }
-    (protocols, key_packages, participants)
+    OTECDSAPreparedPresig {
+        protocols,
+        key_packages,
+        participants,
+    }
 }
 
 /// Used to prepare ot based ecdsa signatures for benchmarking
@@ -152,13 +172,13 @@ pub fn ot_ecdsa_prepare_sign<R: CryptoRngCore + SeedableRng>(
         .expect("Signing should succeed");
         protocols.push((p, protocol));
     }
-    (
+    OTECDSAPreparedSig {
         protocols,
         index,
-        result[index].1.clone(),
+        presig: result[index].1.clone(),
         derived_pk,
         msg_hash,
-    )
+    }
 }
 
 pub fn split_even_odd<T: Clone>(v: Vec<T>) -> (Vec<T>, Vec<T>) {
@@ -174,30 +194,17 @@ pub fn split_even_odd<T: Clone>(v: Vec<T>) -> (Vec<T>, Vec<T>) {
     (even, odd)
 }
 
-type OTECDSAPreparedTriples = (
-    Vec<(
-        Participant,
-        Box<dyn Protocol<Output = Vec<(TripleShare, TriplePub)>>>,
-    )>,
-    Vec<Participant>,
-);
+type TriplesProtocols = Vec<(
+    Participant,
+    Box<dyn Protocol<Output = Vec<(TripleShare, TriplePub)>>>,
+)>;
+pub struct OTECDSAPreparedTriples {
+    pub protocols: TriplesProtocols,
+    pub participants: Vec<Participant>,
+}
 
-type OTECDSAPreparedPresig = (
-    Vec<(
-        Participant,
-        Box<dyn Protocol<Output = ot_based_ecdsa::PresignOutput>>,
-    )>,
-    Vec<(Participant, KeygenOutput)>,
-    Vec<Participant>,
-);
-
-type OTECDSAPreparedSig = (
-    Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)>,
-    usize,
-    ot_based_ecdsa::RerandomizedPresignOutput,
-    AffinePoint,
-    Scalar,
-);
+pub type OTECDSAPreparedPresig = PreparedPresig<ot_based_ecdsa::PresignOutput>;
+pub type OTECDSAPreparedSig = PreparedSig<ot_based_ecdsa::RerandomizedPresignOutput>;
 
 /********************* Robust ECDSA *********************/
 /// Used to prepare robust ecdsa presignatures for benchmarking
@@ -227,7 +234,11 @@ pub fn robust_ecdsa_prepare_presign<R: CryptoRngCore + SeedableRng + Send + 'sta
         .expect("Presignature should succeed");
         protocols.push((*p, protocol));
     }
-    (protocols, key_packages, participants)
+    RobustECDSAPreparedPresig {
+        protocols,
+        key_packages,
+        participants,
+    }
 }
 
 /// Used to prepare robust ecdsa signatures for benchmarking
@@ -279,29 +290,14 @@ pub fn robust_ecdsa_prepare_sign<R: CryptoRngCore + SeedableRng>(
         .expect("Signing should succeed");
         protocols.push((p, protocol));
     }
-    (
+    RobustECDSASig {
         protocols,
-        coordinator_index,
-        result[coordinator_index].1.clone(),
+        index: coordinator_index,
+        presig: result[coordinator_index].1.clone(),
         derived_pk,
         msg_hash,
-    )
+    }
 }
 
-/// Benches the presigning protocol
-type RobustECDSAPreparedPresig = (
-    Vec<(
-        Participant,
-        Box<dyn Protocol<Output = robust_ecdsa::PresignOutput>>,
-    )>,
-    Vec<(Participant, KeygenOutput)>,
-    Vec<Participant>,
-);
-/// Benches the presigning protocol
-type RobustECDSASig = (
-    Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)>,
-    usize,
-    robust_ecdsa::RerandomizedPresignOutput,
-    AffinePoint,
-    Scalar,
-);
+pub type RobustECDSAPreparedPresig = PreparedPresig<robust_ecdsa::PresignOutput>;
+pub type RobustECDSASig = PreparedSig<robust_ecdsa::RerandomizedPresignOutput>;
