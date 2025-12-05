@@ -39,7 +39,7 @@ fn bench_presign(c: &mut Criterion) {
         |b| {
             b.iter_batched(
                 || prepare_simulate_presign(num),
-                |preps| run_simulated_protocol(preps.p, preps.out, preps.sim),
+                |preps| run_simulated_protocol(preps.participant, preps.protocol, preps.simulator),
                 criterion::BatchSize::SmallInput,
             );
         },
@@ -64,7 +64,7 @@ fn bench_sign(c: &mut Criterion) {
         |b| {
             b.iter_batched(
                 || prepare_simulated_sign(&result, pk),
-                |preps| run_simulated_protocol(preps.p, preps.out, preps.sim),
+                |preps| run_simulated_protocol(preps.participant, preps.protocol, preps.simulator),
                 criterion::BatchSize::SmallInput,
             );
         },
@@ -108,9 +108,9 @@ fn prepare_simulate_presign(num_participants: usize) -> PreparedPresig {
         Simulator::new(real_participant, protocolsnapshot).expect("Simulator should not be empty");
 
     PreparedPresig {
-        p: real_participant,
-        out: real_protocol,
-        sim: simulated_protocol,
+        participant: real_participant,
+        protocol: real_protocol,
+        simulator: simulated_protocol,
     }
 }
 
@@ -148,8 +148,8 @@ fn prepare_simulated_sign(
         Simulator::new(real_participant, protocolsnapshot).expect("Simulator should not be empty");
 
     PreparedSimulatedSig {
-        p: real_participant,
-        out: real_protocol,
-        sim: simulated_protocol,
+        participant: real_participant,
+        protocol: real_protocol,
+        simulator: simulated_protocol,
     }
 }

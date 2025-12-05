@@ -51,7 +51,7 @@ fn bench_triples(c: &mut Criterion) {
         |b| {
             b.iter_batched(
                 || prepare_simulated_triples(num),
-                |preps| run_simulated_protocol(preps.p, preps.out, preps.sim),
+                |preps| run_simulated_protocol(preps.participant, preps.protocol, preps.simulator),
                 criterion::BatchSize::SmallInput,
             );
         },
@@ -74,7 +74,7 @@ fn bench_presign(c: &mut Criterion) {
         |b| {
             b.iter_batched(
                 || prepare_simulated_presign(&two_triples),
-                |preps| run_simulated_protocol(preps.p, preps.out, preps.sim),
+                |preps| run_simulated_protocol(preps.participant, preps.protocol, preps.simulator),
                 criterion::BatchSize::SmallInput,
             );
         },
@@ -103,7 +103,7 @@ fn bench_sign(c: &mut Criterion) {
         |b| {
             b.iter_batched(
                 || prepare_simulated_sign(&result, pk),
-                |preps| run_simulated_protocol(preps.p, preps.out, preps.sim),
+                |preps| run_simulated_protocol(preps.participant, preps.protocol, preps.simulator),
                 criterion::BatchSize::SmallInput,
             );
         },
@@ -149,9 +149,9 @@ fn prepare_simulated_triples(participant_num: usize) -> PreparedSimulatedTriples
     let simulated_protocol =
         Simulator::new(real_participant, protocolsnapshot).expect("Simulator should not be empty");
     PreparedSimulatedTriples {
-        p: real_participant,
-        out: real_protocol,
-        sim: simulated_protocol,
+        participant: real_participant,
+        protocol: real_protocol,
+        simulator: simulated_protocol,
     }
 }
 
@@ -194,9 +194,9 @@ fn prepare_simulated_presign(
         Simulator::new(real_participant, protocolsnapshot).expect("Simulator should not be empty");
 
     PreparedSimulatedPresig {
-        p: real_participant,
-        out: real_protocol,
-        sim: simulated_protocol,
+        participant: real_participant,
+        protocol: real_protocol,
+        simulator: simulated_protocol,
     }
 }
 
@@ -234,8 +234,8 @@ pub fn prepare_simulated_sign(
     let simulated_protocol =
         Simulator::new(real_participant, protocolsnapshot).expect("Simulator should not be empty");
     PreparedSimulatedSig {
-        p: real_participant,
-        out: real_protocol,
-        sim: simulated_protocol,
+        participant: real_participant,
+        protocol: real_protocol,
+        simulator: simulated_protocol,
     }
 }

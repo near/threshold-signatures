@@ -31,9 +31,9 @@ pub static MAX_MALICIOUS: LazyLock<usize> = std::sync::LazyLock::new(|| {
 
 /// This helps defining a generic type for the benchmarks prepared outputs
 pub struct PreparedOutputs<T> {
-    pub p: Participant,
-    pub out: Box<dyn Protocol<Output = T>>,
-    pub sim: Simulator,
+    pub participant: Participant,
+    pub protocol: Box<dyn Protocol<Output = T>>,
+    pub simulator: Simulator,
 }
 
 /********************* OT Based ECDSA *********************/
