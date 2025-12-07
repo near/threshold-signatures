@@ -4,7 +4,7 @@ use crate::bench_utils::{
     robust_ecdsa_prepare_presign, robust_ecdsa_prepare_sign, LATENCY, MAX_MALICIOUS, SAMPLE_SIZE,
 };
 use rand_core::SeedableRng;
-use threshold_signatures::test_utils::{create_rngs, run_protocol, MockCryptoRng};
+use threshold_signatures::test_utils::{run_protocol, MockCryptoRng};
 
 fn participants_num() -> usize {
     2 * *MAX_MALICIOUS + 1
@@ -23,11 +23,8 @@ fn bench_presign(c: &mut Criterion) {
         format!("robust_ecdsa_presign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
         |b| {
             b.iter_batched(
-                || {
-                    let rngs = create_rngs(num, &mut rng);
-                    robust_ecdsa_prepare_presign(num, &rngs, &mut rng)
-                },
-                |(protocols, _, _)| run_protocol(protocols),
+                || robust_ecdsa_prepare_presign(num, &mut rng),
+                |preps| run_protocol(preps.protocols),
                 criterion::BatchSize::SmallInput,
             );
         },
@@ -40,19 +37,19 @@ fn bench_sign(c: &mut Criterion) {
     let num = participants_num();
     let latency = *LATENCY;
     let max_malicious = *MAX_MALICIOUS;
-    let rngs = create_rngs(num, &mut rng);
-    let (protocols, key_packages, _) = robust_ecdsa_prepare_presign(num, &rngs, &mut rng);
-    let result = run_protocol(protocols).expect("Prepare sign should not");
-    let pk = key_packages[0].1.public_key;
-
     let mut group = c.benchmark_group("sign");
     group.sample_size(*SAMPLE_SIZE);
+
+    let preps = robust_ecdsa_prepare_presign(num, &mut rng);
+    let result = run_protocol(preps.protocols).expect("Prepare sign should not");
+    let pk = preps.key_packages[0].1.public_key;
+
     group.bench_function(
         format!("robust_ecdsa_sign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
         |b| {
             b.iter_batched(
                 || robust_ecdsa_prepare_sign(&result, pk, &mut rng),
-                |(protocols, ..)| run_protocol(protocols),
+                |preps| run_protocol(preps.protocols),
                 criterion::BatchSize::SmallInput,
             );
         },
