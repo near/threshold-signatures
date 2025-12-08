@@ -1,6 +1,7 @@
-use crate::confidential_key_derivation::ciphersuite::{hash_to_curve, BLS12381SHA256};
+use crate::confidential_key_derivation::ciphersuite::BLS12381SHA256;
 use crate::confidential_key_derivation::{
-    AppId, CKDOutput, CKDOutputOption, ElementG1, KeygenOutput, PublicKey, Scalar,
+    hash_app_id_with_pk, AppId, CKDOutput, CKDOutputOption, ElementG1, KeygenOutput, PublicKey,
+    Scalar,
 };
 use crate::errors::{InitializationError, ProtocolError};
 use crate::participants::{Participant, ParticipantList};
@@ -163,11 +164,8 @@ fn compute_signature_share(
 
     let big_y = ElementG1::generator() * y.0;
 
-    // Concatenate the master public key (96 bytes) in the hash computation
-    let compressed_pk = key_pair.public_key.to_element().to_compressed();
-    let input = [compressed_pk.as_slice(), app_id].concat();
     // H(pk || app_id) when H is a random oracle
-    let hash_point = hash_to_curve(&input);
+    let hash_point = hash_app_id_with_pk(&key_pair.public_key, app_id);
 
     // S <- x . H(app_id)
     let big_s = hash_point * private_share.to_scalar();
