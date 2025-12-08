@@ -1,3 +1,5 @@
+# EdDSA signatures
+
 This document specifies the distributed EdDSA signing protocol called FROST.
 The implementation is heavily inspired by the Zcash  Foundation
 [implementation](https://github.com/ZcashFoundation/frost) and builds the
@@ -11,9 +13,9 @@ make each of the two round run respectively in an offline phase and an
 online phase. This helps improving the performance of the online phase
 and serve the users even faster.
 
-### Note: the threshold $t =$ *number_malicious_parties*
+*Note:* the threshold $t =$ *number_malicious_parties*
 
-# Signing
+## Signing
 
 In this phase, a set of parties $\mathcal{P}_1 \subseteq \mathcal{P}_0$
 of size $N_1 > t$ wishes to generate an EdDSA signature. Following the
@@ -26,9 +28,9 @@ The inputs to this phase are:
 2. The public key $X$
 3. The message $m$
 
-**Round 1:**
+### Round 1
 
-1. Each $P_i$ commits to its secret share $x_i$ following the
+1.1 Each $P_i$ commits to its secret share $x_i$ following the
 [RFC9591](https://datatracker.ietf.org/doc/html/rfc9591#name-round-one-commitment) standards. In short, the following cryptographic steps are executed:
 
 * Pick two $32$ bytes seeds uniformly at random $\mathit{seed}_1$ and $\mathit{seed}_2$.
@@ -36,8 +38,8 @@ The inputs to this phase are:
 
 $$
 \begin{aligned}
-  a_i &\gets H_3(\mathit{seed}_1, x_i)\cr
-  b_i &\gets H_3(\mathit{seed}_2, x_i)
+a_i &\gets H_3(\mathit{seed}_1, x_i)\cr
+b_i &\gets H_3(\mathit{seed}_2, x_i)
 \end{aligned}
 $$
 
@@ -45,24 +47,29 @@ $$
 
 $$
 \begin{aligned}
-  A_i&\gets a_i \cdot G\cr
-  B_i &\gets b_i \cdot G
+A_i&\gets a_i \cdot G\cr
+B_i &\gets b_i \cdot G
 \end{aligned}
 $$
 
-2. $\star$ Each $P_i$ sends $(A_i, B_i)$ **only to the coordinator**.
+1.2 $\star$ Each $P_i$ sends $(A_i, B_i)$ **only to the coordinator**.
 
-**Round 1 (Coordinator):**
+#### Round 1 (Coordinator)
 
-3. $\bullet$ The coordinator waits to receive $(A_j, B_j)$ from every party $P_j$.
-4. The coordinator collects all terms into a set $\mathit{commits}\gets \set{(j, A_j, B_j)\colon \forall j \in \set{1.. N_1}}$.
-5. $\star$ The coordinator sends $(\mathit{commits}, h)$ to every participant.
+1.3 $\bullet$ The coordinator waits to receive $(A_j, B_j)$ from every party $P_j$.
 
-**Round 2:**
+1.4 The coordinator collects all terms into a set $\mathit{commits}\gets \set{(j, A_j, B_j)\colon \forall j \in \set{1.. N_1}}$.
 
-6. $\bullet$ Each $P_i$ waits to receive $(\mathit{commits}, h^*)$ sent by the coordinator.
-7. Each $P_i$ verifies that $h = h^*$
-8. Each $P_i$ computes a signature share using following [RFC9591](https://datatracker.ietf.org/doc/html/rfc9591#name-round-two-signature-share-g).
+1.5 $\star$ The coordinator sends $(\mathit{commits}, h)$ to every participant.
+
+### Round 2
+
+2.1 $\bullet$ Each $P_i$ waits to receive $(\mathit{commits}, h^*)$ sent by the coordinator.
+
+2.2 Each $P_i$ verifies that $h = h^*$
+
+2.3 Each $P_i$ computes a signature share using following [RFC9591](https://datatracker.ietf.org/doc/html/rfc9591#name-round-two-signature-share-g).
+
 In short, the following cryptographic steps are executed:
 
 * $\blacktriangle$ Assert that $(i, A_i, B_i) \in \mathit{commits}$.
@@ -91,18 +98,19 @@ $$
 s_i = a_i + b_i * \rho_i+ \lambda(\mathcal{P}_1)_i * x_i * c
 $$
 
-9. Each $P_i$ sends its signature share $s_i$ **only to the coordinator**.
+2.4 Each $P_i$ sends its signature share $s_i$ **only to the coordinator**.
 
-**Round 2 (Coordinator):**
+#### Round 2 (Coordinator)
 
-10. $\bullet$ The coordinator waits to receive the signature share $s_j$ from every party $P_j$.
-11. The coordinator runs the aggregation following [RFC9591](https://datatracker.ietf.org/doc/html/rfc9591#name-signature-share-aggregation). In short, the following sum is executed:
+2.5 $\bullet$ The coordinator waits to receive the signature share $s_j$ from every party $P_j$.
+
+2.6 The coordinator runs the aggregation following [RFC9591](https://datatracker.ietf.org/doc/html/rfc9591#name-signature-share-aggregation). In short, the following sum is executed:
 
 $$
 s\gets \sum_j s_j
 $$
 
-12. $\blacktriangle$ The coordinator asserts that $(R, s)$ is a valid Ed25519 signature for message $m$.
+2.7 $\blacktriangle$ The coordinator asserts that $(R, s)$ is a valid Ed25519 signature for message $m$.
 
 **Output:** the signature $(R, s)$.
 
