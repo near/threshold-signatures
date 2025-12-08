@@ -84,7 +84,7 @@ The following functionalities are provided:
 threshold ECDSA due to the mathematical formula behind the signature
 computation. Our Ed25519 implementation does not necessitate an offline phase of
 computation. More details in
-[docs](docs/ecdsa/robust_ecdsa/signing.md).
+[docs](docs/ecdsa/  /signing.md).
 
 ### CKD Functionalities
 
@@ -179,7 +179,50 @@ This ensures:
 
 ## Benchmarks
 
-* Benchmarks with 8 nodes – TODO([#8](https://github.com/near/threshold-signatures/issues/8))
+The measurements have been executed on a laptop equipped with **AMD Ryzen 7 7730U with Radeon Graphics** and **16 GB RAM**. The number of iterations tested per experiment is at least **15 iterations**.
+
+```sh
+cargo bench
+```
+
+Accepting additional Environement variables for certain benchmarks such as:
+MAX_MALICIOUS
+SAMPLE_SIZE
+LATENCY
+
+One can run:
+
+```sh
+MAX_MALICIOUS=10 LATENCY=50 SAMPLE_SIZE=30 cargo bench -- robust_ecdsa_presign_advanced
+```
+
+### ECDSA
+
+<center>
+
+####
+
+| Scheme | Parties | Two Triples Gen | Presign | Sign |
+|:------:|:-------:|-----------:|--------:|-----:|
+| **OT based ECDSA** | 16 | 544.94 ms | 257.05 µs | 119.65 µs |
+| **Robust ECDSA**   | 31 | N/A       | 24.562 ms | 129.45 µs |
+
+| **Maximum number of malicious parties: 15** | **Network Latency: 0 ms** |
+|---------------------------------------------|----------------------------|
+
+</center>
+
+These were performed with maximum number of malicious parties being 15 parties. The numbers reflect the time needed for a single participant to complete the protocol.
+
+*Note that the triple generation here generates two triples, enough for the secure computation of one single presignature and thus one single signature.*
+
+### EdDSA
+
+TODO
+
+### DKG
+
+TODO
 
 ## Acknowledgments
 
