@@ -1,4 +1,4 @@
-use crate::confidential_key_derivation::{ElementG1, Signature, VerifyingKey};
+use crate::confidential_key_derivation::{hash_app_id_with_pk, ElementG1, Signature, VerifyingKey};
 use crate::crypto::ciphersuite::{BytesOrder, ScalarSerializationFormat};
 use crate::crypto::constants::NEAR_CKD_DOMAIN;
 use blstrs::{G1Affine, G2Affine};
@@ -230,11 +230,8 @@ pub fn verify_signature(
     }
 
     // Concatenate the master public key (96 bytes) in the hash computation
-    let compressed_vk = verifying_key.to_element().to_compressed();
-    let input = [compressed_vk.as_slice(), msg].concat();
-
     // H(pk || app_id) when H is a random oracle
-    let base1 = hash_to_curve(&input).into();
+    let base1 = hash_app_id_with_pk(verifying_key, msg).into();
     let base2 =
         <<BLS12381SHA256 as frost_core::Ciphersuite>::Group as frost_core::Group>::generator()
             .into();
@@ -275,8 +272,8 @@ mod tests {
     use crate::test_utils::MockCryptoRng;
     use crate::{
         confidential_key_derivation::{
-            ciphersuite::{hash_to_curve, verify_signature, BLS12381SHA256},
-            ElementG2, VerifyingKey,
+            ciphersuite::{verify_signature, BLS12381SHA256},
+            hash_app_id_with_pk, ElementG2, VerifyingKey,
         },
         test_utils::check_common_traits_for_type,
     };
@@ -318,9 +315,7 @@ mod tests {
         let x = Scalar::random(&mut rng);
         let g2 = ElementG2::generator();
         let g2x = g2 * x;
-        let compressed = g2x.to_compressed();
-        let input = [compressed.as_slice(), b"hello world"].concat();
-        let hm = hash_to_curve(&input);
+        let hm = hash_app_id_with_pk(&VerifyingKey::new(g2x), b"hello world");
         let sigma = hm * x;
 
         assert!(verify_signature(&VerifyingKey::new(g2x), b"hello world", &sigma).is_ok());
@@ -332,9 +327,7 @@ mod tests {
         let x = Scalar::random(&mut rng);
         let g2 = ElementG2::generator();
         let g2x = g2 * Scalar::ZERO;
-        let compressed = g2x.to_compressed();
-        let input = [compressed.as_slice(), b"hello world"].concat();
-        let hm = hash_to_curve(&input);
+        let hm = hash_app_id_with_pk(&VerifyingKey::new(g2x), b"hello world");
         let sigma = hm * x;
 
         assert_eq!(

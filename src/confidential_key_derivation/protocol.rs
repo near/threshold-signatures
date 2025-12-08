@@ -1,7 +1,6 @@
 use crate::confidential_key_derivation::ciphersuite::{hash_to_curve, BLS12381SHA256};
 use crate::confidential_key_derivation::{
-    AppId, CKDOutput, CKDOutputOption, ElementG1, KeygenOutput, PublicKey, Scalar, SigningShare,
-    VerifyingKey,
+    AppId, CKDOutput, CKDOutputOption, ElementG1, KeygenOutput, PublicKey, Scalar,
 };
 use crate::errors::{InitializationError, ProtocolError};
 use crate::participants::{Participant, ParticipantList};
@@ -24,15 +23,8 @@ fn do_ckd_participant(
     app_pk: PublicKey,
     rng: &mut impl CryptoRngCore,
 ) -> Result<CKDOutputOption, ProtocolError> {
-    let (norm_big_y, norm_big_c) = compute_signature_share(
-        participants,
-        me,
-        &key_pair.public_key,
-        key_pair.private_share,
-        app_id,
-        app_pk,
-        rng,
-    )?;
+    let (norm_big_y, norm_big_c) =
+        compute_signature_share(participants, me, key_pair, app_id, app_pk, rng)?;
     let waitpoint = chan.next_waitpoint();
     chan.send_private(waitpoint, coordinator, &(norm_big_y, norm_big_c))?;
 
@@ -48,15 +40,8 @@ async fn do_ckd_coordinator(
     app_pk: PublicKey,
     rng: &mut impl CryptoRngCore,
 ) -> Result<CKDOutputOption, ProtocolError> {
-    let (mut norm_big_y, mut norm_big_c) = compute_signature_share(
-        &participants,
-        me,
-        &key_pair.public_key,
-        key_pair.private_share,
-        app_id,
-        app_pk,
-        rng,
-    )?;
+    let (mut norm_big_y, mut norm_big_c) =
+        compute_signature_share(&participants, me, key_pair, app_id, app_pk, rng)?;
 
     // Receive everyone's inputs and add them together
     let waitpoint = chan.next_waitpoint();
@@ -162,14 +147,13 @@ async fn run_ckd_protocol(
 fn compute_signature_share(
     participants: &ParticipantList,
     me: Participant,
-    master_pk: &VerifyingKey,
-    private_share: SigningShare,
+    key_pair: &KeygenOutput,
     app_id: &AppId,
     app_pk: PublicKey,
     rng: &mut impl CryptoRngCore,
 ) -> Result<(ElementG1, ElementG1), ProtocolError> {
     // Ensures the value is zeroized on drop
-    let private_share = Zeroizing::new(private_share);
+    let private_share = Zeroizing::new(key_pair.private_share);
 
     // y <- ZZq* , Y <- y * G
     let y = Scalar::random(rng);
@@ -180,7 +164,7 @@ fn compute_signature_share(
     let big_y = ElementG1::generator() * y.0;
 
     // Concatenate the master public key (96 bytes) in the hash computation
-    let compressed_pk = master_pk.to_element().to_compressed();
+    let compressed_pk = key_pair.public_key.to_element().to_compressed();
     let input = [compressed_pk.as_slice(), app_id].concat();
     // H(pk || app_id) when H is a random oracle
     let hash_point = hash_to_curve(&input);
@@ -202,7 +186,9 @@ fn compute_signature_share(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::confidential_key_derivation::ciphersuite::G2Projective;
+    use crate::confidential_key_derivation::{
+        ciphersuite::G2Projective, hash_app_id_with_pk, SigningShare, VerifyingKey,
+    };
     use crate::test_utils::{
         check_one_coordinator_output, generate_participants, run_protocol, GenProtocol,
         MockCryptoRng,
@@ -254,13 +240,13 @@ mod test {
         }
 
         // Manually compute master verification
-        let mvk = VerifyingKey::new(G2Projective::generator() * msk);
+        let pk = VerifyingKey::new(G2Projective::generator() * msk);
 
         let mut protocols: GenProtocol<CKDOutputOption> = Vec::with_capacity(participants.len());
         for (i, p) in participants.iter().enumerate() {
             let rng_p = MockCryptoRng::seed_from_u64(rng.next_u64());
             let key_pair = KeygenOutput {
-                public_key: mvk,
+                public_key: pk,
                 private_share: private_shares[i],
             };
 
@@ -283,14 +269,11 @@ mod test {
         // test one single some for the coordinator
         let ckd_output = check_one_coordinator_output(result, coordinator).unwrap();
 
-        // compute msk . H(mvk, app_id)
+        // compute msk . H(pk, app_id)
         let confidential_key = ckd_output.unmask(app_sk);
 
-        // Concatenate the master public key (96 bytes) in the hash computation
-        let compressed_pk = mvk.to_element().to_compressed();
-        let input = [compressed_pk.as_slice(), &app_id].concat();
-        // H(pk || app_id) when H is a random oracle
-        let expected_confidential_key = hash_to_curve(&input) * msk;
+        // H(pk || app_id) * msk
+        let expected_confidential_key = hash_app_id_with_pk(&pk, &app_id) * msk;
 
         assert_eq!(
             confidential_key, expected_confidential_key,
