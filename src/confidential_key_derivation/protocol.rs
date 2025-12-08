@@ -185,7 +185,9 @@ fn compute_signature_share(
 mod test {
     use super::*;
     use crate::confidential_key_derivation::{
-        ciphersuite::G2Projective, hash_app_id_with_pk, SigningShare, VerifyingKey,
+        ciphersuite::{hash_to_curve, G2Projective},
+        SigningShare, VerifyingKey,
+        hash_app_id_with_pk,
     };
     use crate::test_utils::{
         check_one_coordinator_output, generate_participants, run_protocol, GenProtocol,
