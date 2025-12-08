@@ -229,7 +229,12 @@ pub fn verify_signature(
         return Err(frost_core::Error::MalformedVerifyingKey);
     }
 
-    let base1 = hash_to_curve(msg).into();
+    // Concatenate the master public key (96 bytes) in the hash computation
+    let compressed_vk = verifying_key.to_element().to_compressed();
+    let input = [compressed_vk.as_slice(), msg].concat();
+
+    // H(pk || app_id) when H is a random oracle
+    let base1 = hash_to_curve(&input).into();
     let base2 =
         <<BLS12381SHA256 as frost_core::Ciphersuite>::Group as frost_core::Group>::generator()
             .into();
@@ -313,7 +318,9 @@ mod tests {
         let x = Scalar::random(&mut rng);
         let g2 = ElementG2::generator();
         let g2x = g2 * x;
-        let hm = hash_to_curve(b"hello world");
+        let compressed = g2x.to_compressed();
+        let input = [compressed.as_slice(), b"hello world"].concat();
+        let hm = hash_to_curve(&input);
         let sigma = hm * x;
 
         assert!(verify_signature(&VerifyingKey::new(g2x), b"hello world", &sigma).is_ok());
@@ -325,7 +332,9 @@ mod tests {
         let x = Scalar::random(&mut rng);
         let g2 = ElementG2::generator();
         let g2x = g2 * Scalar::ZERO;
-        let hm = hash_to_curve(b"hello world");
+        let compressed = g2x.to_compressed();
+        let input = [compressed.as_slice(), b"hello world"].concat();
+        let hm = hash_to_curve(&input);
         let sigma = hm * x;
 
         assert_eq!(
