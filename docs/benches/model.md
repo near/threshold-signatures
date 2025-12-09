@@ -7,6 +7,8 @@ First, we cared about measuring how much time each scheme takes to complete end-
 
 Next we brainstormed and implemented a more representative approach that utilizes a more "advanced technique" based on snapshotting the communication then replaying the protocol with a single participant using the snapshot. This technique allowed us to measure the basic computation time per participant and include network latency and the size of data sent over the wire.
 
+Our benches have been executed on a laptop equipped with **AMD Ryzen 7 7730U with Radeon Graphics** and **16 GB RAM**. The number of iterations tested per experiment is at least **15 iterations**.
+
 If interested only in the advanced benchmarking technique, please skip to section [Advanced Technique](#advanced-technique)
 
 *Note: the triple generation for OT based ECDSA generates two triples, enough for the secure computation of one single presignature and thus one single signature.*

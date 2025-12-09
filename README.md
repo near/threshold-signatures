@@ -179,37 +179,26 @@ This ensures:
 
 ## Benchmarks
 
-The measurements have been executed on a laptop equipped with **AMD Ryzen 7 7730U with Radeon Graphics** and **16 GB RAM**. The number of iterations tested per experiment is at least **15 iterations**.
+To run all the benchmarks, simply type the following command in your terminal:
 
 ```sh
 cargo bench
 ```
 
-Accepting additional Environement variables for certain benchmarks such as:
-MAX_MALICIOUS
-SAMPLE_SIZE
-LATENCY
-
-One can run:
+Some benchmarks accept additional features that one can fix such as the maximum number of malicious parties `MAX_MALICIOUS`, the number of iterations to be executed `SAMPLE_SIZE`, and the network latency `LATENCY`. All three variable have to be added as environement variables. Example:
 
 ```sh
-MAX_MALICIOUS=10 LATENCY=50 SAMPLE_SIZE=30 cargo bench -- robust_ecdsa_presign_advanced
+MAX_MALICIOUS=15 LATENCY=100 SAMPLE_SIZE=20 cargo bench -- robust_ecdsa_presign_advanced
 ```
 
-### ECDSA
+By default, the maximum number of malicious parties is 6, the latency is 0 milliseconds and the number of iterations is 15.
+The detailed numbers and analysis can be found in the [docs/benches/model.md](docs/benches/model.md) documentation.
 
-Robust ECDSA seems beating OT based ECDSA on all levels, thus for 15 maximum malicious parties and 100 ms of latency the former’s offline phase that is roughly
-4.7 times faster and
-130 times less in bandwidth
-than the latter’s offline phase. It thus makes sense from a security, performance, and bandwidth perspective to move our MPC network to Robust ECDSA
+In a nutshell our results show that the Robust ECDSA sheme is better to deploy than the OT based ECDSA in terms of efficiency and network bandwidth. In fact, with 15 maximum malicious parties and 100 ms of latency, the Robust ECDSA offline phase is roughly **4.7 times** faster than the OT based ECDSA offline phase and transmits **130 times** less bytes over the network before completing.
 
-### EdDSA
+<!-- EdDSA: TODO -->
 
-TODO
-
-### DKG
-
-TODO
+<!-- DKG: TODO -->
 
 ## Acknowledgments
 
