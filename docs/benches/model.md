@@ -7,6 +7,8 @@ First, we cared about measuring how much time each scheme takes to complete end-
 
 Next we brainstormed and implemented a more representative approach that utilizes a more "advanced technique" based on snapshotting the communication then replaying the protocol with a single participant using the snapshot. This technique allowed us to measure the basic computation time per participant and include network latency and the size of data sent over the wire.
 
+If interested only in the advanced benchmarking technique, please skip to section [Advanced Technique](#advanced-technique)
+
 ## Naive Technique
 
 A quick solution to benchmark our schemes is to run the entire protocol for all the participant (side-by-side) and analyse the results.
@@ -40,6 +42,9 @@ One can see that the Robust ECDSA scheme seems much more performant than the OT-
 An accurate way to benchmark a protocol is by using the snap-then-simulate method: Instead of benchmarking the protocol run with all the participants included, we run the protocol including only two participants where only one  of them is real and the other is simulated. The real participant is the coordinator (where possible), and the simulated participant is the entire environment.
 The real participant interacts with the simulation of the other parties.
 
+More specifically, we first allowed the derandomization of the algorithms to benchmark. Then we implemented `run_protocol_and_take_snapshots` function which runs a specific protocol with all of it participants and stores in a dictionary the messages sent among the participants. Next we implemented the logic of what a simulator is and the function `run_simulated_protocol` allowing the simulator to reply in a dummy fashion to a real participant using the snapshot storage. It is essential to preserve the same order of messages sent during snapshot and simulation to be able to reproduce the same messages sent by the real participant twice (of course the same randomness is used twice for the real participant).
+During the second (simulated) run, we benchmark the real participant's performance using Criterion. We also allowed adding latency discussed in section [Latency & Bandwith](#latency-and-bandwidth) and were able to measure the size of data received per participant during a protocol run.
+
 ### Why is this technique better than naive one?
 
 1. Fair benchmarking of the different protocols: even when requiring more participants for one scheme, the benchmarking would focus on the actual performance of a single real participant instead of all participants.
@@ -52,6 +57,7 @@ The real participant interacts with the simulation of the other parties.
 
 ### Results & Analysis
 
+In this section, we present a couple of results. The two following tables represent the time required by a single participant (coordinator if applicable) to complete a protocol. The numbers are, as expected, computed using the advanced benchmarking technique.
 
 <center>
 
@@ -63,11 +69,11 @@ The real participant interacts with the simulation of the other parties.
 | **Maximum number of malicious parties: 6** | **Network Latency: 0 ms** |
 |---------------------------------------------|----------------------------|
 
-*Note: These results reflect the time for the real participant (coordinator if applicable) to fully complete the protocol.*
+<br>
 
 </center>
 
-
+With a larger number of accepted malicious parties, the numbers are as follows:
 
 <center>
 
@@ -79,6 +85,6 @@ The real participant interacts with the simulation of the other parties.
 | **Maximum number of malicious parties: 15** | **Network Latency: 0 ms** |
 |---------------------------------------------|----------------------------|
 
-*Note: These results reflect the time for the real participant (coordinator if applicable) to fully complete the protocol.*
-
 </center>
+
+#### Latency and Bandwidth
