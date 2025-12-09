@@ -34,8 +34,8 @@ x'_i &\gets \lambda(\mathcal{P}_1)_i \cdot x_i\cr
 \end{aligned}
 $$
 
-2. $\star$ Each $P_i$ sends $e_i$ to every other party.
-3. $\bullet$ Each $P_i$ waits to receive $e_j$ from each other $P_j$.
+2. $\star$ Each $P_i$ sends $e_i$ to every party.
+3. $\bullet$ Each $P_i$ waits to receive $e_j$ from each $P_j$.
 4. Each $P_i$ sets $e \gets \sum_j e_j$.
 5. $\blacktriangle$ Each $P_i$ *asserts* that $e \cdot G = E$.
 
@@ -50,9 +50,9 @@ $$
 \end{aligned}
 $$
 
-2. $\star$ Each $P_i$ sends $\alpha_i$ and $\beta_i$ to every other party.
+2. $\star$ Each $P_i$ sends $\alpha_i$ and $\beta_i$ to every party.
 
-3. $\bullet$ Each $P_i$ waits to receive $\alpha_j$ and $\beta_j$ from from every other party $P_j$.
+3. $\bullet$ Each $P_i$ waits to receive $\alpha_j$ and $\beta_j$ from from every party $P_j$.
 4. Each $P_i$ sets $\alpha \gets \sum_j \alpha_j$ and $\beta \gets \sum_j \beta_j$.
 5. $\blacktriangle$ Each $P_i$ asserts that:
 
@@ -97,7 +97,7 @@ The inputs to this phase are:
 
 **Round 1 (Coordinator):**
 
-5. $\bullet$ The coordinator waits to receive $s_j$ from every other party.
+5. $\bullet$ The coordinator waits to receive $s_j$ from every party.
 6. The coordinator sums the received elements $s \gets \sum_j s_j$.
 7. Perform the low-S normalization, i.e. $s \gets -s$ if $s\in\\{\frac{q}{2}..~q-1\\}$
 8. $\blacktriangle$ The coordinator asserts that $(R, s)$ is a valid ECDSA signature for $h$.
