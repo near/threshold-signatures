@@ -55,13 +55,13 @@ $$
 
 1.4 The coordinator collects all terms into a set $\mathit{commits}\gets \set{(j, A_j, B_j)\colon \forall j \in \set{1.. N_1}}$.
 
-1.5 $\star$ The coordinator sends $(\mathit{commits}, h)$ to every participant.
+1.5 $\star$ The coordinator sends $(\mathit{commits}, m)$ to every participant.
 
 ### Round 2
 
-2.1 $\bullet$ Each $P_i$ waits to receive $(\mathit{commits}, h^*)$ sent by the coordinator.
+2.1 $\bullet$ Each $P_i$ waits to receive $(\mathit{commits}, m^*)$ sent by the coordinator.
 
-2.2 Each $P_i$ verifies that $h = h^*$
+2.2 Each $P_i$ verifies that $m = m^*$
 
 2.3 Each $P_i$ computes a signature share using following [RFC9591](https://datatracker.ietf.org/doc/html/rfc9591#name-round-two-signature-share-g).
 
