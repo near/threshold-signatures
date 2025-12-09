@@ -9,6 +9,8 @@ Next we brainstormed and implemented a more representative approach that utilize
 
 If interested only in the advanced benchmarking technique, please skip to section [Advanced Technique](#advanced-technique)
 
+*Note: the triple generation for OT based ECDSA generates two triples, enough for the secure computation of one single presignature and thus one single signature.*
+
 ## Naive Technique
 
 A quick solution to benchmark our schemes is to run the entire protocol for all the participant (side-by-side) and analyse the results.
