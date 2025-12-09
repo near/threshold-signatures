@@ -42,14 +42,43 @@ The real participant interacts with the simulation of the other parties.
 
 ### Why is this technique better than naive one?
 
-1. A fair benchmarking of the different protocols: even when requiring more participants for one scheme, the benchmarking would focus on the actual performance of a single real participant instead of all participants.
+1. Fair benchmarking of the different protocols: even when requiring more participants for one scheme, the benchmarking would focus on the actual performance of a single real participant instead of all participants.
 
-2. A better representation of $O(n^2)$ communication protocol: simulating all-but-one participants would translate the protocol from $O(n^2)$ to $O(n)$ which makes the benchmarking way more focused on a single participant and avoiding the complexity of communication between the simulated participants
+2. Better representation of $O(n^2)$ communication protocol: simulating all-but-one participants would translate the protocol from $O(n^2)$ to $O(n)$ which makes the benchmarking way more focused on a single participant and avoiding the complexity of communication between the simulated participants
 
-3. A better handling of the network latency: we can now add a wait at the reception of a message by the simulated participant. This can be tuned on demand reflecting variable network latency. This would reflect quite accurately the performance of different protocols that vary in the number of communication rounds.
+3. Better handling of the network latency: we can now add a wait at the reception of a message by the simulated participant. This can be tuned on demand reflecting variable network latency. This would reflect quite accurately the performance of different protocols that vary in the number of communication rounds.
 
-4. An easy way to compute the size of data transmitted on the wire.
+4. Easy way to compute the size of data transmitted on the wire.
+
+### Results & Analysis
+
+
+<center>
+
+| Scheme | Parties | Two Triples Gen | Presign | Sign |
+|:------:|:-------:|-----------:|--------:|-----:|
+| **OT based ECDSA** | 7 | 203.46 ms  | 206.88 µs | 110.41 µs |
+| **Robust ECDSA**   | 13 | N/A       | 4.9369 ms | 113.22 µs |
+
+| **Maximum number of malicious parties: 6** | **Network Latency: 0 ms** |
+|---------------------------------------------|----------------------------|
+
+*Note: These results reflect the time for the real participant (coordinator if applicable) to fully complete the protocol.*
+
+</center>
 
 
 
-Such method covers the needed time for the real participant to finalize the entire protocol.
+<center>
+
+| Scheme | Parties | Two Triples Gen | Presign | Sign |
+|:------:|:-------:|-----------:|--------:|-----:|
+| **OT based ECDSA** | 16 | 544.94 ms  | 257.05 µs | 119.65 µs |
+| **Robust ECDSA**   | 31 | N/A       | 24.562 ms | 129.45 µs |
+
+| **Maximum number of malicious parties: 15** | **Network Latency: 0 ms** |
+|---------------------------------------------|----------------------------|
+
+*Note: These results reflect the time for the real participant (coordinator if applicable) to fully complete the protocol.*
+
+</center>
