@@ -37,69 +37,90 @@ $\mathsf{max\_faulty} = \frac{N - 1}{3}$ as an invariable parameter and allow ou
 
 Let $P_1, \cdots P_N$ be $N$ different participants, and $\mathsf{max\_malicious}$ be the desired cryptography threshold. Let $H_1, H_2, H_3$ be domain separated hash functions.
 
-### Key Generation
+### Key Generation & Key Resharing
 
-We define PedPop+ key generation as follows:
+We define PedPop+ key generation in white colour only. The key resharing protocol is the combination of white colored steps and the orange colored ones:
+
+No special inputs are given to the **key generation** protocol beyond the public parameters defined above.
+
+<font color="orange">
+
+The inputs to the **key resharing** are:
+
+1. The old private share $\mathit{old\_sk}_i$ that $P_i$ held prior to the key resharing.
+
+2. The old participants set $\mathit{old\_signers}$ that held valid private shares prior to the key resharing.
+
+3. The old cryptography threshold $\mathit{old\_max\_malicious}$ prior to the key resharing.
+
+</font>
 
 **Round 1:**
 
-1. Each $P_i$ generates a random 32-byte sesssion identifier $\mathit{sid}_i$
+1. Each $P_i$ asserts that $1 < \mathsf{max\_malicious} < N$.
 
-2. Each $P_i$ reliably broadcasts $\mathit{sid}_i$
+<font color="orange">
+
+1. ++ Each $P_i$ asserts that $\mathsf{old\_max\_malicious} \leq \# (\set{P_1 \ldots P_N} \cap \mathit{old\_signers})$.
+
+</font>
+
+2. Each $P_i$ generates a random 32-byte sesssion identifier $\mathit{sid}_i$
+
+3. Each $P_i$ reliably broadcasts $\mathit{sid}_i$
 
 **Round 2:**
 
-3. Each $P_i$ waits to receive $\mathit{sid}_j$ from every participant $P_j$
+4. Each $P_i$ waits to receive $\mathit{sid}_j$ from every participant $P_j$
 
-4. Each $P_i$ computes the hash $\mathit{sid} \gets H_1(\mathit{sid}_1, \cdots \mathit{sid}_N)$
+5. Each $P_i$ computes the hash $\mathit{sid} \gets H_1(\mathit{sid}_1, \cdots \mathit{sid}_N)$
 
-5. Each $P_i$ generates a random polynomial $f_i$ of degree $\mathsf{max\_malicious}$.
+6. Each $P_i$ generates a random polynomial $f_i$ of degree $\mathsf{max\_malicious}$.
 
-6. Each $P_i$ generates a commitment of the polynomial $C_i \gets f_i \cdot G$ (commits every coefficient of the polynomial).
+7. Each $P_i$ generates a commitment of the polynomial $C_i \gets f_i \cdot G$ (commits every coefficient of the polynomial).
 
-7. Each $P_i$ generates a hash $h_i \gets H_2(i, C_i, \mathit{sid})$
+8. Each $P_i$ generates a hash $h_i \gets H_2(i, C_i, \mathit{sid})$
 
-8. Each $P_i$ picks a random nonce $k_i$ and computes $R_i \gets k_i \cdot G$
+9. Each $P_i$ picks a random nonce $k_i$ and computes $R_i \gets k_i \cdot G$
 
-9. Each $P_i$ computes the Schnorr challenge $c_i \gets H_3(\mathit{sid}, i, C_i(0), R_i)$
+10. Each $P_i$ computes the Schnorr challenge $c_i \gets H_3(\mathit{sid}, i, C_i(0), R_i)$
 
-10. Each $P_i$ computes the proof $s_i \gets k_i + f_i(0) \cdot c_i$
+11. Each $P_i$ computes the proof $s_i \gets k_i + f_i(0) \cdot c_i$
 
-11. Each $P_i$ sends $h_i$ to every participant
+12. Each $P_i$ sends $h_i$ to every participant
 
 **Round 3:**
 
-12. Each $P_i$ waits to receive $h_i$ from every participant $P_j$.
+13. Each $P_i$ waits to receive $h_i$ from every participant $P_j$.
 
-13. Each $P_i$ reliably broadcasts $(C_i, R_i, s_i)$.
+14. Each $P_i$ reliably broadcasts $(C_i, R_i, s_i)$.
 
 **Round 4:**
 
-14. Each $P_i$ waits to receive $(C_j, \pi_j)$ from every participant $P_j$.
+15. Each $P_i$ waits to receive $(C_j, \pi_j)$ from every participant $P_j$.
 
-15. Each $P_i$ computes: $\forall j\in\set{1, \cdots N}, \quad c_j \gets H_3(\mathit{sid}, j, C_j(0), R_j)$.
+16. Each $P_i$ computes: $\forall j\in\set{1, \cdots N}, \quad c_j \gets H_3(\mathit{sid}, j, C_j(0), R_j)$.
 
-16. Each $P_i$ asserts that: $\forall j\in\set{1, \cdots N}, \quad R_j = s_i \cdot G - c_j \cdot C_j(0)$.
+17. Each $P_i$ asserts that: $\forall j\in\set{1, \cdots N}, \quad R_j = s_i \cdot G - c_j \cdot C_j(0)$.
 
-17. Each $P_i$ asserts that: $\forall j\in\set{1, \cdots N}, \quad h_j = H_2(j, C_j, \mathit{sid})$.
+18. Each $P_i$ asserts that: $\forall j\in\set{1, \cdots N}, \quad h_j = H_2(j, C_j, \mathit{sid})$.
 
-18. $\textcolor{red}{\star}$ Each $P_i$ **privately** sends the evaluation $f_i(j)$ to every participant $P_j$.
+19. $\textcolor{red}{\star}$ Each $P_i$ **privately** sends the evaluation $f_i(j)$ to every participant $P_j$.
 
 **Round 5:**
 
-19. Each $P_i$ waits to receive $f_j(i)$ from every participant $P_j$.
+20. Each $P_i$ waits to receive $f_j(i)$ from every participant $P_j$.
 
-20. Each $P_i$ asserts that: $\forall j\in\set{1, \cdots N}, \quad f_j(i) \cdot G = \sum_m j^m \cdot C_j[m]$ where $C_j[m]$ denotes the m-th coefficient of $C_j$.
+21. Each $P_i$ asserts that: $\forall j\in\set{1, \cdots N}, \quad f_j(i) \cdot G = \sum_m j^m \cdot C_j[m]$ where $C_j[m]$ denotes the m-th coefficient of $C_j$.
 
-21. Each $P_i$ computes its private share $\mathit{sk}_i \gets \sum_j f_j(i)$.
+22. Each $P_i$ computes its private share $\mathit{sk}_i \gets \sum_j f_j(i)$.
 
-22. Each $P_i$ computes the master public key $\mathit{pk} \gets \sum_j C_j(0)$.
+23. Each $P_i$ computes the master public key $\mathit{pk} \gets \sum_j C_j(0)$.
 
-23. Each $P_i$ reliably broadcasts $\mathsf{success_i}$.
-
+24. Each $P_i$ reliably broadcasts $\mathsf{success_i}$.
 
 **Round 5.5:**
 
-24. Each $P_i$ waits to receive $\mathsf{success_j}$ from every participant $P_j$.
+25. Each $P_i$ waits to receive $\mathsf{success_j}$ from every participant $P_j$.
 
 **Output:** the keypair $(\mathit{sk}_i, \mathit{pk})$.
