@@ -51,7 +51,7 @@ The inputs to the **key resharing** are:
 
 2. The old participants set $\mathit{old\_signers}$ that held valid private shares prior to the key resharing.
 
-3. The old master public key $\mathit{old\_pk}$ that the $P_i$ held prior to the key resharing.
+3. The old master public key $\mathit{old\_pk}$ that the $\mathit{old\_signers}$ held prior to the key resharing.
 
 4. The old cryptography threshold $\mathit{old\_max\_malicious}$ prior to the key resharing.
 
@@ -87,7 +87,7 @@ $\quad$ ++ Each $P_i$ computes the following:
 
 * If $P_i\notin \mathit{old\_signers}$ then set $f_i(0) \gets 0$
 
-* Else set $f_i(0) \gets \lambda_i(I)$
+* Else set $f_i(0) \gets \lambda_i(I) \cdot \mathit{old\_sk}$
 
 </font>
 
@@ -144,3 +144,8 @@ $\quad$ ++ Each $P_i$ asserts that $\mathit{pk} = \mathit{old\_pk}$
 25. Each $P_i$ waits to receive $\mathsf{success_j}$ from every participant $P_j$.
 
 **Output:** the keypair $(\mathit{sk}_i, \mathit{pk})$.
+
+
+### Key Refresh
+
+A key refresh protocol is a special case of the key resharing where $\mathit{old\_signers} = \set{P_1, \ldots P_N}$ and where $\mathit{old\_max\_malicious} = \mathit{max\_malicious}$
