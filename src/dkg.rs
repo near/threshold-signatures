@@ -69,10 +69,10 @@ fn generate_coefficient_commitment<C: Ciphersuite>(
 }
 
 /// Generates the challenge for the proof of knowledge
-/// H(id, `context_string`, g^{secret} , R)
+/// H(`domain_separator`, id, g^{secret} , R)
 fn challenge<C: Ciphersuite>(
-    session_id: &HashOutput,
     domain_separator: u32,
+    session_id: &HashOutput,
     id: Scalar<C>,
     vk_share: &CoefficientCommitment<C>,
     big_r: &Element<C>,
@@ -128,8 +128,8 @@ fn proof_of_knowledge<C: Ciphersuite>(
     // pick a random k_i and compute R_id = g^{k_id},
     let (k, big_r) = <C>::generate_nonce(rng);
 
-    // compute H(id, context_string, g^{a_0} , R_id) as a scalar
-    let hash = challenge::<C>(session_id, domain_separator, id, &vk_share, &big_r)?;
+    // compute H(domain_separator, id, me, g^{a_0}, R_id) as a scalar
+    let hash = challenge::<C>(domain_separator, session_id, id, &vk_share, &big_r)?;
     let a_0 = coefficients.eval_at_zero()?.0;
     let mu = k + a_0 * hash.to_scalar();
     Ok(Signature::new(big_r, mu))
@@ -153,7 +153,7 @@ fn internal_verify_proof_of_knowledge<C: Ciphersuite>(
 
     let big_r = proof_of_knowledge.R();
     let z = proof_of_knowledge.z();
-    let c = challenge::<C>(session_id, domain_separator, id, vk_share, big_r)?;
+    let c = challenge::<C>(domain_separator, session_id, id, vk_share, big_r)?;
     if *big_r != <C::Group>::generator() * *z - vk_share.value() * c.to_scalar() {
         return Err(ProtocolError::InvalidProofOfKnowledge(participant));
     }
@@ -348,12 +348,12 @@ async fn do_keyshare<C: Ciphersuite>(
     let (old_verification_key, old_participants) =
         assert_keyshare_inputs(me, &secret, old_reshare_package)?;
 
-    // Start Round 0
+    // Start Round 1
     let mut my_session_id = [0u8; 32]; // 256 bits
     rng.fill_bytes(&mut my_session_id);
     let session_ids = do_broadcast(&mut chan, &participants, me, my_session_id).await?;
 
-    // Start Round 1
+    // Start Round 2
     // generate your secret polynomial p with the constant term set to the secret
     // and the rest of the coefficients are picked at random
     // because the library does not allow serializing the zero and identity term,
