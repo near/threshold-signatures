@@ -47,11 +47,13 @@ No special inputs are given to the **key generation** protocol beyond the public
 
 The inputs to the **key resharing** are:
 
-1. The old private share $\mathit{old\_sk}_i$ that $P_i$ held prior to the key resharing.
+1. The old private share $\mathit{old\_sk}_i$ that $P_i$ held prior to the key resharing. This value is set to None only if $P_i$ is a freshly new participant.
 
 2. The old participants set $\mathit{old\_signers}$ that held valid private shares prior to the key resharing.
 
-3. The old cryptography threshold $\mathit{old\_max\_malicious}$ prior to the key resharing.
+3. The old master public key $\mathit{old\_pk}$ that the $P_i$ held prior to the key resharing.
+
+4. The old cryptography threshold $\mathit{old\_max\_malicious}$ prior to the key resharing.
 
 </font>
 
@@ -61,7 +63,9 @@ The inputs to the **key resharing** are:
 
 <font color="orange">
 
-1. ++ Each $P_i$ asserts that $\mathsf{old\_max\_malicious} \leq \# (\set{P_1 \ldots P_N} \cap \mathit{old\_signers})$.
+$\quad$ ++ Each $P_i$ sets $I \gets \set{P_1 \ldots P_N} \cap \mathit{old\_signers}$
+
+$\quad$ ++ Each $P_i$ asserts that $\mathsf{old\_max\_malicious} \leq \# I$.
 
 </font>
 
@@ -76,6 +80,16 @@ The inputs to the **key resharing** are:
 5. Each $P_i$ computes the hash $\mathit{sid} \gets H_1(\mathit{sid}_1, \cdots \mathit{sid}_N)$
 
 6. Each $P_i$ generates a random polynomial $f_i$ of degree $\mathsf{max\_malicious}$.
+
+<font color="orange">
+
+$\quad$ ++ Each $P_i$ computes the following:
+
+* If $P_i\notin \mathit{old\_signers}$ then set $f_i(0) \gets 0$
+
+* Else set $f_i(0) \gets \lambda_i(I)$
+
+</font>
 
 7. Each $P_i$ generates a commitment of the polynomial $C_i \gets f_i \cdot G$ (commits every coefficient of the polynomial).
 
@@ -116,6 +130,12 @@ The inputs to the **key resharing** are:
 22. Each $P_i$ computes its private share $\mathit{sk}_i \gets \sum_j f_j(i)$.
 
 23. Each $P_i$ computes the master public key $\mathit{pk} \gets \sum_j C_j(0)$.
+
+<font color="orange">
+
+$\quad$ ++ Each $P_i$ asserts that $\mathit{pk} = \mathit{old\_pk}$
+
+</font>
 
 24. Each $P_i$ reliably broadcasts $\mathsf{success_i}$.
 
