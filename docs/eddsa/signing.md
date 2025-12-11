@@ -105,7 +105,7 @@ $$
 s\gets \sum_j s_j
 $$
 
-2.7 $\blacktriangle$ The coordinator asserts that $(R, s)$ is a valid Ed25519 signature for message $m$.
+2.7 $\blacktriangle$ The coordinator asserts that $(R, s)$ is a valid EdDSA signature for message $m$ over Ed25519.
 
 **Output:** the signature $(R, s)$.
 
