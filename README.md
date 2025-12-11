@@ -194,7 +194,7 @@ MAX_MALICIOUS=15 LATENCY=100 SAMPLE_SIZE=20 cargo bench -- robust_ecdsa_presign_
 By default, the maximum number of malicious parties is 6, the latency is 0 milliseconds and the number of iterations is 15.
 The detailed numbers and analysis can be found in the [docs/benches/model.md](docs/benches/model.md) documentation.
 
-In a nutshell our results show that the Robust ECDSA sheme is better to deploy than the OT based ECDSA in terms of efficiency and network bandwidth. In fact, with 15 maximum malicious parties and 100 ms of latency, the Robust ECDSA offline phase is roughly **4.7 times** faster than the OT based ECDSA offline phase and transmits **130 times** less bytes over the network before completing.
+In a nutshell, our results show that the Robust ECDSA scheme is better to deploy than the OT based ECDSA in terms of efficiency and network bandwidth. In fact, with 15 maximum malicious parties and 100 ms of latency, the Robust ECDSA offline phase is roughly **4.7 times** faster than the OT based ECDSA offline phase and transmits **130 times** less bytes over the network before completing.
 
 <!-- EdDSA: TODO -->
 
