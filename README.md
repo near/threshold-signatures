@@ -196,10 +196,6 @@ The detailed numbers and analysis can be found in the [docs/benches/model.md](do
 
 In a nutshell, our results show that the Robust ECDSA scheme is better to deploy than the OT based ECDSA in terms of efficiency and network bandwidth. In fact, with 15 maximum malicious parties and 100 ms of latency, the Robust ECDSA offline phase is roughly **4.7 times** faster than the OT based ECDSA offline phase and transmits **130 times** less bytes over the network before completing.
 
-<!-- EdDSA: TODO -->
-
-<!-- DKG: TODO -->
-
 ## Acknowledgments
 
 This implementation relies on

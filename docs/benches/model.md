@@ -27,8 +27,6 @@ We consider this benchmarking technique to be naive for several reasons:
 The table below shows running the criterion tests for the Robust ECDSA and OT-Based ECDSA schemes when fixing the maximum number of malicious parties to 6 participants.
 One can see that the Robust ECDSA scheme seems much more performant than the OT-based ECDSA.
 
-<center>
-
 | Scheme | Parties | Two Triples Gen | Presign | Sign |
 |:------:|:-------:|-----------:|--------:|-----:|
 | **OT based ECDSA** | 7 | 1.4237 s  | 1.4626 ms | 191.82 µs |
@@ -38,8 +36,6 @@ One can see that the Robust ECDSA scheme seems much more performant than the OT-
 |---------------------------------------------|----------------------------|
 
 *Note: These results reflect sequential protocol runs across all participants and should be interpreted with caution.*
-
-</center>
 
 ## Advanced Technique
 
@@ -63,8 +59,6 @@ During the second (simulated) run, we benchmark the real participant's performan
 
 In this section, we present a couple of results. The two following tables represent the time required by a single participant (coordinator if applicable) to complete a protocol. The numbers are, as expected, computed using the advanced benchmarking technique.
 
-<center>
-
 | Scheme | Parties | Two Triples Gen | Presign | Sign |
 |:------:|:-------:|-----------:|--------:|-----:|
 | **OT based ECDSA** | 7 | 198.95 ms  | 206.52 µs | 111.76 µs |
@@ -75,11 +69,7 @@ In this section, we present a couple of results. The two following tables repres
 
 <br>
 
-</center>
-
 With a larger number of accepted malicious parties, the numbers are as follows:
-
-<center>
 
 | Scheme | Parties | Two Triples Gen | Presign | Sign |
 |:------:|:-------:|-----------:|--------:|-----:|
@@ -88,8 +78,6 @@ With a larger number of accepted malicious parties, the numbers are as follows:
 
 | **Maximum number of malicious parties: 15** | **Network Latency: 0 ms** |
 |---------------------------------------------|----------------------------|
-
-</center>
 
 We notice two important results:
 
@@ -100,8 +88,6 @@ We notice two important results:
 #### Latency
 
 Due to the fact that the computation time of both schemes is roughly small, adding latency to the schemes would absorb such speed into the results. The new results would thus depend mainly on the number of rounds each scheme takes to complete. Here is an estimation of the number of rounds needed per protocol run:
-
-<center>
 
 | Scheme | Two Triples Gen | Presign | Sign |
 |:------:|-----------:|--------:|-----:|
@@ -115,11 +101,7 @@ Due to the fact that the computation time of both schemes is roughly small, addi
 
 <br>
 
-</center>
-
 Thus with network latency, the numbers are computed using the formula: **network_latency * protocol_number_rounds + raw_performance**. For example, we have the following results:
-
-<center>
 
 | Scheme | Parties | Two Triples Gen | Presign | Sign |
 |:------:|:-------:|-----------:|--------:|-----:|
@@ -131,8 +113,6 @@ Thus with network latency, the numbers are computed using the formula: **network
 
 <br>
 
-</center>
-
 Notice that the Robust ECDSA offline phase is roughly **4.7 times** faster than the OT based ECDSA offline phase.
 In fact, the higher the network latency is, the closer the performance of the Robust ECDSA offline phase would tend to **3.3 times** faster than the OT Based ECDSA offline phase. This is due to the fact that the OT Based ECDSA requires roughly **3.3 times** more rounds to complete.
 
@@ -141,9 +121,6 @@ In fact, the higher the network latency is, the closer the performance of the Ro
 Sometimes, not being able to scale up in real systems is due to hitting the limits of the network bandwidth. We thus calculated the size of the data received by the real participant during a protocol run. Due to the hardness of deducing different rounds only based on the snapshot, we yet unable to compute exactly the size of received data per participant and per protocol round. Instead, we only compute the size of received data during an entire protocol run.
 
 In the case where the protocol allows distinguishing between normal participants and a participant acting as a coordinator, we computed the size of data received by the coordinator. Naturally, a coordinator receives more data than the rest of the participants as it is the only party able to produce a signature. Our runs were stable in the size of the data sent, meaning, the variance of the computed number across the iterations was zero.
-
-
-<center>
 
 | Scheme | Parties | Two Triples Gen | Presign | Sign |
 |:------:|:-------:|-----------:|--------:|-----:|
@@ -157,10 +134,6 @@ In the case where the protocol allows distinguishing between normal participants
 
 <br>
 
-</center>
-
-<center>
-
 | Scheme | Parties | Two Triples Gen | Presign | Sign |
 |:------:|:-------:|-----------:|--------:|-----:|
 | **OT based ECDSA** | 16 | 2088966 Bytes  | 3485 Bytes | 1360 Bytes |
@@ -172,5 +145,3 @@ In the case where the protocol allows distinguishing between normal participants
 *Note: The computed data size includes the cryptographic elements sent along with the metadata (e.g., receiver, session number etc…).*
 
 <br>
-
-</center>
