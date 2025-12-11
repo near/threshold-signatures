@@ -84,7 +84,7 @@ The following functionalities are provided:
 threshold ECDSA due to the mathematical formula behind the signature
 computation. Our Ed25519 implementation does not necessitate an offline phase of
 computation. More details in
-[docs](docs/ecdsa/  /signing.md).
+[docs](docs/eddsa/signing.md).
 
 ### CKD Functionalities
 
