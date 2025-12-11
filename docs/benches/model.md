@@ -1,6 +1,6 @@
 # Benchmarking
 
-Prior to this work, we had multiple implemented schemes that lacked practical performance comparision. We came up with two approaches that rely on Criterion to measure the computation time.
+Prior to this work, we had multiple implemented schemes that lacked practical performance comparison. We came up with two approaches that rely on Criterion to measure the computation time.
 To provide fair measurements of the implemented schemes, we allow the comparison of schemes with similar functionalities under the same invariant: the security level, a.k.a. the **maximum number of malicious parties**. For the same maximum number of malicious parties, different schemes may require different numbers of active participants.
 
 First, we cared about measuring how much time each scheme takes to complete end-to-end when being run with all the participants together. We call such measuring techniques the "naive technique". In fact, implementating this technique is fairly quick but the benchmarks are not 100% reliable. We discuss in the next section what this technique is about and why it is considered “naive”.
