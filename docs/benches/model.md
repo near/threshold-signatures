@@ -15,7 +15,7 @@ If interested only in the advanced benchmarking technique, please skip to sectio
 
 ## Naive Technique
 
-A quick solution to benchmark our schemes is to run the entire protocol for all the participant (side-by-side) and analyse the results.
+A quick solution to benchmark our schemes is to run the entire protocol for all the participants (side-by-side) and analyze the results.
 We consider this benchmarking technique to be naive for several reasons:
 
 1. It runs multiple participants in a sequential manner which combines with the quadratic/cubic nature of some of the protocols, preventing us from having a clear idea about each participant's computation time and representing network latency.
