@@ -44,7 +44,7 @@ We define PedPop+ key generation in white colour only. The key resharing protoco
 
 No special inputs are given to the **key generation** protocol beyond the public parameters defined above.
 
-<font color="orange">
+<span style="color:orange">
 
 The inputs to the **key resharing** are:
 
@@ -56,7 +56,7 @@ The inputs to the **key resharing** are:
 
 4. The old cryptography threshold $\mathsf{OldMaxMalicious}$ prior to the key resharing.
 
-</font>
+</span>
 
 **Round 1:**
 
