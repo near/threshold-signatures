@@ -61,7 +61,7 @@ No special inputs are given to the **key generation** protocol beyond the public
 
 $\quad$ +++ Each $P_i$ sets $I \gets \set{P_1 \ldots P_N} \cap \mathit{OldSigners}$
 
-$\quad$ +++ Each $P_i$ asserts that $\mathsf{OldMaxMalicious} \leq  |I|$.
+$\quad$ +++ Each $P_i$ asserts that $\mathsf{OldMaxMalicious} \leq |I|$.
 
 2. Each $P_i$ generates a random 32-byte sesssion identifier $\mathit{sid}_i$
 
