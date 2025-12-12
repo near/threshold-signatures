@@ -66,7 +66,7 @@ The inputs to the **key resharing** are:
 
 $\quad$ ++ Each $P_i$ sets $I \gets \set{P_1 \ldots P_N} \cap \mathit{OldSigners}$
 
-$\quad$ ++ Each $P_i$ asserts that $\mathsf{OldMaxMalicious} \leq \# I$.
+$\quad$ ++ Each $P_i$ asserts that $\mathsf{OldMaxMalicious} \leq  |I|$.
 
 </font>
 
