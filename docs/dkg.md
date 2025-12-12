@@ -1,8 +1,7 @@
-# Distribute Key Generation
 $$
 \newcommand{\maxfaulty}{`\textsf{max\_faulty}`}
 $$
-
+# Distribute Key Generation
 
 We define a variant of the two-round DKG protocol PedPop \[[KG](https://eprint.iacr.org/2020/852.pdf)\].
 Our variant, PedPop+ is less efficient, but achieves a notion of simulatability with aborts,
