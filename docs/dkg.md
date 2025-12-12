@@ -24,18 +24,19 @@ The core of the dkg protocol is implemented in a subfunction called `do_keyshare
 There are two types of thresholds one has to be aware of: the **asynchronous distributed systems threshold** a.k.a. the **BFT threshold**, and the **cryptography threshold** a.k.a. the **reconstruction threshold**.
 
 The BFT threshold states that the maximum number of faulty nodes a distributed system ($\mathsf{MaxFaulty}$) can tolerate while still reaching consensus is at most one-third of the total number of participants $N$. More specifically:
+
 $$\mathsf{MaxFaulty} \leq \frac{N - 1}{3}$$
 
-The cryptography threshold refers to the maximum number of necessay malicious parties ($\mathsf{max\textit{\_}malicious}$) a certain scheme can handle without compromising on the security and assuming the existance of an underlying reliable broadcast channel. $\mathsf{max\textit{\_}malicious}$ is scheme dependent and can have a different value than $\mathsf{MaxFaulty}$. For instance, in the OT based ECDSA, $\mathsf{max\textit{\_}malicious}$ can be up to $N-1$, but in Robust ECDSA scheme $\mathsf{max\textit{\_}malicious}$ must not exceed $\frac{N - 1}{3}$.
+The cryptography threshold refers to the maximum number of necessay malicious parties ($\mathsf{MaxMalicious}$) a certain scheme can handle without compromising on the security and assuming the existance of an underlying reliable broadcast channel. $\mathsf{MaxMalicious}$ is scheme dependent and can have a different value than $\mathsf{MaxFaulty}$. For instance, in the OT based ECDSA, $\mathsf{MaxMalicious}$ can be up to $N-1$, but in Robust ECDSA scheme $\mathsf{MaxMalicious}$ must not exceed $\frac{N - 1}{3}$.
 
 ### DKG and thresholds
 
 Due to the fact that PedPop+ utilizes reliable broadcast channel to securely generate private shares, it thus lies on the edge between the asynchronous distributed systems and cryptography. For this reason, we set
-$\mathsf{MaxFaulty} = \frac{N - 1}{3}$ as an invariable parameter and allow our key generation and key resharing protocols to fix/modify only the $\mathsf{max\textit{\_}malicious}$ threshold depending on the scheme requirements and on the library user's choice.
+$\mathsf{MaxFaulty} = \frac{N - 1}{3}$ as an invariable parameter and allow our key generation and key resharing protocols to fix/modify only the $\mathsf{MaxMalicious}$ threshold depending on the scheme requirements and on the library user's choice.
 
 ## Technical Details
 
-Let $P_1, \cdots P_N$ be $N$ different participants, and $\mathsf{max\textit{\_}malicious}$ be the desired cryptography threshold. Let $H_1, H_2, H_3$ be domain separated hash functions.
+Let $P_1, \cdots P_N$ be $N$ different participants, and $\mathsf{MaxMalicious}$ be the desired cryptography threshold. Let $H_1, H_2, H_3$ be domain separated hash functions.
 
 ### Key Generation & Key Resharing
 
@@ -47,25 +48,25 @@ No special inputs are given to the **key generation** protocol beyond the public
 
 The inputs to the **key resharing** are:
 
-1. The old private share $\mathit{old\textit{\_}sk}_i$ that $P_i$ held prior to the key resharing. This value is set to None only if $P_i$ is a freshly new participant.
+1. The old private share $\mathit{OldSK}$ that $P_i$ held prior to the key resharing. This value is set to None only if $P_i$ is a freshly new participant.
 
-2. The old participants set $\mathit{old\textit{\_}signers}$ that held valid private shares prior to the key resharing.
+2. The old participants set $\mathit{OldSigners}$ that held valid private shares prior to the key resharing.
 
-3. The old master public key $\mathit{old\textit{\_}pk}$ that the $\mathit{old\textit{\_}signers}$ held prior to the key resharing.
+3. The old master public key $\mathit{OldPK}$ that the $\mathit{OldSigners}$ held prior to the key resharing.
 
-4. The old cryptography threshold $\mathit{old\textit{\_}max\textit{\_}malicious}$ prior to the key resharing.
+4. The old cryptography threshold $\mathsf{OldMaxMalicious}$ prior to the key resharing.
 
 </font>
 
 **Round 1:**
 
-1. Each $P_i$ asserts that $1 < \mathsf{max\textit{\_}malicious} < N$.
+1. Each $P_i$ asserts that $1 < \mathsf{MaxMalicious} < N$.
 
 <font color="orange">
 
-$\quad$ ++ Each $P_i$ sets $I \gets \set{P_1 \ldots P_N} \cap \mathit{old\textit{\_}signers}$
+$\quad$ ++ Each $P_i$ sets $I \gets \set{P_1 \ldots P_N} \cap \mathit{OldSigners}$
 
-$\quad$ ++ Each $P_i$ asserts that $\mathsf{old\textit{\_}max\textit{\_}malicious} \leq \# I$.
+$\quad$ ++ Each $P_i$ asserts that $\mathsf{OldMaxMalicious} \leq \# I$.
 
 </font>
 
@@ -79,15 +80,15 @@ $\quad$ ++ Each $P_i$ asserts that $\mathsf{old\textit{\_}max\textit{\_}maliciou
 
 5. Each $P_i$ computes the hash $\mathit{sid} \gets H_1(\mathit{sid}_1, \cdots \mathit{sid}_N)$
 
-6. Each $P_i$ generates a random polynomial $f_i$ of degree $\mathsf{max\textit{\_}malicious}$.
+6. Each $P_i$ generates a random polynomial $f_i$ of degree $\mathsf{MaxMalicious}$.
 
 <font color="orange">
 
 $\quad$ ++ Each $P_i$ computes the following:
 
-* If $P_i\notin \mathit{old\textit{\_}signers}$ then set $f_i(0) \gets 0$
+* If $P_i\notin \mathit{OldSigners}$ then set $f_i(0) \gets 0$
 
-* Else set $f_i(0) \gets \lambda_i(I) \cdot \mathit{old\textit{\_}sk}$
+* Else set $f_i(0) \gets \lambda_i(I) \cdot \mathit{OldSK}$
 
 </font>
 
@@ -133,7 +134,7 @@ $\quad$ ++ Each $P_i$ computes the following:
 
 <font color="orange">
 
-$\quad$ ++ Each $P_i$ asserts that $\mathit{pk} = \mathit{old\textit{\_}pk}$
+$\quad$ ++ Each $P_i$ asserts that $\mathit{pk} = \mathit{OldPK}$
 
 </font>
 
@@ -148,4 +149,4 @@ $\quad$ ++ Each $P_i$ asserts that $\mathit{pk} = \mathit{old\textit{\_}pk}$
 
 ### Key Refresh
 
-A key refresh protocol is a special case of the key resharing where $\mathit{old\textit{\_}signers} = \set{P_1, \ldots P_N}$ and where $\mathit{old\textit{\_}max\textit{\_}malicious} = \mathit{max\textit{\_}malicious}$
+A key refresh protocol is a special case of the key resharing where $\mathit{OldSigners} = \set{P_1, \ldots P_N}$ and where $\mathsf{OldMaxMalicious} = \mathsf{MaxMalicious}$
