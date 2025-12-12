@@ -1,6 +1,6 @@
 # Distribute Key Generation
 $$
-\newcommand{\maxfaulty}{\textsf{{max_faulty}}}
+\newcommand{\maxfaulty}{\textsf{max\_faulty}}
 $$
 
 
@@ -27,7 +27,7 @@ The core of the dkg protocol is implemented in a subfunction called `do_keyshare
 
 There are two types of thresholds one has to be aware of: the **asynchronous distributed systems threshold** a.k.a. the **BFT threshold**, and the **cryptography threshold** a.k.a. the **reconstruction threshold**.
 
-The BFT threshold states that the maximum number of faulty nodes a distributed system ($\maxfaulty$) can tolerate while still reaching consensus is at most one-third of the total number of participants $N$. More specifically:
+The BFT threshold states that the maximum number of faulty nodes a distributed system ($\textsf{max\_faulty}$) can tolerate while still reaching consensus is at most one-third of the total number of participants $N$. More specifically:
 $$\maxfaulty \leq \frac{N - 1}{3}$$
 
 The cryptography threshold refers to the maximum number of necessay malicious parties ($\mathsf{max\textit{\_}malicious}$) a certain scheme can handle without compromising on the security and assuming the existance of an underlying reliable broadcast channel. $\mathsf{max\textit{\_}malicious}$ is scheme dependent and can have a different value than $\maxfaulty$. For instance, in the OT based ECDSA, $\mathsf{max\textit{\_}malicious}$ can be up to $N-1$, but in Robust ECDSA scheme $\mathsf{max\textit{\_}malicious}$ must not exceed $\frac{N - 1}{3}$.
