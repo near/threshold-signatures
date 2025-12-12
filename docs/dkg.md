@@ -40,35 +40,28 @@ Let $P_1, \cdots P_N$ be $N$ different participants, and $\mathsf{MaxMalicious}$
 
 ### Key Generation & Key Resharing
 
-We define PedPop+ key generation in white colour only. The key resharing protocol is the combination of white colored steps and the orange colored ones:
+We define PedPop+ key generation as follows; All the instruction preceeded with `+++` are added to the scheme to transform it to the key resharing protocol.
 
 No special inputs are given to the **key generation** protocol beyond the public parameters defined above.
 
-<span style="color:orange">
++++ The inputs to the **key resharing** are:
 
-The inputs to the **key resharing** are:
++++ 1. The old private share $\mathit{OldSK}$ that $P_i$ held prior to the key resharing. This value is set to None only if $P_i$ is a freshly new participant.
 
-1. The old private share $\mathit{OldSK}$ that $P_i$ held prior to the key resharing. This value is set to None only if $P_i$ is a freshly new participant.
++++ 2. The old participants set $\mathit{OldSigners}$ that held valid private shares prior to the key resharing.
 
-2. The old participants set $\mathit{OldSigners}$ that held valid private shares prior to the key resharing.
++++ 3. The old master public key $\mathit{OldPK}$ that the $\mathit{OldSigners}$ held prior to the key resharing.
 
-3. The old master public key $\mathit{OldPK}$ that the $\mathit{OldSigners}$ held prior to the key resharing.
-
-4. The old cryptography threshold $\mathsf{OldMaxMalicious}$ prior to the key resharing.
-
-</span>
++++ 4. The old cryptography threshold $\mathsf{OldMaxMalicious}$ prior to the key resharing.
+``
 
 **Round 1:**
 
 1. Each $P_i$ asserts that $1 < \mathsf{MaxMalicious} < N$.
 
-<font color="orange">
+$\quad$ +++ Each $P_i$ sets $I \gets \set{P_1 \ldots P_N} \cap \mathit{OldSigners}$
 
-$\quad$ ++ Each $P_i$ sets $I \gets \set{P_1 \ldots P_N} \cap \mathit{OldSigners}$
-
-$\quad$ ++ Each $P_i$ asserts that $\mathsf{OldMaxMalicious} \leq  |I|$.
-
-</font>
+$\quad$ +++ Each $P_i$ asserts that $\mathsf{OldMaxMalicious} \leq  |I|$.
 
 2. Each $P_i$ generates a random 32-byte sesssion identifier $\mathit{sid}_i$
 
@@ -82,15 +75,13 @@ $\quad$ ++ Each $P_i$ asserts that $\mathsf{OldMaxMalicious} \leq  |I|$.
 
 6. Each $P_i$ generates a random polynomial $f_i$ of degree $\mathsf{MaxMalicious}$.
 
-<font color="orange">
 
-$\quad$ ++ Each $P_i$ computes the following:
+$\quad$ +++ Each $P_i$ computes the following:
 
-* If $P_i\notin \mathit{OldSigners}$ then set $f_i(0) \gets 0$
+* +++ If $P_i\notin \mathit{OldSigners}$ then set $f_i(0) \gets 0$
 
-* Else set $f_i(0) \gets \lambda_i(I) \cdot \mathit{OldSK}$
+* +++ Else set $f_i(0) \gets \lambda_i(I) \cdot \mathit{OldSK}$
 
-</font>
 
 7. Each $P_i$ generates a commitment of the polynomial $C_i \gets f_i \cdot G$ (commits every coefficient of the polynomial).
 
@@ -132,11 +123,7 @@ $\quad$ ++ Each $P_i$ computes the following:
 
 23. Each $P_i$ computes the master public key $\mathit{pk} \gets \sum_j C_j(0)$.
 
-<font color="orange">
-
-$\quad$ ++ Each $P_i$ asserts that $\mathit{pk} = \mathit{OldPK}$
-
-</font>
+$\quad$ +++ Each $P_i$ asserts that $\mathit{pk} = \mathit{OldPK}$
 
 24. Each $P_i$ reliably broadcasts $\mathsf{success_i}$.
 
