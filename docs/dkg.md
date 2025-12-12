@@ -1,6 +1,6 @@
 # Distribute Key Generation
 $$
-\newcommand{\maxfaulty}{\mathsf{max}\textit{\_}\mathsf{faulty}}
+\newcommand{\maxfaulty}{\mathsf{max}\textit{_}\mathsf{faulty}}
 $$
 
 
