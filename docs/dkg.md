@@ -27,7 +27,7 @@ The BFT threshold states that the maximum number of faulty nodes a distributed s
 
 $$\mathsf{MaxFaulty} \leq \frac{N - 1}{3}$$
 
-The cryptography threshold refers to the maximum number of necessay malicious parties ($\mathsf{MaxMalicious}$) a certain scheme can handle without compromising on the security and assuming the existance of an underlying reliable broadcast channel. $\mathsf{MaxMalicious}$ is scheme dependent and can have a different value than $\mathsf{MaxFaulty}$. For instance, in the OT based ECDSA, $\mathsf{MaxMalicious}$ can be up to $N-1$, but in Robust ECDSA scheme $\mathsf{MaxMalicious}$ must not exceed $\frac{N - 1}{3}$.
+The cryptography threshold refers to the maximum number of necessay malicious parties ($\mathsf{MaxMalicious}$) a certain scheme can handle without compromising on the security and assuming the existance of an underlying reliable broadcast channel. $\mathsf{MaxMalicious}$ is scheme dependent and can have a different value than $\mathsf{MaxFaulty}$. For instance, in the OT based ECDSA, $\mathsf{MaxMalicious}$ can be up to $N-1$, but in Robust ECDSA scheme $\mathsf{MaxMalicious}$ must not exceed $\frac{N - 1}{2}$.
 
 ### DKG and thresholds
 
