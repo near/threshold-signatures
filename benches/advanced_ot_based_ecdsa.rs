@@ -6,8 +6,8 @@ use rand_core::SeedableRng;
 mod bench_utils;
 use crate::bench_utils::{
     analyze_received_sizes, ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign,
-    ot_ecdsa_prepare_triples, run_simulated_protocol, LATENCY, MAX_MALICIOUS, SAMPLE_SIZE,
-    PreparedOutputs,
+    ot_ecdsa_prepare_triples, run_simulated_protocol, PreparedOutputs, LATENCY, MAX_MALICIOUS,
+    SAMPLE_SIZE,
 };
 
 use threshold_signatures::{
