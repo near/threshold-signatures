@@ -55,7 +55,7 @@ fn bench_triples(c: &mut Criterion) {
                 || {
                     let preps = prepare_simulated_triples(num);
                     // collecting data sizes
-                    sizes.push(preps.simulator.get_size());
+                    sizes.push(preps.simulator.get_view_size());
                     preps
                 },
                 |preps| run_simulated_protocol(preps.participant, preps.protocol, preps.simulator, rounds),
@@ -88,7 +88,7 @@ fn bench_presign(c: &mut Criterion) {
                 || {
                     let preps = prepare_simulated_presign(&two_triples);
                     // collecting data sizes
-                    sizes.push(preps.simulator.get_size());
+                    sizes.push(preps.simulator.get_view_size());
                     preps
                 },
                 |preps| run_simulated_protocol(preps.participant, preps.protocol, preps.simulator, rounds),
@@ -125,7 +125,7 @@ fn bench_sign(c: &mut Criterion) {
                 || {
                     let preps = prepare_simulated_sign(&result, pk);
                     // collecting data sizes
-                    sizes.push(preps.simulator.get_size());
+                    sizes.push(preps.simulator.get_view_size());
                     preps
                 },
                 |preps| run_simulated_protocol(preps.participant, preps.protocol, preps.simulator, rounds),

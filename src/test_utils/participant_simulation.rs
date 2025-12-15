@@ -30,7 +30,7 @@ impl Simulator {
         self.view
     }
 
-    pub fn get_size(&self) -> usize {
+    pub fn get_view_size(&self) -> usize {
         self.view.iter().map(|(_, s)| s.len()).sum()
     }
 }
