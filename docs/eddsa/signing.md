@@ -8,11 +8,11 @@ that can be checked by any Ed25519 verifier.
 We implement the two round FROST protocol without the extra round responsible
 of detecting which party deviated from the protocol.
 
-*Note:* the threshold $t =$ *number_malicious_parties*
+### Note:  We denote $\mathcal{P}$ the set of participants included the DKG and the threshold $t = \mathsf{MaxMalicious}$
 
 ## Signing
 
-In this phase, a set of parties $\mathcal{P}_1 \subseteq \mathcal{P}_0$
+In this phase, a set of parties $\mathcal{P}_1 \subseteq \mathcal{P}$
 of size $N_1 > t$ wishes to generate an EdDSA signature. Following the
 [RFC9591](https://datatracker.ietf.org/doc/html/rfc9591) we will use
 domain separated hash functions $H_1, H_2, H_3, H_4$.

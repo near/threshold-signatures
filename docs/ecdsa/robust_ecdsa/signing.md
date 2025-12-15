@@ -3,11 +3,11 @@ The protocol is split into two phases, a pre-signing phase and a signing phase.
 
 *Note that we slightly modify the original scheme and push parts of the computation done on the signing phase to the presigning phase to improve the performance of the former phase. Additionally, we allow rerandomization and key derivation of the presignature following [[GS21](https://eprint.iacr.org/2021/1330.pdf)] and introduce a coordinator to the online signing phase to reduce the communication complexity.*
 
-### Note: the threshold $t =$ *number_malicious_parties*
+### Note:  We denote $\mathcal{P}$ the set of participants included the DKG and the threshold $t = \mathsf{MaxMalicious}$
 
 # Presigning
 
-In this phase, a set of parties $\mathcal{P}_1 \subseteq \mathcal{P}_0$
+In this phase, a set of parties $\mathcal{P}_1 \subseteq \mathcal{P}$
 of size $N_1 \geq 2t +1$ wishes to generate a threshold $t' = t + 1$ sharing
 of a pre-signature.
 
