@@ -4,8 +4,8 @@ use frost_secp256k1::VerifyingKey;
 use k256::AffinePoint;
 use rand::Rng;
 use rand_core::{CryptoRngCore, SeedableRng};
+use statrs::statistics::{Data, Distribution, Median};
 use std::{env, sync::LazyLock};
-use statrs::statistics::{Data, Median, Distribution};
 
 use threshold_signatures::{
     ecdsa::ot_based_ecdsa,
@@ -83,7 +83,7 @@ pub struct PreparedSig<RerandomizedPresignOutput> {
 #[allow(clippy::cast_precision_loss)]
 /// Analyzes the size of the received data by a participant accross the entire protocol
 pub fn analyze_received_sizes(
-    sizes: &mut [usize],
+    sizes: &[usize],
     is_print: bool,
 ) -> (usize, usize, f64, f64, f64, f64) {
     let min = *sizes.iter().min().expect("Minimum should exist");
