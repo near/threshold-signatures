@@ -1,6 +1,5 @@
 ---
 source: src/ecdsa/ot_based_ecdsa/presign.rs
-assertion_line: 268
 expression: result
 ---
 [

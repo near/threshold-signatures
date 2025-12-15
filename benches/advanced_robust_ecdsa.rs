@@ -1,12 +1,13 @@
 use criterion::{criterion_group, Criterion};
 use frost_secp256k1::VerifyingKey;
-use rand::Rng;
+use rand::{Rng, RngCore};
 use rand_core::SeedableRng;
 
 mod bench_utils;
 use crate::bench_utils::{
     analyze_received_sizes, robust_ecdsa_prepare_presign, robust_ecdsa_prepare_sign,
     run_simulated_protocol, LATENCY, MAX_MALICIOUS, SAMPLE_SIZE,
+    PreparedOutputs,
 };
 use threshold_signatures::{
     ecdsa::{
@@ -15,10 +16,11 @@ use threshold_signatures::{
     },
     participants::Participant,
     protocol::Protocol,
-    test_utils::{
-        create_rngs, run_protocol, run_protocol_and_take_snapshots, MockCryptoRng, Simulator,
-    },
+    test_utils::{run_protocol, run_protocol_and_take_snapshots, MockCryptoRng, Simulator},
 };
+
+type PreparedPresig = PreparedOutputs<PresignOutput>;
+type PreparedSimulatedSig = PreparedOutputs<SignatureOption>;
 
 fn participants_num() -> usize {
     2 * *MAX_MALICIOUS + 1
@@ -39,12 +41,12 @@ fn bench_presign(c: &mut Criterion) {
         |b| {
             b.iter_batched(
                 || {
-                    let (rparticipant, rprot, sprot) = prepare_simulate_presign(num);
+                    let preps = prepare_simulate_presign(num);
                     // collecting data sizes
-                    sizes.push(sprot.get_size());
-                    (rparticipant, rprot, sprot)
+                    sizes.push(preps.simulator.get_size());
+                    preps
                 },
-                |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot, rounds),
+                |preps| run_simulated_protocol(preps.participant, preps.protocol, preps.simulator, rounds),
                 criterion::BatchSize::SmallInput,
             );
         },
@@ -61,10 +63,9 @@ fn bench_sign(c: &mut Criterion) {
     let mut sizes = Vec::with_capacity(*SAMPLE_SIZE);
 
     let mut rng = MockCryptoRng::seed_from_u64(42);
-    let rngs = create_rngs(num, &mut rng);
-    let (protocols, key_packages, _) = robust_ecdsa_prepare_presign(num, &rngs, &mut rng);
-    let result = run_protocol(protocols).expect("Prepare sign should not");
-    let pk = key_packages[0].1.public_key;
+    let preps = robust_ecdsa_prepare_presign(num, &mut rng);
+    let result = run_protocol(preps.protocols).expect("Prepare sign should not");
+    let pk = preps.key_packages[0].1.public_key;
 
     let mut group = c.benchmark_group("sign");
     group.sample_size(*SAMPLE_SIZE);
@@ -73,12 +74,12 @@ fn bench_sign(c: &mut Criterion) {
         |b| {
             b.iter_batched(
                 || {
-                    let (rparticipant, rprot, sprot) = prepare_simulated_sign(&result, pk);
+                    let preps = prepare_simulated_sign(&result, pk);
                      // collecting data sizes
-                    sizes.push(sprot.get_size());
-                    (rparticipant, rprot, sprot)
+                    sizes.push(preps.simulator.get_size());
+                    preps
                 },
-                |(rparticipant, rprot, sprot)| run_simulated_protocol(rparticipant, rprot, sprot, rounds),
+                |preps| run_simulated_protocol(preps.participant, preps.protocol, preps.simulator, rounds),
                 criterion::BatchSize::SmallInput,
             );
         },
@@ -91,29 +92,33 @@ criterion::criterion_main!(benches);
 
 /****************************** Helpers ******************************/
 /// Used to simulate robust ecdsa presignatures for benchmarking
-/// # Panics
-/// Would panic in case an abort happens stopping the entire benchmarking
 fn prepare_simulate_presign(num_participants: usize) -> PreparedPresig {
     // Running presign a first time with snapshots
     let mut rng = MockCryptoRng::seed_from_u64(42);
-    let rngs = create_rngs(num_participants, &mut rng);
-    let (protocols, key_packages, participants) =
-        robust_ecdsa_prepare_presign(num_participants, &rngs, &mut rng);
+    let preps = robust_ecdsa_prepare_presign(num_participants, &mut rng);
 
-    let (_, protocolsnapshot) = run_protocol_and_take_snapshots(protocols)
+    let (_, protocolsnapshot) = run_protocol_and_take_snapshots(preps.protocols)
         .expect("Running protocol with snapshot should not have issues");
 
     // choose the real_participant at random
     let index_real_participant = rng.gen_range(0..num_participants);
-    let (real_participant, keygen_out) = key_packages[index_real_participant].clone();
+    let (real_participant, keygen_out) = preps.key_packages[index_real_participant].clone();
+
+    // recreate rng using by real_participant to generate triples
+    let mut rng_copy = MockCryptoRng::seed_from_u64(42);
+    for _ in 0..index_real_participant - 1 {
+        rng_copy.next_u64();
+    }
+    let real_participant_rng = MockCryptoRng::seed_from_u64(rng_copy.next_u64());
+
     let real_protocol = presign(
-        &participants,
+        &preps.participants,
         real_participant,
         PresignArguments {
             keygen_out,
             threshold: *MAX_MALICIOUS,
         },
-        rngs[index_real_participant].clone(), // provide the exact same randomness
+        real_participant_rng, // provide the exact same randomness
     )
     .map(|presig| Box::new(presig) as Box<dyn Protocol<Output = PresignOutput>>)
     .expect("Presignature should succeed");
@@ -122,34 +127,35 @@ fn prepare_simulate_presign(num_participants: usize) -> PreparedPresig {
     let simulated_protocol =
         Simulator::new(real_participant, protocolsnapshot).expect("Simulator should not be empty");
 
-    (real_participant, real_protocol, simulated_protocol)
+    PreparedPresig {
+        participant: real_participant,
+        protocol: real_protocol,
+        simulator: simulated_protocol,
+    }
 }
 
 /// Used to simulate robust ecdsa signatures for benchmarking
-/// # Panics
-/// Would panic in case an abort happens stopping the entire benchmarking
 fn prepare_simulated_sign(
     result: &[(Participant, PresignOutput)],
     pk: VerifyingKey,
 ) -> PreparedSimulatedSig {
     let mut rng = MockCryptoRng::seed_from_u64(41);
-    let (protocols, coordinator_index, presignature, derived_pk, msg_hash) =
-        robust_ecdsa_prepare_sign(result, pk, &mut rng);
-    let (_, protocolsnapshot) = run_protocol_and_take_snapshots(protocols)
+    let preps = robust_ecdsa_prepare_sign(result, pk, &mut rng);
+    let (_, protocolsnapshot) = run_protocol_and_take_snapshots(preps.protocols)
         .expect("Running protocol with snapshot should not have issues");
 
     // collect all participants
     let participants: Vec<Participant> =
         result.iter().map(|(participant, _)| *participant).collect();
     // choose the real_participant being the coordinator
-    let (real_participant, _) = result[coordinator_index];
+    let (real_participant, _) = result[preps.index];
     let real_protocol = sign(
         &participants,
         real_participant,
         real_participant,
-        derived_pk,
-        presignature,
-        msg_hash,
+        preps.derived_pk,
+        preps.presig,
+        preps.msg_hash,
     )
     .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
     .expect("Presignature should succeed");
@@ -158,19 +164,9 @@ fn prepare_simulated_sign(
     let simulated_protocol =
         Simulator::new(real_participant, protocolsnapshot).expect("Simulator should not be empty");
 
-    (real_participant, real_protocol, simulated_protocol)
+    PreparedSimulatedSig {
+        participant: real_participant,
+        protocol: real_protocol,
+        simulator: simulated_protocol,
+    }
 }
-
-/// Helps with the benches of the presigning protocol
-type PreparedPresig = (
-    Participant,
-    Box<dyn Protocol<Output = PresignOutput>>,
-    Simulator,
-);
-
-/// Helps with the benches of the signing protocol
-type PreparedSimulatedSig = (
-    Participant,
-    Box<dyn Protocol<Output = SignatureOption>>,
-    Simulator,
-);
