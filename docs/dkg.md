@@ -1,4 +1,4 @@
-# Distribute Key Generation
+# Distributed Key Generation
 
 We define a variant of the two-round DKG protocol PedPop \[[KG](https://eprint.iacr.org/2020/852.pdf)\].
 Our variant, PedPop+ is less efficient, but achieves a notion of simulatability with aborts,
@@ -11,7 +11,7 @@ The implemented DKG serves as a generic one that can be used with multiple diffe
 
 ## Keygen, Reshare and Refresh
 
-The core of the dkg protocol is implemented in a subfunction called `do_keyshare` and serves for three applications:
+The core of the dkg protocol is implemented in a function called `do_keyshare` and serves for three applications:
 
 * Key generation: denoted in the implementation with `keygen`. It allows a set of parties to jointly generate from scratch a private key share each and a master public key. The master public key should be common for all the participants and should reflect each of the private shares.
 
@@ -34,102 +34,98 @@ The cryptography threshold refers to the maximum number of necessay malicious pa
 Due to the fact that PedPop+ utilizes reliable broadcast channel to securely generate private shares, it thus lies on the edge between the asynchronous distributed systems and cryptography. For this reason, we set
 $\mathsf{MaxFaulty} = \frac{N - 1}{3}$ as an invariable parameter and allow our key generation and key resharing protocols to fix/modify only the $\mathsf{MaxMalicious}$ threshold depending on the scheme requirements and on the library user's choice.
 
-## Technical Details
+## Technical Details: Key Generation & Key Resharing
 
 Let $P_1, \cdots P_N$ be $N$ different participants, and $\mathsf{MaxMalicious}$ be the desired cryptography threshold. Let $H_1, H_2, H_3$ be domain separated hash functions.
 
-### Key Generation & Key Resharing
+We define PedPop+ key generation as follows; All the instruction preceeded with `+++` are added to the key generation, transforming it to the key resharing protocol.
 
-We define PedPop+ key generation as follows; All the instruction preceeded with `+++` are added to the scheme to transform it to the key resharing protocol.
+No special inputs are given to the **key generation** protocol beyond the public parameters defined above. However, the inputs to the **key resharing** are as follows:
 
-No special inputs are given to the **key generation** protocol beyond the public parameters defined above.
+1. `+++` The old private share $\mathit{OldSK}$ that $P_i$ held prior to the key resharing. This value is set to None only if $P_i$ is a freshly new participant.
 
-+++ The inputs to the **key resharing** are:
+2. `+++` The old participants set $\mathit{OldSigners}$ that held valid private shares prior to the key resharing.
 
-+++ 1. The old private share $\mathit{OldSK}$ that $P_i$ held prior to the key resharing. This value is set to None only if $P_i$ is a freshly new participant.
+3. `+++` The old master public key $\mathit{OldPK}$ that the $\mathit{OldSigners}$ held prior to the key resharing.
 
-+++ 2. The old participants set $\mathit{OldSigners}$ that held valid private shares prior to the key resharing.
-
-+++ 3. The old master public key $\mathit{OldPK}$ that the $\mathit{OldSigners}$ held prior to the key resharing.
-
-+++ 4. The old cryptography threshold $\mathsf{OldMaxMalicious}$ prior to the key resharing.
+4. `+++` The old cryptography threshold $\mathsf{OldMaxMalicious}$ prior to the key resharing.
 ``
 
-**Round 1:**
+### Round 1
 
-1. Each $P_i$ asserts that $1 < \mathsf{MaxMalicious} < N$.
+1.1 Each $P_i$ asserts that $1 < \mathsf{MaxMalicious} < N$.
 
-$\quad$ +++ Each $P_i$ sets $I \gets \set{P_1 \ldots P_N} \cap \mathit{OldSigners}$
+$\quad$ `+++` Each $P_i$ sets $I \gets \set{P_1 \ldots P_N} \cap \mathit{OldSigners}$
 
-$\quad$ +++ Each $P_i$ asserts that $\mathsf{OldMaxMalicious} \leq |I|$.
+$\quad$ `+++` Each $P_i$ asserts that $\mathsf{OldMaxMalicious} \leq |I|$.
 
-2. Each $P_i$ generates a random 32-byte sesssion identifier $\mathit{sid}_i$
+1.2 Each $P_i$ generates a random 32-byte sesssion identifier $\mathit{sid}_i$
 
-3. Each $P_i$ reliably broadcasts $\mathit{sid}_i$
+1.3 Each $P_i$ reliably broadcasts $\mathit{sid}_i$
 
-**Round 2:**
+### Round 2
 
-4. Each $P_i$ waits to receive $\mathit{sid}_j$ from every participant $P_j$
+2.1 Each $P_i$ waits to receive $\mathit{sid}_j$ from every participant $P_j$
 
-5. Each $P_i$ computes the hash $\mathit{sid} \gets H_1(\mathit{sid}_1, \cdots \mathit{sid}_N)$
+2.2 Each $P_i$ computes the hash $\mathit{sid} \gets H_1(\mathit{sid}_1, \cdots \mathit{sid}_N)$
 
-6. Each $P_i$ generates a random polynomial $f_i$ of degree $\mathsf{MaxMalicious}$.
-
-
-$\quad$ +++ Each $P_i$ computes the following:
-
-* +++ If $P_i\notin \mathit{OldSigners}$ then set $f_i(0) \gets 0$
-
-* +++ Else set $f_i(0) \gets \lambda_i(I) \cdot \mathit{OldSK}$
+2.3 Each $P_i$ generates a random polynomial $f_i$ of degree $\mathsf{MaxMalicious}$.
 
 
-7. Each $P_i$ generates a commitment of the polynomial $C_i \gets f_i \cdot G$ (commits every coefficient of the polynomial).
+$\quad$ `+++` Each $P_i$ computes the following:
 
-8. Each $P_i$ generates a hash $h_i \gets H_2(i, C_i, \mathit{sid})$
+$\quad$ `+++` If $P_i\notin \mathit{OldSigners}$ then set $f_i(0) \gets 0$
 
-9. Each $P_i$ picks a random nonce $k_i$ and computes $R_i \gets k_i \cdot G$
+$\quad$ `+++` Else set $f_i(0) \gets \lambda_i(I) \cdot \mathit{OldSK}$
 
-10. Each $P_i$ computes the Schnorr challenge $c_i \gets H_3(\mathit{sid}, i, C_i(0), R_i)$
 
-11. Each $P_i$ computes the proof $s_i \gets k_i + f_i(0) \cdot c_i$
+2.4 Each $P_i$ generates a commitment of the polynomial $C_i \gets f_i \cdot G$ (commits every coefficient of the polynomial).
 
-12. Each $P_i$ sends $h_i$ to every participant
+2.5 Each $P_i$ generates a hash $h_i \gets H_2(i, C_i, \mathit{sid})$
 
-**Round 3:**
+2.6 Each $P_i$ picks a random nonce $k_i$ and computes $R_i \gets k_i \cdot G$
 
-13. Each $P_i$ waits to receive $h_i$ from every participant $P_j$.
+2.7 Each $P_i$ computes the Schnorr challenge $c_i \gets H_3(\mathit{sid}, i, C_i(0), R_i)$
 
-14. Each $P_i$ reliably broadcasts $(C_i, R_i, s_i)$.
+2.8 Each $P_i$ computes the proof $s_i \gets k_i + f_i(0) \cdot c_i$
 
-**Round 4:**
+2.9 Each $P_i$ sends $h_i$ to every participant
 
-15. Each $P_i$ waits to receive $(C_j, \pi_j)$ from every participant $P_j$.
+### Round 3
 
-16. Each $P_i$ computes: $\forall j\in\set{1, \cdots N}, \quad c_j \gets H_3(\mathit{sid}, j, C_j(0), R_j)$.
+3.1 Each $P_i$ waits to receive $h_i$ from every participant $P_j$.
 
-17. Each $P_i$ asserts that: $\forall j\in\set{1, \cdots N}, \quad R_j = s_i \cdot G - c_j \cdot C_j(0)$.
+3.2 Each $P_i$ reliably broadcasts $(C_i, R_i, s_i)$.
 
-18. Each $P_i$ asserts that: $\forall j\in\set{1, \cdots N}, \quad h_j = H_2(j, C_j, \mathit{sid})$.
+### Round 4
 
-19. $\textcolor{red}{\star}$ Each $P_i$ **privately** sends the evaluation $f_i(j)$ to every participant $P_j$.
+4.1 Each $P_i$ waits to receive $(C_j, \pi_j)$ from every participant $P_j$.
 
-**Round 5:**
+4.2 Each $P_i$ computes: $\forall j\in\set{1, \cdots N}, \quad c_j \gets H_3(\mathit{sid}, j, C_j(0), R_j)$.
 
-20. Each $P_i$ waits to receive $f_j(i)$ from every participant $P_j$.
+4.3 Each $P_i$ asserts that: $\forall j\in\set{1, \cdots N}, \quad R_j = s_i \cdot G - c_j \cdot C_j(0)$.
 
-21. Each $P_i$ asserts that: $\forall j\in\set{1, \cdots N}, \quad f_j(i) \cdot G = \sum_m j^m \cdot C_j[m]$ where $C_j[m]$ denotes the m-th coefficient of $C_j$.
+4.4 Each $P_i$ asserts that: $\forall j\in\set{1, \cdots N}, \quad h_j = H_2(j, C_j, \mathit{sid})$.
 
-22. Each $P_i$ computes its private share $\mathit{sk}_i \gets \sum_j f_j(i)$.
+4.5 $\textcolor{red}{\star}$ Each $P_i$ **privately** sends the evaluation $f_i(j)$ to every participant $P_j$.
 
-23. Each $P_i$ computes the master public key $\mathit{pk} \gets \sum_j C_j(0)$.
+### Round 5
 
-$\quad$ +++ Each $P_i$ asserts that $\mathit{pk} = \mathit{OldPK}$
+5.1 Each $P_i$ waits to receive $f_j(i)$ from every participant $P_j$.
 
-24. Each $P_i$ reliably broadcasts $\mathsf{success_i}$.
+5.2 Each $P_i$ asserts that: $\forall j\in\set{1, \cdots N}, \quad f_j(i) \cdot G = \sum_m j^m \cdot C_j[m]$ where $C_j[m]$ denotes the m-th coefficient of $C_j$.
 
-**Round 5.5:**
+5.3 Each $P_i$ computes its private share $\mathit{sk}_i \gets \sum_j f_j(i)$.
 
-25. Each $P_i$ waits to receive $\mathsf{success_j}$ from every participant $P_j$.
+5.4 Each $P_i$ computes the master public key $\mathit{pk} \gets \sum_j C_j(0)$.
+
+$\quad$ `+++` Each $P_i$ asserts that $\mathit{pk} = \mathit{OldPK}$
+
+5.5 Each $P_i$ reliably broadcasts $\mathsf{success_i}$.
+
+#### Round 5.5
+
+5.6 Each $P_i$ waits to receive $\mathsf{success_j}$ from every participant $P_j$.
 
 **Output:** the keypair $(\mathit{sk}_i, \mathit{pk})$.
 
