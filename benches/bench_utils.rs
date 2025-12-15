@@ -5,6 +5,7 @@ use k256::AffinePoint;
 use rand::Rng;
 use rand_core::{CryptoRngCore, SeedableRng};
 use std::{env, sync::LazyLock};
+use statrs::statistics::{Data, Median, Distribution};
 
 use threshold_signatures::{
     ecdsa::ot_based_ecdsa,
@@ -89,26 +90,13 @@ pub fn analyze_received_sizes(
     let max = *sizes.iter().max().expect("Maximum should exist");
     let avg = sizes.iter().sum::<usize>() as f64 / sizes.len() as f64;
 
-    // median
-    sizes.sort_unstable();
-    let mid = sizes.len() / 2;
-    let median = if sizes.len() % 2 == 0 {
-        (sizes[mid - 1] as f64 + sizes[mid] as f64) / 2.0
-    } else {
-        sizes[mid] as f64
-    };
+    // Convert to f64 for statrs
+    let data: Vec<f64> = sizes.iter().map(|&x| x as f64).collect();
+    let stats = Data::new(data);
 
-    // variance & standard deviation
-    let mean = sizes.iter().sum::<usize>() as f64 / sizes.len() as f64;
-    let squared_sum = sizes
-        .iter()
-        .map(|v| {
-            let diff = *v as f64 - mean;
-            diff * diff
-        })
-        .sum::<f64>();
-    let variance = squared_sum / sizes.len() as f64;
-    let std_dev = variance.sqrt();
+    let median = stats.median();
+    let variance = stats.variance().expect("Expected more than 2 entries");
+    let std_dev = stats.std_dev().expect("Expected more than 2 entries");
 
     if is_print {
         println!("Analysis for received messages:");
