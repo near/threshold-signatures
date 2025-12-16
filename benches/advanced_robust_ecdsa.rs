@@ -5,8 +5,8 @@ use rand_core::SeedableRng;
 
 mod bench_utils;
 use crate::bench_utils::{
-    robust_ecdsa_prepare_presign, robust_ecdsa_prepare_sign, run_simulated_protocol,
-    PreparedOutputs, MAX_MALICIOUS, SAMPLE_SIZE,
+    robust_ecdsa_prepare_presign, robust_ecdsa_prepare_sign, PreparedOutputs, MAX_MALICIOUS,
+    SAMPLE_SIZE,
 };
 use threshold_signatures::{
     ecdsa::{
@@ -15,7 +15,10 @@ use threshold_signatures::{
     },
     participants::Participant,
     protocol::Protocol,
-    test_utils::{run_protocol, run_protocol_and_take_snapshots, MockCryptoRng, Simulator},
+    test_utils::{
+        run_protocol, run_protocol_and_take_snapshots, run_simulated_protocol, MockCryptoRng,
+        Simulator,
+    },
 };
 
 type PreparedPresig = PreparedOutputs<PresignOutput>;

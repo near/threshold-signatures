@@ -5,8 +5,8 @@ use rand_core::SeedableRng;
 
 mod bench_utils;
 use crate::bench_utils::{
-    ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign, ot_ecdsa_prepare_triples,
-    run_simulated_protocol, PreparedOutputs, MAX_MALICIOUS, SAMPLE_SIZE,
+    ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign, ot_ecdsa_prepare_triples, PreparedOutputs,
+    MAX_MALICIOUS, SAMPLE_SIZE,
 };
 
 use threshold_signatures::{
@@ -21,7 +21,10 @@ use threshold_signatures::{
     },
     participants::Participant,
     protocol::Protocol,
-    test_utils::{run_protocol, run_protocol_and_take_snapshots, MockCryptoRng, Simulator},
+    test_utils::{
+        run_protocol, run_protocol_and_take_snapshots, run_simulated_protocol, MockCryptoRng,
+        Simulator,
+    },
 };
 
 type PreparedSimulatedTriples = PreparedOutputs<Vec<(TripleShare, TriplePub)>>;

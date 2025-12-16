@@ -169,8 +169,6 @@ pub fn run_two_party_protocol<T0: std::fmt::Debug, T1: std::fmt::Debug>(
 
 /// Runs one real participant and one simulation representing the rest of participants
 /// The simulation has an internal storage of what to send to the real participant
-///
-/// Accepts a network latency in milliseconds say 100ms
 pub fn run_simulated_protocol<T>(
     real_participant: Participant,
     mut real_prot: Box<dyn Protocol<Output = T>>,
