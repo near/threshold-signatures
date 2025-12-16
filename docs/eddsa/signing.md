@@ -8,7 +8,7 @@ that can be checked by any Ed25519 verifier.
 We implement the two round FROST protocol without the extra round responsible
 of detecting which party deviated from the protocol.
 
-### Note:  We denote $\mathcal{P}$ the set of participants included the DKG and the threshold $t = \mathsf{MaxMalicious}$
+### Note:  We denote $\mathcal{P}$ the set of participants included the DKG and the threshold $t = \mathsf{MaxMalicious}+1$
 
 ## Signing
 
