@@ -175,10 +175,7 @@ pub fn run_simulated_protocol<T>(
     real_participant: Participant,
     mut real_prot: Box<dyn Protocol<Output = T>>,
     simulator: Simulator,
-    network_latency: u64,
-    round_number: u64,
 ) -> Result<T, ProtocolError> {
-    let duration = std::time::Duration::from_millis(network_latency * round_number);
     if simulator.real_participant() != real_participant {
         return Err(ProtocolError::AssertionFailed(
             "The given real participant does not match the simulator's internal real participant"
@@ -198,6 +195,5 @@ pub fn run_simulated_protocol<T>(
             out = Some(output);
         }
     }
-    std::thread::sleep(duration);
     out.ok_or_else(|| ProtocolError::Other("out is None".to_string()))
 }

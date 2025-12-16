@@ -6,7 +6,7 @@ use rand_core::SeedableRng;
 mod bench_utils;
 use crate::bench_utils::{
     analyze_received_sizes, robust_ecdsa_prepare_presign, robust_ecdsa_prepare_sign,
-    run_simulated_protocol, PreparedOutputs, LATENCY, MAX_MALICIOUS, SAMPLE_SIZE,
+    run_simulated_protocol, PreparedOutputs, MAX_MALICIOUS, SAMPLE_SIZE,
 };
 use threshold_signatures::{
     ecdsa::{
@@ -29,14 +29,12 @@ fn participants_num() -> usize {
 fn bench_presign(c: &mut Criterion) {
     let num = participants_num();
     let max_malicious = *MAX_MALICIOUS;
-    let latency = *LATENCY;
-    let rounds = 3;
     let mut sizes = Vec::with_capacity(*SAMPLE_SIZE);
 
     let mut group = c.benchmark_group("presign");
     group.sample_size(*SAMPLE_SIZE);
     group.bench_function(
-        format!("robust_ecdsa_presign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
+        format!("robust_ecdsa_presign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
                 || {
@@ -45,7 +43,7 @@ fn bench_presign(c: &mut Criterion) {
                     sizes.push(preps.simulator.get_view_size());
                     preps
                 },
-                |preps| run_simulated_protocol(preps.participant, preps.protocol, preps.simulator, rounds),
+                |preps| run_simulated_protocol(preps.participant, preps.protocol, preps.simulator),
                 criterion::BatchSize::SmallInput,
             );
         },
@@ -57,8 +55,6 @@ fn bench_presign(c: &mut Criterion) {
 fn bench_sign(c: &mut Criterion) {
     let num = participants_num();
     let max_malicious = *MAX_MALICIOUS;
-    let latency = *LATENCY;
-    let rounds = 1;
     let mut sizes = Vec::with_capacity(*SAMPLE_SIZE);
 
     let mut rng = MockCryptoRng::seed_from_u64(42);
@@ -69,16 +65,16 @@ fn bench_sign(c: &mut Criterion) {
     let mut group = c.benchmark_group("sign");
     group.sample_size(*SAMPLE_SIZE);
     group.bench_function(
-        format!("robust_ecdsa_sign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
+        format!("robust_ecdsa_sign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
                 || {
                     let preps = prepare_simulated_sign(&result, pk);
-                     // collecting data sizes
+                    // collecting data sizes
                     sizes.push(preps.simulator.get_view_size());
                     preps
                 },
-                |preps| run_simulated_protocol(preps.participant, preps.protocol, preps.simulator, rounds),
+                |preps| run_simulated_protocol(preps.participant, preps.protocol, preps.simulator),
                 criterion::BatchSize::SmallInput,
             );
         },
