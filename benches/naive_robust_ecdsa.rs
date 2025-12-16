@@ -1,7 +1,7 @@
 use criterion::{criterion_group, Criterion};
 mod bench_utils;
 use crate::bench_utils::{
-    robust_ecdsa_prepare_presign, robust_ecdsa_prepare_sign, LATENCY, MAX_MALICIOUS, SAMPLE_SIZE,
+    robust_ecdsa_prepare_presign, robust_ecdsa_prepare_sign, MAX_MALICIOUS, SAMPLE_SIZE,
 };
 use rand_core::SeedableRng;
 use threshold_signatures::test_utils::{run_protocol, MockCryptoRng};
@@ -14,13 +14,12 @@ fn participants_num() -> usize {
 fn bench_presign(c: &mut Criterion) {
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let num = participants_num();
-    let latency = *LATENCY;
     let max_malicious = *MAX_MALICIOUS;
 
     let mut group = c.benchmark_group("presign");
     group.sample_size(*SAMPLE_SIZE);
     group.bench_function(
-        format!("robust_ecdsa_presign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
+        format!("robust_ecdsa_presign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
                 || robust_ecdsa_prepare_presign(num, &mut rng),
@@ -35,7 +34,6 @@ fn bench_presign(c: &mut Criterion) {
 fn bench_sign(c: &mut Criterion) {
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let num = participants_num();
-    let latency = *LATENCY;
     let max_malicious = *MAX_MALICIOUS;
     let mut group = c.benchmark_group("sign");
     group.sample_size(*SAMPLE_SIZE);
@@ -45,7 +43,7 @@ fn bench_sign(c: &mut Criterion) {
     let pk = preps.key_packages[0].1.public_key;
 
     group.bench_function(
-        format!("robust_ecdsa_sign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
+        format!("robust_ecdsa_sign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
                 || robust_ecdsa_prepare_sign(&result, pk, &mut rng),

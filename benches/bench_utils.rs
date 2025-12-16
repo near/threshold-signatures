@@ -30,14 +30,6 @@ pub static MAX_MALICIOUS: LazyLock<usize> = std::sync::LazyLock::new(|| {
 });
 
 // fix malicious number of participants
-pub static LATENCY: LazyLock<u64> = std::sync::LazyLock::new(|| {
-    env::var("LATENCY")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0)
-});
-
-// fix malicious number of participants
 pub static SAMPLE_SIZE: LazyLock<usize> = std::sync::LazyLock::new(|| {
     env::var("SAMPLE_SIZE")
         .ok()
@@ -49,14 +41,11 @@ pub fn run_simulated_protocol<T>(
     rparticipant: Participant,
     rprot: Box<dyn Protocol<Output = T>>,
     sprot: threshold_signatures::test_utils::Simulator,
-    rounds_num: u64,
 ) -> Result<T, threshold_signatures::errors::ProtocolError> {
     threshold_signatures::test_utils::run_simulated_protocol::<T>(
         rparticipant,
         rprot,
         sprot,
-        *LATENCY,
-        rounds_num,
     )
 }
 /// This helps defining a generic type for the benchmarks prepared outputs

@@ -1,7 +1,7 @@
 use criterion::{criterion_group, Criterion};
 mod bench_utils;
 use crate::bench_utils::{
-    ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign, ot_ecdsa_prepare_triples, LATENCY,
+    ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign, ot_ecdsa_prepare_triples,
     MAX_MALICIOUS, SAMPLE_SIZE,
 };
 use rand_core::SeedableRng;
@@ -19,13 +19,12 @@ fn participants_num() -> usize {
 fn bench_triples(c: &mut Criterion) {
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let num = participants_num();
-    let latency = *LATENCY;
     let max_malicious = *MAX_MALICIOUS;
 
     let mut group = c.benchmark_group("triples");
     group.sample_size(*SAMPLE_SIZE);
     group.bench_function(
-        format!("ot_ecdsa_triples_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
+        format!("ot_ecdsa_triples_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
                 || ot_ecdsa_prepare_triples(participants_num(), threshold(), &mut rng),
@@ -40,7 +39,6 @@ fn bench_triples(c: &mut Criterion) {
 fn bench_presign(c: &mut Criterion) {
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let num = participants_num();
-    let latency = *LATENCY;
     let max_malicious = *MAX_MALICIOUS;
 
     let preps = ot_ecdsa_prepare_triples(participants_num(), threshold(), &mut rng);
@@ -50,7 +48,7 @@ fn bench_presign(c: &mut Criterion) {
     let mut group = c.benchmark_group("presign");
     group.sample_size(*SAMPLE_SIZE);
     group.bench_function(
-        format!("ot_ecdsa_presign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}_LATENCY_{latency}"),
+        format!("ot_ecdsa_presign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
                 || ot_ecdsa_prepare_presign(&two_triples, threshold(), &mut rng),
