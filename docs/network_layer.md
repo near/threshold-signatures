@@ -25,18 +25,19 @@ The protocol implementation provides several communication primitives:
 - **Byzantine Reliable Broadcast (`echo_broadcast`)**: A complex protocol that ensures all honest participants agree on the same message, even in the presence of Byzantine faults. The protocol guarantees:
 
   - **Validity**: If a correct process `p` broadcasts `a` message `m`, then `p` eventually delivers `m`.
-  
+
   - **No duplication**: No message is delivered more than once.
-  
+
   - **No creation**: If a process delivers a message `m` with sender `s`, then m was previously broadcast by process `s`.
 
   - **Agreement**: If a message `m` is delivered by some correct process, then `m` is eventually delivered by every correct process.
 
   - **Totality**: If some message is delivered by any correct process, then every correct process eventually delivers some message.
 
-> To guarantee the security notions given by the Byzantine Reliable Broadcast, we assume that `N >= 3f +1`. This bound originates from the classical Byzantine fault tolerance model [LSP82](https://lamport.azurewebsites.net/pubs/byz.pdf), which ensures both safety and liveness under such faults.
+> To guarantee the security notions given by the Byzantine Reliable Broadcast, we assume that $3 \cdot \mathsf{MaxFaulty} +1 \leq N$. This bound originates from the classical Byzantine fault tolerance model \[[LSP82](https://lamport.azurewebsites.net/pubs/byz.pdf)\], which ensures both safety and liveness under such faults.
 
 ## Documentation Notation
+
 In protocol specifications (particularly for ECDSA), we use the following symbols to describe actions:
 
 | Symbol | Meaning | Description |
@@ -45,3 +46,16 @@ In protocol specifications (particularly for ECDSA), we use the following symbol
 | $\textcolor{red}{\star}$ | **Send Private** | A participant sends a private, encrypted message. |
 | $\bullet$ | **Receive** | A participant waits to receive a message. |
 | $\blacktriangle$ | **Assert** | A participant makes an assertion. The protocol aborts if it fails. |
+
+## Byzantine Reliable Broadcast: Echo Broadcast
+
+The Echo Broadcast protocol is a three round protocol that allows all honest parties involved in a communication protocol to deliver the same message or all abort even if the protocol might contain faulty participants.
+
+Such protocol assumes two properties:
+
+1. The total number of faulty nodes cannot exceed one third of the maximum number of active nodes, i.e., $3 \cdot \mathsf{MaxFaulty} +1 \leq N$
+
+2. The underlying peer-to-peer communication channel is authenticated.
+
+The following figure is taken from \[[CGR](https://link.springer.com/book/10.1007/978-3-642-15260-3)\] book (page 119).
+![Broadcast Protocol](images/broadcast.png)
