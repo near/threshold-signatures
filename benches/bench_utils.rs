@@ -4,6 +4,7 @@ use frost_secp256k1::VerifyingKey;
 use k256::AffinePoint;
 use rand::Rng;
 use rand_core::{CryptoRngCore, SeedableRng};
+use statrs::statistics::{Data, Distribution, Median};
 use std::{env, sync::LazyLock};
 
 use threshold_signatures::{
@@ -55,6 +56,41 @@ pub struct PreparedSig<RerandomizedPresignOutput> {
     pub presig: RerandomizedPresignOutput,
     pub derived_pk: AffinePoint,
     pub msg_hash: Scalar,
+}
+
+#[allow(clippy::cast_precision_loss)]
+/// Analyzes the size of the received data by a participant accross the entire protocol
+pub fn analyze_received_sizes(
+    sizes: &[usize],
+    is_print: bool,
+) -> (usize, usize, f64, f64, f64, f64) {
+    let min = *sizes.iter().min().expect("Minimum should exist");
+    let max = *sizes.iter().max().expect("Maximum should exist");
+    let avg = sizes.iter().sum::<usize>() as f64 / sizes.len() as f64;
+
+    // Convert to f64 for statrs
+    let data: Vec<f64> = sizes.iter().map(|&x| x as f64).collect();
+    let stats = Data::new(data);
+
+    let median = stats.median();
+    let variance = stats.variance().expect("Expected more than 2 entries");
+    let std_dev = stats.std_dev().expect("Expected more than 2 entries");
+
+    if is_print {
+        println!("Analysis for received messages:");
+        println!(
+            "\
+            min:{min}B\t\
+            max:{max}B\t\
+            average:{avg}B\t\
+            median:{median}B\t\
+            variance:{variance}B\t\
+            standard deviation:{std_dev}B
+        "
+        );
+    }
+
+    (min, max, avg, median, variance, std_dev)
 }
 
 /********************* OT Based ECDSA *********************/
