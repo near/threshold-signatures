@@ -81,13 +81,13 @@ $\quad$ `+++` Else set $f_i(0) \gets \lambda_i(I) \cdot \mathit{OldSK}$
 
 2.4 Each $P_i$ generates a commitment of the polynomial $C_i \gets f_i \cdot G$ (commits every coefficient of the polynomial).
 
-2.5 Each $P_i$ generates a hash $h_i \gets H_2(i, C_i, \mathit{sid})$
+2.5 Each $P_i$ picks a random nonce $k_i$ and computes $R_i \gets k_i \cdot G$
 
-2.6 Each $P_i$ picks a random nonce $k_i$ and computes $R_i \gets k_i \cdot G$
+2.6 Each $P_i$ computes the Schnorr challenge $c_i \gets H_3(\mathit{sid}, i, C_i(0), R_i)$
 
-2.7 Each $P_i$ computes the Schnorr challenge $c_i \gets H_3(\mathit{sid}, i, C_i(0), R_i)$
+2.7 Each $P_i$ computes the proof $s_i \gets k_i + f_i(0) \cdot c_i$
 
-2.8 Each $P_i$ computes the proof $s_i \gets k_i + f_i(0) \cdot c_i$
+2.8 Each $P_i$ generates a hash $h_i \gets H_2(i, C_i, \mathit{sid})$
 
 2.9 Each $P_i$ sends $h_i$ to every participant
 
@@ -107,7 +107,11 @@ $\quad$ `+++` Else set $f_i(0) \gets \lambda_i(I) \cdot \mathit{OldSK}$
 
 4.4 Each $P_i$ asserts that: $\forall j\in\set{1, \cdots N}, \quad h_j = H_2(j, C_j, \mathit{sid})$.
 
-4.5 $\textcolor{red}{\star}$ Each $P_i$ **privately** sends the evaluation $f_i(j)$ to every participant $P_j$.
+4.5 Each $P_i$ computes the master public key $\mathit{pk} \gets \sum_j C_j(0)$.
+
+$\quad$ `+++` Each $P_i$ asserts that $\mathit{pk} = \mathit{OldPK}$
+
+4.6 $\textcolor{red}{\star}$ Each $P_i$ **privately** sends the evaluation $f_i(j)$ to every participant $P_j$.
 
 ### Round 5
 
@@ -117,15 +121,11 @@ $\quad$ `+++` Else set $f_i(0) \gets \lambda_i(I) \cdot \mathit{OldSK}$
 
 5.3 Each $P_i$ computes its private share $\mathit{sk}_i \gets \sum_j f_j(i)$.
 
-5.4 Each $P_i$ computes the master public key $\mathit{pk} \gets \sum_j C_j(0)$.
-
-$\quad$ `+++` Each $P_i$ asserts that $\mathit{pk} = \mathit{OldPK}$
-
-5.5 Each $P_i$ reliably broadcasts $\mathsf{success_i}$.
+5.4 Each $P_i$ reliably broadcasts $\mathsf{success_i}$.
 
 #### Round 5.5
 
-5.6 Each $P_i$ waits to receive $\mathsf{success_j}$ from every participant $P_j$.
+5.5 Each $P_i$ waits to receive $\mathsf{success_j}$ from every participant $P_j$.
 
 **Output:** the keypair $(\mathit{sk}_i, \mathit{pk})$.
 
