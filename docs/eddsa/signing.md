@@ -2,7 +2,7 @@
 
 This document specifies the distributed EdDSA signing protocol called FROST.
 The implementation is heavily inspired by the Zcash Foundation
-[implementation](https://github.com/ZcashFoundation/frost) and builds the
+[implementation](https://github.com/ZcashFoundation/frost) which builds the
 scheme on top of Curve25519. The implementation thus generates signatures
 that can be checked by any Ed25519 verifier.
 We implement the two round FROST protocol without the extra round responsible
