@@ -38,13 +38,6 @@ pub static SAMPLE_SIZE: LazyLock<usize> = std::sync::LazyLock::new(|| {
         .unwrap_or(15)
 });
 
-pub fn run_simulated_protocol<T>(
-    rparticipant: Participant,
-    rprot: Box<dyn Protocol<Output = T>>,
-    sprot: threshold_signatures::test_utils::Simulator,
-) -> Result<T, threshold_signatures::errors::ProtocolError> {
-    threshold_signatures::test_utils::run_simulated_protocol::<T>(rparticipant, rprot, sprot)
-}
 /// This helps defining a generic type for the benchmarks prepared outputs
 pub struct PreparedOutputs<T> {
     pub participant: Participant,
