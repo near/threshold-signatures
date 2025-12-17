@@ -570,6 +570,7 @@ pub fn assert_keygen_invariants(
             max: participants.len(),
         });
     }
+    // Step 1.1
     if threshold < 2 {
         return Err(InitializationError::ThresholdTooSmall { threshold, min: 2 });
     }
@@ -626,6 +627,7 @@ pub async fn do_reshare<C: Ciphersuite>(
     Ok(keygen_output)
 }
 
+// Step 1.1
 pub fn reshare_assertions<C: Ciphersuite>(
     participants: &[Participant],
     me: Participant,
@@ -639,6 +641,7 @@ pub fn reshare_assertions<C: Ciphersuite>(
             participants: participants.len(),
         });
     }
+    // Step 1.1
     if threshold > participants.len() {
         return Err(InitializationError::ThresholdTooLarge {
             threshold,
@@ -646,6 +649,7 @@ pub fn reshare_assertions<C: Ciphersuite>(
         });
     }
 
+    // Step 1.1
     if threshold < 2 {
         return Err(InitializationError::ThresholdTooSmall { threshold, min: 2 });
     }
@@ -663,12 +667,14 @@ pub fn reshare_assertions<C: Ciphersuite>(
     let old_participants =
         ParticipantList::new(old_participants).ok_or(InitializationError::DuplicateParticipants)?;
 
+    // Step 1.1
     if old_participants.intersection(&participants).len() < old_threshold {
         return Err(InitializationError::NotEnoughParticipantsForThreshold {
             threshold: old_threshold,
             participants: old_participants.intersection(&participants).len(),
         });
     }
+    // Step 1.1
     // if me is not in the old participant set then ensure that old_signing_key is None
     if old_participants.contains(me) && old_signing_key.is_none() {
         return Err(InitializationError::BadParameters(format!(
