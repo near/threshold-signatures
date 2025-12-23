@@ -91,12 +91,12 @@ impl<C: Ciphersuite> Polynomial<C> {
 
     /// Returns the constant term or error in case the polynomial is empty
     pub fn eval_at_zero(&self) -> Result<SerializableScalar<C>, ProtocolError> {
-        let result = self
-            .coefficients
-            .first()
-            .copied()
-            .ok_or(ProtocolError::EmptyOrZeroCoefficients)?;
-        Ok(SerializableScalar(result))
+        Ok(SerializableScalar(
+            self.coefficients
+                .first()
+                .copied()
+                .ok_or(ProtocolError::EmptyOrZeroCoefficients)?,
+        ))
     }
 
     /// Evaluates a polynomial at a certain scalar
@@ -522,15 +522,11 @@ where
         let kronecker_index_value = usize::try_from(kronecker_index_value)
             .map_err(|_| ProtocolError::InvalidInterpolationArguments)?;
 
-        let coeffs = (0..n)
-            .map(|i| {
-                if i == kronecker_index_value {
-                    SerializableScalar(<C::Group as Group>::Field::one())
-                } else {
-                    SerializableScalar(<C::Group as Group>::Field::zero())
-                }
-            })
-            .collect();
+        let mut coeffs = vec![SerializableScalar(<C::Group as Group>::Field::zero()); n];
+
+        if let Some(coeff_value) = coeffs.get_mut(kronecker_index_value) {
+            *coeff_value = SerializableScalar(<C::Group as Group>::Field::one());
+        }
         return Ok(coeffs);
     }
 
