@@ -91,12 +91,12 @@ impl<C: Ciphersuite> Polynomial<C> {
 
     /// Returns the constant term or error in case the polynomial is empty
     pub fn eval_at_zero(&self) -> Result<SerializableScalar<C>, ProtocolError> {
-        Ok(SerializableScalar(
-            self.coefficients
-                .first()
-                .copied()
-                .ok_or(ProtocolError::EmptyOrZeroCoefficients)?,
-        ))
+        let result = self
+            .coefficients
+            .first()
+            .copied()
+            .ok_or(ProtocolError::EmptyOrZeroCoefficients)?;
+        Ok(SerializableScalar(result))
     }
 
     /// Evaluates a polynomial at a certain scalar
@@ -219,30 +219,21 @@ impl<C: Ciphersuite> PolynomialCommitment<C> {
     /// Creates a `PolynomialCommitment` out of a vector of `CoefficientCommitment`
     /// This function raises Error if the vector is empty or if it is the all identity vector
     pub fn new(coefcommitments: &[CoefficientCommitment<C>]) -> Result<Self, ProtocolError> {
-        if coefcommitments.is_empty() {
-            return Err(ProtocolError::EmptyOrZeroCoefficients);
-        }
-        // count the number of zero coeffs before spotting the first non-zero
+        // count the number of zero coeffs before spotting the first non-zero from the back
         let count = coefcommitments
             .iter()
-            .rev()
-            .take_while(|x| x.value() == C::Group::identity())
-            .count();
+            .rposition(|x| x.value() != C::Group::identity())
+            .map_or(0, |i| i + 1);
 
-        // get the number of non-identity coeffs
-        let last_non_id = coefcommitments.len() - count;
-
-        let new_coefficients = coefcommitments
-            .get(..last_non_id)
-            .ok_or(ProtocolError::EmptyOrZeroCoefficients)?
-            .to_vec();
-        if new_coefficients.is_empty() {
-            Err(ProtocolError::EmptyOrZeroCoefficients)
-        } else {
-            Ok(Self {
-                coefficients: new_coefficients,
-            })
+        if count == 0 {
+            return Err(ProtocolError::EmptyOrZeroCoefficients);
         }
+
+        let new_coefficients: Vec<_> = coefcommitments.iter().take(count).copied().collect();
+
+        Ok(Self {
+            coefficients: new_coefficients,
+        })
     }
 
     /// Returns the coefficients of the
