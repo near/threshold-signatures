@@ -49,7 +49,7 @@ In protocol specifications (particularly for ECDSA), we use the following symbol
 
 ## Byzantine Reliable Broadcast: Echo Broadcast
 
-The Echo Broadcast protocol is a three round protocol that allows all honest parties involved in a communication protocol to deliver the same message or all abort even if the protocol might contain faulty participants.
+The Echo Broadcast protocol is a three round protocol that allows all honest parties involved in a communication protocol to deliver the same message or all abort even if the protocol might contain faulty participants. The protocol admits one single sender (that is broadcasting message $m$) and multiple receivers (including the sender).
 
 Such protocol assumes two properties:
 
@@ -57,5 +57,10 @@ Such protocol assumes two properties:
 
 2. The underlying peer-to-peer communication channel is authenticated.
 
-The following figure is taken from \[[CGR](https://link.springer.com/book/10.1007/978-3-642-15260-3)\] book (page 119).
+The following figure is taken from \[[CGR](https://link.springer.com/book/10.1007/978-3-642-15260-3)\] book (page 119). The figure represents the three-round echo broadcast protocol (SEND, ECHO and READY).
+
 ![Broadcast Protocol](images/broadcast.png)
+
+### SEND Round
+
+1. The Sender sends $m$ to every participant in the protocol
