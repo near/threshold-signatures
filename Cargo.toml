@@ -62,6 +62,7 @@ insta = { version = "1.43.1", features = ["json", "redactions"] }
 rand = { version = "0.8.5"}
 rand_core = { version = "0.6.4", features = ["getrandom"]}
 threshold-signatures = { path = ".", features = ["test-utils"] }
+statrs = { version = "0.18.0" }
 
 
 [lib]
@@ -89,12 +90,12 @@ required-features = ["test-utils"]
 [[bench]]
 name = "advanced_robust_ecdsa"
 harness = false
-required-features = ["test-utils"]
+required-features = ["test-utils", "statrs"]
 
 [[bench]]
 name = "advanced_ot_based_ecdsa"
 harness = false
-required-features = ["test-utils"]
+required-features = ["test-utils", "statrs"]
 
 [profile.test-release]
 inherits = "release"
