@@ -93,3 +93,12 @@ In the following description, if a participant $i$ had received a message from a
 8. $\star$ Once a counter for a message $(\mathbf{READY}, m)$ is greater than $~>2\cdot \mathsf{MaxFaulty}$, return (deliver) message $m$
 
 $\quad$ *Note: the $~\mathbf{READY}$ message is sent once by each participant, thus either in step 6 or in step 7, but not in both.*
+
+### Multi-Sender Protocol
+
+Practically speaking, cryptographic protocols often require multiple participants all acting running in a symmetric fashion. In a complex protocol, all the parties have to synchronously broadcast cryptographic elements; This implies that overall, many reliable echo broadcast protocols should be run simultaneously by each participants where no two protocols could have the same sender.
+
+To be able to allow this complexity, we implemented a multi-echo-broadcast protocol that does not make use of any parallelism. Our implementation intertwines multiple echo broadcast protocols (described above) and allow them to coexist by using session identifiers.
+
+Each session expects a different new sender decided deterministically, and each participant must attach the session identifier to the message its sending. A stored message should contain the session identifier too.  
+
