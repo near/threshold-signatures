@@ -49,18 +49,47 @@ In protocol specifications (particularly for ECDSA), we use the following symbol
 
 ## Byzantine Reliable Broadcast: Echo Broadcast
 
-The Echo Broadcast protocol is a three round protocol that allows all honest parties involved in a communication protocol to deliver the same message or all abort even if the protocol might contain faulty participants. The protocol admits one single sender (that is broadcasting message $m$) and multiple receivers (including the sender).
+The Echo Broadcast (a.k.a. Authenticated Double-Echo Broadcast) protocol is a three round protocol that allows all honest parties involved in a communication protocol to deliver the same message or all abort even if the protocol might contain faulty participants. The protocol admits one single sender (that is broadcasting message $m$) and multiple receivers (including the sender).
 
-Such protocol assumes two properties:
-
-1. The total number of faulty nodes cannot exceed one third of the maximum number of active nodes, i.e., $3 \cdot \mathsf{MaxFaulty} +1 \leq N$
-
-2. The underlying peer-to-peer communication channel is authenticated.
+> Such protocol assumes two properties:
+>
+> 1. The total number of faulty participants (nodes) cannot exceed one third of the maximum number of active participants, i.e., $3 \cdot \mathsf{MaxFaulty} +1 \leq N$
+>
+>2. The underlying peer-to-peer communication channel is authenticated.
 
 The following figure is taken from \[[CGR](https://link.springer.com/book/10.1007/978-3-642-15260-3)\] book (page 119). The figure represents the three-round echo broadcast protocol (SEND, ECHO and READY).
 
 ![Broadcast Protocol](images/broadcast.png)
 
-### SEND Round
+### Protocol Description
 
-1. The Sender sends $m$ to every participant in the protocol
+In the following description, if a participant $i$ had received a message from a participant $j$ at a specific round, then any additional  message sent by $j$ for the same round would be discarded by $i$. In other words, double voting is not taken into consideration.
+
+#### SEND Round
+
+1. $\star$ The Sender sends $(\mathbf{SEND}, m)$ to every participant $i$ in the protocol
+
+#### ECHO Round
+
+2. $\bullet$ Each participant $i$ waits to receive a message $(\mathbf{SEND},m_i)$ from the Sender.
+
+3. $\star$ Each participant $i$ sends (echoes) to every other participant $j$ the received message $(\mathbf{ECHO}, m_i)$.
+
+#### READY Round
+
+4. $\bullet$ Each participant $i$ waits to receive either a message $(\mathbf{ECHO}, m_i^j)$ (respectively $(\mathbf{READY}, m_i^j)$) from participant $j$
+
+5. Each participant $i$ stores $(\mathbf{ECHO}, m_i^j)$ (resp. $(\mathbf{READY}, m_i^j)$):
+
+    * If $(\mathbf{ECHO},m_i^j)$ (resp. $(\mathbf{READY}, m_i^j)$) has not been previously stored, then store it 
+    along with a counter initialized to $1$. 
+
+    * Otherwise, increase the corresponding counter by $1$.
+
+6. $\star$ Once a counter for a message $(\mathbf{ECHO}, m)$ is greater than $~>\frac{N+\mathsf{MaxFaulty}}{2}$, send a $(\mathbf{READY}, m)$ to every participant $i$
+
+7. $\star$ Once a counter for a message $(\mathbf{READY}, m)$ is greater than $~>\mathsf{MaxFaulty}$, send a $(\mathbf{READY}, m)$ to every participant $i$
+
+8. $\star$ Once a counter for a message $(\mathbf{READY}, m)$ is greater than $~>2\cdot \mathsf{MaxFaulty}$, return (deliver) message $m$
+
+$\quad$ *Note: the $~\mathbf{READY}$ message is sent once by each participant, thus either in step 6 or in step 7, but not in both.*
