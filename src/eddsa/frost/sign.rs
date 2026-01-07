@@ -293,8 +293,8 @@ mod test {
     use crate::crypto::hash::hash;
     use crate::eddsa::frost::{
         sign::sign,
+        test::{build_key_packages_with_dealer, test_run_signature_protocols},
         KeygenOutput, SignatureOption,
-        test::{build_key_packages_with_dealer, test_run_signature_protocols}
     };
     use crate::participants::{Participant, ParticipantList};
     use crate::protocol::Protocol;
