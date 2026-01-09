@@ -7,11 +7,11 @@ a stronger notion of security than the one promised by plain PedPop.
 PedPop+ is a five rounds protocol and makes use in three of its rounds of a reliable broadcast channel. A reliable broadcast is a 3 round protocol,
 implying that the total number of PedPop+ rounds 11. The broadcast channel is implemented in `src/protocol/echo_broadcast.rs`.
 
-The implemented DKG serves as a generic one that can be used with multiple different underlying elliptic curves. We thus use it with `Secp256k1` for ECDSA schemes, `Curve25519` for EdDSA scheme, and `BLS12_381` for the confidential key derivation functionality.
+The implemented DKG serves as a generic one that can be used with multiple different underlying elliptic curves. We thus use it with `Secp256k1` for ECDSA schemes, `Curve25519` for EdDSA scheme, and `BLS12-381` for the confidential key derivation functionality.
 
 ## Keygen, Reshare and Refresh
 
-The core of the dkg protocol is implemented in a function called `do_keyshare` and serves for three applications:
+The core of the DKG protocol is implemented in a function called `do_keyshare` and serves for three applications:
 
 * Key generation: denoted in the implementation with `keygen`. It allows a set of parties to jointly generate from scratch a private key share each and a master public key. The master public key should be common for all the participants and should reflect each of the private shares.
 
@@ -27,7 +27,7 @@ The BFT threshold states that the maximum number of faulty nodes a distributed s
 
 $$\mathsf{MaxFaulty} \leq \frac{N - 1}{3}$$
 
-The cryptography threshold refers to the maximum number of necessay malicious parties ($\mathsf{MaxMalicious}$) a certain scheme can handle without compromising on the security and assuming the existance of an underlying reliable broadcast channel. $\mathsf{MaxMalicious}$ is scheme dependent and can have a different value than $\mathsf{MaxFaulty}$. For instance, in the OT based ECDSA, $\mathsf{MaxMalicious}$ can be up to $N-1$, but in Robust ECDSA scheme $\mathsf{MaxMalicious}$ must not exceed $\frac{N - 1}{2}$.
+The cryptographic threshold refers to the maximum number of malicious parties ($\mathsf{MaxMalicious}$) that a scheme can tolerate without compromising security, assuming the existence of an underlying reliable broadcast channel. $\mathsf{MaxMalicious}$ is scheme dependent and can have a different value than $\mathsf{MaxFaulty}$. For instance, in the OT based ECDSA, $\mathsf{MaxMalicious}$ can be up to $N-1$, but in Robust ECDSA scheme $\mathsf{MaxMalicious}$ must not exceed $\frac{N - 1}{2}$.
 
 ### DKG and thresholds
 
@@ -38,11 +38,11 @@ $\mathsf{MaxFaulty} = \frac{N - 1}{3}$ as an invariable parameter and allow our 
 
 Let $P_1, \cdots P_N$ be $N$ different participants, and $\mathsf{MaxMalicious}$ be the desired cryptography threshold. Let $H_1, H_2, H_3$ be domain separated hash functions.
 
-We define PedPop+ key generation as follows; All the instruction preceeded with `+++` are added to the key generation, transforming it to the key resharing protocol.
+We define PedPop+ key generation as follows, where all the instructions preceded with `+++` are added to the key generation, transforming it to the key resharing protocol.
 
 No special inputs are given to the **key generation** protocol beyond the public parameters defined above. However, the inputs to the **key resharing** are as follows:
 
-1. `+++` The old private share $\mathit{OldSK}$ that $P_i$ held prior to the key resharing. This value is set to None only if $P_i$ is a freshly new participant.
+1. `+++` The old private share $\mathit{secret}_i$ that $P_i$ held prior to the key resharing. This value is set to None only if $P_i$ is a freshly new participant.
 
 2. `+++` The old participants set $\mathit{OldSigners}$ that held valid private shares prior to the key resharing.
 
@@ -76,7 +76,7 @@ $\quad$ `+++` Each $P_i$ computes the following:
 
 $\quad$ `+++` If $P_i\notin \mathit{OldSigners}$ then set $f_i(0) \gets 0$
 
-$\quad$ `+++` Else set $f_i(0) \gets \lambda_i(I) \cdot \mathit{OldSK}$ where $\lambda_i(I)$ is the lagrange coefficient $\lambda_i(I) = \Pi_{j\in I} \frac{j}{i-j}$
+$\quad$ `+++` Else set $f_i(0) \gets \lambda_i(I) \cdot \mathit{secret}_i$ where $\lambda_i(I)$ is the lagrange coefficient $\lambda_i(I) = \Pi_{j\in I} \frac{j}{i-j}$
 
 
 2.4 Each $P_i$ generates a commitment of the polynomial $C_i \gets f_i \cdot G$ (commits every coefficient of the polynomial).
