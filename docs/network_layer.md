@@ -89,7 +89,7 @@ Otherwise, increase the corresponding counter by $1$.
 
 8. $\star$ Once a counter for a message $(\mathbf{READY}, m)$ is greater than $~>2\cdot \mathsf{MaxFaulty}$, return (deliver) message $m$
 
-$\quad$ *Note: the $~\mathbf{READY}$ message is sent once by each participant, thus either in step 6 or in step 7, but not in both.*
+$\quad$ *Note: the* $~\mathbf{READY}$ *message is sent once by each participant, thus either in step 6 or in step 7, but not in both.*
 
 ### Multi-Sender Protocol
 
