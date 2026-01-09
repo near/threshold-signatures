@@ -27,16 +27,16 @@ The BFT threshold states that the maximum number of faulty nodes a distributed s
 
 $$\mathsf{MaxFaulty} \leq \frac{N - 1}{3}$$
 
-The cryptographic threshold refers to the maximum number of malicious parties ($\mathsf{MaxMalicious}$) that a scheme can tolerate without compromising security, assuming the existence of an underlying reliable broadcast channel. $\mathsf{MaxMalicious}$ is scheme dependent and can have a different value than $\mathsf{MaxFaulty}$. For instance, in the OT based ECDSA, $\mathsf{MaxMalicious}$ can be up to $N-1$, but in Robust ECDSA scheme $\mathsf{MaxMalicious}$ must not exceed $\frac{N - 1}{2}$.
+The cryptographic threshold refers to the maximum number of malicious parties ($\mathsf{threshold}$) that a scheme can tolerate without compromising security, assuming the existence of an underlying reliable broadcast channel. $\mathsf{threshold}$ is scheme dependent and can have a different value than $\mathsf{MaxFaulty}$. For instance, in the OT based ECDSA, $\mathsf{threshold}$ can be up to $N-1$, but in Robust ECDSA scheme $\mathsf{threshold}$ must not exceed $\frac{N - 1}{2}$.
 
 ### DKG and thresholds
 
 Due to the fact that PedPop+ utilizes reliable broadcast channel to securely generate private shares, it thus lies on the edge between the asynchronous distributed systems and cryptography. For this reason, we set
-$\mathsf{MaxFaulty} = \frac{N - 1}{3}$ as an invariable parameter and allow our key generation and key resharing protocols to fix/modify only the $\mathsf{MaxMalicious}$ threshold depending on the scheme requirements and on the library user's choice.
+$\mathsf{MaxFaulty} = \frac{N - 1}{3}$ as an invariable parameter and allow our key generation and key resharing protocols to fix/modify only the $\mathsf{threshold}$ threshold depending on the scheme requirements and on the library user's choice.
 
 ## Technical Details: Key Generation & Key Resharing
 
-Let $P_1, \cdots P_N$ be $N$ different participants, and $\mathsf{MaxMalicious}$ be the desired cryptography threshold. Let $H_1, H_2, H_3$ be domain separated hash functions.
+Let $P_1, \cdots P_N$ be $N$ different participants, and $\mathsf{threshold}$ be the desired cryptography threshold. Let $H_1, H_2, H_3$ be domain separated hash functions.
 
 We define PedPop+ key generation as follows, where all the instructions preceded with `+++` are added to the key generation, transforming it to the key resharing protocol.
 
@@ -48,16 +48,16 @@ No special inputs are given to the **key generation** protocol beyond the public
 
 3. `+++` The old master public key $\mathit{OldPK}$ that the $\mathit{OldSigners}$ held prior to the key resharing.
 
-4. `+++` The old cryptography threshold $\mathsf{OldMaxMalicious}$ prior to the key resharing.
+4. `+++` The old cryptography threshold $\mathsf{OldThreshold}$ prior to the key resharing.
 ``
 
 ### Round 1
 
-1.1 Each $P_i$ asserts that $1 < \mathsf{MaxMalicious} < N$.
+1.1 Each $P_i$ asserts that $1 < \mathsf{threshold} < N$.
 
 $\quad$ `+++` Each $P_i$ sets $I \gets \set{P_1 \ldots P_N} \cap \mathit{OldSigners}$
 
-$\quad$ `+++` Each $P_i$ asserts that $\mathsf{OldMaxMalicious} \leq |I|$.
+$\quad$ `+++` Each $P_i$ asserts that $\mathsf{OldThreshold} \leq |I|$.
 
 1.2 Each $P_i$ generates a random 32-byte sesssion identifier $\mathit{sid}_i$
 
@@ -69,7 +69,7 @@ $\quad$ `+++` Each $P_i$ asserts that $\mathsf{OldMaxMalicious} \leq |I|$.
 
 2.2 Each $P_i$ computes the hash $\mathit{sid} \gets H_1(\mathit{sid}_1, \cdots \mathit{sid}_N)$
 
-2.3 Each $P_i$ generates a random polynomial $f_i$ of degree $\mathsf{MaxMalicious}$.
+2.3 Each $P_i$ generates a random polynomial $f_i$ of degree $\mathsf{threshold}$.
 
 
 $\quad$ `+++` Each $P_i$ computes the following:
@@ -132,4 +132,4 @@ $\quad$ `+++` Each $P_i$ asserts that $\mathit{pk} = \mathit{OldPK}$
 
 ### Key Refresh
 
-A key refresh protocol is a special case of the key resharing where $\mathit{OldSigners} = \set{P_1, \ldots P_N}$ and where $\mathsf{OldMaxMalicious} = \mathsf{MaxMalicious}$
+A key refresh protocol is a special case of the key resharing where $\mathit{OldSigners} = \set{P_1, \ldots P_N}$ and where $\mathsf{OldThreshold} = \mathsf{threshold}$
