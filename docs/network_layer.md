@@ -81,10 +81,10 @@ In the following description, if a participant $i$ had received a message from a
 
 5. Each participant $i$ stores $(\mathbf{ECHO}, m_i^j)$ (resp. $(\mathbf{READY}, m_i^j)$):
 
-    * If $(\mathbf{ECHO},m_i^j)$ (resp. $(\mathbf{READY}, m_i^j)$) has not been previously stored, then store it 
+* If $(\mathbf{ECHO},m_i^j)$ (resp. $(\mathbf{READY}, m_i^j)$) has not been previously stored, then store it 
     along with a counter initialized to $1$. 
 
-    * Otherwise, increase the corresponding counter by $1$.
+* Otherwise, increase the corresponding counter by $1$.
 
 6. $\star$ Once a counter for a message $(\mathbf{ECHO}, m)$ is greater than $~>\frac{N+\mathsf{MaxFaulty}}{2}$, send a $(\mathbf{READY}, m)$ to every participant $i$
 
@@ -96,7 +96,7 @@ $\quad$ *Note: the $~\mathbf{READY}$ message is sent once by each participant, t
 
 ### Multi-Sender Protocol
 
-Practically speaking, cryptographic protocols often require multiple participants all acting running in a symmetric fashion. In a complex protocol, all the parties have to synchronously broadcast cryptographic elements; This implies that overall, many reliable echo broadcast protocols should be run simultaneously by each participants where no two protocols could have the same sender.
+In practice, cryptographic protocols typically involve multiple participants that execute the protocol symmetrically. In complex settings, all parties are required to synchronously broadcast cryptographic data. To achieve this, each participant must run several reliable echo broadcast protocols in parallel, with the constraint that each instance has a distinct sender.
 
 To be able to allow this complexity, we implemented a multi-echo-broadcast protocol that does not make use of any parallelism. Our implementation intertwines multiple echo broadcast protocols (described above) and allow them to coexist by using session identifiers.
 
