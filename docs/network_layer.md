@@ -96,5 +96,6 @@ $\quad$ *Note: the* $~\mathbf{READY}$ *message is sent once by each participant,
 In practice, cryptographic protocols typically involve multiple participants that execute the protocol symmetrically. In complex settings, all parties are required to synchronously broadcast cryptographic data. To achieve this, each participant must run several reliable echo broadcast protocols in parallel, with the constraint that each instance has a distinct sender.
 To be able to allow this complexity, we implemented a multi-echo-broadcast protocol that does not make use of any parallelism. Our implementation intertwines multiple echo broadcast protocols (described above) and allow them to coexist by using session identifiers.
 
-Each session expects a different new sender decided deterministically, and each participant must attach the session identifier to the message its sending. A stored message should contain the session identifier too.  
+Each session deterministically selects a different sender. Every participant must attach the session identifier to any message it sends, and stored messages must also include this identifier.
 
+From an implementation perspective, our `send_many` function is optimized to avoid delivering a message back to its sender. To accommodate scenarios in which a participant must effectively send a message to itself, we introduce the `is_simulated_vote` flag. This flag allows us to simulate a message that is both sent and received by the same participant, ensuring that the total number of message votes is counted correctly.
