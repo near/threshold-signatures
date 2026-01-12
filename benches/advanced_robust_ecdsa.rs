@@ -1,14 +1,14 @@
 #![allow(clippy::indexing_slicing)]
 
-use criterion::{criterion_group, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use frost_secp256k1::VerifyingKey;
 use rand::{Rng, RngCore};
 use rand_core::SeedableRng;
 
 mod bench_utils;
 use crate::bench_utils::{
-    robust_ecdsa_prepare_presign, robust_ecdsa_prepare_sign, PreparedOutputs, MAX_MALICIOUS,
-    SAMPLE_SIZE,
+    analyze_received_sizes, robust_ecdsa_prepare_presign, robust_ecdsa_prepare_sign,
+    PreparedOutputs, MAX_MALICIOUS, SAMPLE_SIZE,
 };
 use threshold_signatures::{
     ecdsa::{
@@ -53,7 +53,7 @@ fn bench_presign(c: &mut Criterion) {
             );
         },
     );
-    analyze_received_sizes(&mut sizes, true);
+    analyze_received_sizes(&sizes, true);
 }
 
 /// Benches the signing protocol
@@ -84,11 +84,11 @@ fn bench_sign(c: &mut Criterion) {
             );
         },
     );
-    analyze_received_sizes(&mut sizes, true);
+    analyze_received_sizes(&sizes, true);
 }
 
 criterion_group!(benches, bench_presign, bench_sign);
-criterion::criterion_main!(benches);
+criterion_main!(benches);
 
 /****************************** Helpers ******************************/
 /// Used to simulate robust ecdsa presignatures for benchmarking

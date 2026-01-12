@@ -1,15 +1,15 @@
 #![allow(clippy::missing_panics_doc)]
 #![allow(clippy::indexing_slicing)]
 
-use criterion::{criterion_group, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use frost_secp256k1::VerifyingKey;
 use rand::{Rng, RngCore};
 use rand_core::SeedableRng;
 
 mod bench_utils;
 use crate::bench_utils::{
-    ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign, ot_ecdsa_prepare_triples, PreparedOutputs,
-    MAX_MALICIOUS, SAMPLE_SIZE,
+    analyze_received_sizes, ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign,
+    ot_ecdsa_prepare_triples, PreparedOutputs, MAX_MALICIOUS, SAMPLE_SIZE,
 };
 
 use threshold_signatures::{
@@ -50,7 +50,6 @@ fn bench_triples(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("triples");
     group.sample_size(*SAMPLE_SIZE);
-
     group.bench_function(
         format!("ot_ecdsa_triples_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
@@ -66,7 +65,7 @@ fn bench_triples(c: &mut Criterion) {
             );
         },
     );
-    analyze_received_sizes(&mut sizes, true);
+    analyze_received_sizes(&sizes, true);
 }
 
 /// Benches the presigning protocol
@@ -97,7 +96,7 @@ fn bench_presign(c: &mut Criterion) {
             );
         },
     );
-    analyze_received_sizes(&mut sizes, true);
+    analyze_received_sizes(&sizes, true);
 }
 
 /// Benches the signing protocol
@@ -132,11 +131,11 @@ fn bench_sign(c: &mut Criterion) {
             );
         },
     );
-    analyze_received_sizes(&mut sizes, true);
+    analyze_received_sizes(&sizes, true);
 }
 
 criterion_group!(benches, bench_triples, bench_presign, bench_sign);
-criterion::criterion_main!(benches);
+criterion_main!(benches);
 
 /****************************** Helpers ******************************/
 /// Used to simulate ot based ecdsa triples for benchmarking
