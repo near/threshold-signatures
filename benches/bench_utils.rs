@@ -1,5 +1,5 @@
-#![allow(dead_code)]
-#![allow(clippy::missing_panics_doc)]
+#![allow(dead_code, clippy::missing_panics_doc, clippy::indexing_slicing)]
+
 use frost_secp256k1::VerifyingKey;
 use k256::AffinePoint;
 use rand::Rng;
@@ -30,7 +30,7 @@ pub static MAX_MALICIOUS: LazyLock<usize> = std::sync::LazyLock::new(|| {
         .unwrap_or(6)
 });
 
-// fix malicious number of participants
+// fix number of samples
 pub static SAMPLE_SIZE: LazyLock<usize> = std::sync::LazyLock::new(|| {
     env::var("SAMPLE_SIZE")
         .ok()
