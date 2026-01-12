@@ -27,12 +27,12 @@ The BFT threshold states that the maximum number of faulty nodes a distributed s
 
 $$\mathsf{MaxFaulty} \leq \frac{N - 1}{3}$$
 
-The cryptographic threshold refers to the maximum number of malicious parties ($\mathsf{threshold}$) that a scheme can tolerate without compromising security, assuming the existence of an underlying reliable broadcast channel. $\mathsf{threshold}$ is scheme dependent and can have a different value than $\mathsf{MaxFaulty}$. For instance, in the OT based ECDSA, $\mathsf{threshold}$ can be up to $N-1$, but in Robust ECDSA scheme $\mathsf{threshold}$ must not exceed $\frac{N - 1}{2}$.
+The cryptographic threshold refers to the maximum number of malicious parties plus one ($\mathsf{threshold}$) that a scheme can tolerate without compromising security, assuming the existence of an underlying reliable broadcast channel. $\mathsf{threshold}$ is scheme dependent and can have a different value than $\mathsf{MaxFaulty}$. For instance, in the OT based ECDSA, $\mathsf{threshold}$ can be up to $N$, but in Robust ECDSA scheme $\mathsf{threshold}$ must not exceed $\frac{N - 1}{2}+1$.
 
 ### DKG and thresholds
 
 Due to the fact that PedPop+ utilizes reliable broadcast channel to securely generate private shares, it thus lies on the edge between the asynchronous distributed systems and cryptography. For this reason, we set
-$\mathsf{MaxFaulty} = \frac{N - 1}{3}$ as an invariable parameter and allow our key generation and key resharing protocols to fix/modify only the $\mathsf{threshold}$ threshold depending on the scheme requirements and on the library user's choice.
+$\mathsf{MaxFaulty} = \frac{N - 1}{3}$ as an invariable parameter and allow our key generation and key resharing protocols to fix/modify only the $\mathsf{threshold}$ dependinthresholdg on the scheme requirements and on the library user's choice.
 
 ## Technical Details: Key Generation & Key Resharing
 
@@ -69,7 +69,7 @@ $\quad$ `+++` Each $P_i$ asserts that $\mathsf{OldThreshold} \leq |I|$.
 
 2.2 Each $P_i$ computes the hash $\mathit{sid} \gets H_1(\mathit{sid}_1, \cdots \mathit{sid}_N)$
 
-2.3 Each $P_i$ generates a random polynomial $f_i$ of degree $\mathsf{threshold}$.
+2.3 Each $P_i$ generates a random polynomial $f_i$ of degree $\mathsf{threshold}-1$.
 
 
 $\quad$ `+++` Each $P_i$ computes the following:
