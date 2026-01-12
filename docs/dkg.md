@@ -32,7 +32,7 @@ The cryptographic threshold refers to the maximum number of malicious parties pl
 ### DKG and thresholds
 
 Due to the fact that PedPop+ utilizes reliable broadcast channel to securely generate private shares, it thus lies on the edge between the asynchronous distributed systems and cryptography. For this reason, we set
-$\mathsf{MaxFaulty} = \frac{N - 1}{3}$ as an invariable parameter and allow our key generation and key resharing protocols to fix/modify only the $\mathsf{threshold}$ dependinthresholdg on the scheme requirements and on the library user's choice.
+$\mathsf{MaxFaulty} = \frac{N - 1}{3}$ as an invariable parameter and allow our key generation and key resharing protocols to fix/modify only the $\mathsf{threshold}$ depending on the scheme requirements and on the library user's choice.
 
 ## Technical Details: Key Generation & Key Resharing
 
