@@ -14,6 +14,7 @@ use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFor
 
 // JubJub Curve
 pub use reddsa::frost::redjubjub::JubjubBlake2b512;
+
 impl ScalarSerializationFormat for JubjubBlake2b512 {
     fn bytes_order() -> BytesOrder {
         BytesOrder::LittleEndian
@@ -21,8 +22,6 @@ impl ScalarSerializationFormat for JubjubBlake2b512 {
 }
 impl Ciphersuite for JubjubBlake2b512 {}
 
-pub type SigningShare = crate::SigningShare<JubjubBlake2b512>;
-pub type SigningCommitments = frost_core::round1::SigningCommitments<JubjubBlake2b512>;
 pub type KeygenOutput = crate::KeygenOutput<JubjubBlake2b512>;
 
 /// The necessary inputs for the creation of a presignature.
@@ -40,7 +39,7 @@ pub struct PresignOutput {
     /// The public nonce commitment.
     pub nonces: frost_core::round1::SigningNonces<JubjubBlake2b512>,
     #[zeroize[skip]]
-    pub commitments_map: BTreeMap<frost_ed25519::Identifier, SigningCommitments>,
+    pub commitments_map: BTreeMap<frost_core::Identifier<JubjubBlake2b512>, frost_core::round1::SigningCommitments<JubjubBlake2b512>>,
 }
 
 

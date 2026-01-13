@@ -1,4 +1,8 @@
-use super::{PresignArguments, PresignOutput, SigningShare, SigningCommitments};
+use super::{
+    PresignArguments,
+    PresignOutput,
+    JubjubBlake2b512,
+};
 use crate::{
     participants::{Participant, ParticipantList},
     errors::{InitializationError, ProtocolError},
@@ -7,12 +11,13 @@ use crate::{
         internal::{make_protocol, Comms, SharedChannel},
         Protocol,
     },
+    SigningShare
 };
 use std::collections::BTreeMap;
 use rand_core::CryptoRngCore;
-use frost_core::round1;
+use frost_core::{Identifier, round1};
 
-
+type J = JubjubBlake2b512;
 /// The presignature protocol.
 ///
 /// This is the first phase of performing a signature, in which we perform
@@ -54,11 +59,11 @@ async fn do_presign(
     mut chan: SharedChannel,
     participants: ParticipantList,
     me: Participant,
-    signing_share: SigningShare,
+    signing_share: SigningShare::<J>,
     mut rng: impl CryptoRngCore,
 ) -> Result<PresignOutput, ProtocolError> {
     // Round 1
-    let mut commitments_map: BTreeMap<frost_ed25519::Identifier, SigningCommitments> =
+    let mut commitments_map: BTreeMap<Identifier::<J>, round1::SigningCommitments::<J>> =
         BTreeMap::new();
 
     // Creating two commitments and corresponding nonces

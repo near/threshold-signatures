@@ -1,7 +1,7 @@
 //! This module and the frost one are supposed to have the same helper function
 //! However, currently the reddsa is implemented  wraps a signature generation functionality from `Frost` library
 //!  into `cait-sith::Protocol` representation.
-use super::{KeygenOutput, SignatureOption};
+use super::{KeygenOutput, SignatureOption, PresignOutput, JubjubBlake2b512};
 use crate::errors::{InitializationError, ProtocolError};
 use crate::participants::{Participant, ParticipantList};
 use crate::protocol::helpers::recv_from_others;
@@ -14,9 +14,7 @@ use rand_core::CryptoRngCore;
 use std::collections::BTreeMap;
 use zeroize::Zeroizing;
 
-use reddsa::SigType;
-
-use reddsa::SigningKey;
+type J = JubjubBlake2b512;
 
 /// Returns a future that executes signature protocol for *the Coordinator*.
 ///
@@ -33,14 +31,15 @@ async fn do_sign_coordinator(
     threshold: usize,
     me: Participant,
     keygen_output: KeygenOutput,
+    presignature: PresignOutput,
     message: Vec<u8>,
-    signature_randomizer: Randomizer<C>,
+    signature_randomizer: Randomizer<J>,
     rng: &mut impl CryptoRngCore,
 ) -> Result<SignatureOption, ProtocolError> {
 
-    let signing_package = frost_ed25519::SigningPackage::new(commitments_map, message.as_slice());
+    let signing_package = frost_core::SigningPackage::<J>::new(presignature.commitments_map, message.as_slice());
 
-    let mut signature_shares: BTreeMap<frost_ed25519::Identifier, round2::SignatureShare> =
+    let mut signature_shares: BTreeMap<::Identifier, round2::SignatureShare::<J>> =
         BTreeMap::new();
 
     // --- Round 2
@@ -115,8 +114,9 @@ async fn do_sign_participant(
     me: Participant,
     coordinator: Participant,
     keygen_output: KeygenOutput,
+    presignature: PresignOutput,
     message: Vec<u8>,
-    signature_randomizer: Randomizer<C>,
+    signature_randomizer: Randomizer<J>,
     rng: &mut impl CryptoRngCore,
 ) -> Result<SignatureOption, ProtocolError> {
     // --- Round 1.
@@ -128,6 +128,7 @@ async fn do_sign_participant(
         ));
     }
 
+    let signing_package = frost_core::SigningPackage::<J>::new(commitments_map, message.as_slice());
     // --- Round 2
     let vk_package = keygen_output.public_key;
     let key_package = construct_key_package(threshold, me, signing_share, &vk_package)?;
