@@ -57,7 +57,7 @@ The Echo Broadcast (a.k.a. Authenticated Double-Echo Broadcast) protocol is a th
 >
 >2. The underlying peer-to-peer communication channel is authenticated.
 
-The following figure is taken from \[[CGR](https://link.springer.com/book/10.1007/978-3-642-15260-3)\] book (page 119). The figure represents the three-round echo broadcast protocol (SEND, ECHO and READY).
+The following figure is taken from \[[CGR](https://link.springer.com/book/10.1007/978-3-642-15260-3)\] book (section 3.11). The figure represents the three-round echo broadcast protocol (SEND, ECHO and READY).
 
 ![Broadcast Protocol](images/broadcast.png)
 
