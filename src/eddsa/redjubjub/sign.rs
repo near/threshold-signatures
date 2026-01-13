@@ -8,8 +8,8 @@ use crate::protocol::helpers::recv_from_others;
 use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
 use crate::protocol::Protocol;
 
-use frost_ed25519::keys::{KeyPackage, PublicKeyPackage, SigningShare};
-use frost_ed25519::{aggregate, rand_core, round1, round2, VerifyingKey};
+use frost_core::keys::{KeyPackage, PublicKeyPackage, SigningShare};
+use frost_core::{aggregate, round2, VerifyingKey};
 use rand_core::CryptoRngCore;
 use std::collections::BTreeMap;
 use zeroize::Zeroizing;
@@ -37,35 +37,11 @@ async fn do_sign_coordinator(
     signature_randomizer: Randomizer<C>,
     rng: &mut impl CryptoRngCore,
 ) -> Result<SignatureOption, ProtocolError> {
-    // --- Round 1.
-    // * Wait for other parties' commitments.
-
-    let mut commitments_map: BTreeMap<frost_ed25519::Identifier, round1::SigningCommitments> =
-        BTreeMap::new();
-
-    let signing_share = SigningShare::new(keygen_output.private_share.to_scalar());
-
-    // Step 1.1 (and implicitely 1.2)
-    let (nonces, commitments) = round1::commit(&signing_share, rng);
-    let nonces = Zeroizing::new(nonces);
-    commitments_map.insert(me.to_identifier()?, commitments);
-
-    // Step 1.3
-    let commit_waitpoint = chan.next_waitpoint();
-
-    // Step 1.4
-    for (from, commitment) in recv_from_others(&chan, commit_waitpoint, &participants, me).await? {
-        commitments_map.insert(from.to_identifier()?, commitment);
-    }
 
     let signing_package = frost_ed25519::SigningPackage::new(commitments_map, message.as_slice());
 
     let mut signature_shares: BTreeMap<frost_ed25519::Identifier, round2::SignatureShare> =
         BTreeMap::new();
-
-    // Step 1.5
-    let r2_wait_point = chan.next_waitpoint();
-    chan.send_many(r2_wait_point, &signing_package)?;
 
     // --- Round 2
     // * Wait for each other's signature share
@@ -77,8 +53,9 @@ async fn do_sign_coordinator(
         .map_err(|e| ProtocolError::AssertionFailed(e.to_string()))?;
 
     // Step 2.5 (2.4 is implicit)
+    let sign_waitpoint = chan.next_waitpoint();
     signature_shares.insert(me.to_identifier()?, signature_share);
-    for (from, signature_share) in recv_from_others(&chan, r2_wait_point, &participants, me).await?
+    for (from, signature_share) in recv_from_others(&chan, sign_waitpoint, &participants, me).await?
     {
         signature_shares.insert(from.to_identifier()?, signature_share);
     }
@@ -139,6 +116,7 @@ async fn do_sign_participant(
     coordinator: Participant,
     keygen_output: KeygenOutput,
     message: Vec<u8>,
+    signature_randomizer: Randomizer<C>,
     rng: &mut impl CryptoRngCore,
 ) -> Result<SignatureOption, ProtocolError> {
     // --- Round 1.
@@ -150,45 +128,7 @@ async fn do_sign_participant(
         ));
     }
 
-    // create signing share out of private_share
-    let signing_share = SigningShare::new(keygen_output.private_share.to_scalar());
-
-    // Step 1.1
-    let (nonces, commitments) = round1::commit(&signing_share, rng);
-    // Ensures the values are zeroized on drop
-    let nonces = Zeroizing::new(nonces);
-
-    // * Wait for an initial message from a coordinator.
-    // * Send coordinator our commitment.
-
-    // Step 1.2
-    let commit_waitpoint = chan.next_waitpoint();
-    chan.send_private(commit_waitpoint, coordinator, &commitments)?;
-
-    // --- Round 2.
-    // * Wait for a signing package.
-    // * Send our signature share.
-
-    // Step 2.1
-    let r2_wait_point = chan.next_waitpoint();
-    let signing_package = loop {
-        let (from, signing_package): (_, frost_ed25519::SigningPackage) =
-            chan.recv(r2_wait_point).await?;
-        if from != coordinator {
-            continue;
-        }
-        break signing_package;
-    };
-
-    // Step 2.2
-    if signing_package.message() != message.as_slice() {
-        return Err(ProtocolError::AssertionFailed(
-            "Expected message doesn't match with the actual message received in a signing package"
-                .to_string(),
-        ));
-    }
-
-    // Step 2.3
+    // --- Round 2
     let vk_package = keygen_output.public_key;
     let key_package = construct_key_package(threshold, me, signing_share, &vk_package)?;
     // Ensures the values are zeroized on drop
@@ -196,8 +136,8 @@ async fn do_sign_participant(
     let signature_share = round2::sign(&signing_package, &nonces, &key_package)
         .map_err(|e| ProtocolError::AssertionFailed(e.to_string()))?;
 
-    // Step 2.4
-    chan.send_private(r2_wait_point, coordinator, &signature_share)?;
+    let sign_waitpoint = chan.next_waitpoint();
+    chan.send_private(sign_waitpoint, coordinator, &signature_share)?;
 
     Ok(None)
 }
