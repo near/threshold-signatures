@@ -8,8 +8,6 @@ mod test;
 
 use serde::{Deserialize, Serialize};
 use zeroize::ZeroizeOnDrop;
-use frost_core::round1::SigningNonces;
-use frost_core::round1::SigningCommitments;
 
 use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat};
 
@@ -23,6 +21,7 @@ impl ScalarSerializationFormat for JubjubBlake2b512 {
 impl Ciphersuite for JubjubBlake2b512 {}
 
 pub type SigningShare = crate::SigningShare<JubjubBlake2b512>;
+pub type SigningCommitments = frost_core::round1::SigningCommitments<JubjubBlake2b512>;
 pub type KeygenOutput = crate::KeygenOutput<JubjubBlake2b512>;
 
 /// The necessary inputs for the creation of a presignature.
@@ -38,9 +37,9 @@ pub struct PresignArguments {
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, ZeroizeOnDrop)]
 pub struct PresignOutput {
     /// The public nonce commitment.
-    pub nonces: SigningNonces<JubjubBlake2b512>,
+    pub nonces: frost_core::round1::SigningNonces<JubjubBlake2b512>,
     #[zeroize[skip]]
-    pub commitments: SigningCommitments<JubjubBlake2b512>,
+    pub commitments: SigningCommitments,
 }
 
 
