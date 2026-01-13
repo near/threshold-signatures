@@ -12,7 +12,7 @@ Our protocols operate on two fundamental assumptions about the network channels:
 <details>
   <summary>Practical Implementation</summary>
   In practice, we satisfy both requirements by running all protocols over a network where participants are connected via a TLS channel. This ensures both, authentication and confidentiality.
-</details>
+> In practice, we satisfy both requirements by running all protocols over a network where participants are connected via a TLS channel. This ensures both, authentication and confidentiality.
 
 ## Communication Primitives
 
