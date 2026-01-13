@@ -7,6 +7,7 @@ pub mod sign;
 mod test;
 
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use zeroize::ZeroizeOnDrop;
 
 use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat};
@@ -39,7 +40,7 @@ pub struct PresignOutput {
     /// The public nonce commitment.
     pub nonces: frost_core::round1::SigningNonces<JubjubBlake2b512>,
     #[zeroize[skip]]
-    pub commitments: SigningCommitments,
+    pub commitments_map: BTreeMap<frost_ed25519::Identifier, SigningCommitments>,
 }
 
 

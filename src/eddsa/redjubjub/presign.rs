@@ -1,14 +1,14 @@
-use super::{PresignArguments, PresignOutput, SigningShare};
+use super::{PresignArguments, PresignOutput, SigningShare, SigningCommitments};
 use crate::{
     participants::{Participant, ParticipantList},
     errors::{InitializationError, ProtocolError},
     protocol::{
+        helpers::recv_from_others,
         internal::{make_protocol, Comms, SharedChannel},
         Protocol,
     },
 };
 use std::collections::BTreeMap;
-use zeroize::Zeroizing;
 use rand_core::CryptoRngCore;
 use frost_core::round1;
 
@@ -58,22 +58,26 @@ async fn do_presign(
     mut rng: impl CryptoRngCore,
 ) -> Result<PresignOutput, ProtocolError> {
     // Round 1
-    let mut commitments_map: BTreeMap<frost_ed25519::Identifier, round1::SigningCommitments> =
+    let mut commitments_map: BTreeMap<frost_ed25519::Identifier, SigningCommitments> =
         BTreeMap::new();
 
-
-    // Step 1.1 (and implicitely 1.2)
-    let (nonces, commitments) = round1::commit(&signing_share, rng);
-    let nonces = Zeroizing::new(nonces);
+    // Creating two commitments and corresponding nonces
+    let (nonces, commitments) = round1::commit(&signing_share, &mut rng);
+    // TODO decide whether this is essential or not
+    // let nonces = Zeroizing::new(nonces);
     commitments_map.insert(me.to_identifier()?, commitments);
 
-    // Step 1.3
     let commit_waitpoint = chan.next_waitpoint();
-
-    // Step 1.4
+    // Sending the commitments to all
+    chan.send_many(commit_waitpoint, &commitments)?;
+    
+    // Collecting the commitments
     for (from, commitment) in recv_from_others(&chan, commit_waitpoint, &participants, me).await? {
         commitments_map.insert(from.to_identifier()?, commitment);
     }
 
-    unimplemented!()
+    Ok( PresignOutput{
+            nonces,
+            commitments_map,
+    })
 }
