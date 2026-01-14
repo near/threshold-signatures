@@ -71,7 +71,7 @@ $\quad$ `+++` Each $P_i$ computes the following:
 $\quad$ `+++` If $P_i\notin \mathit{OldSigners}$ then set $f_i(0) \gets 0$
 
 $\quad$ `+++` Else set $f_i(0) \gets \lambda_i(I) \cdot \mathit{secret}_i$
-where $\lambda_i(I)$ is the lagrange coefficient
+where the lagrange coefficient is defined as
 $\lambda_i(I) = \prod_{j\in I\setminus \set{i}} \frac{j}{i-j}$
 
 
