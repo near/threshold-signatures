@@ -111,7 +111,8 @@ $\quad$ `+++` Each $P_i$ asserts that $\mathit{pk} = \mathit{OldPK}$
 
 5.1 Each $P_i$ waits to receive $f_j(i)$ from every participant $P_j$.
 
-5.2 Each $P_i$ asserts that: $\forall j\in\set{1, \cdots N}, \quad f_j(i) \cdot G = \sum_m j^m \cdot C_j[m]$ where $C_j[m]$ denotes the m-th coefficient of $C_j$.
+5.2 Each $P_i$ asserts that: $\forall j\in\set{1, \cdots N}, \quad f_j(i) \cdot G = \sum_m j^m \cdot C_j[m]$ 
+<!-- where $C_j[m]$ denotes the m-th coefficient of $C_j$. -->
 
 5.3 Each $P_i$ computes its private share $\mathit{sk}_i \gets \sum_j f_j(i)$.
 
@@ -136,7 +137,7 @@ The BFT threshold states that the maximum number of faulty nodes a distributed s
 The cryptographic threshold refers to the maximum number of malicious parties plus one ($\mathsf{threshold}$) that a scheme can tolerate without compromising security, assuming the existence of an underlying reliable broadcast channel. $\mathsf{threshold}$ is scheme dependent and can have a different value than $\mathsf{MaxFaulty}$. For instance, in the OT based ECDSA, $\mathsf{threshold}$ can be up to $N$, but in Robust ECDSA scheme $\mathsf{threshold}$ must not exceed $\frac{N - 1}{2}+1$.
 
 Here could be asked an interesting question:
-If the maximum number of faulty participants is $\frac{1}/{3}$ for the broadcast protocol, how is it possible that we use much higher cryptographic threshold during DKG (say for signing with 6 participants out of 9). Shouldn't we be constrained to fix the cryptographic threshold to 1/3 too?
+If the maximum number of faulty participants is 1/3 for the broadcast protocol, how is it possible that we use much higher cryptographic threshold during DKG (say for signing with 6 participants out of 9). Shouldn't we be constrained to fix the cryptographic threshold to 1/3 too?
 
 The answer goes in both directions:
 
