@@ -1,11 +1,11 @@
 # Distributed Key Generation
 
-We define a variant of the two-round DKG protocol PedPop \[[KG](https://eprint.iacr.org/2020/852.pdf)\].
+We define a variant of the two-round Distributed Key Generation (DKG) protocol PedPop \[[KG](https://eprint.iacr.org/2020/852.pdf)\].
 Our variant, PedPop+ is less efficient, but achieves a notion of simulatability with aborts,
 a stronger notion of security than the one promised by plain PedPop.
 
-PedPop+ is a five rounds protocol and makes use in three of its rounds of a reliable broadcast channel. A reliable broadcast is a 3 round protocol,
-implying that the total number of PedPop+ rounds 11. The broadcast channel is implemented in `src/protocol/echo_broadcast.rs`.
+PedPop+ is a five-and-a-half-rounds protocol and makes use in three of its rounds of a reliable broadcast channel. A reliable broadcast is a three-round protocol,
+implying that the effective total number of PedPop+ rounds is eleven and a half. The broadcast channel is implemented in `src/protocol/echo_broadcast.rs`.
 
 The implemented DKG serves as a generic one that can be used with multiple different underlying elliptic curves. We thus use it with `Secp256k1` for ECDSA schemes, `Curve25519` for EdDSA scheme, and `BLS12-381` for the confidential key derivation functionality.
 
@@ -15,7 +15,7 @@ The core of the DKG protocol is implemented in a function called `do_keyshare` a
 
 * Key generation: denoted in the implementation with `keygen`. It allows a set of parties to jointly generate from scratch a private key share each and a master public key. The master public key should be common for all the participants and should reflect each of the private shares.
 
-* Key resharing: denoted in the implementation with `reshare`. It allows for a set of participants who already own valid private shares to kick away other participants from the pool, create fresh shares for new participants i.e. new joiners to the pool, and/or change the **cryptographic threshold** described in section [Types of Thresholds](#types-of-thresholds).
+* Key resharing: denoted in the implementation with `reshare`. It allows for a set of participants who already own valid private shares to kick out other participants from the pool, create fresh shares for new participants i.e. new joiners to the pool, and/or change the **cryptographic threshold** described in section [Types of Thresholds](#types-of-thresholds).
 
 * Key refresh: denoted in the implementation with `refresh`. It is a special case of the key resharing in which the set of participants stays the same before and after the protocol run and with no changes to the crypto. The goal being that each participant would refresh their signing share without modifying the master public key.
 
@@ -23,7 +23,7 @@ The core of the DKG protocol is implemented in a function called `do_keyshare` a
 
 There are two types of thresholds one has to be aware of: the **asynchronous distributed systems threshold** a.k.a. the **BFT threshold**, and the **cryptography threshold** a.k.a. the **reconstruction threshold**.
 
-The BFT threshold states that the maximum number of faulty nodes a distributed system ($\mathsf{MaxFaulty}$) can tolerate while still reaching consensus is at most one-third of the total number of participants $N$. More specifically:
+The BFT threshold states that the maximum number of faulty nodes a distributed system ($\mathsf{MaxFaulty}$) can tolerate while still reaching consensus is at most one-third of the total number of nodes $N$. More specifically:
 
 $$\mathsf{MaxFaulty} \leq \frac{N - 1}{3}$$
 
@@ -93,13 +93,13 @@ $\quad$ `+++` Else set $f_i(0) \gets \lambda_i(I) \cdot \mathit{secret}_i$ where
 
 ### Round 3
 
-3.1 Each $P_i$ waits to receive $h_i$ from every participant $P_j$.
+3.1 Each $P_i$ waits to receive $h_j$ from every participant $P_j$.
 
 3.2 Each $P_i$ reliably broadcasts $(C_i, R_i, s_i)$.
 
 ### Round 4
 
-4.1 Each $P_i$ waits to receive $(C_j, \pi_j)$ from every participant $P_j$.
+4.1 Each $P_i$ waits to receive $(C_j, R_j, s_j)$ from every participant $P_j$.
 
 4.2 Each $P_i$ computes: $\forall j\in\set{1, \cdots N}, \quad c_j \gets H_3(\mathit{sid}, j, C_j(0), R_j)$.
 

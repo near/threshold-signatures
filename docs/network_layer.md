@@ -37,7 +37,10 @@ The protocol implementation provides several communication primitives:
 > To guarantee the security notions given by the Byzantine Reliable Broadcast, we assume that `N >= 3f +1`. This bound originates from the classical Byzantine fault tolerance model [LSP82](https://lamport.azurewebsites.net/pubs/byz.pdf), which ensures both safety and liveness under such faults.
 
 ## Documentation Notation
-In protocol specifications (particularly for ECDSA), we use the following symbols to describe actions:
+
+Protocol algorithm descriptions are divided into rounds, where each round corresponds to a communication step consisting of sending a message and waiting for the reception of another message.
+
+In protocol specifications, we use the following symbols to denote actions:
 
 | Symbol | Meaning | Description |
 | :---: | :--- | :--- |
