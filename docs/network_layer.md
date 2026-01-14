@@ -12,6 +12,8 @@ Our protocols operate on two fundamental assumptions about the network channels:
 <details>
   <summary>Practical Implementation</summary>
   In practice, we satisfy both requirements by running all protocols over a network where participants are connected via a TLS channel. This ensures both, authentication and confidentiality.
+</details>
+
 > In practice, we satisfy both requirements by running all protocols over a network where participants are connected via a TLS channel. This ensures both, authentication and confidentiality.
 
 ## Communication Primitives
@@ -49,7 +51,7 @@ In protocol specifications (particularly for ECDSA), we use the following symbol
 
 ## Byzantine Reliable Broadcast: Echo Broadcast
 
-The Echo Broadcast (a.k.a. Authenticated Double-Echo Broadcast) protocol is a three round protocol that allows all honest parties involved in a communication protocol to deliver the same message or all abort even if the protocol might contain faulty participants. The protocol admits one single sender (that is broadcasting message $m$) and multiple receivers (including the sender).
+The Echo Broadcast (a.k.a. Authenticated Double-Echo Broadcast) protocol is a three-round protocol that allows all honest parties involved in a communication protocol to deliver the same message or all abort even if the protocol might contain faulty participants. The protocol admits one single sender (that is broadcasting message $m$) and multiple receivers (including the sender).
 
 > Such protocol assumes two properties:
 >
@@ -63,19 +65,19 @@ The following figure is taken from \[[CGR](https://link.springer.com/book/10.100
 
 ### Protocol Description
 
-In the following description, if a participant $i$ had received a message from a participant $j$ at a specific round, then any additional  message sent by $j$ for the same round would be discarded by $i$. In other words, double voting is not taken into consideration.
+In the following description, if a participant $i$ receives a message from a participant $j$ at a specific round, then any additional message sent by $j$ for the same round is discarded by $i$. In other words, double voting is not taken into consideration.
 
-#### SEND Round
+#### Round 1: SEND Round
 
 1. $\star$ The Sender sends $(\mathbf{SEND}, m)$ to every participant $i$ in the protocol
 
-#### ECHO Round
+#### Round 2: ECHO Round
 
 2. $\bullet$ Each participant $i$ waits to receive a message $(\mathbf{SEND},m_i)$ from the Sender.
 
 3. $\star$ Each participant $i$ sends (echoes) to every other participant $j$ the received message $(\mathbf{ECHO}, m_i)$.
 
-#### READY Round
+#### Round 3: READY Round
 
 4. $\bullet$ Each participant $i$ waits to receive either a message $(\mathbf{ECHO}, m_i^j)$ - respectively $(\mathbf{READY}, m_i^j)$ - from participant $j$
 
