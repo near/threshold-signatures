@@ -21,13 +21,7 @@ The core of the DKG protocol is implemented in a function called `do_keyshare` a
 
 ## Types of Thresholds
 
-There are two types of thresholds one has to be aware of: the **asynchronous distributed systems threshold** a.k.a. the **BFT threshold**, and the **cryptography threshold** a.k.a. the **reconstruction threshold**.
-
-The BFT threshold states that the maximum number of faulty nodes a distributed system ($\mathsf{MaxFaulty}$) can tolerate while still reaching consensus is at most one-third of the total number of nodes $N$. More specifically:
-
-$$\mathsf{MaxFaulty} \leq \frac{N - 1}{3}$$
-
-The cryptographic threshold refers to the maximum number of malicious parties plus one ($\mathsf{threshold}$) that a scheme can tolerate without compromising security, assuming the existence of an underlying reliable broadcast channel. $\mathsf{threshold}$ is scheme dependent and can have a different value than $\mathsf{MaxFaulty}$. For instance, in the OT based ECDSA, $\mathsf{threshold}$ can be up to $N$, but in Robust ECDSA scheme $\mathsf{threshold}$ must not exceed $\frac{N - 1}{2}+1$.
+There are two types of thresholds one has to be aware of: the **asynchronous distributed systems threshold** a.k.a. the **BFT threshold** ($\mathsf{MaxFaulty}$), and the **cryptography threshold** a.k.a. the **reconstruction threshold** ($\mathsf{threshold}$). A detailed discussion of these thresholds can be found in the [Appendix](#appendix-on-the-discussion-of-threshold-types) section.
 
 ### DKG and thresholds
 
@@ -103,7 +97,7 @@ $\quad$ `+++` Else set $f_i(0) \gets \lambda_i(I) \cdot \mathit{secret}_i$ where
 
 4.2 Each $P_i$ computes: $\forall j\in\set{1, \cdots N}, \quad c_j \gets H_3(\mathit{sid}, j, C_j(0), R_j)$.
 
-4.3 Each $P_i$ asserts that: $\forall j\in\set{1, \cdots N}, \quad R_j = s_i \cdot G - c_j \cdot C_j(0)$.
+4.3 Each $P_i$ asserts that: $\forall j\in\set{1, \cdots N}, \quad R_j = s_j \cdot G - c_j \cdot C_j(0)$.
 
 4.4 Each $P_i$ asserts that: $\forall j\in\set{1, \cdots N}, \quad h_j = H_2(j, C_j, \mathit{sid})$.
 
@@ -133,3 +127,21 @@ $\quad$ `+++` Each $P_i$ asserts that $\mathit{pk} = \mathit{OldPK}$
 ### Key Refresh
 
 A key refresh protocol is a special case of the key resharing where $\mathit{OldSigners} = \set{P_1, \ldots P_N}$ and where $\mathsf{OldThreshold} = \mathsf{threshold}$
+
+
+## Appendix: On the Discussion of Threshold Types
+
+The BFT threshold states that the maximum number of faulty nodes a distributed system ($\mathsf{MaxFaulty}$) can tolerate while still reaching consensus has the following bound $\mathsf{MaxFaulty} = \frac{N - 1}{3}$ where $N$ is the total number of nodes.
+
+The cryptographic threshold refers to the maximum number of malicious parties plus one ($\mathsf{threshold}$) that a scheme can tolerate without compromising security, assuming the existence of an underlying reliable broadcast channel. $\mathsf{threshold}$ is scheme dependent and can have a different value than $\mathsf{MaxFaulty}$. For instance, in the OT based ECDSA, $\mathsf{threshold}$ can be up to $N$, but in Robust ECDSA scheme $\mathsf{threshold}$ must not exceed $\frac{N - 1}{2}+1$.
+
+Here could be asked an interesting question:
+If the maximum number of faulty participants is $\frac{1}/{3}$ for the broadcast protocol, how is it possible that we use much higher cryptographic threshold during DKG (say for signing with 6 participants out of 9). Shouldn't we be constrained to fix the cryptographic threshold to 1/3 too?
+
+The answer goes in both directions:
+
+* No, we should not be constrained to fix the cryptographic threshold to 1/3: one can assume having more "honest" nodes during key generation (which is ran supposedly once) than during the cryptographic signing phase (which should always happen). One can think of this extra parties being corrupt right after the key generation.
+
+* Yes, we should fix the cryptographic threshold to 1/3. In fact it does not make sense to assume two different thresholds...
+
+The separation between these two thresholds seldom appears in cryptographic academic papers, which, as mentioned above, often assume underlying broadcast channels. The motivation for explicitly introducing this separation is to enable library users to properly understand the implications of using this implementation, thereby avoiding potentially disastrous misconfigurations.
