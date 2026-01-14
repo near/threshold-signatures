@@ -53,7 +53,7 @@ In protocol specifications (particularly for ECDSA), we use the following symbol
 
 The Echo Broadcast (a.k.a. Authenticated Double-Echo Broadcast) protocol is a three-round protocol that allows all honest parties involved in a communication protocol to deliver the same message or all abort even if the protocol might contain faulty participants. The protocol admits one single sender (that is broadcasting message $m$) and multiple receivers (including the sender).
 
-> Such protocol assumes two properties:
+> Such a protocol assumes two properties:
 >
 > 1. The total number of faulty participants (nodes) cannot exceed one third of the maximum number of active participants, i.e., $3 \cdot \mathsf{MaxFaulty} +1 \leq N$
 >
