@@ -1,12 +1,15 @@
-use criterion::{criterion_group, Criterion};
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::indexing_slicing)]
+
+use criterion::{criterion_group, criterion_main, Criterion};
 use frost_secp256k1::VerifyingKey;
 use rand::{Rng, RngCore};
 use rand_core::SeedableRng;
 
 mod bench_utils;
 use crate::bench_utils::{
-    ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign, ot_ecdsa_prepare_triples, PreparedOutputs,
-    MAX_MALICIOUS,
+    analyze_received_sizes, ot_ecdsa_prepare_presign, ot_ecdsa_prepare_sign,
+    ot_ecdsa_prepare_triples, PreparedOutputs, MAX_MALICIOUS, SAMPLE_SIZE,
 };
 
 use threshold_signatures::{
@@ -43,52 +46,64 @@ fn participants_num() -> usize {
 fn bench_triples(c: &mut Criterion) {
     let num = participants_num();
     let max_malicious = *MAX_MALICIOUS;
-    let mut group = c.benchmark_group("triples");
-    group.measurement_time(std::time::Duration::from_secs(200));
+    let mut sizes = Vec::with_capacity(*SAMPLE_SIZE);
 
+    let mut group = c.benchmark_group("triples");
+    group.sample_size(*SAMPLE_SIZE);
     group.bench_function(
         format!("ot_ecdsa_triples_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
-                || prepare_simulated_triples(num),
+                || {
+                    let preps = prepare_simulated_triples(num);
+                    // collecting data sizes
+                    sizes.push(preps.simulator.get_view_size());
+                    preps
+                },
                 |preps| run_simulated_protocol(preps.participant, preps.protocol, preps.simulator),
                 criterion::BatchSize::SmallInput,
             );
         },
     );
+    analyze_received_sizes(&sizes, true);
 }
 
 /// Benches the presigning protocol
 fn bench_presign(c: &mut Criterion) {
     let num = participants_num();
     let max_malicious = *MAX_MALICIOUS;
-    let mut group = c.benchmark_group("presign");
-    group.measurement_time(std::time::Duration::from_secs(300));
+    let mut sizes = Vec::with_capacity(*SAMPLE_SIZE);
 
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let preps = ot_ecdsa_prepare_triples(num, threshold(), &mut rng);
     let two_triples =
         run_protocol(preps.protocols).expect("Running triple preparations should succeed");
 
+    let mut group = c.benchmark_group("presign");
+    group.sample_size(*SAMPLE_SIZE);
     group.bench_function(
         format!("ot_ecdsa_presign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
-                || prepare_simulated_presign(&two_triples),
+                || {
+                    let preps = prepare_simulated_presign(&two_triples);
+                    // collecting data sizes
+                    sizes.push(preps.simulator.get_view_size());
+                    preps
+                },
                 |preps| run_simulated_protocol(preps.participant, preps.protocol, preps.simulator),
                 criterion::BatchSize::SmallInput,
             );
         },
     );
+    analyze_received_sizes(&sizes, true);
 }
 
 /// Benches the signing protocol
 fn bench_sign(c: &mut Criterion) {
     let num = participants_num();
     let max_malicious = *MAX_MALICIOUS;
-
-    let mut group = c.benchmark_group("sign");
-    group.measurement_time(std::time::Duration::from_secs(300));
+    let mut sizes = Vec::with_capacity(*SAMPLE_SIZE);
 
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let preps = ot_ecdsa_prepare_triples(num, threshold(), &mut rng);
@@ -99,25 +114,31 @@ fn bench_sign(c: &mut Criterion) {
     let result = run_protocol(preps.protocols).expect("Running presign preparation should succeed");
     let pk = preps.key_packages[0].1.public_key;
 
+    let mut group = c.benchmark_group("sign");
+    group.sample_size(*SAMPLE_SIZE);
     group.bench_function(
         format!("ot_ecdsa_sign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
         |b| {
             b.iter_batched(
-                || prepare_simulated_sign(&result, pk),
+                || {
+                    let preps = prepare_simulated_sign(&result, pk);
+                    // collecting data sizes
+                    sizes.push(preps.simulator.get_view_size());
+                    preps
+                },
                 |preps| run_simulated_protocol(preps.participant, preps.protocol, preps.simulator),
                 criterion::BatchSize::SmallInput,
             );
         },
     );
+    analyze_received_sizes(&sizes, true);
 }
 
 criterion_group!(benches, bench_triples, bench_presign, bench_sign);
-criterion::criterion_main!(benches);
+criterion_main!(benches);
 
 /****************************** Helpers ******************************/
 /// Used to simulate ot based ecdsa triples for benchmarking
-/// # Panics
-/// Would panic in case an abort happens stopping the entire benchmarking
 fn prepare_simulated_triples(participant_num: usize) -> PreparedSimulatedTriples {
     let mut rng = MockCryptoRng::seed_from_u64(42);
 
@@ -156,8 +177,6 @@ fn prepare_simulated_triples(participant_num: usize) -> PreparedSimulatedTriples
 }
 
 /// Used to simulate ot based ecdsa presignatures for benchmarking
-/// # Panics
-/// Would panic in case an abort happens stopping the entire benchmarking
 fn prepare_simulated_presign(
     two_triples: &[(Participant, Vec<(TripleShare, TriplePub)>)],
 ) -> PreparedSimulatedPresig {
@@ -200,8 +219,6 @@ fn prepare_simulated_presign(
 }
 
 /// Used to simulate ot based ecdsa signatures for benchmarking
-/// # Panics
-/// Would panic in case an abort happens stopping the entire benchmarking
 pub fn prepare_simulated_sign(
     result: &[(Participant, PresignOutput)],
     pk: VerifyingKey,
