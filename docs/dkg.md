@@ -70,7 +70,8 @@ $\quad$ `+++` Each $P_i$ computes the following:
 
 $\quad$ `+++` If $P_i\notin \mathit{OldSigners}$ then set $f_i(0) \gets 0$
 
-$\quad$ `+++` Else set $f_i(0) \gets \lambda_i(I) \cdot \mathit{secret}_i$ where $\lambda_i(I)$ is the lagrange coefficient $\lambda_i(I) = \Pi_{j\in I\setminus \set{i}} \frac{j}{i-j}$
+$\quad$ `+++` Else set $f_i(0) \gets \lambda_i(I) \cdot \mathit{secret}_i$
+<!-- where $\lambda_i(I)$ is the lagrange coefficient $\lambda_i(I) = \Pi_{j\in I\setminus \set{i}} \frac{j}{i-j}$ -->
 
 
 2.4 Each $P_i$ generates a commitment of the polynomial $C_i \gets f_i \cdot G$ (commits every coefficient of the polynomial).
@@ -111,8 +112,7 @@ $\quad$ `+++` Each $P_i$ asserts that $\mathit{pk} = \mathit{OldPK}$
 
 5.1 Each $P_i$ waits to receive $f_j(i)$ from every participant $P_j$.
 
-5.2 Each $P_i$ asserts that: $\forall j\in\set{1, \cdots N}, \quad f_j(i) \cdot G = \sum_m j^m \cdot C_j[m]$ 
-<!-- where $C_j[m]$ denotes the m-th coefficient of $C_j$. -->
+5.2 Each $P_i$ asserts that: $\forall j\in\set{1, \cdots N}, \quad f_j(i) \cdot G = \sum_m j^m \cdot C_j[m]$ where $C_j[m]$ denotes the m-th coefficient of $C_j$.
 
 5.3 Each $P_i$ computes its private share $\mathit{sk}_i \gets \sum_j f_j(i)$.
 
