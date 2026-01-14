@@ -18,6 +18,7 @@ use rand_core::CryptoRngCore;
 use frost_core::{Identifier, round1};
 
 type J = JubjubBlake2b512;
+
 /// The presignature protocol.
 ///
 /// This is the first phase of performing a signature, in which we perform
@@ -52,8 +53,6 @@ pub fn presign(
     Ok(make_protocol(ctx, fut))
 }
 
-/// /!\ Warning: the threshold in this scheme is the exactly the
-///              same as the max number of malicious parties.
 #[allow(clippy::too_many_lines)]
 async fn do_presign(
     mut chan: SharedChannel,
