@@ -8,7 +8,6 @@ mod test;
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use zeroize::ZeroizeOnDrop;
 
 use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat};
 
@@ -30,15 +29,21 @@ pub struct PresignArguments {
     pub keygen_out: KeygenOutput,
 }
 
+
+// Not sure what to do with the Zeroization
+// use zeroize::ZeroizeOnDrop;
+// #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, ZeroizeOnDrop)]
+
+
 /// The output of the presigning protocol.
 ///
 /// This output is basically all the parts of the signature that we can perform
 /// without knowing the message.
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, ZeroizeOnDrop)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct PresignOutput {
     /// The public nonce commitment.
     pub nonces: frost_core::round1::SigningNonces<JubjubBlake2b512>,
-    #[zeroize[skip]]
+    // #[zeroize[skip]]
     pub commitments_map: BTreeMap<frost_core::Identifier<JubjubBlake2b512>, frost_core::round1::SigningCommitments<JubjubBlake2b512>>,
 }
 
