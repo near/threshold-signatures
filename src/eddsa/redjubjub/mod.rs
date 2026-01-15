@@ -6,10 +6,14 @@ pub mod sign;
 #[cfg(test)]
 mod test;
 
+use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use reddsa::frost::redjubjub::{
+    Identifier, Signature,
+    round1::{SigningCommitments, SigningNonces}
+};
 
-use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat};
 
 // JubJub Curve
 pub use reddsa::frost::redjubjub::JubjubBlake2b512;
@@ -34,7 +38,6 @@ pub struct PresignArguments {
 // use zeroize::ZeroizeOnDrop;
 // #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, ZeroizeOnDrop)]
 
-
 /// The output of the presigning protocol.
 ///
 /// This output is basically all the parts of the signature that we can perform
@@ -42,12 +45,10 @@ pub struct PresignArguments {
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct PresignOutput {
     /// The public nonce commitment.
-    pub nonces: frost_core::round1::SigningNonces<JubjubBlake2b512>,
+    pub nonces: SigningNonces,
     // #[zeroize[skip]]
-    pub commitments_map: BTreeMap<frost_core::Identifier<JubjubBlake2b512>, frost_core::round1::SigningCommitments<JubjubBlake2b512>>,
+    pub commitments_map: BTreeMap<Identifier, SigningCommitments>,
 }
 
-
 /// Signature would be Some for coordinator and None for other participants
-pub type SignatureOption = Option<frost_core::Signature<JubjubBlake2b512>>;
-
+pub type SignatureOption = Option<Signature>;

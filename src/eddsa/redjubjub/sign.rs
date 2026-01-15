@@ -1,21 +1,23 @@
 //! This module and the frost one are supposed to have the same helper function
 //! However, currently the reddsa is implemented  wraps a signature generation functionality from `Frost` library
 //!  into `cait-sith::Protocol` representation.
-use super::{KeygenOutput, SignatureOption, PresignOutput, JubjubBlake2b512};
+use super::{KeygenOutput, SignatureOption, PresignOutput};
 use crate::errors::{InitializationError, ProtocolError};
 use crate::participants::{Participant, ParticipantList};
 use crate::protocol::helpers::recv_from_others;
 use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
 use crate::protocol::Protocol;
 
-use frost_core::keys::{KeyPackage, PublicKeyPackage, SigningShare};
-use frost_core::{aggregate, round2, VerifyingKey};
-use rand_core::CryptoRngCore;
-use reddsa::frost;
+use reddsa::frost::redjubjub::{
+    SigningPackage, Identifier, Randomizer, RandomizedParams,
+    keys::{KeyPackage, PublicKeyPackage},
+    round2,
+    round2::SignatureShare,
+    aggregate
+};
 use std::collections::BTreeMap;
 use zeroize::Zeroizing;
-
-type J = JubjubBlake2b512;
+use rand_core::CryptoRngCore;
 
 
 /// Depending on whether the current participant is a coordinator or not,
@@ -39,7 +41,7 @@ pub fn sign(
     keygen_output: KeygenOutput,
     presignature: PresignOutput,
     message: Vec<u8>,
-    signature_randomizer: Randomizer<J>,
+    rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = SignatureOption>, InitializationError> {
     if participants.len() < 2 {
         return Err(InitializationError::NotEnoughParticipants {
@@ -77,7 +79,7 @@ pub fn sign(
         keygen_output,
         presignature,
         message,
-        signature_randomizer,
+        rng,
     );
     Ok(make_protocol(comms, fut))
 }
@@ -93,7 +95,7 @@ async fn fut_wrapper(
     keygen_output: KeygenOutput,
     presignature: PresignOutput,
     message: Vec<u8>,
-    signature_randomizer: Randomizer<J>,
+    mut rng: impl CryptoRngCore,
 ) -> Result<SignatureOption, ProtocolError> {
     if me == coordinator {
         do_sign_coordinator(
@@ -104,7 +106,7 @@ async fn fut_wrapper(
             keygen_output,
             presignature,
             message,
-            signature_randomizer,
+            &mut rng,
         )
         .await
     } else {
@@ -116,7 +118,6 @@ async fn fut_wrapper(
             keygen_output,
             presignature,
             message,
-            signature_randomizer,
         )
         .await
     }
@@ -139,16 +140,25 @@ async fn do_sign_coordinator(
     keygen_output: KeygenOutput,
     presignature: PresignOutput,
     message: Vec<u8>,
-    signature_randomizer: Randomizer<J>,
+    rng: &mut impl CryptoRngCore,
 ) -> Result<SignatureOption, ProtocolError> {
     // --- Round 1
-    let mut signature_shares: BTreeMap<frost_core::Identifier::<JubjubBlake2b512>, round2::SignatureShare::<J>> =
-        BTreeMap::new();
-
+    let mut signature_shares: BTreeMap<Identifier, SignatureShare> = BTreeMap::new();
 
     let key_package = construct_key_package(threshold, me, &keygen_output)?;
-    let signature_share = create_signature_share(key_package, &presignature, &message)?;
 
+    let signing_package = SigningPackage::new(presignature.commitments_map, &message);
+    let randomized_params = RandomizedParams::new(&keygen_output.public_key, &signing_package, rng)
+        .map_err(|e| ProtocolError::AssertionFailed(e.to_string()))?;
+
+    let randomizer = randomized_params.randomizer();
+    // Send the Randomizer to everyone
+    let randomizer_waitpoint = chan.next_waitpoint();
+    chan.send_many(randomizer_waitpoint, &randomizer)?;
+
+    // Round 2
+    let signature_share = round2::sign(&signing_package, &presignature.nonces, &key_package, *randomizer)
+        .map_err(|e| ProtocolError::AssertionFailed(e.to_string()))?;
 
     let sign_waitpoint = chan.next_waitpoint();
     signature_shares.insert(me.to_identifier()?, signature_share);
@@ -165,8 +175,7 @@ async fn do_sign_coordinator(
     // Feature "cheater-detection" unveils existant malicious participants
     let pk_package = PublicKeyPackage::new(BTreeMap::new(), keygen_output.public_key);
 
-    let signing_package = frost_core::SigningPackage::new(presignature.commitments_map, message.as_slice());
-    let signature = aggregate(&signing_package, &signature_shares, &pk_package)
+    let signature = aggregate(&signing_package, &signature_shares, &pk_package, &randomized_params)
         .map_err(|e| ProtocolError::AssertionFailed(e.to_string()))?;
 
     Ok(Some(signature))
@@ -189,7 +198,6 @@ async fn do_sign_participant(
     keygen_output: KeygenOutput,
     presignature: PresignOutput,
     message: Vec<u8>,
-    signature_randomizer: Randomizer<J>,
 ) -> Result<SignatureOption, ProtocolError> {
     // --- Round 1.
     if coordinator == me {
@@ -200,8 +208,22 @@ async fn do_sign_participant(
         ));
     }
 
+    // Receive the Randomizer from the coordinator
+    let randomizer_waitpoint = chan.next_waitpoint();
+    let randomizer = loop {
+        let (from, randomizer): (_, Randomizer) =
+            chan.recv(randomizer_waitpoint).await?;
+        if from != coordinator {
+            continue;
+        }
+        break randomizer;
+    };
+
     let key_package = construct_key_package(threshold, me, &keygen_output)?;
-    let signature_share = create_signature_share(key_package, &presignature, &message)?;
+
+    let signing_package = frost_core::SigningPackage::new(presignature.commitments_map, &message);
+    let signature_share = round2::sign(&signing_package, &presignature.nonces, &key_package, randomizer)
+        .map_err(|e| ProtocolError::AssertionFailed(e.to_string()))?;
 
     let sign_waitpoint = chan.next_waitpoint();
     chan.send_private(sign_waitpoint, coordinator, &signature_share)?;
@@ -215,7 +237,7 @@ fn construct_key_package(
     threshold: usize,
     me: Participant,
     keygen_output: &KeygenOutput,
-) -> Result<Zeroizing<KeyPackage<J>>, ProtocolError> {
+) -> Result<Zeroizing<KeyPackage>, ProtocolError> {
     let identifier = me.to_identifier()?;
     let signing_share = keygen_output.private_share;
     let verifying_share = signing_share.into();
@@ -229,18 +251,6 @@ fn construct_key_package(
             ProtocolError::Other("threshold cannot be converted to u16".to_string())
         })?);
 
-    Ok(Zeroizing::new(key_package))
-}
-
-
-fn create_signature_share(
-    key_package: Zeroizing<KeyPackage<J>>,
-    presignature: &PresignOutput,
-    message: &[u8],
-    // signature_randomizer: Randomizer<J>,
-) -> Result<frost_core::round2::SignatureShare<J>, ProtocolError>{
-    let signing_package = frost_core::SigningPackage::<J>::new(presignature.commitments_map.clone(), message);
     // Ensures the values are zeroized on drop
-    round2::sign(&signing_package, &presignature.nonces, &key_package)
-        .map_err(|e| ProtocolError::AssertionFailed(e.to_string()))
+    Ok(Zeroizing::new(key_package))
 }

@@ -1,7 +1,6 @@
 use super::{
     PresignArguments,
     PresignOutput,
-    JubjubBlake2b512,
 };
 use crate::{
     participants::{Participant, ParticipantList},
@@ -11,13 +10,17 @@ use crate::{
         internal::{make_protocol, Comms, SharedChannel},
         Protocol,
     },
-    SigningShare
 };
 use std::collections::BTreeMap;
 use rand_core::CryptoRngCore;
-use frost_core::{Identifier, round1};
 
-type J = JubjubBlake2b512;
+
+use reddsa::frost::redjubjub::{
+    Identifier,
+    keys::SigningShare,
+    round1::{SigningCommitments, commit},
+};
+
 
 /// The presignature protocol.
 ///
@@ -58,15 +61,15 @@ async fn do_presign(
     mut chan: SharedChannel,
     participants: ParticipantList,
     me: Participant,
-    signing_share: SigningShare::<J>,
+    signing_share: SigningShare,
     mut rng: impl CryptoRngCore,
 ) -> Result<PresignOutput, ProtocolError> {
     // Round 1
-    let mut commitments_map: BTreeMap<Identifier::<J>, round1::SigningCommitments::<J>> =
+    let mut commitments_map: BTreeMap<Identifier, SigningCommitments> =
         BTreeMap::new();
 
     // Creating two commitments and corresponding nonces
-    let (nonces, commitments) = round1::commit(&signing_share, &mut rng);
+    let (nonces, commitments) = commit(&signing_share, &mut rng);
     // TODO decide whether this is essential or not
     // let nonces = Zeroizing::new(nonces);
     commitments_map.insert(me.to_identifier()?, commitments);
