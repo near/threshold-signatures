@@ -99,7 +99,7 @@ where
 
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Clone)]
-struct State<'a, T> {
+struct BroadcastProtocolState<'a, T> {
     // first dimension determines the session
     // second dimension contains the counter for the received data
     data_echo: CounterList<T>,
@@ -116,9 +116,9 @@ struct State<'a, T> {
     finish_ready: bool,
 }
 
-impl<'a, T: PartialEq> State<'a, T> {
+impl<'a, T: PartialEq> BroadcastProtocolState<'a, T> {
     fn new(participants: &'a ParticipantList) -> Self {
-        State {
+        Self {
             data_echo: CounterList::new(),
             data_ready: CounterList::new(),
             seen_echo: ParticipantCounter::new(participants),
@@ -152,7 +152,7 @@ where
 
     let mut vote_output = ParticipantMap::new(participants);
 
-    let mut state = vec![State::new(participants); n];
+    let mut state = vec![BroadcastProtocolState::new(participants); n];
 
     // receive simulated vote
     let mut from = me;
