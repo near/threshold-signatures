@@ -6,11 +6,7 @@ use crate::test_utils::{
 };
 
 use frost_core::Scalar;
-use frost_ed25519::{
-    Ed25519Sha512,
-    keys::SigningShare,
-    SigningKey, VerifyingKey
-};
+use frost_ed25519::{keys::SigningShare, Ed25519Sha512, SigningKey, VerifyingKey};
 
 type C = Ed25519Sha512;
 use rand::SeedableRng;
@@ -78,22 +74,21 @@ pub fn test_run_signature_protocols(
     for (participant, key_pair) in participants.iter().take(actual_signers) {
         let mut rng_p = MockCryptoRng::seed_from_u64(42);
         let mut coordinator = *participant;
-        
+
         if !coordinators.contains(coordinator) {
             // pick any coordinator
             let index = rng_p.next_u32() as usize % coordinators.len();
             coordinator = coordinators.get_participant(index).unwrap();
-
-        };
+        }
         // run the signing scheme
         let protocol = sign(
-                &participants_list,
-                threshold,
-                *participant,
-                coordinator,
-                key_pair.clone(),
-                msg_hash.as_ref().to_vec(),
-                rng_p,
+            &participants_list,
+            threshold,
+            *participant,
+            coordinator,
+            key_pair.clone(),
+            msg_hash.as_ref().to_vec(),
+            rng_p,
         )?;
         protocols.push((*participant, Box::new(protocol)));
     }
