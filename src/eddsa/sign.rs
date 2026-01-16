@@ -349,7 +349,7 @@ mod test {
                     msg_hash,
                 )
                 .unwrap();
-            one_coordinator_output(data, coordinators[0]).unwrap();
+                one_coordinator_output(data, coordinators[0]).unwrap();
             }
         }
     }
