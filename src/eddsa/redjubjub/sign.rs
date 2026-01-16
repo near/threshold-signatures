@@ -254,3 +254,17 @@ fn construct_key_package(
     // Ensures the values are zeroized on drop
     Ok(Zeroizing::new(key_package))
 }
+
+
+
+#[cfg(test)]
+mod test {
+    use crate::eddsa::redjubjub::{
+        test::{build_key_packages_with_dealer, test_run_signature_presignature},
+        SignatureOption, Signature,
+    };
+    use crate::participants::Participant;
+    use crate::test_utils::MockCryptoRng;
+    use rand::SeedableRng;
+
+}

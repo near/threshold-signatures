@@ -82,21 +82,13 @@ async fn do_presign(
 
 #[cfg(test)]
 mod test {
-    use crate::crypto::hash::hash;
     use crate::eddsa::redjubjub::{
-        sign::sign,
         test::{build_key_packages_with_dealer, test_run_signature_presignature},
-        KeygenOutput, SignatureOption, Signature,
+        SignatureOption, Signature,
     };
-    use crate::participants::{Participant, ParticipantList};
-    use crate::protocol::Protocol;
-    use crate::test_utils::{
-        assert_public_key_invariant, generate_participants, one_coordinator_output, run_keygen,
-        run_refresh, run_reshare, MockCryptoRng,
-    };
-    use frost_core::{Field, Group};
-    use reddsa::frost::redjubjub::{JubjubBlake2b512, JubjubScalarField, JubjubGroup};
-    use rand::{Rng, RngCore, SeedableRng};
+    use crate::participants::Participant;
+    use crate::test_utils::MockCryptoRng;
+    use rand::SeedableRng;
 
     fn assert_single_coordinator_result(
         data: &[(Participant, SignatureOption)],
