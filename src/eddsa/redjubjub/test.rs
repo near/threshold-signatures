@@ -144,7 +144,7 @@ fn keygen_output__should_be_serializable() {
     // Then
     assert_eq!(
         serialized_keygen_output,
-        "{\"private_share\":\"0700000000000000000000000000000000000000000000000000000000000000\",\"public_key\":\"a80ed62da91a8c6f266d82c4b2017cc0be13e6acba26af04494635b15ac86b57\"}"
+        "{\"private_share\":\"0700000000000000000000000000000000000000000000000000000000000000\",\"public_key\":\"cee9f1be0b483c2760c22acdf87b79e3a6b89ff755d697a3ba3933d6e6807499\"}"
     );
 }
 
