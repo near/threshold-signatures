@@ -1,14 +1,13 @@
 use crate::crypto::hash::HashOutput;
-use crate::eddsa::redjubjub::{sign::sign, KeygenOutput, SignatureOption};
+use crate::eddsa::redjubjub::{sign::sign, presign::presign, PresignArguments, KeygenOutput, SignatureOption, PresignOutput};
 use crate::participants::{Participant, ParticipantList};
 use crate::test_utils::{
     generate_participants, run_protocol, GenOutput, GenProtocol, MockCryptoRng,
 };
 
-use frost_core::VerifyingKey as FrostVerifyingKey;
-use frost_core::{Scalar as FrostScalar, SigningKey as FrostSigningKey};
+use frost_core::Scalar;
 use reddsa::frost::redjubjub::{
-    JubjubBlake2b512,
+    JubjubBlake2b512, VerifyingKey, SigningKey,
     keys::{SigningShare, generate_with_dealer, IdentifierList}
 };
 
@@ -60,8 +59,33 @@ pub fn build_key_packages_with_dealer(
         .collect::<Vec<_>>()
 }
 
-pub fn test_run_signature_protocols(
+pub fn test_run_signature_presignature(
     participants: &[(Participant, KeygenOutput)],
+    actual_signers: usize,
+) -> Result<Vec<(Participant, PresignOutput)>, Box<dyn Error>> {
+    let mut protocols: GenProtocol<PresignOutput> = Vec::with_capacity(participants.len());
+
+    let participants_list = participants
+        .iter()
+        .take(actual_signers)
+        .map(|(id, _)| *id)
+        .collect::<Vec<_>>();
+
+    for (participant, keygen_out) in participants.iter().take(actual_signers) {
+        let rng = MockCryptoRng::seed_from_u64(42);
+        let args = PresignArguments { keygen_out: keygen_out.clone() }; 
+        // run the signing scheme
+        let protocol = presign(&participants_list, *participant, args, rng)?;
+
+        protocols.push((*participant, Box::new(protocol)));
+    }
+
+    Ok(run_protocol(protocols)?)
+}
+
+
+pub fn test_run_signature_protocols(
+    participants: &[(Participant, KeygenOutput, PresignOutput)],
     actual_signers: usize,
     coordinators: &[Participant],
     threshold: usize,
@@ -72,10 +96,10 @@ pub fn test_run_signature_protocols(
     let participants_list = participants
         .iter()
         .take(actual_signers)
-        .map(|(id, _)| *id)
+        .map(|(id, _, _)| *id)
         .collect::<Vec<_>>();
     let coordinators = ParticipantList::new(coordinators).unwrap();
-    for (participant, key_pair) in participants.iter().take(actual_signers) {
+    for (participant, key_pair, presignature) in participants.iter().take(actual_signers) {
         let mut rng_p = MockCryptoRng::seed_from_u64(42);
 
         let mut coordinator = *participant;
@@ -91,7 +115,7 @@ pub fn test_run_signature_protocols(
             *participant,
             coordinator,
             key_pair.clone(),
-            presignature,
+            presignature.clone(),
             msg_hash.as_ref().to_vec(),
             rng_p,
         )?;
@@ -106,11 +130,11 @@ pub fn test_run_signature_protocols(
 fn keygen_output__should_be_serializable() {
     // Given
     let mut rng = MockCryptoRng::seed_from_u64(42u64);
-    let signing_key = FrostSigningKey::<C>::new(&mut rng);
+    let signing_key = SigningKey::new(&mut rng);
 
     let keygen_output = KeygenOutput {
-        private_share: SigningShare::new(FrostScalar::<C>::from(7_u32)),
-        public_key: FrostVerifyingKey::<C>::from(signing_key),
+        private_share: SigningShare::new(Scalar::<C>::from(7_u64)),
+        public_key: VerifyingKey::from(signing_key),
     };
 
     // When
@@ -122,7 +146,7 @@ fn keygen_output__should_be_serializable() {
         serialized_keygen_output,
         "{\"private_share\":\"0700000000000000000000000000000000000000000000000000000000000000\",\"public_key\":\"a80ed62da91a8c6f266d82c4b2017cc0be13e6acba26af04494635b15ac86b57\"}"
     );
-}KeygenOutput
+}
 
 #[test]
 fn test_keygen() {

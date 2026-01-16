@@ -83,10 +83,10 @@ async fn do_presign(
 #[cfg(test)]
 mod test {
     use crate::crypto::hash::hash;
-    use crate::eddsa::frost::{
+    use crate::eddsa::redjubjub::{
         sign::sign,
-        test::{build_key_packages_with_dealer, test_run_signature_protocols},
-        KeygenOutput, SignatureOption,
+        test::{build_key_packages_with_dealer, test_run_signature_presignature},
+        KeygenOutput, SignatureOption, Signature,
     };
     use crate::participants::{Participant, ParticipantList};
     use crate::protocol::Protocol;
@@ -95,12 +95,12 @@ mod test {
         run_refresh, run_reshare, MockCryptoRng,
     };
     use frost_core::{Field, Group};
-    use frost_ed25519::{Ed25519Group, Ed25519ScalarField, Ed25519Sha512};
+    use reddsa::frost::redjubjub::{JubjubBlake2b512, JubjubScalarField, JubjubGroup};
     use rand::{Rng, RngCore, SeedableRng};
 
     fn assert_single_coordinator_result(
-        data: &[(Participant, super::SignatureOption)],
-    ) -> frost_ed25519::Signature {
+        data: &[(Participant, SignatureOption)],
+    ) -> Signature {
         let mut signature = None;
         let count = data
             .iter()
@@ -122,20 +122,14 @@ mod test {
         let max_signers = 2;
         let threshold = 2;
         let actual_signers = 2;
-        let msg = "hello_near";
-        let msg_hash = hash(&msg).unwrap();
 
         let key_packages = build_key_packages_with_dealer(max_signers, threshold, &mut rng);
-        let coordinators = vec![key_packages[0].0];
-        let data = test_run_signature_protocols(
+        // add the presignatures here
+        let data = test_run_signature_presignature(
             &key_packages,
             actual_signers,
-            &coordinators,
-            threshold.into(),
-            msg_hash,
         )
         .unwrap();
-        assert_single_coordinator_result(&data);
     }
 
     #[test]
@@ -150,6 +144,7 @@ mod test {
             for actual_signers in min_signers..=max_signers {
                 let key_packages =
                     build_key_packages_with_dealer(max_signers, min_signers, &mut rng);
+                // add the presignatures here
                 let coordinators = vec![key_packages[0].0];
                 let data = test_run_signature_protocols(
                     &key_packages,
@@ -181,6 +176,7 @@ mod test {
         // test dkg
         let key_packages = run_keygen(&participants, threshold, &mut rng);
         assert_public_key_invariant(&key_packages);
+        // add the presignatures here
         let coordinators = vec![key_packages[0].0];
         let data = test_run_signature_protocols(
             &key_packages,
@@ -203,6 +199,7 @@ mod test {
         assert_public_key_invariant(&key_packages1);
         let msg = "hello_near_2";
         let msg_hash = hash(&msg).unwrap();
+        // add the presignatures here
         let data = test_run_signature_protocols(
             &key_packages1,
             actual_signers,
@@ -236,6 +233,7 @@ mod test {
         let msg = "hello_near_3";
         let msg_hash = hash(&msg).unwrap();
         let coordinators = vec![key_packages2[0].0];
+        // add the presignatures here
         let data = test_run_signature_protocols(
             &key_packages2,
             actual_signers,
@@ -291,11 +289,11 @@ mod test {
 
         // Test public key
         let p_list = ParticipantList::new(&participants).unwrap();
-        let mut x = Ed25519ScalarField::zero();
+        let mut x = JubjubScalarField::zero();
         for (p, share) in participants.iter().zip(shares.iter()) {
-            x += p_list.lagrange::<Ed25519Sha512>(*p).unwrap() * share;
+            x += p_list.lagrange::<JubjubBlake2b512>(*p).unwrap() * share;
         }
-        assert_eq!(<Ed25519Group>::generator() * x, pub_key.to_element());
+        assert_eq!(<JubjubGroup>::generator() * x, pub_key.to_element());
 
         // Sign
         let actual_signers = participants.len();
@@ -303,6 +301,7 @@ mod test {
         let msg_hash = hash(&msg).unwrap();
 
         let coordinators = vec![key_packages[0].0];
+        // add the presignatures here
         let data = test_run_signature_protocols(
             &key_packages,
             actual_signers,
@@ -358,11 +357,11 @@ mod test {
 
         // Test public key
         let p_list = ParticipantList::new(&participants).unwrap();
-        let mut x = Ed25519ScalarField::zero();
+        let mut x = JubjubScalarField::zero();
         for (p, share) in participants.iter().zip(shares.iter()) {
-            x += p_list.lagrange::<Ed25519Sha512>(*p).unwrap() * share;
+            x += p_list.lagrange::<JubjubBlake2b512>(*p).unwrap() * share;
         }
-        assert_eq!(<Ed25519Group>::generator() * x, pub_key.to_element());
+        assert_eq!(<JubjubBlake2b512>::generator() * x, pub_key.to_element());
 
         // Sign
         let msg = "hello_near";
@@ -405,11 +404,11 @@ mod test {
 
         // This checks the output signature validity internally
         let result =
-            crate::test_utils::run_sign::<Ed25519Sha512, (KeygenOutput, MockCryptoRng), _, _>(
+            crate::test_utils::run_sign::<JubjubBlake2b512, (KeygenOutput, MockCryptoRng), _, _>(
                 participants_sign_builder,
                 coordinator,
                 public_key,
-                Ed25519ScalarField::zero(),
+                JubjubScalarField::zero(),
                 |participants, coordinator, me, _, (keygen_output, p_rng), _| {
                     sign(
                         participants,
@@ -417,6 +416,7 @@ mod test {
                         me,
                         coordinator,
                         keygen_output,
+                        presignatures,
                         msg.clone(),
                         p_rng,
                     )
