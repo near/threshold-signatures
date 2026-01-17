@@ -82,7 +82,7 @@ async fn do_presign(
 
 #[cfg(test)]
 mod test {
-    use crate::eddsa::redjubjub::test::{build_key_packages_with_dealer, test_run_signature_presignature};
+    use crate::eddsa::redjubjub::test::{build_key_packages_with_dealer, test_run_presignature};
     use crate::test_utils::MockCryptoRng;
     use rand::SeedableRng;
 
@@ -96,7 +96,7 @@ mod test {
 
         let key_packages = build_key_packages_with_dealer(max_signers, threshold, &mut rng);
         // add the presignatures here
-        let mut presignatures = test_run_signature_presignature(
+        let mut presignatures = test_run_presignature(
             &key_packages,
             actual_signers,
         )
@@ -122,7 +122,7 @@ mod test {
 
         let key_packages = build_key_packages_with_dealer(max_signers, threshold, &mut rng);
         // add the presignatures here
-        let mut presignatures = test_run_signature_presignature(
+        let mut presignatures = test_run_presignature(
             &key_packages,
             actual_signers,
         )

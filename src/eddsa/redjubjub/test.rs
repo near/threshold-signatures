@@ -59,7 +59,7 @@ pub fn build_key_packages_with_dealer(
         .collect::<Vec<_>>()
 }
 
-pub fn test_run_signature_presignature(
+pub fn test_run_presignature(
     participants: &[(Participant, KeygenOutput)],
     actual_signers: usize,
 ) -> Result<Vec<(Participant, PresignOutput)>, Box<dyn Error>> {
@@ -73,7 +73,7 @@ pub fn test_run_signature_presignature(
 
     for (participant, keygen_out) in participants.iter().take(actual_signers) {
         let rng = MockCryptoRng::seed_from_u64(42);
-        let args = PresignArguments { keygen_out: keygen_out.clone() }; 
+        let args = PresignArguments { keygen_out: keygen_out.clone() };
         // run the signing scheme
         let protocol = presign(&participants_list, *participant, args, rng)?;
 
@@ -84,25 +84,28 @@ pub fn test_run_signature_presignature(
 }
 
 
-pub fn test_run_signature_protocols(
-    participants: &[(Participant, KeygenOutput, PresignOutput)],
+pub fn test_run_signature(
+    participants: &[(Participant, KeygenOutput)],
     actual_signers: usize,
     coordinators: &[Participant],
     threshold: usize,
     msg_hash: HashOutput,
 ) -> Result<Vec<(Participant, SignatureOption)>, Box<dyn Error>> {
     let mut protocols: GenProtocol<SignatureOption> = Vec::with_capacity(participants.len());
+    let presig = test_run_presignature(participants, actual_signers)?;
 
     let participants_list = participants
         .iter()
         .take(actual_signers)
-        .map(|(id, _, _)| *id)
+        .map(|(id, _)| *id)
         .collect::<Vec<_>>();
     let coordinators = ParticipantList::new(coordinators).unwrap();
-    for (participant, key_pair, presignature) in participants.iter().take(actual_signers) {
+    for i in 0..participants.len() {
+        let (participant, key_pair) = participants[i];
+        let (participant_redundancy, presignature) = presig[i];
+        assert_eq!(participant, participant_redundancy);
         let mut rng_p = MockCryptoRng::seed_from_u64(42);
-
-        let mut coordinator = *participant;
+        let mut coordinator = participant;
         if !coordinators.contains(coordinator) {
             // pick any coordinator
             let index = rng_p.next_u32() as usize % coordinators.len();
@@ -112,14 +115,14 @@ pub fn test_run_signature_protocols(
         let protocol = sign(
             &participants_list,
             threshold,
-            *participant,
+            participant,
             coordinator,
             key_pair.clone(),
             presignature.clone(),
             msg_hash.as_ref().to_vec(),
             rng_p,
         )?;
-        protocols.push((*participant, Box::new(protocol)));
+        protocols.push((participant, Box::new(protocol)));
     }
 
     Ok(run_protocol(protocols)?)
