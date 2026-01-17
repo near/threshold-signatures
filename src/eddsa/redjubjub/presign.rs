@@ -68,7 +68,7 @@ async fn do_presign(
     let commit_waitpoint = chan.next_waitpoint();
     // Sending the commitments to all
     chan.send_many(commit_waitpoint, &commitments)?;
-    
+
     // Collecting the commitments
     for (from, commitment) in recv_from_others(&chan, commit_waitpoint, &participants, me).await? {
         commitments_map.insert(from.to_identifier()?, commitment);
@@ -89,23 +89,6 @@ mod test {
     use crate::participants::Participant;
     use crate::test_utils::MockCryptoRng;
     use rand::SeedableRng;
-
-    fn assert_single_coordinator_result(
-        data: &[(Participant, SignatureOption)],
-    ) -> Signature {
-        let mut signature = None;
-        let count = data
-            .iter()
-            .filter(|(_, output)| {
-                output.is_some_and(|s| {
-                    signature = Some(s);
-                    true
-                })
-            })
-            .count();
-        assert_eq!(count, 1);
-        signature.unwrap()
-    }
 
     #[test]
     fn check_presignatures_terms() {
@@ -128,7 +111,7 @@ mod test {
             for (p2, presig2) in presignatures.iter(){
                 assert!(p1 != *p2);
                 assert!(presig1.nonces != presig2.nonces);
-                assert_eq!(presig1.commitments_map, presig2.commitments_map); 
+                assert_eq!(presig1.commitments_map, presig2.commitments_map);
             }
         }
     }
@@ -154,7 +137,7 @@ mod test {
             for (p2, presig2) in presignatures.iter(){
                 assert!(p1 != *p2);
                 assert!(presig1.nonces != presig2.nonces);
-                assert_eq!(presig1.commitments_map, presig2.commitments_map); 
+                assert_eq!(presig1.commitments_map, presig2.commitments_map);
             }
         }
     }
