@@ -101,11 +101,11 @@ pub fn test_run_signature(
         .collect::<Vec<_>>();
     let coordinators = ParticipantList::new(coordinators).unwrap();
     for i in 0..participants.len() {
-        let (participant, key_pair) = participants[i];
-        let (participant_redundancy, presignature) = presig[i];
+        let (participant, key_pair) = &participants[i];
+        let (participant_redundancy, presignature) = &presig[i];
         assert_eq!(participant, participant_redundancy);
         let mut rng_p = MockCryptoRng::seed_from_u64(42);
-        let mut coordinator = participant;
+        let mut coordinator = *participant;
         if !coordinators.contains(coordinator) {
             // pick any coordinator
             let index = rng_p.next_u32() as usize % coordinators.len();
@@ -115,14 +115,14 @@ pub fn test_run_signature(
         let protocol = sign(
             &participants_list,
             threshold,
-            participant,
+            *participant,
             coordinator,
             key_pair.clone(),
             presignature.clone(),
             msg_hash.as_ref().to_vec(),
             rng_p,
         )?;
-        protocols.push((participant, Box::new(protocol)));
+        protocols.push((*participant, Box::new(protocol)));
     }
 
     Ok(run_protocol(protocols)?)
