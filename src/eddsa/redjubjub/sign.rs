@@ -221,7 +221,7 @@ async fn do_sign_participant(
 
     let key_package = construct_key_package(threshold, me, &keygen_output)?;
 
-    let signing_package = frost_core::SigningPackage::new(presignature.commitments_map, &message);
+    let signing_package = SigningPackage::new(presignature.commitments_map, &message);
     let signature_share = round2::sign(&signing_package, &presignature.nonces, &key_package, randomizer)
         .map_err(|_| ProtocolError::ErrorFrostSigningFailed)?;
 
