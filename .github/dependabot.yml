@@ -1,0 +1,12 @@
+version: 2
+updates:
+  - package-ecosystem: "cargo"
+    target-branch: "main"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+
+    groups:
+      rust-dependencies:
+        patterns:
+          - "*"
