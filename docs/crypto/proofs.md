@@ -16,12 +16,12 @@ to create or verify a proof.
 
 # Maurer NIZK Proofs
 
-The proofs we use in this library are all Maurer proofs extracted from \[[Mau09](https://crypto.ethz.ch/publications/files/Maurer09.pdf)\] .
+The proofs we use in this library are all Maurer proofs \[[Mau09](https://crypto.ethz.ch/publications/files/Maurer09.pdf)\] .
 These are proofs of the form:
 "I know a secret $x$ such that $\varphi(x) = X$, with $X$ a public value",
 and $\varphi$ being a homomorphism, i.e. $\varphi(a + b) = \varphi(a) + \varphi(b)$.
 
-We amend the protocol from the original paper, shown in the figure below, to make it non-interactive, generating the challenge by hashing the transcript.
+We amend the protocol from the original paper, shown in the figure below, to make it non-interactive, generating the challenge by hashing the transcript i.e., applying the Fiat-Shamir transform.
 
 ![Maurer Proofs](../images/maurer_proofs.png)
 
@@ -46,3 +46,5 @@ $$
 
 for creating and verifying a proof, using a transcript for binding
 proofs to a given context.
+
+See [this blog post](https://cronokirby.com/Posts/The-Paper-that-Keeps-Showing-Up.html) for more context on Maurer proofs.
