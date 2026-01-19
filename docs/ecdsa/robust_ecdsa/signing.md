@@ -56,7 +56,7 @@ $\forall j \in \\{t+2.. n\\},\quad \mathsf{ExponentInterpolation}(R_1, \ldots R_
 4. $\blacktriangle$ Each $P_i$ *asserts* that $R \neq Identity$
 5. Each $P_i$ performs polynomial interpolation of degree $2t$ to derive $w$ as in $w \gets \sum_i \lambda_i(\mathcal{P}_1)_i \cdot w_i$ where $\lambda_i(\mathcal{P}_1)$ is the lagrange coefficient defined as:
 
-$$\lambda_i(\mathcal{P}_1) = \prod_{j\in \mathcal{P}_1\setminus \set{i}} \frac{j}{i-j}$$
+$$\lambda_i(\mathcal{P}_1) = \prod_{j\in \mathcal{P}_1\setminus \set{i}} \frac{-j}{i-j}$$
 
 6. $\blacktriangle$ Each $P_i$ *asserts* that $w \neq 0$.
 7. Each $P_i$ computes $W_i \gets R^{a_i}$
