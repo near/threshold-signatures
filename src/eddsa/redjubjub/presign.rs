@@ -1,30 +1,26 @@
-use super::{
-    PresignArguments,
-    PresignOutput,
-};
+use super::{PresignArguments, PresignOutput};
 use crate::{
-    participants::{Participant, ParticipantList},
     errors::{InitializationError, ProtocolError},
+    participants::{Participant, ParticipantList},
     protocol::{
         helpers::recv_from_others,
         internal::{make_protocol, Comms, SharedChannel},
         Protocol,
     },
 };
-use std::collections::BTreeMap;
 use rand_core::CryptoRngCore;
-
+use std::collections::BTreeMap;
 
 use reddsa::frost::redjubjub::{
-    Identifier,
     keys::SigningShare,
-    round1::{SigningCommitments, commit},
+    round1::{commit, SigningCommitments},
+    Identifier,
 };
 
 pub fn presign(
     participants: &[Participant],
     me: Participant,
-    args: PresignArguments,
+    args: &PresignArguments,
     rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = PresignOutput>, InitializationError> {
     if participants.len() < 2 {
@@ -44,7 +40,13 @@ pub fn presign(
     }
 
     let ctx = Comms::new();
-    let fut = do_presign(ctx.shared_channel(), participants, me, args.keygen_out.private_share, rng);
+    let fut = do_presign(
+        ctx.shared_channel(),
+        participants,
+        me,
+        args.keygen_out.private_share,
+        rng,
+    );
     Ok(make_protocol(ctx, fut))
 }
 
@@ -57,8 +59,7 @@ async fn do_presign(
     mut rng: impl CryptoRngCore,
 ) -> Result<PresignOutput, ProtocolError> {
     // Round 1
-    let mut commitments_map: BTreeMap<Identifier, SigningCommitments> =
-        BTreeMap::new();
+    let mut commitments_map: BTreeMap<Identifier, SigningCommitments> = BTreeMap::new();
 
     // Creating two commitments and corresponding nonces
     let (nonces, commitments) = commit(&signing_share, &mut rng);
@@ -74,9 +75,9 @@ async fn do_presign(
         commitments_map.insert(from.to_identifier()?, commitment);
     }
 
-    Ok( PresignOutput{
-            nonces,
-            commitments_map,
+    Ok(PresignOutput {
+        nonces,
+        commitments_map,
     })
 }
 
@@ -96,15 +97,10 @@ mod test {
 
         let key_packages = build_key_packages_with_dealer(max_signers, threshold, &mut rng);
         // add the presignatures here
-        let mut presignatures = test_run_presignature(
-            &key_packages,
-            actual_signers,
-        )
-        .unwrap();
+        let mut presignatures = test_run_presignature(&key_packages, actual_signers).unwrap();
 
-        while !presignatures.is_empty(){
-            let (p1, presig1) =  presignatures.pop().unwrap();
-            for (p2, presig2) in presignatures.iter(){
+        while let Some((p1, presig1)) = presignatures.pop() {
+            for (p2, presig2) in &presignatures {
                 assert!(p1 != *p2);
                 assert!(presig1.nonces != presig2.nonces);
                 assert_eq!(presig1.commitments_map, presig2.commitments_map);
@@ -122,20 +118,13 @@ mod test {
 
         let key_packages = build_key_packages_with_dealer(max_signers, threshold, &mut rng);
         // add the presignatures here
-        let mut presignatures = test_run_presignature(
-            &key_packages,
-            actual_signers,
-        )
-        .unwrap();
-
-        while !presignatures.is_empty(){
-            let (p1, presig1) =  presignatures.pop().unwrap();
-            for (p2, presig2) in presignatures.iter(){
+        let mut presignatures = test_run_presignature(&key_packages, actual_signers).unwrap();
+        while let Some((p1, presig1)) = presignatures.pop() {
+            for (p2, presig2) in &presignatures {
                 assert!(p1 != *p2);
                 assert!(presig1.nonces != presig2.nonces);
                 assert_eq!(presig1.commitments_map, presig2.commitments_map);
             }
         }
     }
-
 }

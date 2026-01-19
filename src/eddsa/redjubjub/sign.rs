@@ -1,24 +1,22 @@
 //! This module and the frost one are supposed to have the same helper function
-//! However, currently the reddsa is implemented  wraps a signature generation functionality from `Frost` library
-//!  into `cait-sith::Protocol` representation.
-use super::{KeygenOutput, SignatureOption, PresignOutput};
+//! However, currently the reddsa wraps a signature generation functionality from `Frost` library into `crate::Protocol` types
+use super::{KeygenOutput, PresignOutput, SignatureOption};
 use crate::errors::{InitializationError, ProtocolError};
 use crate::participants::{Participant, ParticipantList};
 use crate::protocol::helpers::recv_from_others;
 use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
 use crate::protocol::Protocol;
 
+use rand_core::CryptoRngCore;
 use reddsa::frost::redjubjub::{
-    SigningPackage, Identifier, Randomizer, RandomizedParams,
+    aggregate,
     keys::{KeyPackage, PublicKeyPackage},
     round2,
     round2::SignatureShare,
-    aggregate
+    Identifier, RandomizedParams, Randomizer, SigningPackage,
 };
 use std::collections::BTreeMap;
 use zeroize::Zeroizing;
-use rand_core::CryptoRngCore;
-
 
 /// Depending on whether the current participant is a coordinator or not,
 /// runs the signature protocol as either a participant or a coordinator.
@@ -33,6 +31,7 @@ use rand_core::CryptoRngCore;
 ///
 /// /!\ Warning: the threshold in this scheme is the exactly the
 ///              same as the max number of malicious parties.
+#[allow(clippy::too_many_arguments)]
 pub fn sign(
     participants: &[Participant],
     threshold: usize,
@@ -84,7 +83,6 @@ pub fn sign(
     Ok(make_protocol(comms, fut))
 }
 
-
 #[allow(clippy::too_many_arguments)]
 async fn fut_wrapper(
     chan: SharedChannel,
@@ -132,6 +130,7 @@ async fn fut_wrapper(
 /// creating a specific ciphersuite for this, and not just sending the hash
 /// as if it were the message.
 /// For reference, see how RFC 8032 handles "pre-hashing".
+#[allow(clippy::too_many_arguments)]
 async fn do_sign_coordinator(
     mut chan: SharedChannel,
     participants: ParticipantList,
@@ -157,12 +156,18 @@ async fn do_sign_coordinator(
     chan.send_many(randomizer_waitpoint, &randomizer)?;
 
     // Round 2
-    let signature_share = round2::sign(&signing_package, &presignature.nonces, &key_package, *randomizer)
-        .map_err(|_| ProtocolError::ErrorFrostSigningFailed)?;
+    let signature_share = round2::sign(
+        &signing_package,
+        &presignature.nonces,
+        &key_package,
+        *randomizer,
+    )
+    .map_err(|_| ProtocolError::ErrorFrostSigningFailed)?;
 
     let sign_waitpoint = chan.next_waitpoint();
     signature_shares.insert(me.to_identifier()?, signature_share);
-    for (from, signature_share) in recv_from_others(&chan, sign_waitpoint, &participants, me).await?
+    for (from, signature_share) in
+        recv_from_others(&chan, sign_waitpoint, &participants, me).await?
     {
         signature_shares.insert(from.to_identifier()?, signature_share);
     }
@@ -175,8 +180,13 @@ async fn do_sign_coordinator(
     // Feature "cheater-detection" unveils existant malicious participants
     let pk_package = PublicKeyPackage::new(BTreeMap::new(), keygen_output.public_key);
 
-    let signature = aggregate(&signing_package, &signature_shares, &pk_package, &randomized_params)
-        .map_err(|_| ProtocolError::ErrorFrostAggregation)?;
+    let signature = aggregate(
+        &signing_package,
+        &signature_shares,
+        &pk_package,
+        &randomized_params,
+    )
+    .map_err(|_| ProtocolError::ErrorFrostAggregation)?;
 
     Ok(Some(signature))
 }
@@ -211,8 +221,7 @@ async fn do_sign_participant(
     // Receive the Randomizer from the coordinator
     let randomizer_waitpoint = chan.next_waitpoint();
     let randomizer = loop {
-        let (from, randomizer): (_, Randomizer) =
-            chan.recv(randomizer_waitpoint).await?;
+        let (from, randomizer): (_, Randomizer) = chan.recv(randomizer_waitpoint).await?;
         if from != coordinator {
             continue;
         }
@@ -222,8 +231,13 @@ async fn do_sign_participant(
     let key_package = construct_key_package(threshold, me, &keygen_output)?;
 
     let signing_package = SigningPackage::new(presignature.commitments_map, &message);
-    let signature_share = round2::sign(&signing_package, &presignature.nonces, &key_package, randomizer)
-        .map_err(|_| ProtocolError::ErrorFrostSigningFailed)?;
+    let signature_share = round2::sign(
+        &signing_package,
+        &presignature.nonces,
+        &key_package,
+        randomizer,
+    )
+    .map_err(|_| ProtocolError::ErrorFrostSigningFailed)?;
 
     let sign_waitpoint = chan.next_waitpoint();
     chan.send_private(sign_waitpoint, coordinator, &signature_share)?;
@@ -249,13 +263,12 @@ fn construct_key_package(
         verifying_key,
         u16::try_from(threshold).map_err(|_| {
             ProtocolError::Other("threshold cannot be converted to u16".to_string())
-        })?);
+        })?,
+    );
 
     // Ensures the values are zeroized on drop
     Ok(Zeroizing::new(key_package))
 }
-
-
 
 #[cfg(test)]
 mod test {
@@ -309,7 +322,7 @@ mod test {
                     msg_hash,
                 )
                 .unwrap();
-            one_coordinator_output(data, coordinators[0]).unwrap();
+                one_coordinator_output(data, coordinators[0]).unwrap();
             }
         }
     }

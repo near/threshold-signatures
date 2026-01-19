@@ -1,19 +1,18 @@
-//! This module serves as a wrapper for distributed RedDSA a.k.a. rerandomized FROST from [GK](https://eprint.iacr.org/2024/436.pdf)
-//! This is implemented on JubJub Curve with only the "Spend Authorization" set of parameters.
-//! Check https://zips.z.cash/protocol/protocol.pdf#concretespendauthsig for more info about the set of parameters.
+//! A wrapper for distributed `RedDSA` on `JubJub` curve with only the `Spend Authorization`.
+//!
+//! Check [GK](https://eprint.iacr.org/2024/436.pdf) and <https://zips.z.cash/protocol/protocol.pdf#concretespendauthsig>
 pub mod presign;
 pub mod sign;
 #[cfg(test)]
 mod test;
 
 use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat};
+use reddsa::frost::redjubjub::{
+    round1::{SigningCommitments, SigningNonces},
+    Identifier, Signature,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use reddsa::frost::redjubjub::{
-    Identifier, Signature,
-    round1::{SigningCommitments, SigningNonces}
-};
-
 
 // JubJub Curve
 pub use reddsa::frost::redjubjub::JubjubBlake2b512;
@@ -32,7 +31,6 @@ pub struct PresignArguments {
     /// The output of key generation, i.e. our share of the secret key, and the public key package.
     pub keygen_out: KeygenOutput,
 }
-
 
 // Not sure what to do with the Zeroization
 // use zeroize::ZeroizeOnDrop;

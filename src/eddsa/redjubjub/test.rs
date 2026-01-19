@@ -1,15 +1,18 @@
 use crate::crypto::hash::{hash, HashOutput};
-use crate::eddsa::redjubjub::{sign::sign, presign::presign, PresignArguments, KeygenOutput, SignatureOption, PresignOutput};
+use crate::eddsa::redjubjub::{
+    presign::presign, sign::sign, KeygenOutput, PresignArguments, PresignOutput, SignatureOption,
+};
 use crate::participants::{Participant, ParticipantList};
 use crate::test_utils::{
-    generate_participants, run_protocol, GenOutput, GenProtocol, MockCryptoRng,
-    assert_public_key_invariant, generate_participants_with_random_ids, one_coordinator_output, run_keygen, run_refresh, run_reshare,
+    assert_public_key_invariant, generate_participants, generate_participants_with_random_ids,
+    one_coordinator_output, run_keygen, run_protocol, run_refresh, run_reshare, GenOutput,
+    GenProtocol, MockCryptoRng,
 };
 
 use frost_core::Scalar;
 use reddsa::frost::redjubjub::{
-    JubjubBlake2b512, VerifyingKey, SigningKey,
-    keys::{SigningShare, generate_with_dealer, IdentifierList}
+    keys::{generate_with_dealer, IdentifierList, SigningShare},
+    JubjubBlake2b512, SigningKey, VerifyingKey,
 };
 
 type C = JubjubBlake2b512;
@@ -74,9 +77,11 @@ pub fn test_run_presignature(
 
     for (participant, keygen_out) in participants.iter().take(actual_signers) {
         let rng = MockCryptoRng::seed_from_u64(42);
-        let args = PresignArguments { keygen_out: keygen_out.clone() };
+        let args = PresignArguments {
+            keygen_out: keygen_out.clone(),
+        };
         // run the signing scheme
-        let protocol = presign(&participants_list, *participant, args, rng)?;
+        let protocol = presign(&participants_list, *participant, &args, rng)?;
 
         protocols.push((*participant, Box::new(protocol)));
     }
@@ -84,7 +89,8 @@ pub fn test_run_presignature(
     Ok(run_protocol(protocols)?)
 }
 
-
+#[allow(clippy::panic_in_result_fn)]
+#[allow(clippy::missing_panics_doc)]
 pub fn test_run_signature(
     participants: &[(Participant, KeygenOutput)],
     actual_signers: usize,
@@ -102,7 +108,8 @@ pub fn test_run_signature(
         .collect::<Vec<_>>();
     let coordinators = ParticipantList::new(coordinators).unwrap();
     for ((participant, key_pair), (participant_redundancy, presignature)) in
-    participants.iter().zip(presig.iter()){    
+        participants.iter().zip(presig.iter())
+    {
         assert_eq!(participant, participant_redundancy);
         let mut rng_p = MockCryptoRng::seed_from_u64(42);
         let mut coordinator = *participant;
@@ -226,8 +233,8 @@ fn dkg_refresh_sign_test() {
 
     let mut key_packages = run_keygen(&participants, threshold, &mut rng);
     // test dkg
-    for i in 0..3{
-        let msg = format!("hello_near_{}", i);
+    for i in 0..3 {
+        let msg = format!("hello_near_{i}");
         let msg_hash = hash(&msg).unwrap();
         assert_public_key_invariant(&key_packages);
         let coordinators = vec![key_packages[0].0];
@@ -255,8 +262,8 @@ fn dkg_reshare_more_participants_sign_test() {
     let mut new_participant = participants.clone();
     let mut key_packages = run_keygen(&participants, threshold, &mut rng);
     // test dkg
-    for i in 0..3{
-        let msg = format!("hello_near_{}", i);
+    for i in 0..3 {
+        let msg = format!("hello_near_{i}");
         let msg_hash = hash(&msg).unwrap();
         assert_public_key_invariant(&key_packages);
         let coordinators = vec![key_packages[0].0];
@@ -289,8 +296,6 @@ fn dkg_reshare_more_participants_sign_test() {
     }
 }
 
-
-
 #[test]
 fn dkg_reshare_less_participants_sign_test() {
     let mut rng = MockCryptoRng::seed_from_u64(42);
@@ -301,8 +306,8 @@ fn dkg_reshare_less_participants_sign_test() {
     let mut new_participant = participants.clone();
     let mut key_packages = run_keygen(&participants, threshold, &mut rng);
     // test dkg
-    for i in 0..3{
-        let msg = format!("hello_near_{}", i);
+    for i in 0..3 {
+        let msg = format!("hello_near_{i}");
         let msg_hash = hash(&msg).unwrap();
         assert_public_key_invariant(&key_packages);
         let coordinators = vec![key_packages[0].0];
