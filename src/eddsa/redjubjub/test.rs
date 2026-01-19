@@ -245,9 +245,8 @@ fn dkg_refresh_sign_test() {
     }
 }
 
-
 #[test]
-fn dkg_reshare_sign_test() {
+fn dkg_reshare_more_participants_sign_test() {
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let mut participants = generate_participants_with_random_ids(4, &mut rng);
     let actual_signers = participants.len();
@@ -287,5 +286,51 @@ fn dkg_reshare_sign_test() {
         // update the old parameters
         threshold = new_threshold;
         participants.push(Participant::from(20u32 + i));
+    }
+}
+
+
+
+#[test]
+fn dkg_reshare_less_participants_sign_test() {
+    let mut rng = MockCryptoRng::seed_from_u64(42);
+    let mut participants = generate_participants_with_random_ids(9, &mut rng);
+    let actual_signers = participants.len();
+    let mut threshold = 7;
+
+    let mut new_participant = participants.clone();
+    let mut key_packages = run_keygen(&participants, threshold, &mut rng);
+    // test dkg
+    for i in 0..3{
+        let msg = format!("hello_near_{}", i);
+        let msg_hash = hash(&msg).unwrap();
+        assert_public_key_invariant(&key_packages);
+        let coordinators = vec![key_packages[0].0];
+        // This internally verifies with the rerandomized public key
+        let data = test_run_signature(
+            &key_packages,
+            actual_signers,
+            &coordinators,
+            threshold,
+            msg_hash,
+        )
+        .unwrap();
+        one_coordinator_output(data, coordinators[0]).unwrap();
+
+        new_participant.pop();
+
+        let new_threshold = threshold - 1;
+        key_packages = run_reshare(
+            &participants,
+            &key_packages[0].1.public_key,
+            &key_packages,
+            threshold,
+            new_threshold,
+            &new_participant,
+            &mut rng,
+        );
+        // update the old parameters
+        threshold = new_threshold;
+        participants.pop();
     }
 }
