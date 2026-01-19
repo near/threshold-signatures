@@ -266,8 +266,7 @@ mod test {
     };
 
     use crate::test_utils::{
-        assert_public_key_invariant, generate_participants, one_coordinator_output, run_keygen,
-        run_refresh, run_reshare, MockCryptoRng,
+        assert_public_key_invariant, generate_participants, generate_participants_with_random_ids, one_coordinator_output, run_keygen, run_refresh, run_reshare, MockCryptoRng
     };
     use crate::participants::Participant;
     use rand::SeedableRng;
@@ -295,6 +294,31 @@ mod test {
         one_coordinator_output(data, coordinators[0]).unwrap();
     }
 
+    #[test]
+    fn stress() {
+        let mut rng = MockCryptoRng::seed_from_u64(42);
+
+        let max_signers = 7;
+        let msg = "hello_near";
+        let msg_hash = hash(&msg).unwrap();
+
+        for min_signers in 2..max_signers {
+            for actual_signers in min_signers..=max_signers {
+                let key_packages =
+                    build_key_packages_with_dealer(max_signers, min_signers, &mut rng);
+                let coordinators = vec![key_packages[0].0];
+                let data = test_run_signature(
+                    &key_packages,
+                    actual_signers.into(),
+                    &coordinators,
+                    min_signers.into(),
+                    msg_hash,
+                )
+                .unwrap();
+            one_coordinator_output(data, coordinators[0]).unwrap();
+            }
+        }
+    }
 }
 
 
@@ -317,119 +341,9 @@ mod test {
 //     use rand::{Rng, RngCore, SeedableRng};
 
 
-//     #[test]
-//     fn stress() {
-//         let mut rng = MockCryptoRng::seed_from_u64(42);
 
-//         let max_signers = 7;
-//         let msg = "hello_near";
-//         let msg_hash = hash(&msg).unwrap();
 
-//         for min_signers in 2..max_signers {
-//             for actual_signers in min_signers..=max_signers {
-//                 let key_packages =
-//                     build_key_packages_with_dealer(max_signers, min_signers, &mut rng);
-//                 let coordinators = vec![key_packages[0].0];
-//                 let data = test_run_signature_protocols(
-//                     &key_packages,
-//                     actual_signers.into(),
-//                     &coordinators,
-//                     min_signers.into(),
-//                     msg_hash,
-//                 )
-//                 .unwrap();
-//                 assert_single_coordinator_result(&data);
-//             }
-//         }
-//     }
 
-//     #[test]
-//     fn dkg_sign_test() {
-//         let mut rng = MockCryptoRng::seed_from_u64(42);
-//         let participants = vec![
-//             Participant::from(0u32),
-//             Participant::from(31u32),
-//             Participant::from(1u32),
-//             Participant::from(2u32),
-//         ];
-//         let actual_signers = participants.len();
-//         let threshold = 2;
-//         let msg = "hello_near";
-//         let msg_hash = hash(&msg).unwrap();
-
-//         // test dkg
-//         let key_packages = run_keygen(&participants, threshold, &mut rng);
-//         assert_public_key_invariant(&key_packages);
-//         let coordinators = vec![key_packages[0].0];
-//         let data = test_run_signature_protocols(
-//             &key_packages,
-//             actual_signers,
-//             &coordinators,
-//             threshold,
-//             msg_hash,
-//         )
-//         .unwrap();
-//         let signature = assert_single_coordinator_result(&data);
-
-//         assert!(key_packages[0]
-//             .1
-//             .public_key
-//             .verify(msg_hash.as_ref(), &signature)
-//             .is_ok());
-
-//         // // test refresh
-//         let key_packages1 = run_refresh(&participants, &key_packages, threshold, &mut rng);
-//         assert_public_key_invariant(&key_packages1);
-//         let msg = "hello_near_2";
-//         let msg_hash = hash(&msg).unwrap();
-//         let data = test_run_signature_protocols(
-//             &key_packages1,
-//             actual_signers,
-//             &coordinators,
-//             threshold,
-//             msg_hash,
-//         )
-//         .unwrap();
-//         let signature = assert_single_coordinator_result(&data);
-//         let pub_key = key_packages1[2].1.public_key;
-//         assert!(key_packages1[0]
-//             .1
-//             .public_key
-//             .verify(msg_hash.as_ref(), &signature)
-//             .is_ok());
-
-//         // test reshare
-//         let mut new_participant = participants.clone();
-//         new_participant.push(Participant::from(20u32));
-//         let new_threshold = 4;
-//         let key_packages2 = run_reshare(
-//             &participants,
-//             &pub_key,
-//             &key_packages1,
-//             threshold,
-//             new_threshold,
-//             &new_participant,
-//             &mut rng,
-//         );
-//         assert_public_key_invariant(&key_packages2);
-//         let msg = "hello_near_3";
-//         let msg_hash = hash(&msg).unwrap();
-//         let coordinators = vec![key_packages2[0].0];
-//         let data = test_run_signature_protocols(
-//             &key_packages2,
-//             actual_signers,
-//             &coordinators,
-//             new_threshold,
-//             msg_hash,
-//         )
-//         .unwrap();
-//         let signature = assert_single_coordinator_result(&data);
-//         assert!(key_packages2[0]
-//             .1
-//             .public_key
-//             .verify(msg_hash.as_ref(), &signature)
-//             .is_ok());
-//     }
 
 //     #[test]
 //     fn test_reshare_sign_more_participants() {

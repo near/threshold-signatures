@@ -1,8 +1,9 @@
-use crate::crypto::hash::HashOutput;
+use crate::crypto::hash::{hash, HashOutput};
 use crate::eddsa::redjubjub::{sign::sign, presign::presign, PresignArguments, KeygenOutput, SignatureOption, PresignOutput};
 use crate::participants::{Participant, ParticipantList};
 use crate::test_utils::{
     generate_participants, run_protocol, GenOutput, GenProtocol, MockCryptoRng,
+    assert_public_key_invariant, generate_participants_with_random_ids, one_coordinator_output, run_keygen, run_refresh, run_reshare,
 };
 
 use frost_core::Scalar;
@@ -100,9 +101,8 @@ pub fn test_run_signature(
         .map(|(id, _)| *id)
         .collect::<Vec<_>>();
     let coordinators = ParticipantList::new(coordinators).unwrap();
-    for i in 0..participants.len() {
-        let (participant, key_pair) = &participants[i];
-        let (participant_redundancy, presignature) = &presig[i];
+    for ((participant, key_pair), (participant_redundancy, presignature)) in
+    participants.iter().zip(presig.iter()){    
         assert_eq!(participant, participant_redundancy);
         let mut rng_p = MockCryptoRng::seed_from_u64(42);
         let mut coordinator = *participant;
@@ -215,4 +215,77 @@ fn test_keygen_threshold_limits() {
 fn test_reshare_threshold_limits() {
     let mut rng = MockCryptoRng::seed_from_u64(42);
     crate::dkg::test::reshare__should_fail_if_threshold_is_below_limit::<C, _>(&mut rng);
+}
+
+#[test]
+fn dkg_refresh_sign_test() {
+    let mut rng = MockCryptoRng::seed_from_u64(42);
+    let participants = generate_participants_with_random_ids(4, &mut rng);
+    let actual_signers = participants.len();
+    let threshold = 2;
+
+    let mut key_packages = run_keygen(&participants, threshold, &mut rng);
+    // test dkg
+    for i in 0..3{
+        let msg = format!("hello_near_{}", i);
+        let msg_hash = hash(&msg).unwrap();
+        assert_public_key_invariant(&key_packages);
+        let coordinators = vec![key_packages[0].0];
+        // This internally verifies with the rerandomized public key
+        let data = test_run_signature(
+            &key_packages,
+            actual_signers,
+            &coordinators,
+            threshold,
+            msg_hash,
+        )
+        .unwrap();
+        one_coordinator_output(data, coordinators[0]).unwrap();
+        key_packages = run_refresh(&participants, &key_packages, threshold, &mut rng);
+    }
+}
+
+
+#[test]
+fn dkg_reshare_sign_test() {
+    let mut rng = MockCryptoRng::seed_from_u64(42);
+    let mut participants = generate_participants_with_random_ids(4, &mut rng);
+    let actual_signers = participants.len();
+    let mut threshold = 2;
+
+    let mut new_participant = participants.clone();
+    let mut key_packages = run_keygen(&participants, threshold, &mut rng);
+    // test dkg
+    for i in 0..3{
+        let msg = format!("hello_near_{}", i);
+        let msg_hash = hash(&msg).unwrap();
+        assert_public_key_invariant(&key_packages);
+        let coordinators = vec![key_packages[0].0];
+        // This internally verifies with the rerandomized public key
+        let data = test_run_signature(
+            &key_packages,
+            actual_signers,
+            &coordinators,
+            threshold,
+            msg_hash,
+        )
+        .unwrap();
+        one_coordinator_output(data, coordinators[0]).unwrap();
+
+        new_participant.push(Participant::from(20u32 + i));
+
+        let new_threshold = threshold + 1;
+        key_packages = run_reshare(
+            &participants,
+            &key_packages[0].1.public_key,
+            &key_packages,
+            threshold,
+            new_threshold,
+            &new_participant,
+            &mut rng,
+        );
+        // update the old parameters
+        threshold = new_threshold;
+        participants.push(Participant::from(20u32 + i));
+    }
 }
