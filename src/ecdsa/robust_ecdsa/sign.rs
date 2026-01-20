@@ -54,9 +54,17 @@ pub fn sign(
     }
 
     // ensure number of participants during the signing phase is >= 2 * max_malicious + 1
-    if participants.len() < 2 * max_malicious + 1 {
+    let threshold = max_malicious
+        .checked_mul(2)
+        .and_then(|v| v.checked_add(1))
+        .ok_or_else(|| {
+            InitializationError::BadParameters(
+                "2*threshold+1 must be less than usize::MAX".to_string(),
+            )
+        })?;
+    if participants.len() < threshold {
         return Err(InitializationError::NotEnoughParticipantsForThreshold {
-            threshold: 2 * max_malicious + 1,
+            threshold,
             participants: participants.len(),
         });
     }

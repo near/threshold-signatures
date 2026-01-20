@@ -72,7 +72,7 @@ $\forall j \in \\{t+2.. n\\},\quad \mathsf{ExponentInterpolation}(W_1, \ldots W_
 # Signing
 
 In this phase, a set of parties $\mathcal{P}_2 \subseteq \mathcal{P}_1$
-of size $N_2 \get 2 \cdot t + 1$ wishes to generate an ECDSA signature.
+of size $N_2 \geq 2 \cdot t + 1$ wishes to generate an ECDSA signature.
 
 The inputs to this phase are:
 1) The presignature $(R, \alpha_i, \beta_i, c_i, e_i)$,
