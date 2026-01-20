@@ -370,4 +370,49 @@ mod test {
             }
         }
     }
+
+    #[test]
+    fn test_sign_fails_if_threshold_too_high() {
+        let mut rng = MockCryptoRng::seed_from_u64(42);
+        let participants = generate_participants(2);
+        let max_malicious = 1;
+
+        // arbitrary values
+        let presignatures = participants
+            .iter()
+            .map(|p| {
+                (
+                    *p,
+                    PresignOutput {
+                        big_r: ProjectivePoint::IDENTITY.to_affine(),
+                        alpha: Secp256K1ScalarField::zero(),
+                        beta: Secp256K1ScalarField::zero(),
+                        c: Secp256K1ScalarField::zero(),
+                        e: Secp256K1ScalarField::zero(),
+                    },
+                )
+            })
+            .collect::<Vec<_>>();
+        let public_key = ProjectivePoint::IDENTITY;
+        let msg = [0u8; 32];
+
+        let result = crate::ecdsa::robust_ecdsa::test::run_sign_without_rerandomization(
+            &presignatures,
+            max_malicious,
+            public_key,
+            &msg,
+            &mut rng,
+        );
+
+        match result {
+            Ok(_) => panic!("expected failure, got success"),
+            Err(err) => {
+                let text = err.to_string();
+                assert!(
+                    text.contains("Participant count cannot be"),
+                    "unexpected error type: {text}"
+                );
+            }
+        }
+    }
 }
