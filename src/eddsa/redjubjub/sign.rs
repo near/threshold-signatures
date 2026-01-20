@@ -1,13 +1,12 @@
 //! This module and the frost one are supposed to have the same helper function
 //! However, currently the reddsa wraps a signature generation functionality from `Frost` library into `crate::Protocol` types
-use super::{KeygenOutput, PresignOutput, SignatureOption, Signature};
+use super::{KeygenOutput, PresignOutput, Signature, SignatureOption};
 use crate::errors::{InitializationError, ProtocolError};
 use crate::participants::{Participant, ParticipantList};
 use crate::protocol::{
-    Protocol,
     helpers::recv_from_others,
     internal::{make_protocol, Comms, SharedChannel},
-
+    Protocol,
 };
 
 use rand_core::CryptoRngCore;

@@ -3,25 +3,24 @@ use crate::eddsa::redjubjub::{
     presign::presign, sign::sign, KeygenOutput, PresignArguments, PresignOutput, SignatureOption,
 };
 use crate::participants::{Participant, ParticipantList};
+use crate::protocol::Protocol;
 use crate::test_utils::{
     assert_public_key_invariant, generate_participants, generate_participants_with_random_ids,
     one_coordinator_output, run_keygen, run_protocol, run_refresh, run_reshare, GenOutput,
     GenProtocol, MockCryptoRng,
 };
-use crate::protocol::Protocol;
 
-use frost_core::{Scalar, Field};
-use reddsa::frost::redjubjub::{
-    JubjubScalarField, round1::{commit, SigningCommitments, SigningNonces},
-    keys::{generate_with_dealer, IdentifierList, SigningShare},
-    JubjubBlake2b512, SigningKey, VerifyingKey,
-    Identifier,
-};
+use frost_core::{Field, Scalar};
+use rand::Rng;
 use rand::SeedableRng;
 use rand_core::{CryptoRngCore, RngCore};
-use rand::Rng;
-use std::error::Error;
+use reddsa::frost::redjubjub::{
+    keys::{generate_with_dealer, IdentifierList, SigningShare},
+    round1::{commit, SigningCommitments, SigningNonces},
+    Identifier, JubjubBlake2b512, JubjubScalarField, SigningKey, VerifyingKey,
+};
 use std::collections::BTreeMap;
+use std::error::Error;
 
 type C = JubjubBlake2b512;
 
@@ -356,7 +355,7 @@ fn test_signature_correctness() {
     let index = rng.gen_range(0..keys.len());
     let coordinator = keys[index as usize].0;
 
-    let mut participants_sign_builder:Vec<(Participant, (KeygenOutput, MockCryptoRng))> = keys
+    let mut participants_sign_builder: Vec<(Participant, (KeygenOutput, MockCryptoRng))> = keys
         .iter()
         .map(|(p, keygen_output)| {
             let rng_p = MockCryptoRng::seed_from_u64(rng.next_u64());
@@ -364,10 +363,9 @@ fn test_signature_correctness() {
         })
         .collect();
 
-
     let mut commitments_map: BTreeMap<Identifier, SigningCommitments> = BTreeMap::new();
     let mut nonces_map: BTreeMap<Participant, SigningNonces> = BTreeMap::new();
-    for (p, (keygen, rng_p)) in participants_sign_builder.iter_mut() {
+    for (p, (keygen, rng_p)) in &mut participants_sign_builder {
         // Creating two commitments and corresponding nonces
         let (nonces, commitments) = commit(&keygen.private_share, rng_p);
         commitments_map.insert(p.to_identifier().unwrap(), commitments);
@@ -384,9 +382,9 @@ fn test_signature_correctness() {
             |participants, coordinator, me, _, (keygen_output, rng_p), _| {
                 let nonces = nonces_map.get(&me).unwrap().clone();
                 let presignature = PresignOutput {
-                                    nonces,
-                                    commitments_map: commitments_map.clone(),
-                                };
+                    nonces,
+                    commitments_map: commitments_map.clone(),
+                };
                 sign(
                     participants,
                     threshold as usize,
@@ -395,8 +393,9 @@ fn test_signature_correctness() {
                     keygen_output,
                     presignature,
                     msg.clone(),
-                    rng_p
-                ).map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
+                    rng_p,
+                )
+                .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
             },
         )
         .unwrap();

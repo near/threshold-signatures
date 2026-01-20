@@ -10,8 +10,7 @@ use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFor
 
 use reddsa::frost::redjubjub::{
     round1::{SigningCommitments, SigningNonces},
-    Identifier, VerifyingKey,
-    Signature as redjubjubSig, Error, Randomizer, RandomizedParams,
+    Error, Identifier, RandomizedParams, Randomizer, Signature as redjubjubSig, VerifyingKey,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -36,11 +35,16 @@ pub struct Signature {
 
 impl Signature {
     pub fn new(signature: redjubjubSig, randomizer: Randomizer) -> Self {
-        Self { signature, randomizer }
+        Self {
+            signature,
+            randomizer,
+        }
     }
-    pub fn verify(&self, public_key: &VerifyingKey, message: Vec<u8>) -> Result<(), Error> {
+    pub fn verify(&self, public_key: &VerifyingKey, message: &[u8]) -> Result<(), Error> {
         let randomparameters = RandomizedParams::from_randomizer(public_key, self.randomizer);
-        randomparameters.randomized_verifying_key().verify(&message, &self.signature)
+        randomparameters
+            .randomized_verifying_key()
+            .verify(message, &self.signature)
     }
 }
 
