@@ -22,6 +22,7 @@ type C = Secp256K1Sha256;
 pub fn sign(
     participants: &[Participant],
     coordinator: Participant,
+    max_malicious: usize,
     me: Participant,
     public_key: AffinePoint,
     presignature: RerandomizedPresignOutput,
@@ -49,6 +50,14 @@ pub fn sign(
         return Err(InitializationError::MissingParticipant {
             role: "coordinator",
             participant: coordinator,
+        });
+    }
+
+    // ensure number of participants during the signing phase is >= 2 * max_malicious + 1
+    if participants.len() < 2 * max_malicious + 1 {
+        return Err(InitializationError::NotEnoughParticipantsForThreshold {
+            threshold: 2 * max_malicious + 1,
+            participants: participants.len(),
         });
     }
 
@@ -246,9 +255,14 @@ mod test {
             participants_presign.push((*p, presignature));
         }
 
-        let (_, sig) =
-            run_sign_without_rerandomization(&participants_presign, public_key, msg, &mut rng)
-                .unwrap();
+        let (_, sig) = run_sign_without_rerandomization(
+            &participants_presign,
+            max_malicious,
+            public_key,
+            msg,
+            &mut rng,
+        )
+        .unwrap();
         let sig = ecdsa::Signature::from_scalars(x_coordinate(&sig.big_r), sig.s).unwrap();
 
         // verify the correctness of the generated signature
@@ -293,6 +307,7 @@ mod test {
 
         let (tweak, _, sig) = run_sign_with_rerandomization(
             &participants_presign,
+            max_malicious,
             public_key.to_element(),
             msg,
             &mut rng,
@@ -313,7 +328,8 @@ mod test {
     #[test]
     fn test_sign_fails_if_s_is_zero() {
         let mut rng = MockCryptoRng::seed_from_u64(42);
-        let participants = generate_participants(2);
+        let participants = generate_participants(3);
+        let max_malicious = 1;
 
         // presignatures with s_me = 0 for each participant
         let presignatures = participants
@@ -337,6 +353,7 @@ mod test {
 
         let result = crate::ecdsa::robust_ecdsa::test::run_sign_without_rerandomization(
             &presignatures,
+            max_malicious,
             public_key,
             &msg,
             &mut rng,
