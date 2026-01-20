@@ -1,0 +1,8 @@
+---
+source: src/eddsa/redjubjub/test.rs
+expression: signature
+---
+{
+  "signature": "d66fd15da9d84f02cc9e0b5958e6576dac8aa5c8874a9229d8e7a088dd6c6893a7ceac64f33fd22001ca3310e4002fa75f166f983bc52724ab9d272ceba51800",
+  "randomizer": "fb192a57d53ae15c7173f8ca6a61bd6b5a6939c77e881154942b5efaed348807"
+}

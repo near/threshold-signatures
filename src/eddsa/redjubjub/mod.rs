@@ -28,7 +28,7 @@ impl Ciphersuite for JubjubBlake2b512 {}
 
 pub type KeygenOutput = crate::KeygenOutput<JubjubBlake2b512>;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Signature {
     pub signature: redjubjubSig,
     pub randomizer: Randomizer,

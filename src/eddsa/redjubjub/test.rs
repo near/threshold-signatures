@@ -8,17 +8,22 @@ use crate::test_utils::{
     one_coordinator_output, run_keygen, run_protocol, run_refresh, run_reshare, GenOutput,
     GenProtocol, MockCryptoRng,
 };
+use crate::protocol::Protocol;
 
-use frost_core::Scalar;
+use frost_core::{Scalar, Field};
 use reddsa::frost::redjubjub::{
+    JubjubScalarField, round1::{commit, SigningCommitments, SigningNonces},
     keys::{generate_with_dealer, IdentifierList, SigningShare},
     JubjubBlake2b512, SigningKey, VerifyingKey,
+    Identifier,
 };
-
-type C = JubjubBlake2b512;
 use rand::SeedableRng;
 use rand_core::{CryptoRngCore, RngCore};
+use rand::Rng;
 use std::error::Error;
+use std::collections::BTreeMap;
+
+type C = JubjubBlake2b512;
 
 /// this is a centralized key generation
 pub fn build_key_packages_with_dealer(
@@ -234,7 +239,7 @@ fn dkg_refresh_sign_test() {
     let mut key_packages = run_keygen(&participants, threshold, &mut rng);
     // test dkg
     for i in 0..3 {
-        let msg = format!("hello_near_{i}");
+        let msg = format!("hellprotocolo_near_{i}");
         let msg_hash = hash(&msg).unwrap();
         assert_public_key_invariant(&key_packages);
         let coordinators = vec![key_packages[0].0];
@@ -338,4 +343,64 @@ fn dkg_reshare_less_participants_sign_test() {
         threshold = new_threshold;
         participants.pop();
     }
+}
+
+#[test]
+fn test_signature_correctness() {
+    let mut rng = MockCryptoRng::seed_from_u64(42);
+    let threshold = 6;
+    let keys = build_key_packages_with_dealer(11, threshold, &mut rng);
+    let public_key = keys[0].1.public_key.to_element();
+
+    let msg = b"hello worldhello worldhello worlregerghwhrth".to_vec();
+    let index = rng.gen_range(0..keys.len());
+    let coordinator = keys[index as usize].0;
+
+    let mut participants_sign_builder:Vec<(Participant, (KeygenOutput, MockCryptoRng))> = keys
+        .iter()
+        .map(|(p, keygen_output)| {
+            let rng_p = MockCryptoRng::seed_from_u64(rng.next_u64());
+            (*p, (keygen_output.clone(), rng_p))
+        })
+        .collect();
+
+
+    let mut commitments_map: BTreeMap<Identifier, SigningCommitments> = BTreeMap::new();
+    let mut nonces_map: BTreeMap<Participant, SigningNonces> = BTreeMap::new();
+    for (p, (keygen, rng_p)) in participants_sign_builder.iter_mut() {
+        // Creating two commitments and corresponding nonces
+        let (nonces, commitments) = commit(&keygen.private_share, rng_p);
+        commitments_map.insert(p.to_identifier().unwrap(), commitments);
+        nonces_map.insert(*p, nonces);
+    }
+
+    // This checks the output signature validity internally
+    let result =
+        crate::test_utils::run_sign::<JubjubBlake2b512, (KeygenOutput, MockCryptoRng), _, _>(
+            participants_sign_builder,
+            coordinator,
+            public_key,
+            JubjubScalarField::zero(), // not important
+            |participants, coordinator, me, _, (keygen_output, rng_p), _| {
+                let nonces = nonces_map.get(&me).unwrap().clone();
+                let presignature = PresignOutput {
+                                    nonces,
+                                    commitments_map: commitments_map.clone(),
+                                };
+                sign(
+                    participants,
+                    threshold as usize,
+                    me,
+                    coordinator,
+                    keygen_output,
+                    presignature,
+                    msg.clone(),
+                    rng_p
+                ).map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
+            },
+        )
+        .unwrap();
+    let signature = one_coordinator_output(result, coordinator).unwrap();
+
+    insta::assert_json_snapshot!(signature);
 }

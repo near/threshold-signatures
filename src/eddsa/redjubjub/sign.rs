@@ -3,9 +3,12 @@
 use super::{KeygenOutput, PresignOutput, SignatureOption, Signature};
 use crate::errors::{InitializationError, ProtocolError};
 use crate::participants::{Participant, ParticipantList};
-use crate::protocol::helpers::recv_from_others;
-use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
-use crate::protocol::Protocol;
+use crate::protocol::{
+    Protocol,
+    helpers::recv_from_others,
+    internal::{make_protocol, Comms, SharedChannel},
+
+};
 
 use rand_core::CryptoRngCore;
 use reddsa::frost::redjubjub::{
