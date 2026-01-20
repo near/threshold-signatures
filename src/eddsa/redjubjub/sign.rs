@@ -1,6 +1,6 @@
 //! This module and the frost one are supposed to have the same helper function
 //! However, currently the reddsa wraps a signature generation functionality from `Frost` library into `crate::Protocol` types
-use super::{KeygenOutput, PresignOutput, SignatureOption};
+use super::{KeygenOutput, PresignOutput, SignatureOption, Signature};
 use crate::errors::{InitializationError, ProtocolError};
 use crate::participants::{Participant, ParticipantList};
 use crate::protocol::helpers::recv_from_others;
@@ -187,8 +187,8 @@ async fn do_sign_coordinator(
         &randomized_params,
     )
     .map_err(|_| ProtocolError::ErrorFrostAggregation)?;
-
-    Ok(Some(signature))
+    let output = Signature::new(signature, *randomizer);
+    Ok(Some(output))
 }
 
 /// Returns a future that executes signature protocol for *a Participant*.
