@@ -287,9 +287,8 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let participants = generate_participants(8);
     let max_malicious = 3;
-    let threshold = max_malicious + 1;
 
-    let keygen_result = run_keygen(&participants, threshold, &mut rng);
+    let keygen_result = run_keygen(&participants, max_malicious + 1, &mut rng);
 
     let public_key = keygen_result[0].1.public_key;
     assert_public_key_invariant(&keygen_result);

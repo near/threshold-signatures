@@ -103,7 +103,7 @@ async fn do_sign_coordinator(
 ) -> Result<SignatureOption, ProtocolError> {
     // Round 1
     let s_i = compute_signature_share(&participants, me, &presignature, msg_hash)?;
-    // Spec 1.4 is nonexistent for a coordinator
+    // Spec 1.4 is non-existent for a coordinator
 
     let wait0 = chan.next_waitpoint();
     // Receive sj
