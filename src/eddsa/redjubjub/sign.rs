@@ -148,7 +148,7 @@ async fn do_sign_coordinator(
 
     let key_package = construct_key_package(threshold, me, &keygen_output)?;
 
-    let signing_package = SigningPackage::new(presignature.commitments_map, &message);
+    let signing_package = SigningPackage::new(presignature.commitments_map.clone(), &message);
     let randomized_params = RandomizedParams::new(&keygen_output.public_key, &signing_package, rng)
         .map_err(|_| ProtocolError::ErrorFrostRerandomizingParameters)?;
 
@@ -231,8 +231,7 @@ async fn do_sign_participant(
     };
 
     let key_package = construct_key_package(threshold, me, &keygen_output)?;
-
-    let signing_package = SigningPackage::new(presignature.commitments_map, &message);
+    let signing_package = SigningPackage::new(presignature.commitments_map.clone(), &message);
     let signature_share = round2::sign(
         &signing_package,
         &presignature.nonces,

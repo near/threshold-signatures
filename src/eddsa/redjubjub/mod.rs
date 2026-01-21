@@ -14,6 +14,7 @@ use reddsa::frost::redjubjub::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use zeroize::ZeroizeOnDrop;
 
 // JubJub Curve
 pub use reddsa::frost::redjubjub::JubjubBlake2b512;
@@ -54,19 +55,15 @@ pub struct PresignArguments {
     pub keygen_out: KeygenOutput,
 }
 
-// Not sure what to do with the Zeroization
-// use zeroize::ZeroizeOnDrop;
-// #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, ZeroizeOnDrop)]
-
 /// The output of the presigning protocol.
 ///
 /// This output is basically all the parts of the signature that we can perform
 /// without knowing the message.
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, ZeroizeOnDrop)]
 pub struct PresignOutput {
     /// The public nonce commitment.
     pub nonces: SigningNonces,
-    // #[zeroize[skip]]
+    #[zeroize[skip]]
     pub commitments_map: BTreeMap<Identifier, SigningCommitments>,
 }
 
