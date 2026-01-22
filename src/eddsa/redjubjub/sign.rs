@@ -1,6 +1,6 @@
 //! This module and the frost one are supposed to have the same helper function
 //! However, currently the reddsa wraps a signature generation functionality from `Frost` library into `crate::Protocol` types
-use super::{KeygenOutput, PresignOutput, Signature, SignatureOption};
+use super::{KeygenOutput, PresignOutput, SignatureOption};
 use crate::errors::{InitializationError, ProtocolError};
 use crate::participants::{Participant, ParticipantList};
 use crate::protocol::{
@@ -9,7 +9,6 @@ use crate::protocol::{
     Protocol,
 };
 
-use rand_core::CryptoRngCore;
 use reddsa::frost::redjubjub::{
     aggregate,
     keys::{KeyPackage, PublicKeyPackage},
@@ -42,7 +41,7 @@ pub fn sign(
     keygen_output: KeygenOutput,
     presignature: PresignOutput,
     message: Vec<u8>,
-    rng: impl CryptoRngCore + Send + 'static,
+    randomizer: Option<Randomizer>,
 ) -> Result<impl Protocol<Output = SignatureOption>, InitializationError> {
     if participants.len() < 2 {
         return Err(InitializationError::NotEnoughParticipants {
@@ -80,7 +79,7 @@ pub fn sign(
         keygen_output,
         presignature,
         message,
-        rng,
+        randomizer,
     );
     Ok(make_protocol(comms, fut))
 }
@@ -95,9 +94,14 @@ async fn fut_wrapper(
     keygen_output: KeygenOutput,
     presignature: PresignOutput,
     message: Vec<u8>,
-    mut rng: impl CryptoRngCore,
+    randomizer: Option<Randomizer>,
 ) -> Result<SignatureOption, ProtocolError> {
     if me == coordinator {
+        if randomizer.is_none() {
+            return Err(ProtocolError::InvalidInput(
+                "Randomizer should not be none".to_string(),
+            ));
+        }
         do_sign_coordinator(
             chan,
             participants,
@@ -106,10 +110,15 @@ async fn fut_wrapper(
             keygen_output,
             presignature,
             message,
-            &mut rng,
+            randomizer.expect("The randomizer is not expected to be None"),
         )
         .await
     } else {
+        if randomizer.is_some() {
+            return Err(ProtocolError::InvalidInput(
+                "Randomizer should be none".to_string(),
+            ));
+        }
         do_sign_participant(
             chan,
             threshold,
@@ -141,7 +150,7 @@ async fn do_sign_coordinator(
     keygen_output: KeygenOutput,
     presignature: PresignOutput,
     message: Vec<u8>,
-    rng: &mut impl CryptoRngCore,
+    randomizer: Randomizer,
 ) -> Result<SignatureOption, ProtocolError> {
     // --- Round 1
     let mut signature_shares: BTreeMap<Identifier, SignatureShare> = BTreeMap::new();
@@ -149,8 +158,8 @@ async fn do_sign_coordinator(
     let key_package = construct_key_package(threshold, me, &keygen_output)?;
 
     let signing_package = SigningPackage::new(presignature.commitments_map.clone(), &message);
-    let randomized_params = RandomizedParams::new(&keygen_output.public_key, &signing_package, rng)
-        .map_err(|_| ProtocolError::ErrorFrostRerandomizingParameters)?;
+    let randomized_params =
+        RandomizedParams::from_randomizer(&keygen_output.public_key, randomizer);
 
     let randomizer = randomized_params.randomizer();
     // Send the Randomizer to everyone
@@ -189,8 +198,7 @@ async fn do_sign_coordinator(
         &randomized_params,
     )
     .map_err(|_| ProtocolError::ErrorFrostAggregation)?;
-    let output = Signature::new(signature, *randomizer);
-    Ok(Some(output))
+    Ok(Some(signature))
 }
 
 /// Returns a future that executes signature protocol for *a Participant*.

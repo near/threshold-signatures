@@ -10,7 +10,7 @@ use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFor
 
 use reddsa::frost::redjubjub::{
     round1::{SigningCommitments, SigningNonces},
-    Error, Identifier, RandomizedParams, Randomizer, Signature as redjubjubSig, VerifyingKey,
+    Identifier, Signature,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -27,27 +27,6 @@ impl ScalarSerializationFormat for JubjubBlake2b512 {
 impl Ciphersuite for JubjubBlake2b512 {}
 
 pub type KeygenOutput = crate::KeygenOutput<JubjubBlake2b512>;
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct Signature {
-    pub signature: redjubjubSig,
-    pub randomizer: Randomizer,
-}
-
-impl Signature {
-    pub fn new(signature: redjubjubSig, randomizer: Randomizer) -> Self {
-        Self {
-            signature,
-            randomizer,
-        }
-    }
-    pub fn verify(&self, public_key: &VerifyingKey, message: &[u8]) -> Result<(), Error> {
-        let randomparameters = RandomizedParams::from_randomizer(public_key, self.randomizer);
-        randomparameters
-            .randomized_verifying_key()
-            .verify(message, &self.signature)
-    }
-}
 
 /// The necessary inputs for the creation of a presignature.
 pub struct PresignArguments {

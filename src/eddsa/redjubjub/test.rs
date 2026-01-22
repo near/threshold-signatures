@@ -17,7 +17,7 @@ use rand_core::{CryptoRngCore, RngCore};
 use reddsa::frost::redjubjub::{
     keys::{generate_with_dealer, IdentifierList, SigningShare},
     round1::{commit, SigningCommitments, SigningNonces},
-    Identifier, JubjubBlake2b512, JubjubScalarField, SigningKey, VerifyingKey,
+    Identifier, JubjubBlake2b512, JubjubScalarField, Randomizer, SigningKey, VerifyingKey,
 };
 use std::collections::BTreeMap;
 use std::error::Error;
@@ -102,6 +102,11 @@ pub fn test_run_signature(
     threshold: usize,
     msg_hash: HashOutput,
 ) -> Result<Vec<(Participant, SignatureOption)>, Box<dyn Error>> {
+    let mut rng = MockCryptoRng::seed_from_u64(644_221);
+    let randomizer_scalar = JubjubScalarField::random(&mut rng);
+    // only for testing
+    let randomizer = Randomizer::from_scalar(randomizer_scalar);
+
     let mut protocols: GenProtocol<SignatureOption> = Vec::with_capacity(participants.len());
     let presig = test_run_presignature(participants, actual_signers)?;
 
@@ -122,6 +127,11 @@ pub fn test_run_signature(
             let index = rng_p.next_u32() as usize % coordinators.len();
             coordinator = coordinators.get_participant(index).unwrap();
         }
+        let randomize = if *participant == coordinator {
+            Some(randomizer)
+        } else {
+            None
+        };
         // run the signing scheme
         let protocol = sign(
             &participants_list,
@@ -131,7 +141,7 @@ pub fn test_run_signature(
             key_pair.clone(),
             presignature.clone(),
             msg_hash.as_ref().to_vec(),
-            rng_p,
+            randomize,
         )?;
         protocols.push((*participant, Box::new(protocol)));
     }
@@ -372,6 +382,11 @@ fn test_signature_correctness() {
         nonces_map.insert(*p, nonces);
     }
 
+    let mut rng = MockCryptoRng::seed_from_u64(644_221);
+    let randomizer_scalar = JubjubScalarField::random(&mut rng);
+    // only for testing
+    let randomizer = Randomizer::from_scalar(randomizer_scalar);
+
     // This checks the output signature validity internally
     let result =
         crate::test_utils::run_sign::<JubjubBlake2b512, (KeygenOutput, MockCryptoRng), _, _>(
@@ -379,11 +394,16 @@ fn test_signature_correctness() {
             coordinator,
             public_key,
             JubjubScalarField::zero(), // not important
-            |participants, coordinator, me, _, (keygen_output, rng_p), _| {
+            |participants, coordinator, me, _, (keygen_output, _), _| {
                 let nonces = nonces_map.get(&me).unwrap().clone();
                 let presignature = PresignOutput {
                     nonces,
                     commitments_map: commitments_map.clone(),
+                };
+                let randomize = if me == coordinator {
+                    Some(randomizer)
+                } else {
+                    None
                 };
                 sign(
                     participants,
@@ -393,7 +413,7 @@ fn test_signature_correctness() {
                     keygen_output,
                     presignature,
                     msg.clone(),
-                    rng_p,
+                    randomize,
                 )
                 .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
             },
