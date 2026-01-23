@@ -169,11 +169,9 @@ async fn do_sign_coordinator(
     randomizer: Randomizer,
 ) -> Result<SignatureOption, ProtocolError> {
     // --- Round 1
-    let mut signature_shares: BTreeMap<Identifier, SignatureShare> = BTreeMap::new();
-
     let key_package = construct_key_package(threshold, me, &keygen_output)?;
 
-    let signing_package = SigningPackage::new(presignature.commitments_map.clone(), &message);
+    let signing_package = SigningPackage::new(presignature.commitments_map, &message);
     let randomized_params =
         RandomizedParams::from_randomizer(&keygen_output.public_key, randomizer);
 
@@ -192,6 +190,7 @@ async fn do_sign_coordinator(
     .map_err(|_| ProtocolError::ErrorFrostSigningFailed)?;
 
     let sign_waitpoint = chan.next_waitpoint();
+    let mut signature_shares: BTreeMap<Identifier, SignatureShare> = BTreeMap::new();
     signature_shares.insert(me.to_identifier()?, signature_share);
     for (from, signature_share) in
         recv_from_others(&chan, sign_waitpoint, &participants, me).await?
@@ -254,15 +253,12 @@ async fn do_sign_participant(
         break randomizer;
     };
 
+
     let key_package = construct_key_package(threshold, me, &keygen_output)?;
-    let signing_package = SigningPackage::new(presignature.commitments_map.clone(), &message);
-    let signature_share = round2::sign(
-        &signing_package,
-        &presignature.nonces,
-        &key_package,
-        randomizer,
-    )
-    .map_err(|_| ProtocolError::ErrorFrostSigningFailed)?;
+    let nonces = Zeroizing::new(presignature.nonces);
+    let signing_package = SigningPackage::new(presignature.commitments_map, &message);
+    let signature_share = round2::sign(&signing_package, &nonces, &key_package, randomizer)
+        .map_err(|_| ProtocolError::ErrorFrostSigningFailed)?;
 
     let sign_waitpoint = chan.next_waitpoint();
     chan.send_private(sign_waitpoint, coordinator, &signature_share)?;

@@ -14,7 +14,6 @@ use reddsa::frost::redjubjub::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use zeroize::ZeroizeOnDrop;
 
 // JubJub + Blake2b512 Ciphersuite
 pub use reddsa::frost::redjubjub::JubjubBlake2b512;
@@ -38,11 +37,10 @@ pub struct PresignArguments {
 ///
 /// This output is basically all the parts of the signature that we can perform
 /// without knowing the message.
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, ZeroizeOnDrop)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct PresignOutput {
     /// The public nonce commitment.
     pub nonces: SigningNonces,
-    #[zeroize[skip]]
     pub commitments_map: BTreeMap<Identifier, SigningCommitments>,
 }
 

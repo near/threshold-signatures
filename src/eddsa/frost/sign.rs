@@ -230,6 +230,14 @@ pub fn sign(
         });
     }
 
+    // validate threshold
+    if threshold > participants.len() {
+        return Err(InitializationError::ThresholdTooLarge {
+            threshold,
+            max: participants.len(),
+        });
+    }
+    
     // ensure the coordinator is a participant
     if !participants.contains(coordinator) {
         return Err(InitializationError::MissingParticipant {
