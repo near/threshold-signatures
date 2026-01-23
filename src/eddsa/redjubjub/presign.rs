@@ -121,7 +121,7 @@ mod test {
         let mut rng = MockCryptoRng::seed_from_u64(42);
 
         let max_signers = 10;
-        let threshold = 9;
+        let threshold = 7;
         let actual_signers = 8;
 
         let key_packages = build_key_packages_with_dealer(max_signers, threshold, &mut rng);
