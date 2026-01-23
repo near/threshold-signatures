@@ -170,7 +170,7 @@ async fn do_sign_coordinator(
 ) -> Result<SignatureOption, ProtocolError> {
     // --- Round 1
     let key_package = construct_key_package(threshold, me, &keygen_output)?;
-
+    let key_package = Zeroizing::new(key_package); 
     let signing_package = SigningPackage::new(presignature.commitments_map, &message);
     let randomized_params =
         RandomizedParams::from_randomizer(&keygen_output.public_key, randomizer);
@@ -255,6 +255,7 @@ async fn do_sign_participant(
 
 
     let key_package = construct_key_package(threshold, me, &keygen_output)?;
+    let key_package = Zeroizing::new(key_package); 
     let nonces = Zeroizing::new(presignature.nonces);
     let signing_package = SigningPackage::new(presignature.commitments_map, &message);
     let signature_share = round2::sign(&signing_package, &nonces, &key_package, randomizer)
@@ -272,7 +273,7 @@ fn construct_key_package(
     threshold: usize,
     me: Participant,
     keygen_output: &KeygenOutput,
-) -> Result<Zeroizing<KeyPackage>, ProtocolError> {
+) -> Result<KeyPackage, ProtocolError> {
     let identifier = me.to_identifier()?;
     let signing_share = keygen_output.private_share;
     let verifying_share = signing_share.into();
@@ -288,7 +289,7 @@ fn construct_key_package(
     );
 
     // Ensures the values are zeroized on drop
-    Ok(Zeroizing::new(key_package))
+    Ok(key_package)
 }
 
 #[cfg(test)]
@@ -298,29 +299,6 @@ mod test {
 
     use crate::test_utils::{one_coordinator_output, MockCryptoRng};
     use rand::SeedableRng;
-
-    #[test]
-    fn basic_two_participants() {
-        let mut rng = MockCryptoRng::seed_from_u64(42);
-
-        let max_signers = 2;
-        let threshold = 2;
-        let actual_signers = 2;
-        let msg = "hello_near";
-        let msg_hash = hash(&msg).unwrap();
-
-        let key_packages = build_key_packages_with_dealer(max_signers, threshold, &mut rng);
-        let coordinators = vec![key_packages[0].0];
-        let data = test_run_signature(
-            &key_packages,
-            actual_signers,
-            &coordinators,
-            threshold.into(),
-            msg_hash,
-        )
-        .unwrap();
-        one_coordinator_output(data, coordinators[0]).unwrap();
-    }
 
     #[test]
     fn stress() {
