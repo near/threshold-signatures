@@ -60,6 +60,14 @@ pub fn sign(
         });
     }
 
+    // validate threshold
+    if threshold > participants.len() {
+        return Err(InitializationError::ThresholdTooLarge {
+            threshold,
+            max: participants.len(),
+        });
+    }
+    
     // ensure the coordinator is a participant
     if !participants.contains(coordinator) {
         return Err(InitializationError::MissingParticipant {
@@ -97,38 +105,46 @@ async fn fut_wrapper(
     randomizer: Option<Randomizer>,
 ) -> Result<SignatureOption, ProtocolError> {
     if me == coordinator {
-        if randomizer.is_none() {
-            return Err(ProtocolError::InvalidInput(
-                "Randomizer should not be none".to_string(),
-            ));
+        match randomizer {
+            Some(randomizer) => {
+                do_sign_coordinator(
+                    chan,
+                    participants,
+                    threshold,
+                    me,
+                    keygen_output,
+                    presignature,
+                    message,
+                    randomizer,
+                )
+                .await
+            }
+            _ => {
+                return Err(ProtocolError::InvalidInput(
+                    "Randomizer should not be none".to_string(),
+                ));
+            }
         }
-        do_sign_coordinator(
-            chan,
-            participants,
-            threshold,
-            me,
-            keygen_output,
-            presignature,
-            message,
-            randomizer.expect("The randomizer is not expected to be None"),
-        )
-        .await
     } else {
-        if randomizer.is_some() {
-            return Err(ProtocolError::InvalidInput(
-                "Randomizer should be none".to_string(),
-            ));
+        match randomizer {
+            Some(_) => {
+                return Err(ProtocolError::InvalidInput(
+                    "Randomizer should be none".to_string(),
+                ));
+            }
+            _ => {
+                do_sign_participant(
+                    chan,
+                    threshold,
+                    me,
+                    coordinator,
+                    keygen_output,
+                    presignature,
+                    message,
+                )
+                .await
+            }
         }
-        do_sign_participant(
-            chan,
-            threshold,
-            me,
-            coordinator,
-            keygen_output,
-            presignature,
-            message,
-        )
-        .await
     }
 }
 

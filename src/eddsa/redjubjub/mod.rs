@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use zeroize::ZeroizeOnDrop;
 
-// JubJub Curve
+// JubJub + Blake2b512 Ciphersuite
 pub use reddsa::frost::redjubjub::JubjubBlake2b512;
 
 impl ScalarSerializationFormat for JubjubBlake2b512 {

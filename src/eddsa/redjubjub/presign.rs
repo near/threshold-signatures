@@ -63,7 +63,6 @@ async fn do_presign(
 
     // Creating two commitments and corresponding nonces
     let (nonces, commitments) = commit(&signing_share, &mut rng);
-    // TODO decide: let nonces = Zeroizing::new(nonces);
     commitments_map.insert(me.to_identifier()?, commitments);
 
     let commit_waitpoint = chan.next_waitpoint();
@@ -97,12 +96,12 @@ mod test {
 
         let key_packages = build_key_packages_with_dealer(max_signers, threshold, &mut rng);
         // add the presignatures here
-        let mut presignatures = test_run_presignature(&key_packages, actual_signers).unwrap();
+        let presignatures = test_run_presignature(&key_packages, actual_signers).unwrap();
 
-        while let Some((p1, presig1)) = presignatures.pop() {
-            for (p2, presig2) in &presignatures {
-                assert!(p1 != *p2);
-                assert!(presig1.nonces != presig2.nonces);
+        for (i, (p1, presig1)) in presignatures.iter().enumerate() {
+            for (p2, presig2) in presignatures.iter().skip(i + 1) {
+                assert_ne!(p1, p2);
+                assert_ne!(presig1.nonces, presig2.nonces);
                 assert_eq!(presig1.commitments_map, presig2.commitments_map);
             }
         }
