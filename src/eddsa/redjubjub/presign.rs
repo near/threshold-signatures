@@ -40,12 +40,12 @@ pub fn presign(
     }
 
     // validate threshold
-    if threshold > participants.len() {
+    if args.threshold > participants.len() {
         return Err(InitializationError::ThresholdTooLarge {
-            threshold,
+            threshold: args.threshold,
             max: participants.len(),
         });
-    } 
+    }
 
     let ctx = Comms::new();
     let fut = do_presign(
@@ -104,7 +104,8 @@ mod test {
 
         let key_packages = build_key_packages_with_dealer(max_signers, threshold, &mut rng);
         // add the presignatures here
-        let presignatures = test_run_presignature(&key_packages, threshold as usize, actual_signers).unwrap();
+        let presignatures =
+            test_run_presignature(&key_packages, threshold as usize, actual_signers).unwrap();
 
         for (i, (p1, presig1)) in presignatures.iter().enumerate() {
             for (p2, presig2) in presignatures.iter().skip(i + 1) {
@@ -125,7 +126,8 @@ mod test {
 
         let key_packages = build_key_packages_with_dealer(max_signers, threshold, &mut rng);
         // add the presignatures here
-        let mut presignatures = test_run_presignature(&key_packages, threshold as usize, actual_signers).unwrap();
+        let mut presignatures =
+            test_run_presignature(&key_packages, threshold as usize, actual_signers).unwrap();
         while let Some((p1, presig1)) = presignatures.pop() {
             for (p2, presig2) in &presignatures {
                 assert!(p1 != *p2);

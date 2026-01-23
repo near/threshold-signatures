@@ -67,7 +67,7 @@ pub fn sign(
             max: participants.len(),
         });
     }
-    
+
     // ensure the coordinator is a participant
     if !participants.contains(coordinator) {
         return Err(InitializationError::MissingParticipant {
@@ -120,17 +120,17 @@ async fn fut_wrapper(
                 .await
             }
             None => {
-                return Err(ProtocolError::InvalidInput(
-                    "Randomizer should not be none".to_string(),
-                ));
+                Err(ProtocolError::InvalidInput(
+                    "Randomizer should not be some".to_string(),
+                ))
             }
         }
     } else {
         match randomizer {
             Some(_) => {
-                return Err(ProtocolError::InvalidInput(
+                Err(ProtocolError::InvalidInput(
                     "Randomizer should be none".to_string(),
-                ));
+                ))
             }
             None => {
                 do_sign_participant(
@@ -170,7 +170,7 @@ async fn do_sign_coordinator(
 ) -> Result<SignatureOption, ProtocolError> {
     // --- Round 1
     let key_package = construct_key_package(threshold, me, &keygen_output)?;
-    let key_package = Zeroizing::new(key_package); 
+    let key_package = Zeroizing::new(key_package);
     let signing_package = SigningPackage::new(presignature.commitments_map, &message);
     let randomized_params =
         RandomizedParams::from_randomizer(&keygen_output.public_key, randomizer);
@@ -253,9 +253,8 @@ async fn do_sign_participant(
         break randomizer;
     };
 
-
     let key_package = construct_key_package(threshold, me, &keygen_output)?;
-    let key_package = Zeroizing::new(key_package); 
+    let key_package = Zeroizing::new(key_package);
     let nonces = Zeroizing::new(presignature.nonces);
     let signing_package = SigningPackage::new(presignature.commitments_map, &message);
     let signature_share = round2::sign(&signing_package, &nonces, &key_package, randomizer)
