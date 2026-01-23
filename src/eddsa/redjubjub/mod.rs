@@ -1,6 +1,7 @@
 //! A wrapper for distributed `RedDSA` on `JubJub` curve with only the `Spend Authorization`.
 //!
-//! Check [GK](https://eprint.iacr.org/2024/436.pdf) and <https://zips.z.cash/protocol/protocol.pdf#concretespendauthsig>
+//! Check <https://zips.z.cash/zip-0312> or <https://zips.z.cash/protocol/protocol.pdf#concretespendauthsig>
+
 pub mod presign;
 pub mod sign;
 #[cfg(test)]
