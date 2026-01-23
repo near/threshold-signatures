@@ -69,6 +69,7 @@ pub fn build_key_packages_with_dealer(
 
 pub fn test_run_presignature(
     participants: &[(Participant, KeygenOutput)],
+    threshold: usize,
     actual_signers: usize,
 ) -> Result<Vec<(Participant, PresignOutput)>, Box<dyn Error>> {
     let mut protocols: GenProtocol<PresignOutput> = Vec::with_capacity(participants.len());
@@ -83,6 +84,7 @@ pub fn test_run_presignature(
         let rng = MockCryptoRng::seed_from_u64(42);
         let args = PresignArguments {
             keygen_out: keygen_out.clone(),
+            threshold,
         };
         // run the signing scheme
         let protocol = presign(&participants_list, *participant, &args, rng)?;
@@ -108,7 +110,7 @@ pub fn test_run_signature(
     let randomizer = Randomizer::from_scalar(randomizer_scalar);
 
     let mut protocols: GenProtocol<SignatureOption> = Vec::with_capacity(participants.len());
-    let presig = test_run_presignature(participants, actual_signers)?;
+    let presig = test_run_presignature(participants, threshold, actual_signers)?;
 
     let participants_list = participants
         .iter()

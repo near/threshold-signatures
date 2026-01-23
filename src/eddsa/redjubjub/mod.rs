@@ -31,6 +31,8 @@ pub type KeygenOutput = crate::KeygenOutput<JubjubBlake2b512>;
 pub struct PresignArguments {
     /// The output of key generation, i.e. our share of the secret key, and the public key package.
     pub keygen_out: KeygenOutput,
+    /// The threshold for the scheme
+    pub threshold: usize,
 }
 
 /// The output of the presigning protocol.
