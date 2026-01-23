@@ -118,19 +118,15 @@ async fn fut_wrapper(
                 )
                 .await
             }
-            None => {
-                Err(ProtocolError::InvalidInput(
-                    "Randomizer should not be some".to_string(),
-                ))
-            }
+            None => Err(ProtocolError::InvalidInput(
+                "Randomizer should not be some".to_string(),
+            )),
         }
     } else {
         match randomizer {
-            Some(_) => {
-                Err(ProtocolError::InvalidInput(
-                    "Randomizer should be none".to_string(),
-                ))
-            }
+            Some(_) => Err(ProtocolError::InvalidInput(
+                "Randomizer should be none".to_string(),
+            )),
             None => {
                 do_sign_participant(
                     chan,
