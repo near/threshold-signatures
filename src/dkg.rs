@@ -1,8 +1,8 @@
-use crate::crypto::{
+use crate::{crypto::{
     ciphersuite::Ciphersuite,
     hash::{domain_separate_hash, HashOutput},
     polynomials::{Polynomial, PolynomialCommitment},
-};
+}, thresholds::MaxMalicious};
 
 use crate::errors::{InitializationError, ProtocolError};
 use crate::participants::{Participant, ParticipantList, ParticipantMap};
@@ -170,7 +170,7 @@ fn internal_verify_proof_of_knowledge<C: Ciphersuite>(
 fn verify_proof_of_knowledge<C: Ciphersuite>(
     session_id: &HashOutput,
     domain_separator: u32,
-    threshold: usize,
+    max_malicious: MaxMalicious,
     participant: Participant,
     old_participants: Option<ParticipantList>,
     commitment: &VerifiableSecretSharingCommitment<C>,
@@ -184,8 +184,8 @@ fn verify_proof_of_knowledge<C: Ciphersuite>(
                 return Err(ProtocolError::MaliciousParticipant(participant));
             }
             // since previous line did not abort, then we know participant is new indeed
-            // check the commitment length is threshold - 1
-            if commitment.coefficients().len() != threshold - 1 {
+            // check the commitment length is max_malicious
+            if commitment.coefficients().len() != max_malicious.value() {
                 return Err(ProtocolError::IncorrectNumberOfCommitments);
             }
             // nothing to verify
@@ -198,7 +198,7 @@ fn verify_proof_of_knowledge<C: Ciphersuite>(
                 return Err(ProtocolError::MaliciousParticipant(participant));
             }
             // since the previous did not abort, we know the participant is old or we are dealing with a dkg
-            if commitment.coefficients().len() != threshold {
+            if commitment.coefficients().len() != max_malicious.reconstruction_threshold()? {
                 return Err(ProtocolError::IncorrectNumberOfCommitments);
             }
 
@@ -232,18 +232,18 @@ fn verify_commitment_hash<C: Ciphersuite>(
     Ok(())
 }
 
-/// This function is called when the commitment length is threshold -1
+/// This function is called when the commitment length is max_malicious
 /// i.e. when the new participant sent a polynomial with a non-existant constant term
 /// such a participant would do so as the identity is not serializable
 fn insert_identity_if_missing<C: Ciphersuite>(
-    threshold: usize,
+    max_malicious: MaxMalicious,
     commitment_i: &VerifiableSecretSharingCommitment<C>,
 ) -> VerifiableSecretSharingCommitment<C> {
-    // in case the participant was new and it sent a polynomial of length
-    // threshold -1 (because the zero term is not serializable)
+    // the participant was new and it sent a polynomial of length
+    // max_malicious (because the zero term is not serializable)
     let mut commitment_i = commitment_i.clone();
     let mut coefficients_i = commitment_i.coefficients().to_vec();
-    if coefficients_i.len() == threshold - 1 {
+    if coefficients_i.len() == max_malicious.value() {
         let identity = CoefficientCommitment::new(<C::Group as Group>::identity());
         coefficients_i.insert(0, identity);
         commitment_i = VerifiableSecretSharingCommitment::new(coefficients_i);
@@ -340,7 +340,7 @@ async fn do_keyshare<C: Ciphersuite>(
     mut chan: SharedChannel,
     participants: ParticipantList,
     me: Participant,
-    threshold: usize,
+    max_malicious: MaxMalicious,
     secret: Scalar<C>,
     old_reshare_package: Option<(VerifyingKey<C>, ParticipantList)>,
     rng: &mut impl CryptoRngCore,
@@ -367,10 +367,8 @@ async fn do_keyshare<C: Ciphersuite>(
     let session_id = domain_separate_hash(domain_separator, &session_ids)?;
     domain_separator += 1;
     // Step 2.3
-    // the degree of the polynomial is threshold - 1
-    let degree = threshold
-        .checked_sub(1)
-        .ok_or(ProtocolError::IntegerOverflow)?;
+    // the degree of the polynomial is the maximal number of malicious parties
+    let degree = max_malicious.value();
     let secret_coefficients = Polynomial::<C>::generate_polynomial(Some(secret), degree, rng)?;
 
     // Compute the multiplication of every coefficient of p with the generator G
@@ -422,8 +420,8 @@ async fn do_keyshare<C: Ciphersuite>(
     }
 
     // Start Round 3
-    // add my commitment to the map with the proper commitment sizes = threshold
-    let my_full_commitment = insert_identity_if_missing(threshold, &commitment);
+    // add my commitment to the map with the proper commitment sizes
+    let my_full_commitment = insert_identity_if_missing(max_malicious, &commitment);
     all_full_commitments.put(me, my_full_commitment);
 
     // Broadcast the commitment and the proof of knowledge
@@ -448,7 +446,7 @@ async fn do_keyshare<C: Ciphersuite>(
         verify_proof_of_knowledge(
             &session_id,
             proof_domain_separator,
-            threshold,
+            max_malicious,
             p,
             old_participants.clone(),
             commitment_i,
@@ -466,7 +464,7 @@ async fn do_keyshare<C: Ciphersuite>(
 
         // in case the participant was new and it sent a polynomial of length
         // threshold -1 (because the zero term is not serializable)
-        let full_commitment_i = insert_identity_if_missing(threshold, commitment_i);
+        let full_commitment_i = insert_identity_if_missing(max_malicious, commitment_i);
 
         // add received full commitment
         all_full_commitments.put(p, full_commitment_i);
@@ -530,6 +528,7 @@ async fn do_keyshare<C: Ciphersuite>(
     Ok(KeygenOutput {
         private_share: SigningShare::new(my_signing_share),
         public_key: verifying_key,
+        max_malicious,
     })
 }
 
@@ -537,23 +536,23 @@ pub async fn do_keygen<C: Ciphersuite>(
     chan: SharedChannel,
     participants: ParticipantList,
     me: Participant,
-    threshold: usize,
+    max_malicious: MaxMalicious,
     mut rng: impl CryptoRngCore,
 ) -> Result<KeygenOutput<C>, ProtocolError> {
     // pick share at random
     let secret = SigningKey::<C>::new(&mut rng).to_scalar();
     // call keyshare
     let keygen_output =
-        do_keyshare::<C>(chan, participants, me, threshold, secret, None, &mut rng).await?;
+        do_keyshare::<C>(chan, participants, me, max_malicious, secret, None, &mut rng).await?;
     Ok(keygen_output)
 }
 
 /// This function is to be called before running DKG
 /// It ensures that the input parameters are valid
-pub fn assert_keygen_invariants(
+pub fn assert_keys_invariants(
     participants: &[Participant],
     me: Participant,
-    threshold: usize,
+    max_malicious: MaxMalicious,
 ) -> Result<ParticipantList, InitializationError> {
     // need enough participants
     if participants.len() < 2 {
@@ -563,16 +562,19 @@ pub fn assert_keygen_invariants(
     }
 
     // Step 1.1
+    let reconstruction_threshold = max_malicious.reconstruction_threshold().map_err(
+        |e| InitializationError::BadParameters(e.to_string())
+    )?;
     // validate threshold
-    if threshold > participants.len() {
+    if reconstruction_threshold > participants.len() {
         return Err(InitializationError::ThresholdTooLarge {
-            threshold,
+            threshold: reconstruction_threshold,
             max: participants.len(),
         });
     }
     // Step 1.1
-    if threshold < 2 {
-        return Err(InitializationError::ThresholdTooSmall { threshold, min: 2 });
+    if reconstruction_threshold < 2 {
+        return Err(InitializationError::ThresholdTooSmall { threshold: reconstruction_threshold, min: 2 });
     }
 
     // ensure uniqueness of participants in the participant list
@@ -595,7 +597,7 @@ pub async fn do_reshare<C: Ciphersuite>(
     chan: SharedChannel,
     participants: ParticipantList,
     me: Participant,
-    threshold: usize,
+    max_malicious: MaxMalicious,
     old_signing_key: Option<SigningShare<C>>,
     old_public_key: VerifyingKey<C>,
     old_participants: ParticipantList,
@@ -617,7 +619,7 @@ pub async fn do_reshare<C: Ciphersuite>(
         chan,
         participants,
         me,
-        threshold,
+        max_malicious,
         secret,
         old_reshare_package,
         &mut rng,
@@ -631,46 +633,23 @@ pub async fn do_reshare<C: Ciphersuite>(
 pub fn reshare_assertions<C: Ciphersuite>(
     participants: &[Participant],
     me: Participant,
-    threshold: usize,
+    max_malicious: MaxMalicious,
     old_signing_key: Option<SigningShare<C>>,
-    old_threshold: usize,
+    old_max_malicious: MaxMalicious,
     old_participants: &[Participant],
 ) -> Result<(ParticipantList, ParticipantList), InitializationError> {
-    if participants.len() < 2 {
-        return Err(InitializationError::NotEnoughParticipants {
-            participants: participants.len(),
-        });
-    }
-    // Step 1.1
-    if threshold > participants.len() {
-        return Err(InitializationError::ThresholdTooLarge {
-            threshold,
-            max: participants.len(),
-        });
-    }
-
-    // Step 1.1
-    if threshold < 2 {
-        return Err(InitializationError::ThresholdTooSmall { threshold, min: 2 });
-    }
-
-    let participants =
-        ParticipantList::new(participants).ok_or(InitializationError::DuplicateParticipants)?;
-
-    if !participants.contains(me) {
-        return Err(InitializationError::MissingParticipant {
-            role: "self",
-            participant: me,
-        });
-    }
+    let participants = assert_keys_invariants(participants, me, max_malicious)?;
 
     let old_participants =
         ParticipantList::new(old_participants).ok_or(InitializationError::DuplicateParticipants)?;
 
     // Step 1.1
-    if old_participants.intersection(&participants).len() < old_threshold {
+    let old_reconstruction_threshold = old_max_malicious.reconstruction_threshold().map_err(
+        |e| InitializationError::BadParameters(e.to_string())
+    )?;
+    if old_participants.intersection(&participants).len() < old_reconstruction_threshold {
         return Err(InitializationError::NotEnoughParticipantsForThreshold {
-            threshold: old_threshold,
+            threshold: old_reconstruction_threshold,
             participants: old_participants.intersection(&participants).len(),
         });
     }

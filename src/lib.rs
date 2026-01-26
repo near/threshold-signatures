@@ -5,6 +5,7 @@ pub mod confidential_key_derivation;
 pub mod ecdsa;
 pub mod eddsa;
 pub mod errors;
+pub mod thresholds;
 
 #[cfg(feature = "test-utils")]
 pub mod test_utils;
@@ -26,11 +27,12 @@ use zeroize::ZeroizeOnDrop;
 
 mod dkg;
 pub mod protocol;
-use crate::dkg::{assert_keygen_invariants, do_keygen, do_reshare, reshare_assertions};
+use crate::dkg::{assert_keys_invariants, do_keygen, do_reshare, reshare_assertions};
 use crate::errors::InitializationError;
 use crate::participants::Participant;
 use crate::protocol::internal::{make_protocol, Comms};
 use crate::protocol::Protocol;
+use crate::thresholds::MaxMalicious;
 use rand_core::CryptoRngCore;
 use std::marker::Send;
 
@@ -49,6 +51,8 @@ pub struct KeygenOutput<C: Ciphersuite> {
     pub private_share: SigningShare<C>,
     #[zeroize[skip]]
     pub public_key: VerifyingKey<C>,
+    #[zeroize[skip]]
+    pub max_malicious: MaxMalicious,
 }
 
 /// This is a necessary element to be able to derive different keys
@@ -85,7 +89,7 @@ impl<C: Ciphersuite> Tweak<C> {
 pub fn keygen<C: Ciphersuite>(
     participants: &[Participant],
     me: Participant,
-    threshold: usize,
+    max_malicious: MaxMalicious,
     rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = KeygenOutput<C>>, InitializationError>
 where
@@ -93,8 +97,8 @@ where
     Scalar<C>: Send,
 {
     let comms = Comms::new();
-    let participants = assert_keygen_invariants(participants, me, threshold)?;
-    let fut = do_keygen::<C>(comms.shared_channel(), participants, me, threshold, rng);
+    let participants = assert_keys_invariants(participants, me, max_malicious)?;
+    let fut = do_keygen::<C>(comms.shared_channel(), participants, me, max_malicious, rng);
     Ok(make_protocol(comms, fut))
 }
 
@@ -102,11 +106,11 @@ where
 #[allow(clippy::too_many_arguments)]
 pub fn reshare<C: Ciphersuite>(
     old_participants: &[Participant],
-    old_threshold: usize,
+    old_max_malicious: MaxMalicious,
     old_signing_key: Option<SigningShare<C>>,
     old_public_key: VerifyingKey<C>,
     new_participants: &[Participant],
-    new_threshold: usize,
+    new_max_malicious: MaxMalicious,
     me: Participant,
     rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = KeygenOutput<C>>, InitializationError>
@@ -115,13 +119,13 @@ where
     Scalar<C>: Send,
 {
     let comms = Comms::new();
-    let threshold = new_threshold;
+    let threshold = new_max_malicious;
     let (participants, old_participants) = reshare_assertions::<C>(
         new_participants,
         me,
         threshold,
         old_signing_key,
-        old_threshold,
+        old_max_malicious,
         old_participants,
     )?;
     let fut = do_reshare(
@@ -139,10 +143,8 @@ where
 
 /// Performs the refresh protocol
 pub fn refresh<C: Ciphersuite>(
-    old_signing_key: Option<SigningShare<C>>,
-    old_public_key: VerifyingKey<C>,
+    old_keygen: KeygenOutput<C>,
     old_participants: &[Participant],
-    old_threshold: usize,
     me: Participant,
     rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = KeygenOutput<C>>, InitializationError>
@@ -150,31 +152,16 @@ where
     Element<C>: Send,
     Scalar<C>: Send,
 {
-    if old_signing_key.is_none() {
-        return Err(InitializationError::BadParameters(format!(
-            "The participant {me:?} is running refresh without an old share",
-        )));
-    }
     let comms = Comms::new();
-    // NOTE: this equality must be kept, as changing the threshold during `key refresh`
-    // might lead to insecure scenarios. For more information see https://github.com/ZcashFoundation/frost/security/advisories/GHSA-wgq8-vr6r-mqxm
-    let threshold = old_threshold;
-    let (participants, old_participants) = reshare_assertions::<C>(
-        old_participants,
-        me,
-        threshold,
-        old_signing_key,
-        threshold,
-        old_participants,
-    )?;
+    let participants = assert_keys_invariants(old_participants, me, old_keygen.max_malicious)?;
     let fut = do_reshare(
         comms.shared_channel(),
-        participants,
+        participants.clone(),
         me,
-        threshold,
-        old_signing_key,
-        old_public_key,
-        old_participants,
+        old_keygen.max_malicious,
+        Some(old_keygen.private_share),
+        old_keygen.public_key,
+        participants,
         rng,
     );
     Ok(make_protocol(comms, fut))
