@@ -109,8 +109,9 @@ key. More details in
   key.
 
 * Both implemented ECDSA and EdDSA schemes do not currently provide
-  **Robustness** i.e. recovery in case a participants drops out during
-  presigning/signing.
+  **robustness against participant dropouts**, i.e. recovery in case a
+  participant drops out during presigning or signing. This notion of robustness
+  is distinct from the Robust ECDSA protocol variant referenced in benchmarks.
 
 * Our ECDSA signing scheme outsources the message hash to the function caller
   (i.e. expects a hashed message as input and does not internally hash the
@@ -208,7 +209,10 @@ contributors that actively put this together:
 * Robin Cheng
 * Reynaldo Gil Pons
 * Chelsea Komlo
-* George Kuska
+* George Kuksa
 * Matej Pavlovic
 * Simon Rastikian
 * Bowen Wang
+* Kevin
+* Daniel
+* Charly (anonymous contributor)
