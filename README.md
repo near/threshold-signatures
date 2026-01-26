@@ -206,7 +206,6 @@ This implementation relies on
 contributors that actively put this together:
 
 * Mårten Blankfors
-* Mårten Blankfors
 * Robin Cheng
 * Reynaldo Gil Pons
 * Chelsea Komlo
