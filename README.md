@@ -229,7 +229,6 @@ This implementation relies on
 contributors that actively put this together:
 
 * Mårten Blankfors
-* Mårten Blankfors
 * Robin Cheng
 * Reynaldo Gil Pons
 * Chelsea Komlo
@@ -239,4 +238,4 @@ contributors that actively put this together:
 * Bowen Wang
 
 ### External Contributors
-Oxsecads (a.k.a. Charly), Aditya2274
+Oxsecaas (a.k.a. Charly), Aditya2274
