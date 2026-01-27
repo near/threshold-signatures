@@ -392,6 +392,7 @@ mod test {
 
     use crate::ecdsa::KeygenOutput;
     use crate::test_utils::{generate_participants, run_protocol, GenProtocol, MockCryptoRng};
+    use crate::thresholds::MaxMalicious;
 
     #[test]
     fn test_presign() {
@@ -399,9 +400,9 @@ mod test {
 
         let participants = generate_participants(5);
 
-        let max_malicious = 2;
+        let max_malicious = MaxMalicious::new(2);
 
-        let f = Polynomial::generate_polynomial(None, max_malicious, &mut rng).unwrap();
+        let f = Polynomial::generate_polynomial(None, max_malicious.value(), &mut rng).unwrap();
         let big_x = ProjectivePoint::GENERATOR * f.eval_at_zero().unwrap().0;
 
         let mut protocols: GenProtocol<PresignOutput> = Vec::with_capacity(participants.len());
@@ -413,6 +414,7 @@ mod test {
             let keygen_out = KeygenOutput {
                 private_share: SigningShare::new(private_share.0),
                 public_key: verifying_key,
+                max_malicious,
             };
 
             let rng_p = MockCryptoRng::seed_from_u64(rng.next_u64());
@@ -422,7 +424,7 @@ mod test {
                 *p,
                 PresignArguments {
                     keygen_out,
-                    threshold: max_malicious,
+                    threshold: max_malicious.value(),
                 },
                 rng_p,
             )
