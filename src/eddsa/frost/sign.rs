@@ -382,12 +382,12 @@ mod test {
     #[test]
     fn test_reshare_sign_more_participants() {
         let mut rng = MockCryptoRng::seed_from_u64(42);
-        let participants = generate_participants(4);
+        let mut participants = generate_participants(4);
         let mut max_malicious = MaxMalicious::new(2);
 
 
         let mut new_participants = participants.clone();
-        let key_packages = run_keygen(&participants, max_malicious, &mut rng);
+        let mut key_packages = run_keygen(&participants, max_malicious, &mut rng);
         let pub_key = key_packages[2].1.public_key;
         // test dkg
         for i in 0..3 {
@@ -417,7 +417,7 @@ mod test {
             new_participants.push(Participant::from(20u32 + i));
             let new_max_malicious = MaxMalicious::new(max_malicious.value() + 1);
 
-            let key_packages = run_reshare(
+            key_packages = run_reshare(
                 &participants,
                 &pub_key,
                 &key_packages,
@@ -434,8 +434,8 @@ mod test {
 
 
             // update the old parameters
-            max_malicious = MaxMalicious::new(new_max_malicious.value());
-            let participants = new_participants.clone();
+            max_malicious = new_max_malicious;
+            participants = new_participants.clone();
             // Test public key
             let p_list = ParticipantList::new(&participants).unwrap();
             let mut x = Ed25519ScalarField::zero();
@@ -450,12 +450,12 @@ mod test {
     #[test]
     fn test_reshare_sign_less_participants() {
         let mut rng = MockCryptoRng::seed_from_u64(42);
-        let participants = generate_participants(5);
+        let mut participants = generate_participants(5);
         let mut max_malicious = MaxMalicious::new(4);
 
 
         let mut new_participants = participants.clone();
-        let key_packages = run_keygen(&participants, max_malicious, &mut rng);
+        let mut key_packages = run_keygen(&participants, max_malicious, &mut rng);
         let pub_key = key_packages[2].1.public_key;
         // test dkg
         for i in 0..3 {
@@ -483,9 +483,9 @@ mod test {
                 .is_ok());
             // test refresh
             new_participants.pop();
-            let new_max_malicious = MaxMalicious::new(max_malicious.value() -1);
+            let new_max_malicious = MaxMalicious::new(max_malicious.value() - 1);
 
-            let key_packages = run_reshare(
+            key_packages = run_reshare(
                 &participants,
                 &pub_key,
                 &key_packages,
@@ -501,8 +501,8 @@ mod test {
                 .collect();
 
             // update the old parameters
-            max_malicious = MaxMalicious::new(new_max_malicious.value());
-            let participants = new_participants.clone();
+            max_malicious = new_max_malicious;
+            participants = new_participants.clone();
 
             // Test public key
             let p_list = ParticipantList::new(&participants).unwrap();
