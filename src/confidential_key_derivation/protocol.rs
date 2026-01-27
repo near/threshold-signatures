@@ -184,10 +184,10 @@ fn compute_signature_share(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::confidential_key_derivation::{
+    use crate::{confidential_key_derivation::{
         ciphersuite::{hash_to_curve, G2Projective},
         hash_app_id_with_pk, SigningShare, VerifyingKey,
-    };
+    }, thresholds::MaxMalicious};
     use crate::test_utils::{
         check_one_coordinator_output, generate_participants, run_protocol, GenProtocol,
         MockCryptoRng,
@@ -247,6 +247,7 @@ mod test {
             let key_pair = KeygenOutput {
                 public_key: pk,
                 private_share: private_shares[i],
+                max_malicious: MaxMalicious::new(0),
             };
 
             let protocol = ckd(

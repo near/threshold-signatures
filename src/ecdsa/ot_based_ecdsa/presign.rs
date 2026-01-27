@@ -190,7 +190,7 @@ mod test {
     use super::*;
     use crate::{
         ecdsa::{ot_based_ecdsa::triples::test::deal, KeygenOutput, Polynomial, ProjectivePoint},
-        test_utils::{generate_participants, run_protocol, GenProtocol, MockCryptoRng},
+        test_utils::{generate_participants, run_protocol, GenProtocol, MockCryptoRng}, thresholds::MaxMalicious,
     };
     use frost_secp256k1::{
         keys::{PublicKeyPackage, SigningShare},
@@ -204,17 +204,17 @@ mod test {
         let mut rng = MockCryptoRng::seed_from_u64(42);
 
         let participants = generate_participants(4);
-        let original_threshold: usize = 2;
-        let degree = original_threshold.checked_sub(1).unwrap();
-        let f = Polynomial::generate_polynomial(None, degree, &mut rng).unwrap();
+        let max_malicious = MaxMalicious::new(1);
+        let reconstruction_threshold = max_malicious.reconstruction_threshold().unwrap();
+        let f = Polynomial::generate_polynomial(None, max_malicious.value(), &mut rng).unwrap();
         let big_x = ProjectivePoint::GENERATOR * f.eval_at_zero().unwrap().0;
 
         let threshold = 2;
 
         let (triple0_pub, triple0_shares) =
-            deal(&mut rng, &participants, original_threshold).unwrap();
+            deal(&mut rng, &participants, reconstruction_threshold).unwrap();
         let (triple1_pub, triple1_shares) =
-            deal(&mut rng, &participants, original_threshold).unwrap();
+            deal(&mut rng, &participants, reconstruction_threshold).unwrap();
 
         let mut protocols: GenProtocol<PresignOutput> = Vec::with_capacity(participants.len());
 
@@ -230,6 +230,7 @@ mod test {
             let keygen_out = KeygenOutput {
                 private_share: SigningShare::new(private_share),
                 public_key: *public_key_package.verifying_key(),
+                max_malicious,
             };
 
             let protocol = presign(

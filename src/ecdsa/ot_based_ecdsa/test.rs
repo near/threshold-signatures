@@ -4,7 +4,7 @@ use super::{
     triples::{generate_triple_many, test::deal, TriplePub, TripleShare},
     PresignArguments, PresignOutput, RerandomizedPresignOutput,
 };
-use crate::protocol::Protocol;
+use crate::{protocol::Protocol, thresholds::MaxMalicious};
 use crate::test_utils::{
     assert_public_key_invariant, check_one_coordinator_output, generate_participants,
     generate_participants_with_random_ids, run_keygen, run_protocol, run_refresh, run_reshare,
@@ -167,12 +167,12 @@ pub fn run_presign(
 fn test_refresh() {
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let participants = generate_participants(11);
-    let max_malicious = 5;
-    let threshold = max_malicious + 1;
-    let keys = run_keygen(&participants, threshold, &mut rng);
+    let max_malicious = MaxMalicious::new(5);
+    let threshold = max_malicious.reconstruction_threshold().unwrap();
+    let keys = run_keygen(&participants, max_malicious, &mut rng);
     assert_public_key_invariant(&keys);
     // run refresh on these
-    let key_packages = run_refresh(&participants, &keys, threshold, &mut rng);
+    let key_packages = run_refresh(&participants, &keys, &mut rng);
     let public_key = key_packages[0].1.public_key;
     assert_public_key_invariant(&key_packages);
     let (pub0, shares0) = deal(&mut rng, &participants, threshold).unwrap();
@@ -190,14 +190,14 @@ fn test_refresh() {
 fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let participants = generate_participants(5);
-    let threshold = 3;
-    let result0 = run_keygen(&participants, threshold, &mut rng);
+    let max_malicious = MaxMalicious::new(2);
+    let result0 = run_keygen(&participants, max_malicious, &mut rng);
     assert_public_key_invariant(&result0);
 
     let pub_key = result0[2].1.public_key;
 
     // Run heavy reshare
-    let new_threshold = 5;
+    let new_max_malicious = MaxMalicious::new(4);
     let mut new_participant = participants.clone();
     new_participant.push(Participant::from(31u32));
     new_participant.push(Participant::from(32u32));
@@ -206,14 +206,15 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
         &participants,
         &pub_key,
         &result0,
-        threshold,
-        new_threshold,
+        max_malicious,
+        new_max_malicious,
         &new_participant,
         &mut rng,
     );
     assert_public_key_invariant(&key_packages);
 
     let public_key = key_packages[0].1.public_key;
+    let new_threshold = new_max_malicious.reconstruction_threshold().unwrap();
     // Prepare triples
     let (pub0, shares0) = deal(&mut rng, &new_participant, new_threshold)?;
     let (pub1, shares1) = deal(&mut rng, &new_participant, new_threshold)?;
@@ -231,22 +232,22 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
 fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let participants = generate_participants(5);
-    let threshold = 4;
-    let result0 = run_keygen(&participants, threshold, &mut rng);
+    let max_malicious = MaxMalicious::new(3);
+    let result0 = run_keygen(&participants, max_malicious, &mut rng);
     assert_public_key_invariant(&result0);
 
     let pub_key = result0[2].1.public_key;
 
     // Run heavy reshare
-    let new_threshold = 3;
+    let new_max_malicious = MaxMalicious::new(2);
     let mut new_participant = participants.clone();
     new_participant.pop();
     let key_packages = run_reshare(
         &participants,
         &pub_key,
         &result0,
-        threshold,
-        new_threshold,
+        max_malicious,
+        new_max_malicious,
         &new_participant,
         &mut rng,
     );
@@ -254,6 +255,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
 
     let public_key = key_packages[0].1.public_key;
     // Prepare triples
+    let new_threshold = new_max_malicious.reconstruction_threshold().unwrap();
     let (pub0, shares0) = deal(&mut rng, &new_participant, new_threshold)?;
     let (pub1, shares1) = deal(&mut rng, &new_participant, new_threshold)?;
 
@@ -269,9 +271,9 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
 fn test_e2e() -> Result<(), Box<dyn Error>> {
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let participants = generate_participants(3);
-    let threshold = 3;
-
-    let key_packages = run_keygen(&participants.clone(), threshold, &mut rng);
+    let max_malicious = MaxMalicious::new(2);
+    let threshold = max_malicious.reconstruction_threshold().unwrap();
+    let key_packages = run_keygen(&participants.clone(), max_malicious, &mut rng);
 
     assert_public_key_invariant(&key_packages);
     let public_key = key_packages[0].1.public_key;
@@ -292,9 +294,10 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let participants_count = 3;
     let participants = generate_participants_with_random_ids(participants_count, &mut rng);
-    let threshold = 3;
+    let max_malicious = MaxMalicious::new(2);
+    let threshold = max_malicious.reconstruction_threshold().unwrap();
 
-    let key_packages = run_keygen(&participants.clone(), threshold, &mut rng);
+    let key_packages = run_keygen(&participants.clone(), max_malicious, &mut rng);
     assert_public_key_invariant(&key_packages);
 
     let public_key = key_packages[0].1.public_key;
@@ -315,9 +318,10 @@ fn test_e2e_random_identifiers_with_rerandomization() -> Result<(), Box<dyn Erro
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let participants_count = 3;
     let participants = generate_participants_with_random_ids(participants_count, &mut rng);
-    let threshold = 3;
+    let max_malicious = MaxMalicious::new(2);
+    let threshold = max_malicious.reconstruction_threshold().unwrap();
 
-    let key_packages = run_keygen(&participants.clone(), threshold, &mut rng);
+    let key_packages = run_keygen(&participants.clone(), max_malicious, &mut rng);
     assert_public_key_invariant(&key_packages);
 
     let public_key = key_packages[0].1.public_key;
@@ -366,9 +370,10 @@ where
 {
     let participants_count = 7;
     let mut participants = generate_participants_with_random_ids(participants_count, rng);
-    let threshold = 4;
+    let max_malicious = MaxMalicious::new(3);
+    let threshold = max_malicious.reconstruction_threshold().unwrap();
 
-    let mut key_packages = run_keygen(&participants.clone(), threshold, rng);
+    let mut key_packages = run_keygen(&participants.clone(), max_malicious, rng);
     assert_public_key_invariant(&key_packages);
 
     let public_key = key_packages[0].1.public_key.to_element();

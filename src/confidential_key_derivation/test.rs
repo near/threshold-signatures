@@ -2,39 +2,39 @@ type C = crate::confidential_key_derivation::ciphersuite::BLS12381SHA256;
 
 use rand::SeedableRng;
 
-use crate::test_utils::{generate_participants, MockCryptoRng};
+use crate::{test_utils::{generate_participants, MockCryptoRng}, thresholds::MaxMalicious};
 
 #[test]
 fn test_keygen() {
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let participants = generate_participants(3);
-    let threshold = 2;
-    crate::dkg::test::test_keygen::<C, _>(&participants, threshold, &mut rng);
+    let max_malicious = MaxMalicious::new(1);
+    crate::dkg::test::test_keygen::<C, _>(&participants, max_malicious, &mut rng);
 }
 
 #[test]
 fn test_refresh() {
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let participants = generate_participants(3);
-    let threshold = 2;
-    crate::dkg::test::test_refresh::<C, _>(&participants, threshold, &mut rng);
+    let max_malicious = MaxMalicious::new(1);
+    crate::dkg::test::test_refresh::<C, _>(&participants, max_malicious, &mut rng);
 }
 
 #[test]
 fn test_reshare() {
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let participants = generate_participants(3);
-    let threshold0 = 2;
-    let threshold1 = 3;
-    crate::dkg::test::test_reshare::<C, _>(&participants, threshold0, threshold1, &mut rng);
+    let max_malicious0 = MaxMalicious::new(1);
+    let max_malicious1 = MaxMalicious::new(2);
+    crate::dkg::test::test_reshare::<C, _>(&participants, max_malicious0, max_malicious1, &mut rng);
 }
 
 #[test]
 fn test_keygen_determinism() {
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let participants = generate_participants(3);
-    let threshold = 2;
-    let result = crate::dkg::test::test_keygen::<C, _>(&participants, threshold, &mut rng);
+    let max_malicious = MaxMalicious::new(1);
+    let result = crate::dkg::test::test_keygen::<C, _>(&participants, max_malicious, &mut rng);
     insta::assert_json_snapshot!(result);
 }
 
@@ -42,8 +42,8 @@ fn test_keygen_determinism() {
 fn test_refresh_determinism() {
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let participants = generate_participants(3);
-    let threshold = 2;
-    let result = crate::dkg::test::test_refresh::<C, _>(&participants, threshold, &mut rng);
+    let max_malicious = MaxMalicious::new(1);
+    let result = crate::dkg::test::test_refresh::<C, _>(&participants, max_malicious, &mut rng);
     insta::assert_json_snapshot!(result);
 }
 
@@ -51,10 +51,10 @@ fn test_refresh_determinism() {
 fn test_reshare_determinism() {
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let participants = generate_participants(3);
-    let threshold0 = 2;
-    let threshold1 = 3;
+    let max_malicious0 = MaxMalicious::new(1);
+    let max_malicious1 = MaxMalicious::new(2);
     let result =
-        crate::dkg::test::test_reshare::<C, _>(&participants, threshold0, threshold1, &mut rng);
+        crate::dkg::test::test_reshare::<C, _>(&participants, max_malicious0, max_malicious1, &mut rng);
     insta::assert_json_snapshot!(result);
 }
 
