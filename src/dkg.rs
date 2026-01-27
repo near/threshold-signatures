@@ -760,7 +760,9 @@ pub mod test {
         assert_eq!(
             result.err().unwrap(),
             InitializationError::ThresholdTooSmall {
-                threshold: max_malicious.reconstruction_threshold().expect("Reconstruction bound does not overflow"),
+                threshold: max_malicious
+                    .reconstruction_threshold()
+                    .expect("Reconstruction bound does not overflow"),
                 min: 2
             }
         );

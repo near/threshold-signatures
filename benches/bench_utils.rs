@@ -167,7 +167,9 @@ pub fn ot_ecdsa_prepare_presign<R: CryptoRngCore + SeedableRng + Send + 'static>
                 triple0: (share0, pub0[0].clone()),
                 triple1: (share1, pub1[0].clone()),
                 keygen_out,
-                threshold: max_malicious.reconstruction_threshold().expect("Reconstruction bound does not overflow"),
+                threshold: max_malicious
+                    .reconstruction_threshold()
+                    .expect("Reconstruction bound does not overflow"),
             },
         )
         .expect("Presigning should succeed");
@@ -183,6 +185,7 @@ pub fn ot_ecdsa_prepare_presign<R: CryptoRngCore + SeedableRng + Send + 'static>
 /// Used to prepare ot based ecdsa signatures for benchmarking
 pub fn ot_ecdsa_prepare_sign<R: CryptoRngCore + SeedableRng>(
     result: &[(Participant, ot_based_ecdsa::PresignOutput)],
+    threshold: usize,
     pk: VerifyingKey,
     rng: &mut R,
 ) -> OTECDSAPreparedSig {
@@ -220,6 +223,7 @@ pub fn ot_ecdsa_prepare_sign<R: CryptoRngCore + SeedableRng>(
         let protocol = ot_based_ecdsa::sign::sign(
             args.participants.participants(),
             coordinator,
+            threshold,
             p,
             derived_pk,
             presignature,
@@ -302,6 +306,7 @@ pub fn robust_ecdsa_prepare_presign<R: CryptoRngCore + SeedableRng + Send + 'sta
 /// Used to prepare robust ecdsa signatures for benchmarking
 pub fn robust_ecdsa_prepare_sign<R: CryptoRngCore + SeedableRng>(
     result: &[(Participant, robust_ecdsa::PresignOutput)],
+    max_malicious: usize,
     pk: VerifyingKey,
     rng: &mut R,
 ) -> RobustECDSASig {
@@ -339,6 +344,7 @@ pub fn robust_ecdsa_prepare_sign<R: CryptoRngCore + SeedableRng>(
         let protocol = robust_ecdsa::sign::sign(
             &participants,
             coordinator,
+            max_malicious,
             p,
             derived_pk,
             presignature,

@@ -40,11 +40,15 @@ fn max_malicious() -> MaxMalicious {
 }
 
 fn threshold() -> usize {
-    max_malicious().reconstruction_threshold().expect("Reconstruction bound does not overflow")
+    max_malicious()
+        .reconstruction_threshold()
+        .expect("Reconstruction bound does not overflow")
 }
 
 fn participants_num() -> usize {
-    max_malicious().reconstruction_threshold().expect("Reconstruction bound does not overflow")
+    max_malicious()
+        .reconstruction_threshold()
+        .expect("Reconstruction bound does not overflow")
 }
 
 /// Benches the triples protocol
@@ -130,7 +134,7 @@ fn bench_sign(c: &mut Criterion) {
         |b| {
             b.iter_batched(
                 || {
-                    let preps = prepare_simulated_sign(&result, pk);
+                    let preps = prepare_simulated_sign(&result, threshold(), pk);
                     // collecting data sizes
                     sizes.push(preps.simulator.get_view_size());
                     preps
@@ -230,10 +234,11 @@ fn prepare_simulated_presign(
 /// Used to simulate ot based ecdsa signatures for benchmarking
 pub fn prepare_simulated_sign(
     result: &[(Participant, PresignOutput)],
+    threshold: usize,
     pk: VerifyingKey,
 ) -> PreparedSimulatedSig {
     let mut rng = MockCryptoRng::seed_from_u64(40);
-    let preps = ot_ecdsa_prepare_sign(result, pk, &mut rng);
+    let preps = ot_ecdsa_prepare_sign(result, threshold, pk, &mut rng);
     let (_, protocolsnapshot) = run_protocol_and_take_snapshots(preps.protocols)
         .expect("Running protocol with snapshot should not have issues");
 
@@ -246,6 +251,7 @@ pub fn prepare_simulated_sign(
     let real_protocol = sign(
         &participants,
         real_participant,
+        threshold,
         real_participant,
         preps.derived_pk,
         preps.presig,

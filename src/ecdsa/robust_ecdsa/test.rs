@@ -24,6 +24,7 @@ use rand_core::{CryptoRngCore, SeedableRng};
 /// This signing does not rerandomize the presignatures and tests only the core protocol
 pub fn run_sign_without_rerandomization(
     participants_presign: &[(Participant, PresignOutput)],
+    max_malicious: usize,
     public_key: Element,
     msg: &[u8],
     rng: &mut impl CryptoRngCore,
@@ -45,8 +46,16 @@ pub fn run_sign_without_rerandomization(
             let pk = pk.to_affine();
             let rerand_presig =
                 RerandomizedPresignOutput::new_without_rerandomization(&presignature);
-            sign(participants, coordinator, me, pk, rerand_presig, msg_hash)
-                .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
+            sign(
+                participants,
+                coordinator,
+                max_malicious,
+                me,
+                pk,
+                rerand_presig,
+                msg_hash,
+            )
+            .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
         },
     )?;
     // test one single some for the coordinator
@@ -60,6 +69,7 @@ pub fn run_sign_without_rerandomization(
 /// rerandomizing the presignatures
 pub fn run_sign_with_rerandomization(
     participants_presign: &[(Participant, PresignOutput)],
+    max_malicious: usize,
     public_key: Element,
     msg: &[u8],
     rng: &mut impl CryptoRngCore,
@@ -113,8 +123,16 @@ pub fn run_sign_with_rerandomization(
         msg_hash,
         |participants, coordinator, me, pk, presignature, msg_hash| {
             let pk = pk.to_affine();
-            sign(participants, coordinator, me, pk, presignature, msg_hash)
-                .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
+            sign(
+                participants,
+                coordinator,
+                max_malicious,
+                me,
+                pk,
+                presignature,
+                msg_hash,
+            )
+            .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
         },
     )?;
     // test one single some for the coordinator
@@ -163,7 +181,13 @@ fn test_refresh() -> Result<(), Box<dyn Error>> {
     let presign_result = run_presign(key_packages, max_malicious.value(), &mut rng);
 
     let msg = b"hello world";
-    run_sign_without_rerandomization(&presign_result, public_key.to_element(), msg, &mut rng)?;
+    run_sign_without_rerandomization(
+        &presign_result,
+        max_malicious.value(),
+        public_key.to_element(),
+        msg,
+        &mut rng,
+    )?;
 
     Ok(())
 }
@@ -203,7 +227,13 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
     let presign_result = run_presign(key_packages, new_max_malicious.value(), &mut rng);
 
     let msg = b"hello world";
-    run_sign_without_rerandomization(&presign_result, public_key.to_element(), msg, &mut rng)?;
+    run_sign_without_rerandomization(
+        &presign_result,
+        new_max_malicious.value(),
+        public_key.to_element(),
+        msg,
+        &mut rng,
+    )?;
     Ok(())
 }
 
@@ -238,7 +268,13 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     let presign_result = run_presign(key_packages, new_max_malicious.value(), &mut rng);
 
     let msg = b"hello world";
-    run_sign_without_rerandomization(&presign_result, public_key.to_element(), msg, &mut rng)?;
+    run_sign_without_rerandomization(
+        &presign_result,
+        new_max_malicious.value(),
+        public_key.to_element(),
+        msg,
+        &mut rng,
+    )?;
     Ok(())
 }
 
@@ -255,7 +291,13 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
     let presign_result = run_presign(keygen_result, max_malicious.value(), &mut rng);
 
     let msg = b"hello world";
-    run_sign_without_rerandomization(&presign_result, public_key.to_element(), msg, &mut rng)?;
+    run_sign_without_rerandomization(
+        &presign_result,
+        max_malicious.value(),
+        public_key.to_element(),
+        msg,
+        &mut rng,
+    )?;
     Ok(())
 }
 
@@ -274,7 +316,13 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     let presign_result = run_presign(keygen_result, max_malicious.value(), &mut rng);
 
     let msg = b"hello world";
-    run_sign_without_rerandomization(&presign_result, public_key.to_element(), msg, &mut rng)?;
+    run_sign_without_rerandomization(
+        &presign_result,
+        max_malicious.value(),
+        public_key.to_element(),
+        msg,
+        &mut rng,
+    )?;
     Ok(())
 }
 
@@ -293,7 +341,13 @@ fn test_e2e_random_identifiers_with_rerandomization() -> Result<(), Box<dyn Erro
     let presign_result = run_presign(keygen_result, max_malicious.value(), &mut rng);
 
     let msg = b"hello world";
-    run_sign_with_rerandomization(&presign_result, public_key.to_element(), msg, &mut rng)?;
+    run_sign_with_rerandomization(
+        &presign_result,
+        max_malicious.value(),
+        public_key.to_element(),
+        msg,
+        &mut rng,
+    )?;
     Ok(())
 }
 
@@ -318,7 +372,13 @@ fn test_robustness<T, F, R: CryptoRngCore + SeedableRng + Send + 'static>(
     rng: &mut R,
 ) -> Result<(), Box<dyn Error>>
 where
-    F: Fn(&[(Participant, PresignOutput)], Element, &[u8], &mut R) -> Result<T, Box<dyn Error>>,
+    F: Fn(
+        &[(Participant, PresignOutput)],
+        usize,
+        Element,
+        &[u8],
+        &mut R,
+    ) -> Result<T, Box<dyn Error>>,
 {
     let participants_count = 11;
     let mut participants = generate_participants_with_random_ids(participants_count, rng);
@@ -340,6 +400,12 @@ where
     presign_result.remove(0);
 
     let msg = b"hello world";
-    run_sign(&presign_result, public_key.to_element(), msg, rng)?;
+    run_sign(
+        &presign_result,
+        max_malicious.value(),
+        public_key.to_element(),
+        msg,
+        rng,
+    )?;
     Ok(())
 }

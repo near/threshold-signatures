@@ -17,11 +17,15 @@ fn max_malicious() -> MaxMalicious {
 }
 
 fn threshold() -> usize {
-    max_malicious().reconstruction_threshold().expect("Reconstruction bound does not overflow")
+    max_malicious()
+        .reconstruction_threshold()
+        .expect("Reconstruction bound does not overflow")
 }
 
 fn participants_num() -> usize {
-    max_malicious().reconstruction_threshold().expect("Reconstruction bound does not overflow")
+    max_malicious()
+        .reconstruction_threshold()
+        .expect("Reconstruction bound does not overflow")
 }
 
 /// Benches the triples protocol
@@ -92,7 +96,7 @@ fn bench_sign(c: &mut Criterion) {
         ),
         |b| {
             b.iter_batched(
-                || ot_ecdsa_prepare_sign(&result, pk, &mut rng),
+                || ot_ecdsa_prepare_sign(&result, threshold(), pk, &mut rng),
                 |preps| run_protocol(preps.protocols),
                 criterion::BatchSize::SmallInput,
             );

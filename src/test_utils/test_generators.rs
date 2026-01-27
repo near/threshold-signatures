@@ -72,8 +72,8 @@ impl TestGenerators {
     pub fn make_eddsa_keygens<R: CryptoRngCore + SeedableRng + Send + 'static>(
         &self,
         rng: &mut R,
-    ) -> HashMap<Participant, eddsa::KeygenOutput> {
-        let mut protocols: Vec<ParticipantAndProtocol<eddsa::KeygenOutput>> = Vec::new();
+    ) -> HashMap<Participant, eddsa::frost::KeygenOutput> {
+        let mut protocols: Vec<ParticipantAndProtocol<eddsa::frost::KeygenOutput>> = Vec::new();
         for participant in &self.participants {
             let rng_p = R::seed_from_u64(rng.next_u64());
             protocols.push((
@@ -169,6 +169,7 @@ impl TestGenerators {
 
     pub fn make_signature(
         &self,
+        threshold: usize,
         presignatures: &HashMap<Participant, ecdsa::ot_based_ecdsa::PresignOutput>,
         public_key: AffinePoint,
         msg_hash: ecdsa::Scalar,
@@ -211,6 +212,7 @@ impl TestGenerators {
                     ecdsa::ot_based_ecdsa::sign::sign(
                         &self.participants,
                         leader,
+                        threshold,
                         *participant,
                         derived_public_key,
                         rerandomized_presignature,
