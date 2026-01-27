@@ -298,9 +298,9 @@ mod test {
     use crate::participants::{Participant, ParticipantList};
     use crate::protocol::Protocol;
     use crate::test_utils::{
-        assert_public_key_invariant, generate_participants, one_coordinator_output, run_keygen,
-        run_refresh, run_reshare, MockCryptoRng,
+        assert_public_key_invariant, generate_participants, generate_participants_with_random_ids, one_coordinator_output, run_keygen, run_refresh, run_reshare, MockCryptoRng
     };
+    use crate::thresholds::MaxMalicious;
     use frost_core::{Field, Group};
     use frost_ed25519::{Ed25519Group, Ed25519ScalarField, Ed25519Sha512};
     use rand::{Rng, RngCore, SeedableRng};
@@ -357,19 +357,15 @@ mod test {
     #[test]
     fn dkg_sign_test() {
         let mut rng = MockCryptoRng::seed_from_u64(42);
-        let participants = vec![
-            Participant::from(0u32),
-            Participant::from(31u32),
-            Participant::from(1u32),
-            Participant::from(2u32),
-        ];
+        let participants = generate_participants_with_random_ids(4, &mut rng);
         let actual_signers = participants.len();
-        let threshold = 2;
+        let max_malicious = MaxMalicious::new(1);
+        let threshold = max_malicious.reconstruction_threshold().unwrap();
         let msg = "hello_near";
         let msg_hash = hash(&msg).unwrap();
 
         // test dkg
-        let key_packages = run_keygen(&participants, threshold, &mut rng);
+        let key_packages = run_keygen(&participants, max_malicious, &mut rng);
         assert_public_key_invariant(&key_packages);
         let coordinators = vec![key_packages[0].0];
         let data = test_run_signature_protocols(
@@ -389,7 +385,7 @@ mod test {
             .is_ok());
 
         // // test refresh
-        let key_packages1 = run_refresh(&participants, &key_packages, threshold, &mut rng);
+        let key_packages1 = run_refresh(&participants, &key_packages, &mut rng);
         assert_public_key_invariant(&key_packages1);
         let msg = "hello_near_2";
         let msg_hash = hash(&msg).unwrap();
@@ -412,13 +408,13 @@ mod test {
         // test reshare
         let mut new_participant = participants.clone();
         new_participant.push(Participant::from(20u32));
-        let new_threshold = 4;
+        let new_max_malicious = MaxMalicious::new(3);
         let key_packages2 = run_reshare(
             &participants,
             &pub_key,
             &key_packages1,
-            threshold,
-            new_threshold,
+            max_malicious,
+            new_max_malicious,
             &new_participant,
             &mut rng,
         );
@@ -430,7 +426,7 @@ mod test {
             &key_packages2,
             actual_signers,
             &coordinators,
-            new_threshold,
+            new_max_malicious.reconstruction_threshold().unwrap(),
             msg_hash,
         )
         .unwrap();
@@ -446,14 +442,14 @@ mod test {
     fn test_reshare_sign_more_participants() {
         let mut rng = MockCryptoRng::seed_from_u64(42);
         let participants = generate_participants(4);
-        let threshold = 3;
-        let result0 = run_keygen(&participants, threshold, &mut rng);
+        let max_malicious = MaxMalicious::new(2);
+        let result0 = run_keygen(&participants, max_malicious, &mut rng);
         assert_public_key_invariant(&result0);
 
         let pub_key = result0[2].1.public_key;
 
         // Run heavy reshare
-        let new_threshold = 5;
+        let new_malicious = MaxMalicious::new(4);
         let mut new_participant = participants.clone();
         new_participant.push(Participant::from(31u32));
         new_participant.push(Participant::from(32u32));
@@ -461,8 +457,8 @@ mod test {
             &participants,
             &pub_key,
             &result0,
-            threshold,
-            new_threshold,
+            max_malicious,
+            new_malicious,
             &new_participant,
             &mut rng,
         );
@@ -497,7 +493,7 @@ mod test {
             &key_packages,
             actual_signers,
             &coordinators,
-            new_threshold,
+            new_malicious.reconstruction_threshold().unwrap(),
             msg_hash,
         )
         .unwrap();
@@ -513,23 +509,23 @@ mod test {
     fn test_reshare_sign_less_participants() {
         let mut rng = MockCryptoRng::seed_from_u64(42);
         let participants = generate_participants(5);
-        let threshold = 4;
-        let result0 = run_keygen(&participants, threshold, &mut rng);
+        let max_malicious = MaxMalicious::new(3);
+        let result0 = run_keygen(&participants, max_malicious, &mut rng);
         assert_public_key_invariant(&result0);
         let coordinators = vec![result0[0].0];
 
         let pub_key = result0[2].1.public_key;
 
         // Run heavy reshare
-        let new_threshold = 3;
+        let new_max_malicious = MaxMalicious::new(2);
         let mut new_participant = participants.clone();
         new_participant.pop();
         let key_packages = run_reshare(
             &participants,
             &pub_key,
             &result0,
-            threshold,
-            new_threshold,
+            max_malicious,
+            new_max_malicious,
             &new_participant,
             &mut rng,
         );
@@ -560,9 +556,9 @@ mod test {
 
         let data = test_run_signature_protocols(
             &key_packages,
-            new_threshold,
+            new_max_malicious.reconstruction_threshold().unwrap(),
             &coordinators,
-            new_threshold,
+            new_max_malicious.reconstruction_threshold().unwrap(),
             msg_hash,
         )
         .unwrap();

@@ -121,10 +121,10 @@ impl ProtocolSnapshot {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::ecdsa::{
+    use crate::{ecdsa::{
         robust_ecdsa::{presign::presign, PresignArguments, PresignOutput},
         KeygenOutput, Polynomial,
-    };
+    }, thresholds::MaxMalicious};
     use crate::test_utils::{
         generate_participants, run_protocol_and_take_snapshots, GenProtocol, MockCryptoRng,
     };
@@ -181,23 +181,24 @@ mod test {
         }
     }
 
-    fn prepare_keys(p: Participant, f: &Polynomial, big_x: ProjectivePoint) -> KeygenOutput {
+    fn prepare_keys(p: Participant, f: &Polynomial, big_x: ProjectivePoint, max_malicious:MaxMalicious) -> KeygenOutput {
         let private_share = f.eval_at_participant(p).unwrap();
         let verifying_key = VerifyingKey::new(big_x);
         KeygenOutput {
             private_share: SigningShare::new(private_share.0),
             public_key: verifying_key,
+            max_malicious
         }
     }
 
     #[test]
     fn ecdsa_presign_should_return_same_snapshot_when_executed_twice() {
-        let max_malicious = 2;
+        let max_malicious = MaxMalicious::new(2);
         let num_participants = 5;
         let participants = generate_participants(num_participants);
 
         let mut rng = MockCryptoRng::seed_from_u64(42u64);
-        let f = Polynomial::generate_polynomial(None, max_malicious, &mut rng).unwrap();
+        let f = Polynomial::generate_polynomial(None, max_malicious.value(), &mut rng).unwrap();
         let big_x = ProjectivePoint::GENERATOR * f.eval_at_zero().unwrap().0;
 
         // create rngs for first and second snapshots
@@ -211,13 +212,13 @@ mod test {
             let mut protocols: GenProtocol<PresignOutput> = Vec::with_capacity(participants.len());
             for (i, p) in participants.iter().enumerate() {
                 // simulating the key packages for each participant
-                let keygen_out = prepare_keys(*p, &f, big_x);
+                let keygen_out = prepare_keys(*p, &f, big_x, max_malicious);
                 let protocol = presign(
                     &participants[..],
                     *p,
                     PresignArguments {
                         keygen_out,
-                        threshold: max_malicious,
+                        threshold: max_malicious.value(),
                     },
                     rngs[i].clone(),
                 )

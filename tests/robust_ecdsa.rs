@@ -7,17 +7,13 @@ use std::collections::HashMap;
 use rand_core::{OsRng, RngCore};
 
 use threshold_signatures::{
-    self,
-    ecdsa::{
+    self, ecdsa::{
         robust_ecdsa::{
             presign::presign, sign::sign, PresignArguments, PresignOutput,
             RerandomizedPresignOutput,
         },
         RerandomizationArguments, Secp256K1Sha256, Signature, SignatureOption,
-    },
-    frost_secp256k1::VerifyingKey,
-    participants::Participant,
-    Element, ParticipantList,
+    }, frost_secp256k1::VerifyingKey, participants::Participant, thresholds::MaxMalicious, Element, ParticipantList
 };
 
 // Note: This is required to use Scalar::from_repr
@@ -148,12 +144,11 @@ fn run_sign_with_rerandomization(
 #[test]
 fn test_sign() {
     let participants = generate_participants(11);
-    let max_malicious = 5;
-    let threshold = max_malicious + 1;
-    let keys = run_keygen(&participants, threshold);
+    let max_malicious = MaxMalicious::new(5);
+    let keys = run_keygen(&participants, max_malicious);
     assert_eq!(keys.len(), participants.len());
     let public_key = keys.get(&participants[0]).unwrap().public_key;
-    let presign_result = run_presign(keys.clone(), max_malicious);
+    let presign_result = run_presign(keys.clone(), max_malicious.value());
 
     let msg_hash = *b"hello worldhello worldhello worl";
     // generate a random tweak
@@ -183,14 +178,14 @@ fn test_sign() {
 
     let mut new_participants = participants.clone();
     new_participants.push(Participant::from(20u32));
-    let new_threshold = 6;
+    let new_max_malicious = MaxMalicious::new(6);
 
     let new_keys = run_reshare(
         &participants,
         &public_key,
         participant_keys.as_slice(),
-        threshold,
-        new_threshold,
+        max_malicious,
+        new_max_malicious,
         &new_participants,
     );
     let new_public_key = new_keys.get(&participants[0]).unwrap().public_key;

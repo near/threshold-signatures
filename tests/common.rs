@@ -6,13 +6,7 @@ use rand::Rng;
 use rand_core::OsRng;
 
 use threshold_signatures::{
-    self,
-    errors::ProtocolError,
-    frost_core::VerifyingKey,
-    keygen,
-    participants::Participant,
-    protocol::{Action, Protocol},
-    reshare, Ciphersuite, Element, KeygenOutput, Scalar,
+    self, errors::ProtocolError, frost_core::VerifyingKey, keygen, participants::Participant, protocol::{Action, Protocol}, reshare, thresholds::MaxMalicious, Ciphersuite, Element, KeygenOutput, Scalar
 };
 
 pub type GenProtocol<C> = Vec<(Participant, Box<dyn Protocol<Output = C>>)>;
@@ -77,7 +71,7 @@ pub fn run_protocol<T>(
 #[allow(clippy::missing_panics_doc)]
 pub fn run_keygen<C: Ciphersuite>(
     participants: &[Participant],
-    threshold: usize,
+    max_malicious: MaxMalicious,
 ) -> HashMap<Participant, KeygenOutput<C>>
 where
     Element<C>: std::marker::Send,
@@ -87,7 +81,7 @@ where
         .iter()
         .map(|p| {
             let protocol: Box<dyn Protocol<Output = KeygenOutput<C>>> =
-                Box::new(keygen::<C>(participants, *p, threshold, OsRng).unwrap());
+                Box::new(keygen::<C>(participants, *p, max_malicious, OsRng).unwrap());
             (*p, protocol)
         })
         .collect();
@@ -100,8 +94,8 @@ pub fn run_reshare<C: Ciphersuite>(
     participants: &[Participant],
     pub_key: &VerifyingKey<C>,
     keys: &[(Participant, KeygenOutput<C>)],
-    old_threshold: usize,
-    new_threshold: usize,
+    old_max_malicious: MaxMalicious,
+    new_max_malicious: MaxMalicious,
     new_participants: &[Participant],
 ) -> HashMap<Participant, KeygenOutput<C>>
 where
@@ -131,11 +125,11 @@ where
             let protocol: Box<dyn Protocol<Output = KeygenOutput<C>>> = Box::new(
                 reshare(
                     participants,
-                    old_threshold,
+                    old_max_malicious,
                     out.0,
                     out.1,
                     new_participants,
-                    new_threshold,
+                    new_max_malicious,
                     *p,
                     OsRng,
                 )

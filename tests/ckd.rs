@@ -9,7 +9,7 @@ use threshold_signatures::{
         protocol::ckd,
         AppId, CKDOutputOption,
     },
-    participants::Participant,
+    participants::Participant, thresholds::MaxMalicious,
 };
 
 use crate::common::{run_protocol, GenProtocol};
@@ -26,10 +26,10 @@ fn test_ckd() {
     let app_pk = G1Projective::generator() * app_sk;
 
     // create participants
-    let threshold = 2;
+    let max_malicious = MaxMalicious::new(1);
     let participants = generate_participants(3);
 
-    let keys = run_keygen(&participants, threshold);
+    let keys = run_keygen(&participants, max_malicious);
 
     assert!(keys.len() == participants.len());
 
@@ -78,14 +78,14 @@ fn test_ckd() {
 
     let mut new_participants = participants.clone();
     new_participants.push(Participant::from(20u32));
-    let new_threshold = 3;
+    let new_max_malicious = MaxMalicious::new(2);
 
     let new_keys = run_reshare(
         &participants,
         &public_key,
         participant_keys.as_slice(),
-        threshold,
-        new_threshold,
+        max_malicious,
+        new_max_malicious,
         &new_participants,
     );
     let new_public_key = new_keys.get(&participants[0]).unwrap().public_key;

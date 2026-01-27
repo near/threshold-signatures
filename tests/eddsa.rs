@@ -11,7 +11,7 @@ use rand_core::OsRng;
 use threshold_signatures::{
     self,
     eddsa::{sign::sign, Ed25519Sha512, SignatureOption},
-    participants::Participant,
+    participants::Participant, thresholds::MaxMalicious,
 };
 
 type C = Ed25519Sha512;
@@ -47,8 +47,9 @@ fn run_sign(
 #[test]
 fn test_sign() {
     let participants = generate_participants(5);
-    let threshold = 4;
-    let keys = run_keygen::<C>(&participants, threshold);
+    let max_malicious = MaxMalicious::new(3);
+    let threshold = max_malicious.reconstruction_threshold().unwrap();
+    let keys = run_keygen::<C>(&participants, max_malicious);
     assert_eq!(keys.len(), participants.len());
     let public_key = keys.get(&participants[0]).unwrap().public_key;
 
@@ -75,14 +76,14 @@ fn test_sign() {
 
     let mut new_participants = participants.clone();
     new_participants.push(Participant::from(20u32));
-    let new_threshold = 5;
+    let new_max_malicious = MaxMalicious::new(4);
 
     let new_keys = run_reshare(
         &participants,
         &public_key,
         participant_keys.as_slice(),
-        threshold,
-        new_threshold,
+        max_malicious,
+        new_max_malicious,
         &new_participants,
     );
     let new_public_key = new_keys.get(&participants[0]).unwrap().public_key;

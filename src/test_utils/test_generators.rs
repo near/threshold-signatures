@@ -11,6 +11,7 @@ use crate::frost_ed25519::Ed25519Sha512;
 use crate::frost_secp256k1::Secp256K1Sha256;
 use crate::participants::Participant;
 use crate::protocol::Protocol;
+use crate::thresholds::MaxMalicious;
 use crate::{ecdsa, eddsa, ParticipantList};
 use crate::{keygen, VerifyingKey};
 
@@ -18,27 +19,27 @@ use crate::test_utils::run_protocol;
 
 pub struct TestGenerators {
     pub participants: Vec<Participant>,
-    pub threshold: usize,
+    pub max_malicious: MaxMalicious,
 }
 
 type ParticipantAndProtocol<T> = (Participant, Box<dyn Protocol<Output = T>>);
 
 impl TestGenerators {
-    pub fn new(num_participants: usize, threshold: usize) -> Self {
+    pub fn new(num_participants: usize, max_malicious: MaxMalicious) -> Self {
         Self {
             participants: (0..num_participants)
                 .map(|_| Participant::from(rand::random::<u32>()))
                 .collect::<Vec<_>>(),
-            threshold,
+            max_malicious,
         }
     }
 
-    pub fn new_contiguous_participant_ids(num_participants: usize, threshold: usize) -> Self {
+    pub fn new_contiguous_participant_ids(num_participants: usize, max_malicious: MaxMalicious) -> Self {
         Self {
             participants: (0..num_participants)
                 .map(|i| Participant::from(i as u32))
                 .collect::<Vec<_>>(),
-            threshold,
+            max_malicious,
         }
     }
 
@@ -55,7 +56,7 @@ impl TestGenerators {
                     keygen::<Secp256K1Sha256>(
                         &self.participants,
                         *participant,
-                        self.threshold,
+                        self.max_malicious,
                         rng_p,
                     )
                     .unwrap(),
@@ -78,7 +79,7 @@ impl TestGenerators {
                     keygen::<Ed25519Sha512>(
                         &self.participants,
                         *participant,
-                        self.threshold,
+                        self.max_malicious,
                         rng_p,
                     )
                     .unwrap(),
@@ -101,7 +102,7 @@ impl TestGenerators {
                     keygen::<ckd::BLS12381SHA256>(
                         &self.participants,
                         *participant,
-                        self.threshold,
+                        self.max_malicious,
                         rng_p,
                     )
                     .unwrap(),
@@ -124,7 +125,7 @@ impl TestGenerators {
                     ecdsa::ot_based_ecdsa::triples::generate_triple(
                         &self.participants,
                         *participant,
-                        self.threshold,
+                        self.max_malicious.reconstruction_threshold().unwrap(),
                         rng_p,
                     )
                     .unwrap(),
@@ -153,7 +154,7 @@ impl TestGenerators {
                             triple0: triple0s[participant].clone(),
                             triple1: triple1s[participant].clone(),
                             keygen_out: keygens[participant].clone(),
-                            threshold: self.threshold,
+                            threshold: self.max_malicious.reconstruction_threshold().unwrap(),
                         },
                     )
                     .unwrap(),

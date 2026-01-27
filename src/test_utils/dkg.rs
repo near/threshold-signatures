@@ -3,6 +3,7 @@ use rand_core::CryptoRngCore;
 
 use crate::participants::Participant;
 use crate::test_utils::{run_protocol, GenOutput, GenProtocol};
+use crate::thresholds::MaxMalicious;
 use crate::{keygen, refresh, reshare, Ciphersuite, Element, KeygenOutput, Scalar, VerifyingKey};
 
 // +++++++++++++++++ DKG Functions +++++++++++++++++ //
@@ -14,7 +15,7 @@ type DKGGenProtocol<C> = GenProtocol<KeygenOutput<C>>;
 /// If the protocol succeeds, returns a sorted vector based on participants id
 pub fn run_keygen<C: Ciphersuite, R: CryptoRngCore + SeedableRng + Send + 'static>(
     participants: &[Participant],
-    threshold: usize,
+    max_malicious: MaxMalicious,
     rng: &mut R,
 ) -> GenOutput<C>
 where
@@ -25,7 +26,7 @@ where
 
     for p in participants {
         let rng_p = R::seed_from_u64(rng.next_u64());
-        let protocol = keygen::<C>(participants, *p, threshold, rng_p).unwrap();
+        let protocol = keygen::<C>(participants, *p, max_malicious, rng_p).unwrap();
         protocols.push((*p, Box::new(protocol)));
     }
 
@@ -37,7 +38,6 @@ where
 pub fn run_refresh<C: Ciphersuite, R: CryptoRngCore + SeedableRng + Send + 'static>(
     participants: &[Participant],
     keys: &[(Participant, KeygenOutput<C>)],
-    threshold: usize,
     rng: &mut R,
 ) -> GenOutput<C>
 where
@@ -49,10 +49,8 @@ where
     for (p, out) in keys {
         let rng_p = R::seed_from_u64(rng.next_u64());
         let protocol = refresh::<C>(
-            Some(out.private_share),
-            out.public_key,
+            out.clone(),
             participants,
-            threshold,
             *p,
             rng_p,
         )
@@ -69,8 +67,8 @@ pub fn run_reshare<C: Ciphersuite, R: CryptoRngCore + SeedableRng + Send + 'stat
     participants: &[Participant],
     pub_key: &VerifyingKey<C>,
     keys: &[(Participant, KeygenOutput<C>)],
-    old_threshold: usize,
-    new_threshold: usize,
+    old_max_malicious: MaxMalicious,
+    new_max_malicious: MaxMalicious,
     new_participants: &[Participant],
     rng: &mut R,
 ) -> GenOutput<C>
@@ -101,11 +99,11 @@ where
         let rng_p = R::seed_from_u64(rng.next_u64());
         let protocol = reshare(
             participants,
-            old_threshold,
+            old_max_malicious,
             out.0,
             out.1,
             new_participants,
-            new_threshold,
+            new_max_malicious,
             *p,
             rng_p,
         )

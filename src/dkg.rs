@@ -670,10 +670,12 @@ pub mod test {
     use crate::crypto::ciphersuite::Ciphersuite;
     use crate::errors::InitializationError;
     use crate::participants::{Participant, ParticipantList};
-    use crate::test_utils::{assert_public_key_invariant, run_keygen, run_refresh, run_reshare};
-    use crate::test_utils::{generate_participants, GenOutput};
-    use crate::KeygenOutput;
-    use crate::{keygen, reshare};
+    use crate::test_utils::{
+        assert_public_key_invariant, run_keygen, run_refresh, run_reshare,
+        generate_participants, GenOutput,
+    };
+    use crate::thresholds::MaxMalicious;
+    use crate::{KeygenOutput, keygen, reshare};
     use frost_core::{Field, Group};
     use rand_core::{CryptoRngCore, SeedableRng};
 
@@ -708,14 +710,14 @@ pub mod test {
 
     pub fn test_keygen<C: Ciphersuite, R: CryptoRngCore + SeedableRng + Send + 'static>(
         participants: &[Participant],
-        threshold: usize,
+        max_malicious: MaxMalicious,
         rng: &mut R,
     ) -> Vec<(Participant, KeygenOutput<C>)>
     where
         <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
         <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send,
     {
-        let result = run_keygen::<C, R>(participants, threshold, rng);
+        let result = run_keygen::<C, R>(participants, max_malicious, rng);
         assert!(result.len() == participants.len());
         assert_public_key_invariant(&result);
 
@@ -735,35 +737,38 @@ pub mod test {
         <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
         <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send,
     {
-        let threshold = 1;
+        let max_malicious = MaxMalicious::new(1);
         let participants = generate_participants(2);
 
         let rng_keygen = R::seed_from_u64(rng.next_u64());
-        let result = keygen::<C>(&participants, participants[0], threshold, rng_keygen);
+        let result = keygen::<C>(&participants, participants[0], max_malicious, rng_keygen);
 
         assert_eq!(
             result.err().unwrap(),
-            InitializationError::ThresholdTooSmall { threshold, min: 2 }
+            InitializationError::ThresholdTooSmall {
+                threshold: max_malicious.reconstruction_threshold().unwrap(),
+                min: 2
+            }
         );
 
         // this threshold should work correctly
-        test_keygen::<C, _>(&participants, 2, rng);
+        test_keygen::<C, _>(&participants, max_malicious, rng);
     }
 
     pub fn test_refresh<C: Ciphersuite, R: CryptoRngCore + SeedableRng + Send + 'static>(
         participants: &[Participant],
-        threshold: usize,
+        max_malicious: MaxMalicious,
         rng: &mut R,
     ) -> Vec<(Participant, KeygenOutput<C>)>
     where
         <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
         <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send,
     {
-        let result0 = run_keygen::<C, R>(participants, threshold, rng);
+        let result0 = run_keygen::<C, R>(participants, max_malicious, rng);
         assert_public_key_invariant(&result0);
         let pub_key0 = result0[0].1.public_key.to_element();
 
-        let result1 = run_refresh(participants, &result0, threshold, rng);
+        let result1 = run_refresh(participants, &result0, rng);
         assert_public_key_invariant(&result1);
         let x1 = compute_private_key(&result1);
 
@@ -773,15 +778,15 @@ pub mod test {
 
     pub fn test_reshare<C: Ciphersuite, R: CryptoRngCore + SeedableRng + Send + 'static>(
         participants: &[Participant],
-        threshold0: usize,
-        threshold1: usize,
+        max_malicious0: MaxMalicious,
+        max_malicious1: MaxMalicious,
         rng: &mut R,
     ) -> Vec<(Participant, KeygenOutput<C>)>
     where
         <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
         <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send,
     {
-        let result0 = run_keygen::<C, R>(participants, threshold0, rng);
+        let result0 = run_keygen::<C, R>(participants, max_malicious0, rng);
         assert_public_key_invariant(&result0);
 
         let pub_key0 = result0[0].1.public_key;
@@ -792,8 +797,8 @@ pub mod test {
             participants,
             &pub_key0,
             &result0,
-            threshold0,
-            threshold1,
+            max_malicious0,
+            max_malicious1,
             &new_participant,
             rng,
         );
@@ -816,22 +821,22 @@ pub mod test {
         <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send,
     {
         let participants = generate_participants(2);
-        let threshold0 = 2;
-        let threshold1 = 1;
+        let max_malicious0 = MaxMalicious::new(1);
+        let max_malicious1 = MaxMalicious::new(0);
 
         let mut rng_keygen = R::seed_from_u64(rng.next_u64());
-        let result0 = run_keygen(&participants, threshold0, &mut rng_keygen);
+        let result0 = run_keygen(&participants, max_malicious0, &mut rng_keygen);
 
         let pub_key = result0[0].1.public_key;
 
         let rng_reshare = R::seed_from_u64(rng.next_u64());
         let result = reshare::<C>(
             &participants,
-            threshold0,
+            max_malicious0,
             None,
             pub_key,
             &participants,
-            threshold1,
+            max_malicious1,
             participants[0],
             rng_reshare,
         );
@@ -839,12 +844,12 @@ pub mod test {
         assert_eq!(
             result.err().unwrap(),
             InitializationError::ThresholdTooSmall {
-                threshold: threshold1,
+                threshold: max_malicious1.reconstruction_threshold().unwrap(),
                 min: 2
             }
         );
 
         // These threshold parameters should work correctly
-        test_reshare::<C, _>(&participants, 2, 2, rng);
+        test_reshare::<C, _>(&participants, max_malicious0, max_malicious0, rng);
     }
 }
