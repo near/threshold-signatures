@@ -48,13 +48,7 @@ where
 
     for (p, out) in keys {
         let rng_p = R::seed_from_u64(rng.next_u64());
-        let protocol = refresh::<C>(
-            out.clone(),
-            participants,
-            *p,
-            rng_p,
-        )
-        .unwrap();
+        let protocol = refresh::<C>(out, participants, *p, rng_p).unwrap();
         protocols.push((*p, Box::new(protocol)));
     }
 

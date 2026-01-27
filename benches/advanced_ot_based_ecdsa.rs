@@ -28,30 +28,37 @@ use threshold_signatures::{
         run_protocol, run_protocol_and_take_snapshots, run_simulated_protocol, MockCryptoRng,
         Simulator,
     },
+    thresholds::MaxMalicious,
 };
 
 type PreparedSimulatedTriples = PreparedOutputs<Vec<(TripleShare, TriplePub)>>;
 type PreparedSimulatedPresig = PreparedOutputs<PresignOutput>;
 type PreparedSimulatedSig = PreparedOutputs<SignatureOption>;
 
+fn max_malicious() -> MaxMalicious {
+    MaxMalicious::new(*MAX_MALICIOUS)
+}
+
 fn threshold() -> usize {
-    *MAX_MALICIOUS + 1
+    max_malicious().reconstruction_threshold().expect("Reconstruction bound does not overflow")
 }
 
 fn participants_num() -> usize {
-    *MAX_MALICIOUS + 1
+    max_malicious().reconstruction_threshold().expect("Reconstruction bound does not overflow")
 }
 
 /// Benches the triples protocol
 fn bench_triples(c: &mut Criterion) {
     let num = participants_num();
-    let max_malicious = *MAX_MALICIOUS;
     let mut sizes = Vec::with_capacity(*SAMPLE_SIZE);
 
     let mut group = c.benchmark_group("triples");
     group.sample_size(*SAMPLE_SIZE);
     group.bench_function(
-        format!("ot_ecdsa_triples_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
+        format!(
+            "ot_ecdsa_triples_advanced_MAX_MALICIOUS_{:?}_PARTICIPANTS_{num}",
+            max_malicious().value()
+        ),
         |b| {
             b.iter_batched(
                 || {
@@ -102,7 +109,6 @@ fn bench_presign(c: &mut Criterion) {
 /// Benches the signing protocol
 fn bench_sign(c: &mut Criterion) {
     let num = participants_num();
-    let max_malicious = *MAX_MALICIOUS;
     let mut sizes = Vec::with_capacity(*SAMPLE_SIZE);
 
     let mut rng = MockCryptoRng::seed_from_u64(42);
@@ -110,14 +116,17 @@ fn bench_sign(c: &mut Criterion) {
     let two_triples =
         run_protocol(preps.protocols).expect("Running triples preparation should succeed");
 
-    let preps = ot_ecdsa_prepare_presign(&two_triples, threshold(), &mut rng);
+    let preps = ot_ecdsa_prepare_presign(&two_triples, max_malicious(), &mut rng);
     let result = run_protocol(preps.protocols).expect("Running presign preparation should succeed");
     let pk = preps.key_packages[0].1.public_key;
 
     let mut group = c.benchmark_group("sign");
     group.sample_size(*SAMPLE_SIZE);
     group.bench_function(
-        format!("ot_ecdsa_sign_advanced_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
+        format!(
+            "ot_ecdsa_sign_advanced_MAX_MALICIOUS_{:?}_PARTICIPANTS_{num}",
+            max_malicious().value()
+        ),
         |b| {
             b.iter_batched(
                 || {
@@ -181,7 +190,7 @@ fn prepare_simulated_presign(
     two_triples: &[(Participant, Vec<(TripleShare, TriplePub)>)],
 ) -> PreparedSimulatedPresig {
     let mut rng = MockCryptoRng::seed_from_u64(40);
-    let preps = ot_ecdsa_prepare_presign(two_triples, threshold(), &mut rng);
+    let preps = ot_ecdsa_prepare_presign(two_triples, max_malicious(), &mut rng);
     let (_, protocolsnapshot) = run_protocol_and_take_snapshots(preps.protocols)
         .expect("Running protocol with snapshot should not have issues");
 

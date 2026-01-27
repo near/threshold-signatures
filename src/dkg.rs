@@ -1,8 +1,11 @@
-use crate::{crypto::{
-    ciphersuite::Ciphersuite,
-    hash::{domain_separate_hash, HashOutput},
-    polynomials::{Polynomial, PolynomialCommitment},
-}, thresholds::MaxMalicious};
+use crate::{
+    crypto::{
+        ciphersuite::Ciphersuite,
+        hash::{domain_separate_hash, HashOutput},
+        polynomials::{Polynomial, PolynomialCommitment},
+    },
+    thresholds::MaxMalicious,
+};
 
 use crate::errors::{InitializationError, ProtocolError};
 use crate::participants::{Participant, ParticipantList, ParticipantMap};
@@ -184,7 +187,7 @@ fn verify_proof_of_knowledge<C: Ciphersuite>(
                 return Err(ProtocolError::MaliciousParticipant(participant));
             }
             // since previous line did not abort, then we know participant is new indeed
-            // check the commitment length is max_malicious
+            // check the commitment length is `max_malicious`
             if commitment.coefficients().len() != max_malicious.value() {
                 return Err(ProtocolError::IncorrectNumberOfCommitments);
             }
@@ -232,7 +235,7 @@ fn verify_commitment_hash<C: Ciphersuite>(
     Ok(())
 }
 
-/// This function is called when the commitment length is max_malicious
+/// This function is called when the commitment length is `max_malicious`
 /// i.e. when the new participant sent a polynomial with a non-existant constant term
 /// such a participant would do so as the identity is not serializable
 fn insert_identity_if_missing<C: Ciphersuite>(
@@ -542,8 +545,16 @@ pub async fn do_keygen<C: Ciphersuite>(
     // pick share at random
     let secret = SigningKey::<C>::new(&mut rng).to_scalar();
     // call keyshare
-    let keygen_output =
-        do_keyshare::<C>(chan, participants, me, max_malicious, secret, None, &mut rng).await?;
+    let keygen_output = do_keyshare::<C>(
+        chan,
+        participants,
+        me,
+        max_malicious,
+        secret,
+        None,
+        &mut rng,
+    )
+    .await?;
     Ok(keygen_output)
 }
 
@@ -562,9 +573,9 @@ pub fn assert_keys_invariants(
     }
 
     // Step 1.1
-    let reconstruction_threshold = max_malicious.reconstruction_threshold().map_err(
-        |e| InitializationError::BadParameters(e.to_string())
-    )?;
+    let reconstruction_threshold = max_malicious
+        .reconstruction_threshold()
+        .map_err(|e| InitializationError::BadParameters(e.to_string()))?;
     // validate threshold
     if reconstruction_threshold > participants.len() {
         return Err(InitializationError::ThresholdTooLarge {
@@ -574,7 +585,10 @@ pub fn assert_keys_invariants(
     }
     // Step 1.1
     if reconstruction_threshold < 2 {
-        return Err(InitializationError::ThresholdTooSmall { threshold: reconstruction_threshold, min: 2 });
+        return Err(InitializationError::ThresholdTooSmall {
+            threshold: reconstruction_threshold,
+            min: 2,
+        });
     }
 
     // ensure uniqueness of participants in the participant list
@@ -644,9 +658,9 @@ pub fn reshare_assertions<C: Ciphersuite>(
         ParticipantList::new(old_participants).ok_or(InitializationError::DuplicateParticipants)?;
 
     // Step 1.1
-    let old_reconstruction_threshold = old_max_malicious.reconstruction_threshold().map_err(
-        |e| InitializationError::BadParameters(e.to_string())
-    )?;
+    let old_reconstruction_threshold = old_max_malicious
+        .reconstruction_threshold()
+        .map_err(|e| InitializationError::BadParameters(e.to_string()))?;
     if old_participants.intersection(&participants).len() < old_reconstruction_threshold {
         return Err(InitializationError::NotEnoughParticipantsForThreshold {
             threshold: old_reconstruction_threshold,
@@ -671,11 +685,11 @@ pub mod test {
     use crate::errors::InitializationError;
     use crate::participants::{Participant, ParticipantList};
     use crate::test_utils::{
-        assert_public_key_invariant, run_keygen, run_refresh, run_reshare,
-        generate_participants, GenOutput,
+        assert_public_key_invariant, generate_participants, run_keygen, run_refresh, run_reshare,
+        GenOutput,
     };
     use crate::thresholds::MaxMalicious;
-    use crate::{KeygenOutput, keygen, reshare};
+    use crate::{keygen, reshare, KeygenOutput};
     use frost_core::{Field, Group};
     use rand_core::{CryptoRngCore, SeedableRng};
 
@@ -737,7 +751,7 @@ pub mod test {
         <C::Group as Group>::Element: std::fmt::Debug + std::marker::Send,
         <<C::Group as Group>::Field as Field>::Scalar: std::marker::Send,
     {
-        let max_malicious = MaxMalicious::new(1);
+        let max_malicious = MaxMalicious::new(0);
         let participants = generate_participants(2);
 
         let rng_keygen = R::seed_from_u64(rng.next_u64());
@@ -746,12 +760,13 @@ pub mod test {
         assert_eq!(
             result.err().unwrap(),
             InitializationError::ThresholdTooSmall {
-                threshold: max_malicious.reconstruction_threshold().unwrap(),
+                threshold: max_malicious.reconstruction_threshold().expect("Reconstruction bound does not overflow"),
                 min: 2
             }
         );
 
         // this threshold should work correctly
+        let max_malicious = MaxMalicious::new(1);
         test_keygen::<C, _>(&participants, max_malicious, rng);
     }
 

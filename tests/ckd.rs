@@ -9,7 +9,8 @@ use threshold_signatures::{
         protocol::ckd,
         AppId, CKDOutputOption,
     },
-    participants::Participant, thresholds::MaxMalicious,
+    participants::Participant,
+    thresholds::MaxMalicious,
 };
 
 use crate::common::{run_protocol, GenProtocol};

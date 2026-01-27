@@ -143,7 +143,7 @@ where
 
 /// Performs the refresh protocol
 pub fn refresh<C: Ciphersuite>(
-    old_keygen: KeygenOutput<C>,
+    old_keygen: &KeygenOutput<C>,
     old_participants: &[Participant],
     me: Participant,
     rng: impl CryptoRngCore + Send + 'static,

@@ -34,7 +34,10 @@ impl TestGenerators {
         }
     }
 
-    pub fn new_contiguous_participant_ids(num_participants: usize, max_malicious: MaxMalicious) -> Self {
+    pub fn new_contiguous_participant_ids(
+        num_participants: usize,
+        max_malicious: MaxMalicious,
+    ) -> Self {
         Self {
             participants: (0..num_participants)
                 .map(|i| Participant::from(i as u32))

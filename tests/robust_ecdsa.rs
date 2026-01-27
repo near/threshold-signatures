@@ -7,13 +7,18 @@ use std::collections::HashMap;
 use rand_core::{OsRng, RngCore};
 
 use threshold_signatures::{
-    self, ecdsa::{
+    self,
+    ecdsa::{
         robust_ecdsa::{
             presign::presign, sign::sign, PresignArguments, PresignOutput,
             RerandomizedPresignOutput,
         },
         RerandomizationArguments, Secp256K1Sha256, Signature, SignatureOption,
-    }, frost_secp256k1::VerifyingKey, participants::Participant, thresholds::MaxMalicious, Element, ParticipantList
+    },
+    frost_secp256k1::VerifyingKey,
+    participants::Participant,
+    thresholds::MaxMalicious,
+    Element, ParticipantList,
 };
 
 // Note: This is required to use Scalar::from_repr

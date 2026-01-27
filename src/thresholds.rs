@@ -1,4 +1,3 @@
-
 use serde::{Deserialize, Serialize};
 
 use crate::errors::ProtocolError;
@@ -10,7 +9,7 @@ pub struct MaxMalicious(usize);
 pub struct MaxFaulty(usize);
 
 impl MaxMalicious {
-    pub fn new(value: usize) -> Self{
+    pub fn new(value: usize) -> Self {
         Self(value)
     }
 

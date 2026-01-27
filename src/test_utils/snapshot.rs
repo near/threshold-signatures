@@ -121,14 +121,17 @@ impl ProtocolSnapshot {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{ecdsa::{
-        robust_ecdsa::{presign::presign, PresignArguments, PresignOutput},
-        KeygenOutput, Polynomial,
-    }, thresholds::MaxMalicious};
     use crate::test_utils::{
         generate_participants, run_protocol_and_take_snapshots, GenProtocol, MockCryptoRng,
     };
     use crate::SigningShare;
+    use crate::{
+        ecdsa::{
+            robust_ecdsa::{presign::presign, PresignArguments, PresignOutput},
+            KeygenOutput, Polynomial,
+        },
+        thresholds::MaxMalicious,
+    };
     use frost_secp256k1::VerifyingKey;
     use k256::ProjectivePoint;
     use rand_core::{CryptoRngCore, SeedableRng};
@@ -181,13 +184,18 @@ mod test {
         }
     }
 
-    fn prepare_keys(p: Participant, f: &Polynomial, big_x: ProjectivePoint, max_malicious:MaxMalicious) -> KeygenOutput {
+    fn prepare_keys(
+        p: Participant,
+        f: &Polynomial,
+        big_x: ProjectivePoint,
+        max_malicious: MaxMalicious,
+    ) -> KeygenOutput {
         let private_share = f.eval_at_participant(p).unwrap();
         let verifying_key = VerifyingKey::new(big_x);
         KeygenOutput {
             private_share: SigningShare::new(private_share.0),
             public_key: verifying_key,
-            max_malicious
+            max_malicious,
         }
     }
 

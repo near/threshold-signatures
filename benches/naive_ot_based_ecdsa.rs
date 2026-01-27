@@ -7,14 +7,21 @@ use crate::bench_utils::{
     SAMPLE_SIZE,
 };
 use rand_core::SeedableRng;
-use threshold_signatures::test_utils::{run_protocol, MockCryptoRng};
+use threshold_signatures::{
+    test_utils::{run_protocol, MockCryptoRng},
+    thresholds::MaxMalicious,
+};
+
+fn max_malicious() -> MaxMalicious {
+    MaxMalicious::new(*MAX_MALICIOUS)
+}
 
 fn threshold() -> usize {
-    *MAX_MALICIOUS + 1
+    max_malicious().reconstruction_threshold().expect("Reconstruction bound does not overflow")
 }
 
 fn participants_num() -> usize {
-    *MAX_MALICIOUS + 1
+    max_malicious().reconstruction_threshold().expect("Reconstruction bound does not overflow")
 }
 
 /// Benches the triples protocol
@@ -41,7 +48,6 @@ fn bench_triples(c: &mut Criterion) {
 fn bench_presign(c: &mut Criterion) {
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let num = participants_num();
-    let max_malicious = *MAX_MALICIOUS;
 
     let preps = ot_ecdsa_prepare_triples(participants_num(), threshold(), &mut rng);
     let two_triples =
@@ -50,10 +56,13 @@ fn bench_presign(c: &mut Criterion) {
     let mut group = c.benchmark_group("presign");
     group.sample_size(*SAMPLE_SIZE);
     group.bench_function(
-        format!("ot_ecdsa_presign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
+        format!(
+            "ot_ecdsa_presign_naive_MAX_MALICIOUS_{:?}_PARTICIPANTS_{num}",
+            max_malicious().value()
+        ),
         |b| {
             b.iter_batched(
-                || ot_ecdsa_prepare_presign(&two_triples, threshold(), &mut rng),
+                || ot_ecdsa_prepare_presign(&two_triples, max_malicious(), &mut rng),
                 |preps| run_protocol(preps.protocols),
                 criterion::BatchSize::SmallInput,
             );
@@ -65,20 +74,22 @@ fn bench_presign(c: &mut Criterion) {
 fn bench_sign(c: &mut Criterion) {
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let num = participants_num();
-    let max_malicious = *MAX_MALICIOUS;
 
     let preps = ot_ecdsa_prepare_triples(participants_num(), threshold(), &mut rng);
     let two_triples =
         run_protocol(preps.protocols).expect("Running triples preparation should succeed");
 
-    let preps = ot_ecdsa_prepare_presign(&two_triples, threshold(), &mut rng);
+    let preps = ot_ecdsa_prepare_presign(&two_triples, max_malicious(), &mut rng);
     let pk = preps.key_packages[0].1.public_key;
     let result = run_protocol(preps.protocols).expect("Running presign preparation should succeed");
 
     let mut group = c.benchmark_group("sign");
     group.sample_size(*SAMPLE_SIZE);
     group.bench_function(
-        format!("ot_ecdsa_sign_naive_MAX_MALICIOUS_{max_malicious}_PARTICIPANTS_{num}"),
+        format!(
+            "ot_ecdsa_sign_naive_MAX_MALICIOUS_{:?}_PARTICIPANTS_{num}",
+            max_malicious().value()
+        ),
         |b| {
             b.iter_batched(
                 || ot_ecdsa_prepare_sign(&result, pk, &mut rng),

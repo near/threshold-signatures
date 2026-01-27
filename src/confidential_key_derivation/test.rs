@@ -2,7 +2,10 @@ type C = crate::confidential_key_derivation::ciphersuite::BLS12381SHA256;
 
 use rand::SeedableRng;
 
-use crate::{test_utils::{generate_participants, MockCryptoRng}, thresholds::MaxMalicious};
+use crate::{
+    test_utils::{generate_participants, MockCryptoRng},
+    thresholds::MaxMalicious,
+};
 
 #[test]
 fn test_keygen() {
@@ -53,8 +56,12 @@ fn test_reshare_determinism() {
     let participants = generate_participants(3);
     let max_malicious0 = MaxMalicious::new(1);
     let max_malicious1 = MaxMalicious::new(2);
-    let result =
-        crate::dkg::test::test_reshare::<C, _>(&participants, max_malicious0, max_malicious1, &mut rng);
+    let result = crate::dkg::test::test_reshare::<C, _>(
+        &participants,
+        max_malicious0,
+        max_malicious1,
+        &mut rng,
+    );
     insta::assert_json_snapshot!(result);
 }
 

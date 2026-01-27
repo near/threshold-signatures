@@ -51,7 +51,7 @@ pub fn build_key_packages_with_dealer(
                 KeygenOutput {
                     private_share: *share.signing_share(),
                     public_key: *pubkey_package.verifying_key(),
-                    max_malicious: MaxMalicious::new((min_signers-1).into()),
+                    max_malicious: MaxMalicious::new((min_signers - 1).into()),
                 },
             )
         })
@@ -118,7 +118,7 @@ fn keygen_output__should_be_serializable() {
     // Then
     assert_eq!(
         serialized_keygen_output,
-        "{\"private_share\":\"0700000000000000000000000000000000000000000000000000000000000000\",\"public_key\":\"a80ed62da91a8c6f266d82c4b2017cc0be13e6acba26af04494635b15ac86b57\",\"max_malicious\":\"0100000000000000000000000000000000000000000000000000000000000000\"}"
+        "{\"private_share\":\"0700000000000000000000000000000000000000000000000000000000000000\",\"public_key\":\"a80ed62da91a8c6f266d82c4b2017cc0be13e6acba26af04494635b15ac86b57\",\"max_malicious\":1}"
     );
 }
 
@@ -171,8 +171,12 @@ fn test_reshare_determinism() {
     let participants = generate_participants(3);
     let max_malicious0 = MaxMalicious::new(1);
     let max_malicious1 = MaxMalicious::new(2);
-    let result =
-        crate::dkg::test::test_reshare::<C, _>(&participants, max_malicious0, max_malicious1, &mut rng);
+    let result = crate::dkg::test::test_reshare::<C, _>(
+        &participants,
+        max_malicious0,
+        max_malicious1,
+        &mut rng,
+    );
     insta::assert_json_snapshot!(result);
 }
 

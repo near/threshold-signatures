@@ -11,7 +11,8 @@ use rand_core::OsRng;
 use threshold_signatures::{
     self,
     eddsa::{sign::sign, Ed25519Sha512, SignatureOption},
-    participants::Participant, thresholds::MaxMalicious,
+    participants::Participant,
+    thresholds::MaxMalicious,
 };
 
 type C = Ed25519Sha512;

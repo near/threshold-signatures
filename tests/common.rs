@@ -6,7 +6,15 @@ use rand::Rng;
 use rand_core::OsRng;
 
 use threshold_signatures::{
-    self, errors::ProtocolError, frost_core::VerifyingKey, keygen, participants::Participant, protocol::{Action, Protocol}, reshare, thresholds::MaxMalicious, Ciphersuite, Element, KeygenOutput, Scalar
+    self,
+    errors::ProtocolError,
+    frost_core::VerifyingKey,
+    keygen,
+    participants::Participant,
+    protocol::{Action, Protocol},
+    reshare,
+    thresholds::MaxMalicious,
+    Ciphersuite, Element, KeygenOutput, Scalar,
 };
 
 pub type GenProtocol<C> = Vec<(Participant, Box<dyn Protocol<Output = C>>)>;

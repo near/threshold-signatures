@@ -198,7 +198,8 @@ mod test {
         test_utils::{
             ecdsa_generate_rerandpresig_args, generate_participants,
             generate_participants_with_random_ids, MockCryptoRng,
-        }, thresholds::MaxMalicious,
+        },
+        thresholds::MaxMalicious,
     };
 
     use elliptic_curve::ops::{Invert, LinearCombination, Reduce};
@@ -257,7 +258,7 @@ mod test {
         let keygen_output = KeygenOutput {
             private_share: SigningShare::<C>::new(Scalar::ONE),
             public_key: frost_core::VerifyingKey::<C>::from(signing_key),
-            max_malicious
+            max_malicious,
         };
 
         // When
@@ -267,7 +268,7 @@ mod test {
         // Then
         assert_eq!(
             serialized_keygen_output,
-            "{\"private_share\":\"0000000000000000000000000000000000000000000000000000000000000001\",\"public_key\":\"0351177dde89242d9121d787a681bd2a0bd6013428a6b83e684a253815db96d8b3\",\"max_malicious\":\"0000000000000000000000000000000000000000000000000000000000000001\"}"
+            "{\"private_share\":\"0000000000000000000000000000000000000000000000000000000000000001\",\"public_key\":\"0351177dde89242d9121d787a681bd2a0bd6013428a6b83e684a253815db96d8b3\",\"max_malicious\":1}"
         );
     }
 
@@ -396,7 +397,12 @@ mod test {
         let participants = generate_participants(3);
         let max_malicious0 = MaxMalicious::new(1);
         let max_malicious1 = MaxMalicious::new(2);
-        crate::dkg::test::test_reshare::<C, _>(&participants, max_malicious0, max_malicious1, &mut rng);
+        crate::dkg::test::test_reshare::<C, _>(
+            &participants,
+            max_malicious0,
+            max_malicious1,
+            &mut rng,
+        );
     }
 
     #[test]
@@ -423,8 +429,12 @@ mod test {
         let participants = generate_participants(3);
         let max_malicious0 = MaxMalicious::new(1);
         let max_malicious1 = MaxMalicious::new(2);
-        let result =
-            crate::dkg::test::test_reshare::<C, _>(&participants, max_malicious0, max_malicious1, &mut rng);
+        let result = crate::dkg::test::test_reshare::<C, _>(
+            &participants,
+            max_malicious0,
+            max_malicious1,
+            &mut rng,
+        );
         insta::assert_json_snapshot!(result);
     }
 

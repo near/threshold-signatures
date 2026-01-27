@@ -184,13 +184,16 @@ fn compute_signature_share(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{confidential_key_derivation::{
-        ciphersuite::{hash_to_curve, G2Projective},
-        hash_app_id_with_pk, SigningShare, VerifyingKey,
-    }, thresholds::MaxMalicious};
     use crate::test_utils::{
         check_one_coordinator_output, generate_participants, run_protocol, GenProtocol,
         MockCryptoRng,
+    };
+    use crate::{
+        confidential_key_derivation::{
+            ciphersuite::{hash_to_curve, G2Projective},
+            hash_app_id_with_pk, SigningShare, VerifyingKey,
+        },
+        thresholds::MaxMalicious,
     };
     use rand::{Rng, RngCore, SeedableRng};
 

@@ -8,11 +8,12 @@ use rand_core::{CryptoRngCore, SeedableRng};
 use std::{env, sync::LazyLock};
 
 use threshold_signatures::{
-    ecdsa::ot_based_ecdsa,
-    ecdsa::robust_ecdsa,
     ecdsa::{
-        ot_based_ecdsa::triples::{generate_triple_many, TriplePub, TripleShare},
-        KeygenOutput, Scalar, SignatureOption,
+        ot_based_ecdsa::{
+            self,
+            triples::{generate_triple_many, TriplePub, TripleShare},
+        },
+        robust_ecdsa, KeygenOutput, Scalar, SignatureOption,
     },
     participants::Participant,
     protocol::Protocol,
@@ -20,6 +21,7 @@ use threshold_signatures::{
         create_rngs, ecdsa_generate_rerandpresig_args, generate_participants_with_random_ids,
         run_keygen, Simulator,
     },
+    thresholds::MaxMalicious,
 };
 
 // fix malicious number of participants
@@ -130,7 +132,7 @@ pub fn ot_ecdsa_prepare_triples<R: CryptoRngCore + SeedableRng + Send + 'static>
 /// Used to prepare ot based ecdsa presignatures for benchmarking
 pub fn ot_ecdsa_prepare_presign<R: CryptoRngCore + SeedableRng + Send + 'static>(
     two_triples: &[(Participant, Vec<(TripleShare, TriplePub)>)],
-    threshold: usize,
+    max_malicious: MaxMalicious,
     rng: &mut R,
 ) -> OTECDSAPreparedPresig {
     let mut two_triples = two_triples.to_owned();
@@ -148,7 +150,7 @@ pub fn ot_ecdsa_prepare_presign<R: CryptoRngCore + SeedableRng + Send + 'static>
     // split shares into shares0 and shares 1 and pubs into pubs0 and pubs1
     let (pub0, pub1) = split_even_odd(pubs);
 
-    let key_packages = run_keygen(&participants, threshold, rng);
+    let key_packages = run_keygen(&participants, max_malicious, rng);
 
     let mut protocols: Vec<(
         Participant,
@@ -165,7 +167,7 @@ pub fn ot_ecdsa_prepare_presign<R: CryptoRngCore + SeedableRng + Send + 'static>
                 triple0: (share0, pub0[0].clone()),
                 triple1: (share1, pub1[0].clone()),
                 keygen_out,
-                threshold,
+                threshold: max_malicious.reconstruction_threshold().expect("Reconstruction bound does not overflow"),
             },
         )
         .expect("Presigning should succeed");
@@ -269,7 +271,8 @@ pub fn robust_ecdsa_prepare_presign<R: CryptoRngCore + SeedableRng + Send + 'sta
 ) -> RobustECDSAPreparedPresig {
     let rngs = create_rngs(num_participants, rng);
     let participants = generate_participants_with_random_ids(num_participants, rng);
-    let key_packages = run_keygen(&participants, *MAX_MALICIOUS + 1, rng);
+    let max_malicious = MaxMalicious::new(*MAX_MALICIOUS);
+    let key_packages = run_keygen(&participants, max_malicious, rng);
     let mut protocols: Vec<(
         Participant,
         Box<dyn Protocol<Output = robust_ecdsa::PresignOutput>>,
