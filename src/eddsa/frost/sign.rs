@@ -354,7 +354,7 @@ mod test {
         let mut key_packages = run_keygen(&participants, max_malicious, &mut rng);
         for i in 0..3 {
             let msg = format!("hello_near_{i}");
-            let msg_hash = hash(&msg).unwrap();  
+            let msg_hash = hash(&msg).unwrap();
             assert_public_key_invariant(&key_packages);
             let coordinators = vec![participants[0]];
             // This internally verifies with the public key
@@ -384,7 +384,6 @@ mod test {
         let mut rng = MockCryptoRng::seed_from_u64(42);
         let mut participants = generate_participants(4);
         let mut max_malicious = MaxMalicious::new(2);
-
 
         let mut new_participants = participants.clone();
         let mut key_packages = run_keygen(&participants, max_malicious, &mut rng);
@@ -432,7 +431,6 @@ mod test {
                 .map(|(_, keygen)| keygen.private_share.to_scalar())
                 .collect();
 
-
             // update the old parameters
             max_malicious = new_max_malicious;
             participants = new_participants.clone();
@@ -446,13 +444,11 @@ mod test {
         }
     }
 
-
     #[test]
     fn test_reshare_sign_less_participants() {
         let mut rng = MockCryptoRng::seed_from_u64(42);
-        let mut participants = generate_participants(5);
+        let mut participants = generate_participants(6);
         let mut max_malicious = MaxMalicious::new(4);
-
 
         let mut new_participants = participants.clone();
         let mut key_packages = run_keygen(&participants, max_malicious, &mut rng);
