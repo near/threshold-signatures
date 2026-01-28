@@ -312,8 +312,8 @@ mod test {
         one_coordinator_output, run_keygen, run_refresh, run_reshare, MockCryptoRng,
     };
     use crate::thresholds::MaxMalicious;
-    use frost_core::{Field, Group};
-    use frost_ed25519::{Ed25519Group, Ed25519ScalarField, Ed25519Sha512};
+    use frost_core::{Field, Group, Scalar};
+    use frost_ed25519::{Ed25519Group, Ed25519ScalarField, Ed25519Sha512, VerifyingKey};
     use rand::{Rng, RngCore, SeedableRng};
 
     #[test]
@@ -379,6 +379,19 @@ mod test {
         }
     }
 
+    fn test_public_key(
+        participants: &[Participant],
+        pub_key: VerifyingKey,
+        shares: &[Scalar<Ed25519Sha512>],
+    ) {
+        let p_list = ParticipantList::new(participants).unwrap();
+        let mut x = Ed25519ScalarField::zero();
+        for (p, share) in participants.iter().zip(shares.iter()) {
+            x += p_list.lagrange::<Ed25519Sha512>(*p).unwrap() * share;
+        }
+        assert_eq!(<Ed25519Group>::generator() * x, pub_key.to_element());
+    }
+
     #[test]
     fn test_reshare_sign_more_participants() {
         let mut rng = MockCryptoRng::seed_from_u64(42);
@@ -434,13 +447,9 @@ mod test {
             // update the old parameters
             max_malicious = new_max_malicious;
             participants = new_participants.clone();
+
             // Test public key
-            let p_list = ParticipantList::new(&participants).unwrap();
-            let mut x = Ed25519ScalarField::zero();
-            for (p, share) in participants.iter().zip(shares.iter()) {
-                x += p_list.lagrange::<Ed25519Sha512>(*p).unwrap() * share;
-            }
-            assert_eq!(<Ed25519Group>::generator() * x, pub_key.to_element());
+            test_public_key(&participants, pub_key, &shares);
         }
     }
 
@@ -501,12 +510,7 @@ mod test {
             participants = new_participants.clone();
 
             // Test public key
-            let p_list = ParticipantList::new(&participants).unwrap();
-            let mut x = Ed25519ScalarField::zero();
-            for (p, share) in participants.iter().zip(shares.iter()) {
-                x += p_list.lagrange::<Ed25519Sha512>(*p).unwrap() * share;
-            }
-            assert_eq!(<Ed25519Group>::generator() * x, pub_key.to_element());
+            test_public_key(&participants, pub_key, &shares);
         }
     }
 
