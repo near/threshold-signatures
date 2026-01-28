@@ -40,7 +40,7 @@ pub fn presign(
     }
 
     // validate threshold
-    if args.threshold.into() > participants.len() {
+    if args.threshold.value() > participants.len() {
         return Err(InitializationError::ThresholdTooLarge {
             threshold: args.threshold.into(),
             max: participants.len(),

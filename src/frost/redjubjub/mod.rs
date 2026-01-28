@@ -7,7 +7,10 @@ pub mod sign;
 #[cfg(test)]
 mod test;
 
-use crate::{crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat}, ReconstructionLowerBound};
+use crate::{
+    crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat},
+    ReconstructionLowerBound,
+};
 
 use reddsa::frost::redjubjub::{
     round1::{SigningCommitments, SigningNonces},
