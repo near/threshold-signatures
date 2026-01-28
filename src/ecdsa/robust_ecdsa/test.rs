@@ -69,7 +69,7 @@ pub fn run_sign_without_rerandomization(
 /// rerandomizing the presignatures
 pub fn run_sign_with_rerandomization(
     participants_presign: &[(Participant, PresignOutput)],
-    max_malicious: impl Into<MaxMalicious> + Copy + Send + 'static,
+    max_malicious: impl Into<MaxMalicious> + Copy + 'static,
     public_key: Element,
     msg: &[u8],
     rng: &mut impl CryptoRngCore,
