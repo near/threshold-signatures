@@ -64,7 +64,7 @@ without changing the participant set.
 3) **Beaver Triple Generation (offline)**: allows the distributed generation
 of multiplicative Beaver triples $(a, b, c)$ and their commitments
 $(A, B, C)$ where $c = a \cdot b$. These triples are required for presigning.
-More details in
+More details can be found in
 [docs](docs/ecdsa/ot_based_ecdsa/triples.md).
 
 4) **Presigning (offline)**: allows generating presignatures during an offline
