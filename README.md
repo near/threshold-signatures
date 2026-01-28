@@ -44,7 +44,7 @@ generation (DKG) that is agnostic of the curve.
 
 ### Threshold ECDSA Functionalities
 
-The repository provides two Threshold ECDSA protocol variants implemented
+The repository provides two different Threshold ECDSA schemes implemented
 over the Secp256k1 curve: an OT-based ECDSA scheme and a Robust ECDSA scheme.
 While both rely on the same DKG and key resharing, they differ in their
 signing workflows and preprocessing requirements.
