@@ -69,7 +69,7 @@ More details can be found in
 
 4) **Presigning (offline)**: allows generating presignatures during an offline
 phase, which are later consumed during online signing when the message becomes
-known. More details in
+known to the set of signers. More details can be found in
 [docs](docs/ecdsa/ot_based_ecdsa/signing.md).
 
 5) **Signing (online)**: corresponds to the online signing phase in which the
