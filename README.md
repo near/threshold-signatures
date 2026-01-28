@@ -79,7 +79,7 @@ More details can be found in
 
 #### Robust Threshold ECDSA
 
-The Robust Threshold ECDSA scheme improves efficiency and communication overhead
+The Robust ECDSA scheme improves efficiency and communication overhead
 by avoiding Beaver triple generation and presigning phases. In this variant,
 the offline round consists of a single, round-efficient, presigning protocol. 
 
