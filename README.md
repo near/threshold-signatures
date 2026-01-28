@@ -51,7 +51,7 @@ signing workflows and preprocessing requirements.
 
 #### OT-based Threshold ECDSA
 
-The OT-based Threshold ECDSA scheme relies on offline preprocessing to enable
+The OT-based threshold ECDSA scheme relies on offline phase with two protocols (triple generation and presigning) to enable
 efficient online signing. The following functionalities are provided:
 
 1) **Distributed Key Generation (DKG)**: allows multiple parties to each
