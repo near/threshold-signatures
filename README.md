@@ -89,8 +89,7 @@ The following functionalities are provided:
 
 2) **Key Resharing / Key Refresh**: same as in OT-based ECDSA.
 
-3) **Signing (online)**: signing is performed directly without presignatures or
-Beaver triples, reducing communication and preprocessing overhead.
+3) **Signing (online)**: signing is performed in a single round protocol between the signers. More details can be found in [docs](docs/ecdsa/robust_ecdsa/signing.md)..
 
 
 ### Threshold EdDSA Functionalities
