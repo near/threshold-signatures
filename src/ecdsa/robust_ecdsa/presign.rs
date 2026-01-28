@@ -39,7 +39,7 @@ pub fn presign(
         });
     }
 
-    if args.threshold > participants.len() {
+    if args.threshold.value() > participants.len() {
         return Err(InitializationError::BadParameters(
             "threshold must be less than or equals to participant count".to_string(),
         ));
@@ -49,6 +49,7 @@ pub fn presign(
     // this complex way prevents overflowing
     if args
         .threshold
+        .value()
         .checked_mul(2)
         .and_then(|v| v.checked_add(1))
         .ok_or_else(|| {
@@ -89,7 +90,7 @@ async fn do_presign(
     mut rng: impl CryptoRngCore,
 ) -> Result<PresignOutput, ProtocolError> {
     let rng = &mut rng;
-    let threshold = args.threshold;
+    let threshold = args.threshold.value();
     // Round 1
     let degree = threshold
         .checked_mul(2)
@@ -428,7 +429,7 @@ mod test {
                 *p,
                 PresignArguments {
                     keygen_out,
-                    threshold: max_malicious,
+                    threshold: max_malicious.into(),
                 },
                 rng_p,
             )

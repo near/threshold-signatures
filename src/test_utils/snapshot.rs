@@ -217,7 +217,7 @@ mod test {
                     *p,
                     PresignArguments {
                         keygen_out,
-                        threshold: max_malicious,
+                        threshold: max_malicious.into(),
                     },
                     rngs[i].clone(),
                 )

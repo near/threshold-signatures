@@ -283,7 +283,7 @@ pub fn robust_ecdsa_prepare_presign<R: CryptoRngCore + SeedableRng + Send + 'sta
             *p,
             robust_ecdsa::PresignArguments {
                 keygen_out: keygen_out.clone(),
-                threshold: *MAX_MALICIOUS,
+                threshold: (*MAX_MALICIOUS).into(),
             },
             rngs[i].clone(),
         )

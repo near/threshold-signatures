@@ -15,6 +15,7 @@ use crate::test_utils::{
     generate_participants_with_random_ids, run_keygen, run_protocol, run_refresh, run_reshare,
     run_sign, GenOutput, GenProtocol, MockCryptoRng,
 };
+use crate::thresholds::MaxMalicious;
 
 use rand::Rng;
 use rand_core::{CryptoRngCore, SeedableRng};
@@ -23,7 +24,7 @@ use rand_core::{CryptoRngCore, SeedableRng};
 /// This signing does not rerandomize the presignatures and tests only the core protocol
 pub fn run_sign_without_rerandomization(
     participants_presign: &[(Participant, PresignOutput)],
-    max_malicious: usize,
+    max_malicious: impl Into<MaxMalicious> + Copy + Send + 'static,
     public_key: Element,
     msg: &[u8],
     rng: &mut impl CryptoRngCore,
@@ -68,7 +69,7 @@ pub fn run_sign_without_rerandomization(
 /// rerandomizing the presignatures
 pub fn run_sign_with_rerandomization(
     participants_presign: &[(Participant, PresignOutput)],
-    max_malicious: usize,
+    max_malicious: impl Into<MaxMalicious> + Copy + Send + 'static,
     public_key: Element,
     msg: &[u8],
     rng: &mut impl CryptoRngCore,
@@ -141,7 +142,7 @@ pub fn run_sign_with_rerandomization(
 
 pub fn run_presign<R: CryptoRngCore + SeedableRng + Send + 'static>(
     participants: GenOutput<Secp256K1Sha256>,
-    max_malicious: usize,
+    max_malicious: impl Into<MaxMalicious> + Copy,
     rng: &mut R,
 ) -> Vec<(Participant, PresignOutput)> {
     let mut protocols: GenProtocol<PresignOutput> = Vec::with_capacity(participants.len());
@@ -155,7 +156,7 @@ pub fn run_presign<R: CryptoRngCore + SeedableRng + Send + 'static>(
             p,
             PresignArguments {
                 keygen_out,
-                threshold: max_malicious,
+                threshold: max_malicious.into(),
             },
             rng_p,
         )
