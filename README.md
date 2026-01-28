@@ -238,4 +238,4 @@ contributors that actively put this together:
 * Bowen Wang
 
 ### External Contributors
-Oxsecaas (a.k.a. Charly), Aditya2274
+[0xsecaas](https://github.com/0xsecaas), [Aditya2274](https://github.com/Aditya2274)
