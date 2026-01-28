@@ -1,7 +1,9 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+use derive_more::{From, Into};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, From, Into)]
 pub struct MaxMalicious(usize);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, From, Into)]
 pub struct ReconstructionLowerBound(usize);
 
 // ----- MaxMalicious conversions -----
@@ -14,31 +16,5 @@ impl MaxMalicious {
 impl ReconstructionLowerBound {
     pub fn get(self) -> usize {
         self.0
-    }
-}
-
-impl From<usize> for MaxMalicious {
-    fn from(value: usize) -> Self {
-        Self(value)
-    }
-}
-
-impl From<MaxMalicious> for usize {
-    fn from(value: MaxMalicious) -> Self {
-        value.0
-    }
-}
-
-// ----- ReconstructionLowerBound conversions -----
-
-impl From<usize> for ReconstructionLowerBound {
-    fn from(value: usize) -> Self {
-        Self(value)
-    }
-}
-
-impl From<ReconstructionLowerBound> for usize {
-    fn from(value: ReconstructionLowerBound) -> Self {
-        value.0
     }
 }
