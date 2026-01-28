@@ -74,7 +74,7 @@ known to the set of signers. More details can be found in
 
 5) **Signing (online)**: corresponds to the online signing phase in which the
 signing parties produce a valid ECDSA signature using precomputed material.
-More details in
+More details can be found in
 [docs](docs/ecdsa/ot_based_ecdsa/signing.md).
 
 #### Robust Threshold ECDSA
