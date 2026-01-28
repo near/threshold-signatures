@@ -25,13 +25,13 @@ use crate::test_utils::run_two_party_protocol;
 pub fn deal(
     rng: &mut impl CryptoRngCore,
     participants: &[Participant],
-    threshold: impl Into<ReconstructionLowerBound> + Copy,
+    threshold: ReconstructionLowerBound,
 ) -> Result<(TriplePub, Vec<TripleShare>), ProtocolError> {
     let a = Secp256K1ScalarField::random(&mut *rng);
     let b = Secp256K1ScalarField::random(&mut *rng);
     let c = a * b;
 
-    let degree = threshold.into().value().checked_sub(1).unwrap();
+    let degree = threshold.value().checked_sub(1).unwrap();
     let f_a = Polynomial::generate_polynomial(Some(a), degree, rng)?;
     let f_b = Polynomial::generate_polynomial(Some(b), degree, rng)?;
     let f_c = Polynomial::generate_polynomial(Some(c), degree, rng)?;

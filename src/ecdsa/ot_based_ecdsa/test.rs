@@ -192,8 +192,8 @@ fn test_refresh() {
     let key_packages = run_refresh(&participants, &keys, threshold, &mut rng);
     let public_key = key_packages[0].1.public_key;
     assert_public_key_invariant(&key_packages);
-    let (pub0, shares0) = deal(&mut rng, &participants, threshold).unwrap();
-    let (pub1, shares1) = deal(&mut rng, &participants, threshold).unwrap();
+    let (pub0, shares0) = deal(&mut rng, &participants, threshold.into()).unwrap();
+    let (pub1, shares1) = deal(&mut rng, &participants, threshold.into()).unwrap();
 
     // Presign
     let presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, threshold);
@@ -238,8 +238,8 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
 
     let public_key = key_packages[0].1.public_key;
     // Prepare triples
-    let (pub0, shares0) = deal(&mut rng, &new_participant, new_threshold)?;
-    let (pub1, shares1) = deal(&mut rng, &new_participant, new_threshold)?;
+    let (pub0, shares0) = deal(&mut rng, &new_participant, new_threshold.into())?;
+    let (pub1, shares1) = deal(&mut rng, &new_participant, new_threshold.into())?;
 
     // Presign
     let presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, new_threshold);
@@ -283,8 +283,8 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
 
     let public_key = key_packages[0].1.public_key;
     // Prepare triples
-    let (pub0, shares0) = deal(&mut rng, &new_participant, new_threshold)?;
-    let (pub1, shares1) = deal(&mut rng, &new_participant, new_threshold)?;
+    let (pub0, shares0) = deal(&mut rng, &new_participant, new_threshold.into())?;
+    let (pub1, shares1) = deal(&mut rng, &new_participant, new_threshold.into())?;
 
     let presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, new_threshold);
 
@@ -311,8 +311,8 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
     assert_public_key_invariant(&key_packages);
     let public_key = key_packages[0].1.public_key;
 
-    let (pub0, shares0) = deal(&mut rng, &participants, threshold)?;
-    let (pub1, shares1) = deal(&mut rng, &participants, threshold)?;
+    let (pub0, shares0) = deal(&mut rng, &participants, threshold.into())?;
+    let (pub1, shares1) = deal(&mut rng, &participants, threshold.into())?;
 
     let presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, threshold);
 
@@ -340,8 +340,8 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
 
     let public_key = key_packages[0].1.public_key;
 
-    let (pub0, shares0) = deal(&mut rng, &participants, threshold)?;
-    let (pub1, shares1) = deal(&mut rng, &participants, threshold)?;
+    let (pub0, shares0) = deal(&mut rng, &participants, threshold.into())?;
+    let (pub1, shares1) = deal(&mut rng, &participants, threshold.into())?;
 
     let presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, threshold);
 
@@ -369,8 +369,8 @@ fn test_e2e_random_identifiers_with_rerandomization() -> Result<(), Box<dyn Erro
 
     let public_key = key_packages[0].1.public_key;
 
-    let (pub0, shares0) = deal(&mut rng, &participants, threshold)?;
-    let (pub1, shares1) = deal(&mut rng, &participants, threshold)?;
+    let (pub0, shares0) = deal(&mut rng, &participants, threshold.into())?;
+    let (pub1, shares1) = deal(&mut rng, &participants, threshold.into())?;
 
     let presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, threshold);
 

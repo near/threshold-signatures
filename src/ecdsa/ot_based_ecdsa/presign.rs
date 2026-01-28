@@ -212,9 +212,9 @@ mod test {
         let threshold = 2;
 
         let (triple0_pub, triple0_shares) =
-            deal(&mut rng, &participants, original_threshold).unwrap();
+            deal(&mut rng, &participants, original_threshold.into()).unwrap();
         let (triple1_pub, triple1_shares) =
-            deal(&mut rng, &participants, original_threshold).unwrap();
+            deal(&mut rng, &participants, original_threshold.into()).unwrap();
 
         let mut protocols: GenProtocol<PresignOutput> = Vec::with_capacity(participants.len());
 
