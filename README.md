@@ -81,7 +81,7 @@ More details in
 
 The Robust Threshold ECDSA scheme improves efficiency and communication overhead
 by avoiding Beaver triple generation and presigning phases. In this variant,
-signing is performed directly without offline preprocessing.
+the offline round consists of a single, round-efficient, presigning protocol. 
 
 The following functionalities are provided:
 
