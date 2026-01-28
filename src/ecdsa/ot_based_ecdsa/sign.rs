@@ -232,7 +232,7 @@ mod test {
 
         let (_, sig) = run_sign_without_rerandomization(
             &participants_presign,
-            threshold,
+            threshold.into(),
             public_key,
             msg,
             &mut rng,
@@ -277,7 +277,7 @@ mod test {
 
         let (tweak, _, sig) = run_sign_with_rerandomization(
             &participants_presign,
-            threshold,
+            threshold.into(),
             public_key.to_element(),
             msg,
             &mut rng,

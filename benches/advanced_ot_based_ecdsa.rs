@@ -13,7 +13,6 @@ use crate::bench_utils::{
 };
 
 use threshold_signatures::{
-    ReconstructionLowerBound,
     ecdsa::{
         ot_based_ecdsa::{
             presign::presign,
@@ -29,6 +28,7 @@ use threshold_signatures::{
         run_protocol, run_protocol_and_take_snapshots, run_simulated_protocol, MockCryptoRng,
         Simulator,
     },
+    ReconstructionLowerBound,
 };
 
 type PreparedSimulatedTriples = PreparedOutputs<Vec<(TripleShare, TriplePub)>>;

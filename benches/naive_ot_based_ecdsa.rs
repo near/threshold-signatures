@@ -8,8 +8,8 @@ use crate::bench_utils::{
 };
 use rand_core::SeedableRng;
 use threshold_signatures::{
+    test_utils::{run_protocol, MockCryptoRng},
     ReconstructionLowerBound,
-    test_utils::{run_protocol, MockCryptoRng}
 };
 
 fn threshold() -> usize {

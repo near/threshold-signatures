@@ -8,13 +8,20 @@ use rand_core::{CryptoRngCore, SeedableRng};
 use std::{env, sync::LazyLock};
 
 use threshold_signatures::{
-    ecdsa::{ot_based_ecdsa::{self, triples::{generate_triple_many, TriplePub, TripleShare}}, robust_ecdsa, KeygenOutput, Scalar, SignatureOption},
+    ecdsa::{
+        ot_based_ecdsa::{
+            self,
+            triples::{generate_triple_many, TriplePub, TripleShare},
+        },
+        robust_ecdsa, KeygenOutput, Scalar, SignatureOption,
+    },
     participants::Participant,
     protocol::Protocol,
     test_utils::{
         create_rngs, ecdsa_generate_rerandpresig_args, generate_participants_with_random_ids,
         run_keygen, Simulator,
-    }, ReconstructionLowerBound,
+    },
+    ReconstructionLowerBound,
 };
 
 // fix malicious number of participants
@@ -160,7 +167,7 @@ pub fn ot_ecdsa_prepare_presign<R: CryptoRngCore + SeedableRng + Send + 'static>
                 triple0: (share0, pub0[0].clone()),
                 triple1: (share1, pub1[0].clone()),
                 keygen_out,
-                threshold: threshold.into(),
+                threshold,
             },
         )
         .expect("Presigning should succeed");

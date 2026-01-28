@@ -25,7 +25,7 @@ use std::error::Error;
 /// This signing does not rerandomize the presignatures and tests only the core protocol
 pub fn run_sign_without_rerandomization(
     participants_presign: &[(Participant, PresignOutput)],
-    threshold: usize,
+    threshold: ReconstructionLowerBound,
     public_key: Element,
     msg: &[u8],
     rng: &mut impl CryptoRngCore,
@@ -76,7 +76,7 @@ pub fn run_sign_without_rerandomization(
 /// rerandomizing the presignatures
 pub fn run_sign_with_rerandomization(
     participants_presign: &[(Participant, PresignOutput)],
-    threshold: usize,
+    threshold: ReconstructionLowerBound,
     public_key: Element,
     msg: &[u8],
     rng: &mut impl CryptoRngCore,
@@ -209,7 +209,7 @@ fn test_refresh() {
     // internally verifies the signature's validity
     run_sign_without_rerandomization(
         &presign_result,
-        threshold,
+        threshold.into(),
         public_key.to_element(),
         msg,
         &mut rng,
@@ -262,7 +262,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
     // internally verifies the signature's validity
     run_sign_without_rerandomization(
         &presign_result,
-        threshold,
+        threshold.into(),
         public_key.to_element(),
         msg,
         &mut rng,
@@ -313,7 +313,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     // internally verifies the signature's validity
     run_sign_without_rerandomization(
         &presign_result,
-        threshold,
+        threshold.into(),
         public_key.to_element(),
         msg,
         &mut rng,
@@ -348,7 +348,7 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
     // internally verifies the signature's validity
     run_sign_without_rerandomization(
         &presign_result,
-        threshold,
+        threshold.into(),
         public_key.to_element(),
         msg,
         &mut rng,
@@ -384,7 +384,7 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     // internally verifies the signature's validity
     run_sign_without_rerandomization(
         &presign_result,
-        threshold,
+        threshold.into(),
         public_key.to_element(),
         msg,
         &mut rng,
@@ -420,7 +420,7 @@ fn test_e2e_random_identifiers_with_rerandomization() -> Result<(), Box<dyn Erro
     // internally verifies the signature's validity
     run_sign_with_rerandomization(
         &presign_result,
-        threshold,
+        threshold.into(),
         public_key.to_element(),
         msg,
         &mut rng,
@@ -457,7 +457,7 @@ fn test_robustness_with_rerandomization() {
 
 fn test_robustness<T, F, R: CryptoRngCore + SeedableRng + Send + 'static>(run_sign: F, rng: &mut R)
 where
-    F: Fn(&[(Participant, PresignOutput)], usize, Element, &[u8], &mut R) -> T,
+    F: Fn(&[(Participant, PresignOutput)], ReconstructionLowerBound, Element, &[u8], &mut R) -> T,
 {
     let participants_count = 7;
     let mut participants = generate_participants_with_random_ids(participants_count, rng);
@@ -505,5 +505,5 @@ where
     let msg = b"hello world";
     // Use less presignatures to sign
     presign_result.remove(0);
-    run_sign(&presign_result, threshold, public_key, msg, rng);
+    run_sign(&presign_result, threshold.into(), public_key, msg, rng);
 }
