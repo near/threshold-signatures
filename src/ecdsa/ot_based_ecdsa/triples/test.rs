@@ -53,7 +53,7 @@ pub fn deal(
         big_b: (ProjectivePoint::GENERATOR * b).into(),
         big_c: (ProjectivePoint::GENERATOR * c).into(),
         participants: participants_owned,
-        threshold: threshold.into(),
+        threshold,
     };
     Ok((triple_pub, shares))
 }

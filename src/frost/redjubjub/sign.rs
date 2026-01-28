@@ -43,7 +43,7 @@ pub fn sign(
     message: Vec<u8>,
     randomizer: Option<Randomizer>,
 ) -> Result<impl Protocol<Output = SignatureOption>, InitializationError> {
-    let threshold = threshold.into().into();
+    let threshold = usize::from(threshold.into());
     if participants.len() < 2 {
         return Err(InitializationError::NotEnoughParticipants {
             participants: participants.len(),

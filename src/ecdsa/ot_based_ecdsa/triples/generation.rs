@@ -1076,7 +1076,7 @@ pub fn generate_triple(
     threshold: impl Into<ReconstructionLowerBound>,
     rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = TripleGenerationOutput>, InitializationError> {
-    let threshold = threshold.into().into();
+    let threshold = usize::from(threshold.into());
     if participants.len() < 2 {
         return Err(InitializationError::NotEnoughParticipants {
             participants: participants.len(),
@@ -1108,7 +1108,7 @@ pub fn generate_triple_many<const N: usize>(
     threshold: impl Into<ReconstructionLowerBound>,
     rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = TripleGenerationOutputMany>, InitializationError> {
-    let threshold = threshold.into().into();
+    let threshold = usize::from(threshold.into());
     if participants.len() < 2 {
         return Err(InitializationError::NotEnoughParticipants {
             participants: participants.len(),

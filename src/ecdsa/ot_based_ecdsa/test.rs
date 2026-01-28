@@ -170,7 +170,7 @@ pub fn run_presign(
                 triple0: (share0, pub0.clone()),
                 triple1: (share1, pub1.clone()),
                 keygen_out,
-                threshold: threshold.into(),
+                threshold,
             },
         )
         .unwrap();
@@ -196,7 +196,14 @@ fn test_refresh() {
     let (pub1, shares1) = deal(&mut rng, &participants, threshold.into()).unwrap();
 
     // Presign
-    let presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, threshold.into());
+    let presign_result = run_presign(
+        key_packages,
+        shares0,
+        shares1,
+        &pub0,
+        &pub1,
+        threshold.into(),
+    );
 
     let msg = b"hello world";
     // internally verifies the signature's validity
@@ -242,7 +249,14 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
     let (pub1, shares1) = deal(&mut rng, &new_participant, new_threshold.into())?;
 
     // Presign
-    let presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, new_threshold.into());
+    let presign_result = run_presign(
+        key_packages,
+        shares0,
+        shares1,
+        &pub0,
+        &pub1,
+        new_threshold.into(),
+    );
 
     let msg = b"hello world";
     // internally verifies the signature's validity
@@ -286,7 +300,14 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     let (pub0, shares0) = deal(&mut rng, &new_participant, new_threshold.into())?;
     let (pub1, shares1) = deal(&mut rng, &new_participant, new_threshold.into())?;
 
-    let presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, new_threshold.into());
+    let presign_result = run_presign(
+        key_packages,
+        shares0,
+        shares1,
+        &pub0,
+        &pub1,
+        new_threshold.into(),
+    );
 
     let msg = b"hello world";
     // internally verifies the signature's validity
@@ -314,7 +335,14 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
     let (pub0, shares0) = deal(&mut rng, &participants, threshold.into())?;
     let (pub1, shares1) = deal(&mut rng, &participants, threshold.into())?;
 
-    let presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, threshold.into());
+    let presign_result = run_presign(
+        key_packages,
+        shares0,
+        shares1,
+        &pub0,
+        &pub1,
+        threshold.into(),
+    );
 
     let msg = b"hello world";
     // internally verifies the signature's validity
@@ -343,7 +371,14 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     let (pub0, shares0) = deal(&mut rng, &participants, threshold.into())?;
     let (pub1, shares1) = deal(&mut rng, &participants, threshold.into())?;
 
-    let presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, threshold.into());
+    let presign_result = run_presign(
+        key_packages,
+        shares0,
+        shares1,
+        &pub0,
+        &pub1,
+        threshold.into(),
+    );
 
     let msg = b"hello world";
     // internally verifies the signature's validity
@@ -372,7 +407,14 @@ fn test_e2e_random_identifiers_with_rerandomization() -> Result<(), Box<dyn Erro
     let (pub0, shares0) = deal(&mut rng, &participants, threshold.into())?;
     let (pub1, shares1) = deal(&mut rng, &participants, threshold.into())?;
 
-    let presign_result = run_presign(key_packages, shares0, shares1, &pub0, &pub1, threshold.into());
+    let presign_result = run_presign(
+        key_packages,
+        shares0,
+        shares1,
+        &pub0,
+        &pub1,
+        threshold.into(),
+    );
 
     let msg = b"hello world";
     // internally verifies the signature's validity
