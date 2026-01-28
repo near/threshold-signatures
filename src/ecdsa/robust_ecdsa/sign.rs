@@ -268,7 +268,7 @@ mod test {
 
         let (_, sig) = run_sign_without_rerandomization(
             &participants_presign,
-            max_malicious,
+            max_malicious.into(),
             public_key,
             msg,
             &mut rng,
@@ -364,7 +364,7 @@ mod test {
 
         let result = crate::ecdsa::robust_ecdsa::test::run_sign_without_rerandomization(
             &presignatures,
-            max_malicious,
+            max_malicious.into(),
             public_key,
             &msg,
             &mut rng,
@@ -409,7 +409,7 @@ mod test {
 
         let result = crate::ecdsa::robust_ecdsa::test::run_sign_without_rerandomization(
             &presignatures,
-            max_malicious,
+            max_malicious.into(),
             public_key,
             &msg,
             &mut rng,

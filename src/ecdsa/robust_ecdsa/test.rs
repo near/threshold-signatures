@@ -24,7 +24,7 @@ use rand_core::{CryptoRngCore, SeedableRng};
 /// This signing does not rerandomize the presignatures and tests only the core protocol
 pub fn run_sign_without_rerandomization(
     participants_presign: &[(Participant, PresignOutput)],
-    max_malicious: impl Into<MaxMalicious> + Copy + Send + 'static,
+    max_malicious: MaxMalicious,
     public_key: Element,
     msg: &[u8],
     rng: &mut impl CryptoRngCore,
@@ -184,7 +184,7 @@ fn test_refresh() -> Result<(), Box<dyn Error>> {
     let msg = b"hello world";
     run_sign_without_rerandomization(
         &presign_result,
-        max_malicious,
+        max_malicious.into(),
         public_key.to_element(),
         msg,
         &mut rng,
@@ -232,7 +232,7 @@ fn test_reshare_sign_more_participants() -> Result<(), Box<dyn Error>> {
     let msg = b"hello world";
     run_sign_without_rerandomization(
         &presign_result,
-        max_malicious,
+        max_malicious.into(),
         public_key.to_element(),
         msg,
         &mut rng,
@@ -275,7 +275,7 @@ fn test_reshare_sign_less_participants() -> Result<(), Box<dyn Error>> {
     let msg = b"hello world";
     run_sign_without_rerandomization(
         &presign_result,
-        max_malicious,
+        max_malicious.into(),
         public_key.to_element(),
         msg,
         &mut rng,
@@ -298,7 +298,7 @@ fn test_e2e() -> Result<(), Box<dyn Error>> {
     let msg = b"hello world";
     run_sign_without_rerandomization(
         &presign_result,
-        max_malicious,
+        max_malicious.into(),
         public_key.to_element(),
         msg,
         &mut rng,
@@ -324,7 +324,7 @@ fn test_e2e_random_identifiers() -> Result<(), Box<dyn Error>> {
     let msg = b"hello world";
     run_sign_without_rerandomization(
         &presign_result,
-        max_malicious,
+        max_malicious.into(),
         public_key.to_element(),
         msg,
         &mut rng,
