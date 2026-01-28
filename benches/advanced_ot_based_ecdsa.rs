@@ -60,7 +60,7 @@ fn bench_triples(c: &mut Criterion) {
     group.sample_size(*SAMPLE_SIZE);
     group.bench_function(
         format!(
-            "ot_ecdsa_triples_advanced_MAX_MALICIOUS_{:?}_PARTICIPANTS_{num}",
+            "ot_ecdsa_triples_advanced_MAX_MALICIOUS_{}_PARTICIPANTS_{num}",
             max_malicious().value()
         ),
         |b| {
