@@ -230,6 +230,7 @@ contributors that actively put this together:
 
 * Mårten Blankfors
 * Robin Cheng
+* Kevin Deforth
 * Reynaldo Gil Pons
 * Chelsea Komlo
 * George Kuksa
