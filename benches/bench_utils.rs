@@ -165,7 +165,7 @@ pub fn ot_ecdsa_prepare_presign<R: CryptoRngCore + SeedableRng + Send + 'static>
                 triple0: (share0, pub0[0].clone()),
                 triple1: (share1, pub1[0].clone()),
                 keygen_out,
-                threshold,
+                threshold: threshold.into(),
             },
         )
         .expect("Presigning should succeed");

@@ -4,19 +4,18 @@ use super::{
     triples::{generate_triple_many, test::deal, TriplePub, TripleShare},
     PresignArguments, PresignOutput, RerandomizedPresignOutput,
 };
-use crate::protocol::Protocol;
 use crate::test_utils::{
     assert_public_key_invariant, check_one_coordinator_output, generate_participants,
     generate_participants_with_random_ids, run_keygen, run_protocol, run_refresh, run_reshare,
-    run_sign, GenOutput, GenProtocol,
+    run_sign, GenOutput, GenProtocol, MockCryptoRng,
 };
+use crate::{protocol::Protocol, Participant, ReconstructionLowerBound};
 
 use crate::crypto::hash::test::scalar_hash_secp256k1;
 use crate::ecdsa::{
     Element, ParticipantList, RerandomizationArguments, Secp256K1Sha256, Signature,
     SignatureOption, Tweak,
 };
-use crate::{participants::Participant, test_utils::MockCryptoRng};
 
 use rand::Rng;
 use rand_core::{CryptoRngCore, SeedableRng};
@@ -150,7 +149,7 @@ pub fn run_presign(
     shares1: Vec<TripleShare>,
     pub0: &TriplePub,
     pub1: &TriplePub,
-    threshold: usize,
+    threshold: impl Into<ReconstructionLowerBound> + Copy,
 ) -> Vec<(Participant, PresignOutput)> {
     assert!(participants.len() == shares0.len());
     assert!(participants.len() == shares1.len());
@@ -171,7 +170,7 @@ pub fn run_presign(
                 triple0: (share0, pub0.clone()),
                 triple1: (share1, pub1.clone()),
                 keygen_out,
-                threshold,
+                threshold: threshold.into(),
             },
         )
         .unwrap();

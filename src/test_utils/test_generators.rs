@@ -153,7 +153,7 @@ impl TestGenerators {
                             triple0: triple0s[participant].clone(),
                             triple1: triple1s[participant].clone(),
                             keygen_out: keygens[participant].clone(),
-                            threshold: self.threshold,
+                            threshold: self.threshold.into(),
                         },
                     )
                     .unwrap(),

@@ -201,7 +201,7 @@ fn prepare_simulated_presign(
             triple0: (share0, pub0),
             triple1: (share1, pub1),
             keygen_out,
-            threshold: threshold(),
+            threshold: threshold().into(),
         },
     )
     .map(|presig| Box::new(presig) as Box<dyn Protocol<Output = PresignOutput>>)
