@@ -130,11 +130,6 @@ key. More details in
   corresponding classic, non-distributed scheme using the master verification
   key.
 
-* Both implemented ECDSA and EdDSA schemes do not currently provide robustness
-  against participant dropouts during presigning or signing. The Robust ECDSA
-  scheme referenced in the benchmarks improves efficiency and communication
-  overhead, but does not yet provide dropout recovery.
-
 * Our ECDSA signing scheme outsources the message hash to the function caller
   (i.e. expects a hashed message as input and does not internally hash the
   input). However, our EdDSA implementation does not outsource the message
