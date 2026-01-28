@@ -235,6 +235,7 @@ contributors that actively put this together:
 * George Kuksa
 * Matej Pavlovic
 * Simon Rastikian
+* Daniel Sharifi
 * Bowen Wang
 
 ### External Contributors
