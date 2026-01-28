@@ -8,13 +8,13 @@ pub struct ReconstructionLowerBound(usize);
 
 // ----- MaxMalicious conversions -----
 impl MaxMalicious {
-    pub fn get(self) -> usize {
+    pub fn value(self) -> usize {
         self.0
     }
 }
 
 impl ReconstructionLowerBound {
-    pub fn get(self) -> usize {
+    pub fn value(self) -> usize {
         self.0
     }
 }
