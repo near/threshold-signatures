@@ -116,7 +116,7 @@ fn prepare_simulate_presign(num_participants: usize) -> PreparedPresig {
         real_participant,
         PresignArguments {
             keygen_out,
-            threshold: (*MAX_MALICIOUS).into(),
+            max_malicious: (*MAX_MALICIOUS).into(),
         },
         real_participant_rng, // provide the exact same randomness
     )

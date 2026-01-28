@@ -156,7 +156,7 @@ pub fn run_presign<R: CryptoRngCore + SeedableRng + Send + 'static>(
             p,
             PresignArguments {
                 keygen_out,
-                threshold: max_malicious.into(),
+                max_malicious: max_malicious.into(),
             },
             rng_p,
         )

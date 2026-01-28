@@ -17,7 +17,7 @@ pub struct PresignArguments {
     /// This is of type `KeygenOutput`<Secp256K1Sha256> from Frost implementation
     pub keygen_out: KeygenOutput,
     /// The desired threshold for the presignature, which must match the original threshold
-    pub threshold: MaxMalicious,
+    pub max_malicious: MaxMalicious,
 }
 
 /// The output of the presigning protocol.
