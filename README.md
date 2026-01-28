@@ -89,7 +89,11 @@ The following functionalities are provided:
 
 2) **Key Resharing / Key Refresh**: same as in OT-based ECDSA.
 
-3) **Signing (online)**: signing is performed in a single round protocol between the signers. More details can be found in [docs](docs/ecdsa/robust_ecdsa/signing.md)..
+3) **Presigning (offline)**: allows generating presignatures during an offline
+phase using a different approach than OT-based ECDSA. These presignatures are
+later consumed during online signing when the message becomes known.
+More details can be found in
+[docs](docs/ecdsa/robust_ecdsa/signing.md).
 
 
 ### Threshold EdDSA Functionalities
