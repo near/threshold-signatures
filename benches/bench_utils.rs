@@ -21,7 +21,7 @@ use threshold_signatures::{
         create_rngs, ecdsa_generate_rerandpresig_args, generate_participants_with_random_ids,
         run_keygen, Simulator,
     },
-    ReconstructionLowerBound,
+    MaxMalicious, ReconstructionLowerBound,
 };
 
 // fix malicious number of participants
@@ -303,7 +303,7 @@ pub fn robust_ecdsa_prepare_presign<R: CryptoRngCore + SeedableRng + Send + 'sta
 /// Used to prepare robust ecdsa signatures for benchmarking
 pub fn robust_ecdsa_prepare_sign<R: CryptoRngCore + SeedableRng>(
     result: &[(Participant, robust_ecdsa::PresignOutput)],
-    max_malicious: usize,
+    max_malicious: MaxMalicious,
     pk: VerifyingKey,
     rng: &mut R,
 ) -> RobustECDSASig {

@@ -141,7 +141,7 @@ fn prepare_simulated_sign(
     pk: VerifyingKey,
 ) -> PreparedSimulatedSig {
     let mut rng = MockCryptoRng::seed_from_u64(41);
-    let preps = robust_ecdsa_prepare_sign(result, max_malicious, pk, &mut rng);
+    let preps = robust_ecdsa_prepare_sign(result, max_malicious.into(), pk, &mut rng);
     let (_, protocolsnapshot) = run_protocol_and_take_snapshots(preps.protocols)
         .expect("Running protocol with snapshot should not have issues");
 
