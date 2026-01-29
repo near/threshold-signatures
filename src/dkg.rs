@@ -553,7 +553,7 @@ pub async fn do_keygen<C: Ciphersuite>(
 
 /// This function is to be called before running DKG
 /// It ensures that the input parameters are valid
-pub fn assert_keys_invariants(
+pub fn assert_key_invariants(
     participants: &[Participant],
     me: Participant,
     threshold: impl Into<ReconstructionLowerBound>,
@@ -644,7 +644,7 @@ pub fn assert_reshare_keys_invariants<C: Ciphersuite>(
     let threshold = usize::from(threshold.into());
     let old_threshold = usize::from(old_threshold.into());
 
-    let participants = assert_keys_invariants(participants, me, threshold)?;
+    let participants = assert_key_invariants(participants, me, threshold)?;
 
     let old_participants =
         ParticipantList::new(old_participants).ok_or(InitializationError::DuplicateParticipants)?;

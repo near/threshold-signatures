@@ -28,7 +28,7 @@ mod dkg;
 pub mod protocol;
 mod thresholds;
 
-use crate::dkg::{assert_keys_invariants, assert_reshare_keys_invariants, do_keygen, do_reshare};
+use crate::dkg::{assert_key_invariants, assert_reshare_keys_invariants, do_keygen, do_reshare};
 use crate::errors::InitializationError;
 use crate::participants::Participant;
 use crate::protocol::internal::{make_protocol, Comms};
@@ -96,7 +96,7 @@ where
     Scalar<C>: Send,
 {
     let comms = Comms::new();
-    let participants = assert_keys_invariants(participants, me, threshold)?;
+    let participants = assert_key_invariants(participants, me, threshold)?;
     let fut = do_keygen::<C>(comms.shared_channel(), participants, me, threshold, rng);
     Ok(make_protocol(comms, fut))
 }
