@@ -5,6 +5,42 @@ The protocol is split into two phases, a pre-signing phase and a signing phase.
 
 ### Note:  We denote $\mathcal{P}$ the set of participants included the DKG and the threshold $t = \mathsf{MaxMalicious}$
 
+# Security considerations
+
+Before implementing or using the robust ECDSA scheme implemented here,
+be aware that it is vulnerable to **split-view attacks** in the robust setting when the
+signing parameters are not globally consistent. If different subsets of size at least
+$2t + 1$ sign different $(h, \epsilon)$ values using shares derived from the same
+presignature, the resulting signatures use multiplicatively related nonces and the
+secret key can be recovered using standard ECDSA nonce-reuse algebra.
+
+Moreover, due to protocol modifications relative to DJNPO20 (notably signature-share
+linearization), **a novel split-view attack exists that can extract the secret key using as
+few as $2t + 3$ presigning participants**, even if only one signing session completes.
+
+To reduce the risk of accidental misuse, enforce the following constraints:
+
+1. **Use exactly $N_1 = N_2 = 2t + 1$ participants for both presigning and signing.**
+   Do **not** allow any deviation from this value. In particular:
+
+   * Do **not** allow $N_1 > 2t + 1$, and
+   * Do **not** allow $N_2 < N_1$.
+
+   Allowing larger presigning sets or smaller signing sets enables split-view and
+   presignature-reuse attacks when a coordinator can run parallel or partially overlapping
+   signing sessions.
+
+2. **Ensure all participants agree on $(h, \epsilon)$ and the signing set.**
+   The coordinator must not be able to present different message hashes, tweaks, or
+   participant lists to different signers.
+
+3. **Never reuse a presignature**, even across failed, aborted, or partially completed
+   signing sessions.
+
+4. **Do not sign with $h = 0$** (the zero message hash).
+   This input enables a related algebraic split-view attack in the modified scheme when
+   $N_1 > 2t + 1$.
+
 # Presigning
 
 In this phase, a set of parties $\mathcal{P}_1 \subseteq \mathcal{P}$
