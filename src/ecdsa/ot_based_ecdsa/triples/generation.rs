@@ -1079,22 +1079,22 @@ pub fn generate_triple(
     rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = TripleGenerationOutput>, InitializationError> {
     let threshold = threshold.into();
-    let usize_threshold = threshold.value();
+    let threshold_value = threshold.value();
     if participants.len() < 2 {
         return Err(InitializationError::NotEnoughParticipants {
             participants: participants.len(),
         });
     }
     // Spec 1.1
-    if usize_threshold > participants.len() {
+    if threshold_value > participants.len() {
         return Err(InitializationError::ThresholdTooLarge {
-            threshold: usize_threshold,
+            threshold: threshold_value,
             max: participants.len(),
         });
     }
-    if usize_threshold < 2 {
+    if threshold_value < 2 {
         return Err(InitializationError::ThresholdTooSmall {
-            threshold: usize_threshold,
+            threshold: threshold_value,
             min: 2,
         });
     }
