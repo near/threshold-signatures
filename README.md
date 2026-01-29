@@ -95,6 +95,7 @@ later consumed during online signing when the message becomes known.
 More details can be found in
 [docs](docs/ecdsa/robust_ecdsa/signing.md).
 
+4) **Signing (online)**: signing is performed in a single round protocol between the signers. More details can be found in [docs](docs/ecdsa/robust_ecdsa/signing.md).
 
 ### Threshold EdDSA Functionalities
 
