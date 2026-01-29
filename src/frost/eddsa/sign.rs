@@ -6,6 +6,7 @@ use crate::participants::{Participant, ParticipantList};
 use crate::protocol::helpers::recv_from_others;
 use crate::protocol::internal::{make_protocol, Comms, SharedChannel};
 use crate::protocol::Protocol;
+use crate::ReconstructionLowerBound;
 
 use frost_ed25519::keys::{KeyPackage, PublicKeyPackage, SigningShare};
 use frost_ed25519::{aggregate, rand_core, round1, round2, VerifyingKey};
@@ -16,7 +17,7 @@ use zeroize::Zeroizing;
 /// A function that takes a signing share and a keygenOutput
 /// and construct a public key package used for frost signing
 fn construct_key_package(
-    threshold: usize,
+    threshold: ReconstructionLowerBound,
     me: Participant,
     signing_share: SigningShare,
     verifying_key: &VerifyingKey,
@@ -29,7 +30,7 @@ fn construct_key_package(
         signing_share,
         verifying_share,
         *verifying_key,
-        u16::try_from(threshold).map_err(|_| {
+        u16::try_from(threshold.value()).map_err(|_| {
             ProtocolError::Other("threshold cannot be converted to u16".to_string())
         })?,
     ))
@@ -47,7 +48,7 @@ fn construct_key_package(
 async fn do_sign_coordinator(
     mut chan: SharedChannel,
     participants: ParticipantList,
-    threshold: usize,
+    threshold: ReconstructionLowerBound,
     me: Participant,
     keygen_output: KeygenOutput,
     message: Vec<u8>,
@@ -126,7 +127,7 @@ async fn do_sign_coordinator(
 /// For reference, see how RFC 8032 handles "pre-hashing".
 async fn do_sign_participant(
     mut chan: SharedChannel,
-    threshold: usize,
+    threshold: ReconstructionLowerBound,
     me: Participant,
     coordinator: Participant,
     keygen_output: KeygenOutput,
@@ -206,13 +207,14 @@ async fn do_sign_participant(
 /// For reference, see how RFC 8032 handles "pre-hashing".
 pub fn sign(
     participants: &[Participant],
-    threshold: usize,
+    threshold: impl Into<ReconstructionLowerBound>,
     me: Participant,
     coordinator: Participant,
     keygen_output: KeygenOutput,
     message: Vec<u8>,
     rng: impl CryptoRngCore + Send + 'static,
 ) -> Result<impl Protocol<Output = SignatureOption>, InitializationError> {
+    let threshold = threshold.into();
     if participants.len() < 2 {
         return Err(InitializationError::NotEnoughParticipants {
             participants: participants.len(),
@@ -231,9 +233,9 @@ pub fn sign(
     }
 
     // validate threshold
-    if threshold > participants.len() {
+    if threshold.value() > participants.len() {
         return Err(InitializationError::ThresholdTooLarge {
-            threshold,
+            threshold: threshold.value(),
             max: participants.len(),
         });
     }
@@ -265,7 +267,7 @@ pub fn sign(
 async fn fut_wrapper(
     chan: SharedChannel,
     participants: ParticipantList,
-    threshold: usize,
+    threshold: ReconstructionLowerBound,
     me: Participant,
     coordinator: Participant,
     keygen_output: KeygenOutput,
@@ -327,11 +329,12 @@ mod test {
 
         let key_packages = build_key_packages_with_dealer(max_signers, threshold, &mut rng);
         let coordinators = vec![key_packages[0].0];
+        let threshold: usize = threshold.into();
         let data = test_run_signature_protocols(
             &key_packages,
             actual_signers,
             &coordinators,
-            threshold.into(),
+            threshold,
             msg_hash,
         )
         .unwrap();
@@ -351,11 +354,12 @@ mod test {
                 let key_packages =
                     build_key_packages_with_dealer(max_signers, min_signers, &mut rng);
                 let coordinators = vec![key_packages[0].0];
+                let min_signers: usize = min_signers.into();
                 let data = test_run_signature_protocols(
                     &key_packages,
                     actual_signers.into(),
                     &coordinators,
-                    min_signers.into(),
+                    min_signers,
                     msg_hash,
                 )
                 .unwrap();
