@@ -1057,7 +1057,7 @@ async fn do_generation_many<const N: usize>(
                 big_b,
                 big_c,
                 participants: participants.clone().into(),
-                threshold: threshold.into(),
+                threshold,
             },
         ));
     }
