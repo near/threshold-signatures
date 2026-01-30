@@ -12,11 +12,11 @@ be aware that it is vulnerable to **split-view attacks** in the robust setting w
 signing parameters are not globally consistent. If different subsets of size at least
 $2t + 1$ sign different $(h, \epsilon)$ values using shares derived from the same
 presignature, the resulting signatures use multiplicatively related nonces and the
-secret key can be recovered using standard ECDSA nonce-reuse algebra.
+secret key can be recovered using standard ECDSA nonce-reuse attacks.
 
-Moreover, due to protocol modifications relative to DJNPO20 (notably signature-share
+Moreover, due to protocol modifications relative to [[DJNPO20](https://eprint.iacr.org/2020/501)] (notably signature-share
 linearization), **a novel split-view attack exists that can extract the secret key using as
-few as $2t + 3$ presigning participants**, even if only one signing session completes.
+few as $2t + 2$ presigning participants**, with as few as two signing sessions.
 
 To reduce the risk of accidental misuse, enforce the following constraints:
 
