@@ -407,7 +407,6 @@ mod test {
             assert_public_key_invariant(&key_packages);
             let coordinators = vec![participants[0]];
             // This internally verifies with the rerandomized public key
-            // This internally verifies with the public key
             let data = test_run_signature_protocols(
                 &key_packages,
                 participants.len(),
