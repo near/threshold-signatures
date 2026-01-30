@@ -65,7 +65,6 @@ pub fn presign(
                 "2*max_malicious+1 must be less than usize::MAX".to_string(),
             )
         })?;
-    // if 2 * args.max_malicious + 1 > participants.len()
     if robust_ecdsa_threshold > participants.len() {
         return Err(InitializationError::BadParameters(
             "2*max_malicious+1 must be less than or equals to participant count".to_string(),

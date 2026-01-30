@@ -65,20 +65,19 @@ pub fn sign(
                 "2*threshold+1 must be less than usize::MAX".to_string(),
             )
         })?;
-    // if 2 * max_malicious + 1 > participants.len()
     if robust_ecdsa_threshold > participants.len() {
         return Err(InitializationError::BadParameters(
             "2*max_malicious+1 must be less than or equals to participant count".to_string(),
         ));
     }
 
-    // To prevent split-view attacks documented in docs/ecdsa/robust_ecdsa/signing.md
+    // The next two conditions prevent split-view attacks
+    // documented in docs/ecdsa/robust_ecdsa/signing.md
     if participants.len() != robust_ecdsa_threshold {
         return Err(InitializationError::BadParameters(
             "the number of participants during signing must be exactly 2*max_malicious+1 to avoid split view attacks".to_string(),
         ));
     }
-
     if bool::from(msg_hash.is_zero()) {
         return Err(InitializationError::BadParameters(
             "msg_hash cannot be 0 to avoid potential split view attacks".to_string(),
