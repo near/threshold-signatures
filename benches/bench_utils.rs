@@ -13,8 +13,9 @@ use threshold_signatures::{
             self,
             triples::{generate_triple_many, TriplePub, TripleShare},
         },
-        robust_ecdsa, KeygenOutput, Scalar, SignatureOption,
+        robust_ecdsa, Scalar,
     },
+    frost::eddsa, ecdsa,
     participants::Participant,
     protocol::Protocol,
     test_utils::{
@@ -48,12 +49,12 @@ pub struct PreparedOutputs<T> {
 }
 pub struct PreparedPresig<PresignOutput> {
     pub protocols: Vec<(Participant, Box<dyn Protocol<Output = PresignOutput>>)>,
-    pub key_packages: Vec<(Participant, KeygenOutput)>,
+    pub key_packages: Vec<(Participant, ecdsa::KeygenOutput)>,
     pub participants: Vec<Participant>,
 }
 
 pub struct PreparedSig<RerandomizedPresignOutput> {
-    pub protocols: Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)>,
+    pub protocols: Vec<(Participant, Box<dyn Protocol<Output = ecdsa::SignatureOption>>)>,
     pub index: usize,
     pub presig: RerandomizedPresignOutput,
     pub derived_pk: AffinePoint,
@@ -214,7 +215,7 @@ pub fn ot_ecdsa_prepare_sign<R: CryptoRngCore + SeedableRng>(
         })
         .collect::<Vec<_>>();
 
-    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)> =
+    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = ecdsa::SignatureOption>>)> =
         Vec::with_capacity(result.len());
 
     for (p, presignature) in result.clone() {
@@ -227,7 +228,7 @@ pub fn ot_ecdsa_prepare_sign<R: CryptoRngCore + SeedableRng>(
             presignature,
             msg_hash,
         )
-        .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
+        .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = ecdsa::SignatureOption>>)
         .expect("Signing should succeed");
         protocols.push((p, protocol));
     }
@@ -334,7 +335,7 @@ pub fn robust_ecdsa_prepare_sign<R: CryptoRngCore + SeedableRng>(
         })
         .collect::<Vec<_>>();
 
-    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = SignatureOption>>)> =
+    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = ecdsa::SignatureOption>>)> =
         Vec::with_capacity(result.len());
 
     for (p, presignature) in result.clone() {
@@ -347,7 +348,7 @@ pub fn robust_ecdsa_prepare_sign<R: CryptoRngCore + SeedableRng>(
             presignature,
             msg_hash,
         )
-        .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
+        .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = ecdsa::SignatureOption>>)
         .expect("Signing should succeed");
         protocols.push((p, protocol));
     }
@@ -362,3 +363,60 @@ pub fn robust_ecdsa_prepare_sign<R: CryptoRngCore + SeedableRng>(
 
 pub type RobustECDSAPreparedPresig = PreparedPresig<robust_ecdsa::PresignOutput>;
 pub type RobustECDSASig = PreparedSig<robust_ecdsa::RerandomizedPresignOutput>;
+
+
+
+/********************* Robust ECDSA *********************/
+/// Used to prepare ed25519 signatures for benchmarking
+pub fn ed25519_prepare_sign<R: CryptoRngCore + SeedableRng + Send + 'static>(
+    threshold: ReconstructionLowerBound,
+    rng: &mut R,
+) -> FrostEd25519Sig {
+    let num_participants = threshold.value();
+    // collect all participants
+    let rngs = create_rngs(num_participants, rng);
+    let participants = generate_participants_with_random_ids(num_participants, rng);
+    let key_packages = run_keygen(&participants, *MAX_MALICIOUS + 1, rng);
+
+    // choose a coordinator at random
+    let coordinator_index = rng.gen_range(0..num_participants);
+    let coordinator = participants[coordinator_index];
+
+    let mut protocols: Vec<(
+        Participant,
+        Box<dyn Protocol<Output = eddsa::SignatureOption>>,
+    )> = Vec::with_capacity(participants.len());
+
+    let mut message: [u8; 32] = [0u8; 32];
+    rng.fill_bytes(&mut message);
+    let message = message.to_vec();
+
+    for (i, (p, keygen_out)) in key_packages.iter().enumerate() {
+        let protocol = eddsa::sign::sign(
+            &participants,
+            threshold,
+            *p,
+            coordinator,
+            keygen_out.clone(),
+            message.clone(),
+            rngs[i].clone()
+        )
+        .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = eddsa::SignatureOption>>)
+        .expect("Signing should succeed");
+        protocols.push((*p, protocol));
+    }
+
+    FrostEd25519Sig {
+        protocols,
+        index: coordinator_index,
+        key_packages,
+        message,
+    }
+}
+
+pub struct FrostEd25519Sig {
+    pub protocols: Vec<(Participant, Box<dyn Protocol<Output = eddsa::SignatureOption>>)>,
+    pub index: usize,
+    pub key_packages: Vec<(Participant, eddsa::KeygenOutput)>,
+    pub message: Vec<u8>,
+}
