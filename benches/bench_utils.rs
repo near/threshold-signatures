@@ -8,6 +8,7 @@ use rand_core::{CryptoRngCore, SeedableRng};
 use std::{env, sync::LazyLock};
 
 use threshold_signatures::{
+    ecdsa,
     ecdsa::{
         ot_based_ecdsa::{
             self,
@@ -15,7 +16,7 @@ use threshold_signatures::{
         },
         robust_ecdsa, Scalar,
     },
-    frost::eddsa, ecdsa,
+    frost::eddsa,
     participants::Participant,
     protocol::Protocol,
     test_utils::{
@@ -54,7 +55,10 @@ pub struct PreparedPresig<PresignOutput> {
 }
 
 pub struct PreparedSig<RerandomizedPresignOutput> {
-    pub protocols: Vec<(Participant, Box<dyn Protocol<Output = ecdsa::SignatureOption>>)>,
+    pub protocols: Vec<(
+        Participant,
+        Box<dyn Protocol<Output = ecdsa::SignatureOption>>,
+    )>,
     pub index: usize,
     pub presig: RerandomizedPresignOutput,
     pub derived_pk: AffinePoint,
@@ -215,8 +219,10 @@ pub fn ot_ecdsa_prepare_sign<R: CryptoRngCore + SeedableRng>(
         })
         .collect::<Vec<_>>();
 
-    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = ecdsa::SignatureOption>>)> =
-        Vec::with_capacity(result.len());
+    let mut protocols: Vec<(
+        Participant,
+        Box<dyn Protocol<Output = ecdsa::SignatureOption>>,
+    )> = Vec::with_capacity(result.len());
 
     for (p, presignature) in result.clone() {
         let protocol = ot_based_ecdsa::sign::sign(
@@ -335,8 +341,10 @@ pub fn robust_ecdsa_prepare_sign<R: CryptoRngCore + SeedableRng>(
         })
         .collect::<Vec<_>>();
 
-    let mut protocols: Vec<(Participant, Box<dyn Protocol<Output = ecdsa::SignatureOption>>)> =
-        Vec::with_capacity(result.len());
+    let mut protocols: Vec<(
+        Participant,
+        Box<dyn Protocol<Output = ecdsa::SignatureOption>>,
+    )> = Vec::with_capacity(result.len());
 
     for (p, presignature) in result.clone() {
         let protocol = robust_ecdsa::sign::sign(
@@ -363,8 +371,6 @@ pub fn robust_ecdsa_prepare_sign<R: CryptoRngCore + SeedableRng>(
 
 pub type RobustECDSAPreparedPresig = PreparedPresig<robust_ecdsa::PresignOutput>;
 pub type RobustECDSASig = PreparedSig<robust_ecdsa::RerandomizedPresignOutput>;
-
-
 
 /********************* Robust ECDSA *********************/
 /// Used to prepare ed25519 signatures for benchmarking
@@ -399,7 +405,7 @@ pub fn ed25519_prepare_sign<R: CryptoRngCore + SeedableRng + Send + 'static>(
             coordinator,
             keygen_out.clone(),
             message.clone(),
-            rngs[i].clone()
+            rngs[i].clone(),
         )
         .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = eddsa::SignatureOption>>)
         .expect("Signing should succeed");
@@ -415,7 +421,10 @@ pub fn ed25519_prepare_sign<R: CryptoRngCore + SeedableRng + Send + 'static>(
 }
 
 pub struct FrostEd25519Sig {
-    pub protocols: Vec<(Participant, Box<dyn Protocol<Output = eddsa::SignatureOption>>)>,
+    pub protocols: Vec<(
+        Participant,
+        Box<dyn Protocol<Output = eddsa::SignatureOption>>,
+    )>,
     pub index: usize,
     pub key_packages: Vec<(Participant, eddsa::KeygenOutput)>,
     pub message: Vec<u8>,

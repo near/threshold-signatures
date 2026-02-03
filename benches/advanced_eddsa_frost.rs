@@ -5,18 +5,16 @@ use rand_core::SeedableRng;
 
 mod bench_utils;
 use crate::bench_utils::{
-    analyze_received_sizes, ed25519_prepare_sign,
-    PreparedOutputs, MAX_MALICIOUS, SAMPLE_SIZE,
+    analyze_received_sizes, ed25519_prepare_sign, PreparedOutputs, MAX_MALICIOUS, SAMPLE_SIZE,
 };
 use threshold_signatures::{
-    frost::eddsa::{
-        sign::sign, SignatureOption
-    },
-    participants::Participant, protocol::Protocol,
+    frost::eddsa::{sign::sign, SignatureOption},
+    participants::Participant,
+    protocol::Protocol,
     test_utils::{
-        run_protocol_and_take_snapshots, run_simulated_protocol, MockCryptoRng,
-        Simulator,
-    }, ReconstructionLowerBound
+        run_protocol_and_take_snapshots, run_simulated_protocol, MockCryptoRng, Simulator,
+    },
+    ReconstructionLowerBound,
 };
 
 type PreparedSimulatedSig = PreparedOutputs<SignatureOption>;
@@ -56,15 +54,14 @@ criterion_main!(benches);
 
 /****************************** Helpers ******************************/
 /// Used to simulate robust ecdsa signatures for benchmarking
-fn prepare_simulated_sign(
-    threshold: ReconstructionLowerBound,
-) -> PreparedSimulatedSig {
+fn prepare_simulated_sign(threshold: ReconstructionLowerBound) -> PreparedSimulatedSig {
     let mut rng = MockCryptoRng::seed_from_u64(41);
     let preps = ed25519_prepare_sign(threshold, &mut rng);
     let (_, protocolsnapshot) = run_protocol_and_take_snapshots(preps.protocols)
         .expect("Running protocol with snapshot should not have issues");
 
-    let participants: Vec<Participant> = preps.key_packages
+    let participants: Vec<Participant> = preps
+        .key_packages
         .iter()
         .map(|(participant, _)| *participant)
         .collect();
@@ -78,8 +75,9 @@ fn prepare_simulated_sign(
         real_participant,
         keygen_out,
         preps.message,
-        rng
-    ).map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
+        rng,
+    )
+    .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
     .expect("Presignature should succeed");
 
     // now preparing the simulator
