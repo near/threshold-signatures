@@ -372,7 +372,7 @@ pub fn robust_ecdsa_prepare_sign<R: CryptoRngCore + SeedableRng>(
 pub type RobustECDSAPreparedPresig = PreparedPresig<robust_ecdsa::PresignOutput>;
 pub type RobustECDSASig = PreparedSig<robust_ecdsa::RerandomizedPresignOutput>;
 
-/********************* Robust ECDSA *********************/
+/********************* Frost EdDSA *********************/
 /// Used to prepare ed25519 signatures for benchmarking
 pub fn ed25519_prepare_sign<R: CryptoRngCore + SeedableRng + Send + 'static>(
     threshold: ReconstructionLowerBound,
