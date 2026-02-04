@@ -30,6 +30,7 @@ pub type PresignOutput = super::PresignOutput<Ed25519Sha512>;
 /// Signature would be Some for coordinator and None for other participants
 pub type SignatureOption = Option<frost_ed25519::Signature>;
 
+/// Ed25519 presigning function
 pub fn presign(
     participants: &[Participant],
     me: Participant,

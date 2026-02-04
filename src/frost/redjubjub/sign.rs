@@ -7,7 +7,8 @@ use crate::protocol::{
     internal::{make_protocol, Comms, SharedChannel},
     Protocol,
 };
-use crate::thresholds::ReconstructionLowerBound;
+use crate::frost::assert_sign_inputs;
+use crate::ReconstructionLowerBound;
 
 use reddsa::frost::redjubjub::{
     aggregate,
@@ -44,38 +45,7 @@ pub fn sign(
     randomizer: Option<Randomizer>,
 ) -> Result<impl Protocol<Output = SignatureOption>, InitializationError> {
     let threshold = threshold.into();
-    if participants.len() < 2 {
-        return Err(InitializationError::NotEnoughParticipants {
-            participants: participants.len(),
-        });
-    }
-    let Some(participants) = ParticipantList::new(participants) else {
-        return Err(InitializationError::DuplicateParticipants);
-    };
-
-    // ensure my presence in the participant list
-    if !participants.contains(me) {
-        return Err(InitializationError::MissingParticipant {
-            role: "self",
-            participant: me,
-        });
-    }
-
-    // validate threshold
-    if threshold.value() > participants.len() {
-        return Err(InitializationError::ThresholdTooLarge {
-            threshold: threshold.value(),
-            max: participants.len(),
-        });
-    }
-
-    // ensure the coordinator is a participant
-    if !participants.contains(coordinator) {
-        return Err(InitializationError::MissingParticipant {
-            role: "coordinator",
-            participant: coordinator,
-        });
-    }
+    let participants = assert_sign_inputs(participants, threshold, me, coordinator)?;
 
     let comms = Comms::new();
     let chan = comms.shared_channel();
@@ -174,10 +144,9 @@ async fn do_sign_coordinator(
 
     let randomizer = randomized_params.randomizer();
     // Send the Randomizer to everyone
-    let randomizer_waitpoint = chan.next_waitpoint();
-    chan.send_many(randomizer_waitpoint, &randomizer)?;
+    let wait_round_1 = chan.next_waitpoint();
+    chan.send_many(wait_round_1, &randomizer)?;
 
-    // Round 2
     let signature_share = round2::sign(
         &signing_package,
         &presignature.nonces,
@@ -186,11 +155,10 @@ async fn do_sign_coordinator(
     )
     .map_err(|_| ProtocolError::ErrorFrostSigningFailed)?;
 
-    let sign_waitpoint = chan.next_waitpoint();
     let mut signature_shares: BTreeMap<Identifier, SignatureShare> = BTreeMap::new();
     signature_shares.insert(me.to_identifier()?, signature_share);
     for (from, signature_share) in
-        recv_from_others(&chan, sign_waitpoint, &participants, me).await?
+        recv_from_others(&chan, wait_round_1, &participants, me).await?
     {
         signature_shares.insert(from.to_identifier()?, signature_share);
     }
@@ -241,9 +209,9 @@ async fn do_sign_participant(
     }
 
     // Receive the Randomizer from the coordinator
-    let randomizer_waitpoint = chan.next_waitpoint();
+    let wait_round_1 = chan.next_waitpoint();
     let randomizer = loop {
-        let (from, randomizer): (_, Randomizer) = chan.recv(randomizer_waitpoint).await?;
+        let (from, randomizer): (_, Randomizer) = chan.recv(wait_round_1).await?;
         if from != coordinator {
             continue;
         }
