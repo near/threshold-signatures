@@ -3,10 +3,17 @@ pub mod sign;
 #[cfg(test)]
 mod test;
 
-use crate::crypto::ciphersuite::{BytesOrder, Ciphersuite, ScalarSerializationFormat};
-pub use frost_ed25519::Ed25519Sha512;
+use rand_core::CryptoRngCore;
+use crate::{
+    crypto::ciphersuite::{BytesOrder, ScalarSerializationFormat},
+    errors::InitializationError,
+    participants::Participant,
+    protocol::Protocol,
+    Ciphersuite,
+};
 
-pub type KeygenOutput = crate::KeygenOutput<Ed25519Sha512>;
+
+pub use frost_ed25519::Ed25519Sha512;
 
 impl ScalarSerializationFormat for Ed25519Sha512 {
     fn bytes_order() -> BytesOrder {
@@ -16,5 +23,18 @@ impl ScalarSerializationFormat for Ed25519Sha512 {
 
 impl Ciphersuite for Ed25519Sha512 {}
 
+pub type KeygenOutput = super::KeygenOutput<Ed25519Sha512>;
+pub type PresignArguments = super::PresignArguments<Ed25519Sha512>;
+pub type PresignOutput = super::PresignOutput<Ed25519Sha512>;
+
 /// Signature would be Some for coordinator and None for other participants
 pub type SignatureOption = Option<frost_ed25519::Signature>;
+
+pub fn presign(
+    participants: &[Participant],
+    me: Participant,
+    args: &PresignArguments,
+    rng: impl CryptoRngCore + Send + 'static,
+) -> Result<impl Protocol<Output = PresignOutput>, InitializationError> {
+    super::presign(participants, me, args, rng)
+}

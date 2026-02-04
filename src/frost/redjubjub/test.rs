@@ -1,6 +1,7 @@
 use crate::crypto::hash::{hash, HashOutput};
+use crate::frost::presign;
 use crate::frost::redjubjub::{
-    presign::presign, sign::sign, KeygenOutput, PresignArguments, PresignOutput, SignatureOption,
+    sign::sign, KeygenOutput, PresignArguments, PresignOutput, SignatureOption,
 };
 use crate::participants::{Participant, ParticipantList};
 use crate::protocol::Protocol;
@@ -425,4 +426,47 @@ fn test_signature_correctness() {
     let signature = one_coordinator_output(result, coordinator).unwrap();
 
     insta::assert_json_snapshot!(signature);
+}
+
+#[test]
+fn check_presignatures_terms() {
+    let mut rng = MockCryptoRng::seed_from_u64(42);
+
+    let max_signers = 10;
+    let threshold = 10;
+    let actual_signers = 10;
+
+    let key_packages = build_key_packages_with_dealer(max_signers, threshold, &mut rng);
+    // add the presignatures here
+    let presignatures =
+        test_run_presignature(&key_packages, threshold as usize, actual_signers).unwrap();
+
+    for (i, (p1, presig1)) in presignatures.iter().enumerate() {
+        for (p2, presig2) in presignatures.iter().skip(i + 1) {
+            assert_ne!(p1, p2);
+            assert_ne!(presig1.nonces, presig2.nonces);
+            assert_eq!(presig1.commitments_map, presig2.commitments_map);
+        }
+    }
+}
+
+#[test]
+fn check_presignatures_terms_with_less_active_participants() {
+    let mut rng = MockCryptoRng::seed_from_u64(42);
+
+    let max_signers = 10;
+    let threshold = 7;
+    let actual_signers = 8;
+
+    let key_packages = build_key_packages_with_dealer(max_signers, threshold, &mut rng);
+    // add the presignatures here
+    let mut presignatures =
+        test_run_presignature(&key_packages, threshold as usize, actual_signers).unwrap();
+    while let Some((p1, presig1)) = presignatures.pop() {
+        for (p2, presig2) in &presignatures {
+            assert!(p1 != *p2);
+            assert!(presig1.nonces != presig2.nonces);
+            assert_eq!(presig1.commitments_map, presig2.commitments_map);
+        }
+    }
 }
