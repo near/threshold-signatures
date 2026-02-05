@@ -1,10 +1,8 @@
 use crate::crypto::hash::{hash, HashOutput};
-use crate::frost::presign;
 use crate::frost::redjubjub::{
-    sign::sign, KeygenOutput, PresignArguments, PresignOutput, SignatureOption,
+    sign::sign, KeygenOutput, PresignOutput, SignatureOption,
 };
 use crate::participants::{Participant, ParticipantList};
-use crate::protocol::Protocol;
 use crate::test_utils::{
     assert_public_key_invariant, generate_participants, generate_participants_with_random_ids,
     one_coordinator_output, run_keygen, run_protocol, run_refresh, run_reshare, GenOutput,
@@ -13,15 +11,12 @@ use crate::test_utils::{
 use crate::thresholds::ReconstructionLowerBound;
 
 use frost_core::{Field, Scalar};
-use rand::Rng;
 use rand::SeedableRng;
 use rand_core::{CryptoRngCore, RngCore};
 use reddsa::frost::redjubjub::{
     keys::{generate_with_dealer, IdentifierList, SigningShare},
-    round1::{commit, SigningCommitments, SigningNonces},
-    Identifier, JubjubBlake2b512, JubjubScalarField, Randomizer, SigningKey, VerifyingKey,
+    JubjubBlake2b512, JubjubScalarField, Randomizer, SigningKey, VerifyingKey,
 };
-use std::collections::BTreeMap;
 use std::error::Error;
 
 type C = JubjubBlake2b512;
@@ -69,37 +64,19 @@ pub fn build_key_packages_with_dealer(
         .collect::<Vec<_>>()
 }
 
-pub fn test_run_presignature(
+fn run_presign(
     participants: &[(Participant, KeygenOutput)],
     threshold: impl Into<ReconstructionLowerBound> + Copy,
     actual_signers: usize,
 ) -> Result<Vec<(Participant, PresignOutput)>, Box<dyn Error>> {
-    let mut protocols: GenProtocol<PresignOutput> = Vec::with_capacity(participants.len());
-
-    let participants_list = participants
-        .iter()
-        .take(actual_signers)
-        .map(|(id, _)| *id)
-        .collect::<Vec<_>>();
-
-    for (participant, keygen_out) in participants.iter().take(actual_signers) {
-        let rng = MockCryptoRng::seed_from_u64(42);
-        let args = PresignArguments {
-            keygen_out: keygen_out.clone(),
-            threshold: threshold.into(),
-        };
-        // run the signing scheme
-        let protocol = presign(&participants_list, *participant, &args, rng)?;
-
-        protocols.push((*participant, Box::new(protocol)));
-    }
-
-    Ok(run_protocol(protocols)?)
+    crate::test_utils::frost_run_presignature(participants, threshold, actual_signers)
 }
+
+
 
 #[allow(clippy::panic_in_result_fn)]
 #[allow(clippy::missing_panics_doc)]
-pub fn test_run_signature(
+pub fn run_sign_with_presign(
     participants: &[(Participant, KeygenOutput)],
     actual_signers: usize,
     coordinators: &[Participant],
@@ -112,7 +89,7 @@ pub fn test_run_signature(
     let randomizer = Randomizer::from_scalar(randomizer_scalar);
 
     let mut protocols: GenProtocol<SignatureOption> = Vec::with_capacity(participants.len());
-    let presig = test_run_presignature(participants, threshold, actual_signers)?;
+    let presig = run_presign(participants, threshold, actual_signers)?;
 
     let participants_list = participants
         .iter()
@@ -257,7 +234,7 @@ fn dkg_refresh_sign_test() {
         assert_public_key_invariant(&key_packages);
         let coordinators = vec![key_packages[0].0];
         // This internally verifies with the rerandomized public key
-        let data = test_run_signature(
+        let data = run_sign_with_presign(
             &key_packages,
             actual_signers,
             &coordinators,
@@ -286,7 +263,7 @@ fn dkg_reshare_more_participants_sign_test() {
         assert_public_key_invariant(&key_packages);
         let coordinators = vec![key_packages[0].0];
         // This internally verifies with the rerandomized public key
-        let data = test_run_signature(
+        let data = run_sign_with_presign(
             &key_packages,
             actual_signers,
             &coordinators,
@@ -330,7 +307,7 @@ fn dkg_reshare_less_participants_sign_test() {
         assert_public_key_invariant(&key_packages);
         let coordinators = vec![key_packages[0].0];
         // This internally verifies with the rerandomized public key
-        let data = test_run_signature(
+        let data = run_sign_with_presign(
             &key_packages,
             actual_signers,
             &coordinators,
@@ -359,76 +336,6 @@ fn dkg_reshare_less_participants_sign_test() {
 }
 
 #[test]
-fn test_signature_correctness() {
-    let mut rng = MockCryptoRng::seed_from_u64(42);
-    let threshold = 6;
-    let keys = build_key_packages_with_dealer(11, threshold, &mut rng);
-    let public_key = keys[0].1.public_key.to_element();
-
-    let msg = b"hello worldhello worldhello worlregerghwhrth".to_vec();
-    let index = rng.gen_range(0..keys.len());
-    let coordinator = keys[index as usize].0;
-
-    let mut participants_sign_builder: Vec<(Participant, (KeygenOutput, MockCryptoRng))> = keys
-        .iter()
-        .map(|(p, keygen_output)| {
-            let rng_p = MockCryptoRng::seed_from_u64(rng.next_u64());
-            (*p, (keygen_output.clone(), rng_p))
-        })
-        .collect();
-
-    let mut commitments_map: BTreeMap<Identifier, SigningCommitments> = BTreeMap::new();
-    let mut nonces_map: BTreeMap<Participant, SigningNonces> = BTreeMap::new();
-    for (p, (keygen, rng_p)) in &mut participants_sign_builder {
-        // Creating two commitments and corresponding nonces
-        let (nonces, commitments) = commit(&keygen.private_share, rng_p);
-        commitments_map.insert(p.to_identifier().unwrap(), commitments);
-        nonces_map.insert(*p, nonces);
-    }
-
-    let mut rng = MockCryptoRng::seed_from_u64(644_221);
-    let randomizer_scalar = JubjubScalarField::random(&mut rng);
-    // only for testing
-    let randomizer = Randomizer::from_scalar(randomizer_scalar);
-
-    // This checks the output signature validity internally
-    let result =
-        crate::test_utils::run_sign::<JubjubBlake2b512, (KeygenOutput, MockCryptoRng), _, _>(
-            participants_sign_builder,
-            coordinator,
-            public_key,
-            JubjubScalarField::zero(), // not important
-            |participants, coordinator, me, _, (keygen_output, _), _| {
-                let nonces = nonces_map.get(&me).unwrap().clone();
-                let presignature = PresignOutput {
-                    nonces,
-                    commitments_map: commitments_map.clone(),
-                };
-                let randomize = if me == coordinator {
-                    Some(randomizer)
-                } else {
-                    None
-                };
-                sign(
-                    participants,
-                    threshold as usize,
-                    me,
-                    coordinator,
-                    keygen_output,
-                    presignature,
-                    msg.clone(),
-                    randomize,
-                )
-                .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)
-            },
-        )
-        .unwrap();
-    let signature = one_coordinator_output(result, coordinator).unwrap();
-
-    insta::assert_json_snapshot!(signature);
-}
-
-#[test]
 fn check_presignatures_terms() {
     let mut rng = MockCryptoRng::seed_from_u64(42);
 
@@ -439,7 +346,7 @@ fn check_presignatures_terms() {
     let key_packages = build_key_packages_with_dealer(max_signers, threshold, &mut rng);
     // add the presignatures here
     let presignatures =
-        test_run_presignature(&key_packages, threshold as usize, actual_signers).unwrap();
+        run_presign(&key_packages, threshold as usize, actual_signers).unwrap();
 
     for (i, (p1, presig1)) in presignatures.iter().enumerate() {
         for (p2, presig2) in presignatures.iter().skip(i + 1) {
@@ -461,7 +368,7 @@ fn check_presignatures_terms_with_less_active_participants() {
     let key_packages = build_key_packages_with_dealer(max_signers, threshold, &mut rng);
     // add the presignatures here
     let mut presignatures =
-        test_run_presignature(&key_packages, threshold as usize, actual_signers).unwrap();
+        run_presign(&key_packages, threshold as usize, actual_signers).unwrap();
     while let Some((p1, presig1)) = presignatures.pop() {
         for (p2, presig2) in &presignatures {
             assert!(p1 != *p2);

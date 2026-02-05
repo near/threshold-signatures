@@ -396,7 +396,7 @@ pub fn ed25519_prepare_sign<R: CryptoRngCore + SeedableRng + Send + 'static>(
     let mut message: [u8; 32] = [0u8; 32];
     rng.fill_bytes(&mut message);
     let message = message.to_vec();
-
+    
     for (i, (p, keygen_out)) in key_packages.iter().enumerate() {
         let protocol = eddsa::sign::sign(
             &participants,
@@ -404,8 +404,8 @@ pub fn ed25519_prepare_sign<R: CryptoRngCore + SeedableRng + Send + 'static>(
             *p,
             coordinator,
             keygen_out.clone(),
+
             message.clone(),
-            rngs[i].clone(),
         )
         .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = eddsa::SignatureOption>>)
         .expect("Signing should succeed");

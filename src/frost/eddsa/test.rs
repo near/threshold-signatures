@@ -1,5 +1,5 @@
 use crate::crypto::hash::HashOutput;
-use crate::frost::eddsa::{sign::sign, KeygenOutput, SignatureOption};
+use crate::frost::eddsa::{sign::sign, PresignOutput, KeygenOutput, SignatureOption};
 use crate::participants::{Participant, ParticipantList};
 use crate::test_utils::{
     generate_participants, run_protocol, GenOutput, GenProtocol, MockCryptoRng,
@@ -57,7 +57,15 @@ pub fn build_key_packages_with_dealer(
         .collect::<Vec<_>>()
 }
 
-pub fn test_run_signature_protocols(
+pub fn run_presign(
+    participants: &[(Participant, KeygenOutput)],
+    threshold: impl Into<ReconstructionLowerBound> + Copy,
+    actual_signers: usize,
+) -> Result<Vec<(Participant, PresignOutput)>, Box<dyn Error>> {
+    crate::test_utils::frost_run_presignature(participants, threshold, actual_signers)
+}
+
+pub fn test_run_sign(
     participants: &[(Participant, KeygenOutput)],
     actual_signers: usize,
     coordinators: &[Participant],
@@ -65,6 +73,7 @@ pub fn test_run_signature_protocols(
     msg_hash: HashOutput,
 ) -> Result<Vec<(Participant, SignatureOption)>, Box<dyn Error>> {
     let mut protocols: GenProtocol<SignatureOption> = Vec::with_capacity(participants.len());
+    let presig = run_presign(participants, threshold, actual_signers)?;
 
     let participants_list = participants
         .iter()
@@ -72,7 +81,10 @@ pub fn test_run_signature_protocols(
         .map(|(id, _)| *id)
         .collect::<Vec<_>>();
     let coordinators = ParticipantList::new(coordinators).unwrap();
-    for (participant, key_pair) in participants.iter().take(actual_signers) {
+    for ((participant, key_pair), (participant_redundancy, presignature)) in
+        participants.iter().zip(presig.iter())
+    {
+        assert_eq!(participant, participant_redundancy);
         let mut rng_p = MockCryptoRng::seed_from_u64(42);
         let mut coordinator = *participant;
 
@@ -88,8 +100,8 @@ pub fn test_run_signature_protocols(
             *participant,
             coordinator,
             key_pair.clone(),
+            presignature.clone(),
             msg_hash.as_ref().to_vec(),
-            rng_p,
         )?;
         protocols.push((*participant, Box::new(protocol)));
     }

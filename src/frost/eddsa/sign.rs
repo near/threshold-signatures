@@ -212,7 +212,7 @@ async fn fut_wrapper(
 mod test {
     use crate::crypto::hash::hash;
     use crate::frost::eddsa::test::{
-        build_key_packages_with_dealer, test_run_signature_protocols
+        build_key_packages_with_dealer, test_run_sign
     };
     use crate::participants::{Participant, ParticipantList};
     use crate::test_utils::{
@@ -237,7 +237,7 @@ mod test {
                     build_key_packages_with_dealer(max_signers, min_signers, &mut rng);
                 let coordinators = vec![key_packages[0].0];
                 let min_signers: usize = min_signers.into();
-                let data = test_run_signature_protocols(
+                let data = test_run_sign(
                     &key_packages,
                     actual_signers.into(),
                     &coordinators,
@@ -264,7 +264,7 @@ mod test {
             assert_public_key_invariant(&key_packages);
             let coordinators = vec![participants[0]];
             // This internally verifies with the public key
-            let data = test_run_signature_protocols(
+            let data = test_run_sign(
                 &key_packages,
                 actual_signers,
                 &coordinators,
@@ -314,7 +314,7 @@ mod test {
             assert_public_key_invariant(&key_packages);
             let coordinators = vec![participants[0]];
             // This internally verifies with the rerandomized public key
-            let data = test_run_signature_protocols(
+            let data = test_run_sign(
                 &key_packages,
                 participants.len(),
                 &coordinators,
@@ -375,7 +375,7 @@ mod test {
             let coordinators = vec![participants[0]];
             // This internally verifies with the rerandomized public key
             // This internally verifies with the public key
-            let data = test_run_signature_protocols(
+            let data = test_run_sign(
                 &key_packages,
                 participants.len(),
                 &coordinators,

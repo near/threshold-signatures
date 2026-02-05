@@ -259,7 +259,7 @@ fn construct_key_package(
 #[cfg(test)]
 mod test {
     use crate::crypto::hash::hash;
-    use crate::frost::redjubjub::test::{build_key_packages_with_dealer, test_run_signature};
+    use crate::frost::redjubjub::test::{build_key_packages_with_dealer, run_sign_with_presign};
 
     use crate::test_utils::{one_coordinator_output, MockCryptoRng};
     use rand::SeedableRng;
@@ -278,7 +278,7 @@ mod test {
                     build_key_packages_with_dealer(max_signers, min_signers, &mut rng);
                 let min_signers: usize = min_signers.into();
                 let coordinators = vec![key_packages[0].0];
-                let data = test_run_signature(
+                let data = run_sign_with_presign(
                     &key_packages,
                     actual_signers.into(),
                     &coordinators,
@@ -286,7 +286,8 @@ mod test {
                     msg_hash,
                 )
                 .unwrap();
-                one_coordinator_output(data, coordinators[0]).unwrap();
+                let signature = one_coordinator_output(data, coordinators[0]).unwrap();
+                insta::assert_json_snapshot!(signature);
             }
         }
     }

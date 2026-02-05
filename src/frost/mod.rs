@@ -16,6 +16,9 @@ use crate::{
     Ciphersuite, ReconstructionLowerBound, KeygenOutput,
 };
 
+pub mod eddsa;
+pub mod redjubjub;
+
 /// The necessary inputs for the creation of a presignature.
 pub struct PresignArguments<C: Ciphersuite> {
     /// The output of key generation, i.e. our share of the secret key, and the public key package.
@@ -35,9 +38,7 @@ pub struct PresignOutput<C: Ciphersuite + Send + 'static> {
     pub commitments_map: BTreeMap<Identifier<C>, SigningCommitments<C>>,
 }
 
-pub mod eddsa;
-pub mod redjubjub;
-
+/// Runs Presigning of either EdDSA or RedDSA
 pub fn presign<C>(
     participants: &[Participant],
     me: Participant,
@@ -112,6 +113,7 @@ async fn do_presign<C: Ciphersuite + Send>(
     })
 }
 
+/// Verifies that the sign inputs are valid
 pub fn assert_sign_inputs(
     participants: &[Participant],
     threshold: impl Into<ReconstructionLowerBound>,
