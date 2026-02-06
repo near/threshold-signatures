@@ -416,7 +416,10 @@ pub fn ed25519_prepare_sign<R: CryptoRngCore + SeedableRng + Send + 'static>(
 ) -> FrostEd25519Sig {
     let num_participants = threshold.value();
     // collect all participants
-    let participants = generate_participants_with_random_ids(num_participants, rng);
+    let participants : Vec<Participant> = result
+        .iter()
+        .map(|(participant, _)| *participant)
+        .collect();
     let key_packages = run_keygen(&participants, *MAX_MALICIOUS + 1, rng);
 
     // choose a coordinator at random

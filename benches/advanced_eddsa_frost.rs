@@ -57,10 +57,6 @@ fn bench_sign(c: &mut Criterion) {
     let max_malicious = *MAX_MALICIOUS;
     let mut sizes = Vec::with_capacity(*SAMPLE_SIZE);
 
-    let mut rng = MockCryptoRng::seed_from_u64(42);
-    let preps = ed25519_prepare_presign(num, &mut rng);
-    let result = run_protocol(preps.protocols).expect("Prepare sign should not fail");
-
     let mut group = c.benchmark_group("sign");
     group.sample_size(*SAMPLE_SIZE);
     group.bench_function(
@@ -68,7 +64,7 @@ fn bench_sign(c: &mut Criterion) {
         |b| {
             b.iter_batched(
                 || {
-                    let preps = prepare_simulated_sign(&result, threshold());
+                    let preps = prepare_simulated_sign(threshold());
                     // collecting data sizes
                     sizes.push(preps.simulator.get_view_size());
                     preps
@@ -81,7 +77,7 @@ fn bench_sign(c: &mut Criterion) {
     analyze_received_sizes(&sizes, true);
 }
 
-criterion_group!(benches, bench_sign);
+criterion_group!(benches, bench_presign, bench_sign);
 criterion_main!(benches);
 
 /****************************** Helpers ******************************/
@@ -130,11 +126,12 @@ fn prepare_simulate_presign(num_participants: usize) -> PreparedPresig {
 
 /// Used to simulate frost Ed25519 signatures for benchmarking
 fn prepare_simulated_sign(
-    result: &[(Participant, PresignOutput)],
     threshold: ReconstructionLowerBound
 ) -> PreparedSimulatedSig {
     let mut rng = MockCryptoRng::seed_from_u64(41);
-    let preps = ed25519_prepare_sign(result, threshold, &mut rng);
+    let preps = ed25519_prepare_presign(threshold.value(), &mut rng);
+    let result = run_protocol(preps.protocols).expect("Prepare sign should not fail");
+    let preps = ed25519_prepare_sign(&result, threshold, &mut rng);
     let (_, protocolsnapshot) = run_protocol_and_take_snapshots(preps.protocols)
         .expect("Running protocol with snapshot should not have issues");
 
