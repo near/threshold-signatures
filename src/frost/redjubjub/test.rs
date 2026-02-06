@@ -92,7 +92,6 @@ pub fn run_sign_with_presign(
     let mut protocols: GenProtocol<SignatureOption> = Vec::with_capacity(participants.len());
     let presig = run_presign(participants, threshold, actual_signers, rng)?;
 
-    println!("{:?}", presig.len());
     let participants_list = participants
         .iter()
         .take(actual_signers)
@@ -100,14 +99,10 @@ pub fn run_sign_with_presign(
         .collect::<Vec<_>>();
     
     let mut is_valid_coordinator = false;
-    println!("built randomizer");
-    let mut ctr = 0;
     for ((participant, key_pair), (participant_redundancy, presignature)) in
         participants.iter().zip(presig.iter())
     {
-        ctr = ctr + 1 ;
         assert_eq!(participant, participant_redundancy);
-        println!("{ctr}, {participant:?}, {coordinator:?}");
         if coordinator == *participant{
             is_valid_coordinator = true
         }

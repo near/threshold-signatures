@@ -155,10 +155,11 @@ async fn do_sign_coordinator(
     )
     .map_err(|_| ProtocolError::ErrorFrostSigningFailed)?;
 
+    let sign_waitpoint = chan.next_waitpoint();
     let mut signature_shares: BTreeMap<Identifier, SignatureShare> = BTreeMap::new();
     signature_shares.insert(me.to_identifier()?, signature_share);
     for (from, signature_share) in
-        recv_from_others(&chan, wait_round_1, &participants, me).await?
+        recv_from_others(&chan, sign_waitpoint, &participants, me).await?
     {
         signature_shares.insert(from.to_identifier()?, signature_share);
     }
@@ -275,10 +276,8 @@ mod test {
         let mut signature = None;
         for threshold in 2..max_signers {
             for actual_signers in threshold..=max_signers {
-                println!("minsig:{threshold}, max_signers:{max_signers}, actualsig:{actual_signers}");
                 let key_packages =
                     build_key_packages_with_dealer(max_signers, threshold, &mut rng);
-                println!("Done build");
                 let threshold: usize = threshold.into();
                 let coordinator = key_packages[0].0;
                 let data = run_sign_with_presign(
@@ -289,7 +288,6 @@ mod test {
                     msg_hash,
                 )
                 .unwrap();
-                println!("Done runwpresig");
                 signature = Some(one_coordinator_output(data, coordinator).unwrap());
             }
         }

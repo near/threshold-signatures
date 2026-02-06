@@ -61,7 +61,6 @@ pub fn random_32_bytes(rng: &mut impl CryptoRngCore) -> [u8; 32] {
 pub fn check_common_traits_for_type<T: Clone + Eq + PartialEq + std::fmt::Debug>(v: &T) {
     // Make sure can be debug-printed. This also catches if the Debug does not
     // have an endless recursion (a popular mistake).
-    println!("{v:?}");
     // Test Clone and Eq
     assert_eq!(*v, v.clone());
     // Make sure it can be unwrapped in a Result (which requires Debug).
