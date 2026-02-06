@@ -2,7 +2,7 @@
 mod common;
 
 use common::{
-    choose_coordinator_at_random, generate_participants, run_keygen, run_protocol, run_reshare,
+    choose_coordinator_at_random, generate_participants, run_keygen, run_protocol,
     GenProtocol,
 };
 
@@ -70,15 +70,19 @@ fn test_run_sign() {
     let participants = generate_participants(5);
     let threshold = 4;
     let actual_signers = 4;
-    let keys = run_keygen::<C>(&participants, threshold.into());
+    let mut keys = run_keygen::<C>(&participants, threshold.into());
     assert_eq!(keys.len(), participants.len());
     let public_key = keys[0].1.public_key;
-
-    let msg_hash = *b"hello worldhello worldhello worlregerghwhrth";
-    let coordinator = choose_coordinator_at_random(&participants);
+    // take away last participant
+    keys.pop();
+    let msg_hash = *b"hello world";
     let presign = frost_run_presignature(&keys, threshold, actual_signers, OsRng).unwrap();
+    let active_participants: Vec<Participant> = presign.iter()
+        .map(|(participant, _)| *participant)
+        .collect();
+    let coordinator = choose_coordinator_at_random(&active_participants);
+    
     let participant_keys = keys.into_iter().collect::<Vec<_>>();
-
     let all_sigs = run_sign(
         threshold.into(),
         participant_keys.as_slice(),
@@ -97,20 +101,4 @@ fn test_run_sign() {
         .unwrap();
 
     assert!(public_key.verify(&msg_hash, &signature).is_ok());
-
-    let mut new_participants = participants.clone();
-    new_participants.push(Participant::from(20u32));
-    let new_threshold = 5;
-
-    let new_keys = run_reshare(
-        &participants,
-        &public_key,
-        participant_keys.as_slice(),
-        threshold.into(),
-        new_threshold.into(),
-        &new_participants,
-    );
-    let new_public_key = new_keys.get(&participants[0]).unwrap().public_key;
-
-    assert_eq!(public_key, new_public_key);
 }

@@ -77,9 +77,6 @@ async fn do_sign_coordinator(
     let mut signature_shares: BTreeMap<frost_ed25519::Identifier, round2::SignatureShare> =
         BTreeMap::new();
 
-    // Step 1.5
-    // * Wait for each other's signature share
-    // Step 2.3 (2.1 and 2.2 are implicit)
     let vk_package = keygen_output.public_key;
     let key_package =
         construct_key_package(threshold, me, keygen_output.private_share, &vk_package)?;
@@ -87,18 +84,19 @@ async fn do_sign_coordinator(
     let signature_share = round2::sign(&signing_package, &presignature.nonces, &key_package)
         .map_err(|e| ProtocolError::AssertionFailed(e.to_string()))?;
 
-    // Step 2.5 (2.4 is implicit)
     signature_shares.insert(me.to_identifier()?, signature_share);
-    let wait_rcv = chan.next_waitpoint();
-    for (from, signature_share) in recv_from_others(&chan, wait_rcv, &participants, me).await? {
+
+    let sign_waitpoint = chan.next_waitpoint();
+    println!("Me:{:?}, Participants {:?}, waitpoint:{:?}", me, participants.participants(), sign_waitpoint);
+    for (from, signature_share) in recv_from_others(&chan, sign_waitpoint, &participants, me).await? {
         signature_shares.insert(from.to_identifier()?, signature_share);
+        println!("Received from:{:?}", from);
     }
 
     // --- Signature aggregation.
     // * Converted collected signature shares into the signature.
     // * Signature is verified internally during `aggregate()` call.
 
-    // Step 2.6 and 2.7
     // We supply empty map as `verifying_shares` because we have disabled "cheater-detection" feature flag.
     // Feature "cheater-detection" only points to a malicious participant, if there's such.
     // It doesn't bring any additional guarantees.
@@ -146,8 +144,9 @@ fn do_sign_participant(
     let signature_share = round2::sign(&signing_package, &presignature.nonces, &key_package)
         .map_err(|e| ProtocolError::AssertionFailed(e.to_string()))?;
 
-    let send_wait = chan.next_waitpoint();
-    chan.send_private(send_wait, coordinator, &signature_share)?;
+    let sign_waitpoint = chan.next_waitpoint();
+    println!("Sent:{:?}, Coordinator: {:?}, WaitPoint: {:?}", me, coordinator, sign_waitpoint);
+    chan.send_private(sign_waitpoint, coordinator, &signature_share)?;
 
     Ok(None)
 }
