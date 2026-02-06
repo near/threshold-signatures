@@ -6,6 +6,7 @@ use common::{
     GenProtocol,
 };
 
+use rand_core::OsRng;
 use threshold_signatures::{
     self, frost::eddsa::{sign::sign, PresignOutput, Ed25519Sha512, SignatureOption}, participants::Participant, test_utils::frost_run_presignature, ReconstructionLowerBound
 };
@@ -50,7 +51,7 @@ fn test_run_presign() {
     let threshold = 4;
     let actual_signers = 4;
     let keys = run_keygen::<C>(&participants, threshold.into());
-    let presign = frost_run_presignature(&keys, threshold, actual_signers).unwrap();
+    let presign = frost_run_presignature(&keys, threshold, actual_signers, OsRng).unwrap();
     for (i, (p1, presig1)) in presign.iter().enumerate() {
         for (p2, presig2) in presign.iter().skip(i + 1) {
             assert_ne!(p1, p2);
@@ -71,7 +72,7 @@ fn test_sign() {
 
     let msg_hash = *b"hello worldhello worldhello worlregerghwhrth";
     let coordinator = choose_coordinator_at_random(&participants);
-    let presign = frost_run_presignature(&keys, threshold, actual_signers).unwrap();
+    let presign = frost_run_presignature(&keys, threshold, actual_signers, OsRng).unwrap();
     let participant_keys = keys.into_iter().collect::<Vec<_>>();
     
     let all_sigs = run_sign(

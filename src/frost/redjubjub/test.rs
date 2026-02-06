@@ -2,7 +2,7 @@ use crate::crypto::hash::{hash, HashOutput};
 use crate::frost::redjubjub::{
     sign::sign, KeygenOutput, PresignOutput, SignatureOption,
 };
-use crate::participants::{Participant, ParticipantList};
+use crate::participants::Participant;
 use crate::test_utils::{
     assert_public_key_invariant, generate_participants, generate_participants_with_random_ids,
     one_coordinator_output, run_keygen, run_protocol, run_refresh, run_reshare, GenOutput,
@@ -12,7 +12,7 @@ use crate::thresholds::ReconstructionLowerBound;
 
 use frost_core::{Field, Scalar};
 use rand::SeedableRng;
-use rand_core::{CryptoRngCore, RngCore};
+use rand_core::CryptoRngCore;
 use reddsa::frost::redjubjub::{
     keys::{generate_with_dealer, IdentifierList, SigningShare},
     JubjubBlake2b512, JubjubScalarField, Randomizer, SigningKey, VerifyingKey,
@@ -68,8 +68,9 @@ fn run_presign(
     participants: &[(Participant, KeygenOutput)],
     threshold: impl Into<ReconstructionLowerBound> + Copy,
     actual_signers: usize,
+    rng: impl CryptoRngCore + Send + Clone + 'static
 ) -> Result<Vec<(Participant, PresignOutput)>, Box<dyn Error>> {
-    crate::test_utils::frost_run_presignature(participants, threshold, actual_signers)
+    crate::test_utils::frost_run_presignature(participants, threshold, actual_signers, rng)
 }
 
 
@@ -79,7 +80,7 @@ fn run_presign(
 pub fn run_sign_with_presign(
     participants: &[(Participant, KeygenOutput)],
     actual_signers: usize,
-    coordinators: &[Participant],
+    coordinator: Participant,
     threshold: impl Into<ReconstructionLowerBound> + Copy + 'static,
     msg_hash: HashOutput,
 ) -> Result<Vec<(Participant, SignatureOption)>, Box<dyn Error>> {
@@ -89,24 +90,26 @@ pub fn run_sign_with_presign(
     let randomizer = Randomizer::from_scalar(randomizer_scalar);
 
     let mut protocols: GenProtocol<SignatureOption> = Vec::with_capacity(participants.len());
-    let presig = run_presign(participants, threshold, actual_signers)?;
+    let presig = run_presign(participants, threshold, actual_signers, rng)?;
 
+    println!("{:?}", presig.len());
     let participants_list = participants
         .iter()
         .take(actual_signers)
         .map(|(id, _)| *id)
         .collect::<Vec<_>>();
-    let coordinators = ParticipantList::new(coordinators).unwrap();
+    
+    let mut is_valid_coordinator = false;
+    println!("built randomizer");
+    let mut ctr = 0;
     for ((participant, key_pair), (participant_redundancy, presignature)) in
         participants.iter().zip(presig.iter())
     {
+        ctr = ctr + 1 ;
         assert_eq!(participant, participant_redundancy);
-        let mut rng_p = MockCryptoRng::seed_from_u64(42);
-        let mut coordinator = *participant;
-        if !coordinators.contains(coordinator) {
-            // pick any coordinator
-            let index = rng_p.next_u32() as usize % coordinators.len();
-            coordinator = coordinators.get_participant(index).unwrap();
+        println!("{ctr}, {participant:?}, {coordinator:?}");
+        if coordinator == *participant{
+            is_valid_coordinator = true
         }
         let randomize = if *participant == coordinator {
             Some(randomizer)
@@ -126,7 +129,7 @@ pub fn run_sign_with_presign(
         )?;
         protocols.push((*participant, Box::new(protocol)));
     }
-
+    assert!(is_valid_coordinator);
     Ok(run_protocol(protocols)?)
 }
 
@@ -232,17 +235,17 @@ fn dkg_refresh_sign_test() {
         let msg = format!("hello_near_{i}");
         let msg_hash = hash(&msg).unwrap();
         assert_public_key_invariant(&key_packages);
-        let coordinators = vec![key_packages[0].0];
+        let coordinator = key_packages[0].0;
         // This internally verifies with the rerandomized public key
         let data = run_sign_with_presign(
             &key_packages,
             actual_signers,
-            &coordinators,
+            coordinator,
             threshold,
             msg_hash,
         )
         .unwrap();
-        one_coordinator_output(data, coordinators[0]).unwrap();
+        one_coordinator_output(data, coordinator).unwrap();
         key_packages = run_refresh(&participants, &key_packages, threshold, &mut rng);
     }
 }
@@ -261,17 +264,17 @@ fn dkg_reshare_more_participants_sign_test() {
         let msg = format!("hello_near_{i}");
         let msg_hash = hash(&msg).unwrap();
         assert_public_key_invariant(&key_packages);
-        let coordinators = vec![key_packages[0].0];
+        let coordinator = key_packages[0].0;
         // This internally verifies with the rerandomized public key
         let data = run_sign_with_presign(
             &key_packages,
             actual_signers,
-            &coordinators,
+            coordinator,
             threshold,
             msg_hash,
         )
         .unwrap();
-        one_coordinator_output(data, coordinators[0]).unwrap();
+        one_coordinator_output(data, coordinator).unwrap();
 
         new_participant.push(Participant::from(20u32 + i));
 
@@ -305,17 +308,17 @@ fn dkg_reshare_less_participants_sign_test() {
         let msg = format!("hello_near_{i}");
         let msg_hash = hash(&msg).unwrap();
         assert_public_key_invariant(&key_packages);
-        let coordinators = vec![key_packages[0].0];
+        let coordinator = key_packages[0].0;
         // This internally verifies with the rerandomized public key
         let data = run_sign_with_presign(
             &key_packages,
             actual_signers,
-            &coordinators,
+            coordinator,
             threshold,
             msg_hash,
         )
         .unwrap();
-        one_coordinator_output(data, coordinators[0]).unwrap();
+        one_coordinator_output(data, coordinator).unwrap();
 
         new_participant.pop();
 
@@ -346,7 +349,7 @@ fn check_presignatures_terms() {
     let key_packages = build_key_packages_with_dealer(max_signers, threshold, &mut rng);
     // add the presignatures here
     let presignatures =
-        run_presign(&key_packages, threshold as usize, actual_signers).unwrap();
+        run_presign(&key_packages, threshold as usize, actual_signers, rng).unwrap();
 
     for (i, (p1, presig1)) in presignatures.iter().enumerate() {
         for (p2, presig2) in presignatures.iter().skip(i + 1) {
@@ -368,7 +371,7 @@ fn check_presignatures_terms_with_less_active_participants() {
     let key_packages = build_key_packages_with_dealer(max_signers, threshold, &mut rng);
     // add the presignatures here
     let mut presignatures =
-        run_presign(&key_packages, threshold as usize, actual_signers).unwrap();
+        run_presign(&key_packages, threshold as usize, actual_signers, rng).unwrap();
     while let Some((p1, presig1)) = presignatures.pop() {
         for (p2, presig2) in &presignatures {
             assert!(p1 != *p2);

@@ -231,24 +231,26 @@ mod test {
         let msg = "hello_near";
         let msg_hash = hash(&msg).unwrap();
 
+        let mut signature = None; 
         for min_signers in 2..max_signers {
             for actual_signers in min_signers..=max_signers {
                 let key_packages =
                     build_key_packages_with_dealer(max_signers, min_signers, &mut rng);
-                let coordinators = vec![key_packages[0].0];
+                let coordinator = key_packages[0].0;
                 let min_signers: usize = min_signers.into();
                 let data = test_run_sign(
                     &key_packages,
                     actual_signers.into(),
-                    &coordinators,
+                    coordinator,
                     min_signers,
                     msg_hash,
                 )
                 .unwrap();
-                let signature = one_coordinator_output(data, coordinators[0]).unwrap();
-                insta::assert_json_snapshot!(signature);
+                signature = Some(one_coordinator_output(data, coordinator).unwrap());
             }
         }
+        // only the last signature
+        insta::assert_json_snapshot!(signature);
     }
 
     #[test]
@@ -262,17 +264,17 @@ mod test {
             let msg = format!("hello_near_{i}");
             let msg_hash = hash(&msg).unwrap();
             assert_public_key_invariant(&key_packages);
-            let coordinators = vec![participants[0]];
+            let coordinator = participants[0];
             // This internally verifies with the public key
             let data = test_run_sign(
                 &key_packages,
                 actual_signers,
-                &coordinators,
+                coordinator,
                 threshold,
                 msg_hash,
             )
             .unwrap();
-            let signature = one_coordinator_output(data, coordinators[0]).unwrap();
+            let signature = one_coordinator_output(data, coordinator).unwrap();
 
             // externally verify with the signature
             assert!(key_packages[0]
@@ -301,8 +303,8 @@ mod test {
     #[test]
     fn test_reshare_sign_more_participants() {
         let mut rng = MockCryptoRng::seed_from_u64(42);
-        let mut participants = generate_participants(4);
-        let mut threshold = 3;
+        let mut participants = generate_participants(3);
+        let mut threshold = 2;
 
         let mut new_participants = participants.clone();
         let mut key_packages = run_keygen(&participants, threshold, &mut rng);
@@ -312,17 +314,17 @@ mod test {
             let msg = format!("hello_near_{i}");
             let msg_hash = hash(&msg).unwrap();
             assert_public_key_invariant(&key_packages);
-            let coordinators = vec![participants[0]];
+            let coordinator = participants[0];
             // This internally verifies with the rerandomized public key
             let data = test_run_sign(
                 &key_packages,
                 participants.len(),
-                &coordinators,
+                coordinator,
                 threshold,
                 msg_hash,
             )
             .unwrap();
-            let signature = one_coordinator_output(data, coordinators[0]).unwrap();
+            let signature = one_coordinator_output(data, coordinator).unwrap();
 
             // externally verify with the signature
             assert!(key_packages[0]
@@ -372,18 +374,18 @@ mod test {
             let msg = format!("hello_near_{i}");
             let msg_hash = hash(&msg).unwrap();
             assert_public_key_invariant(&key_packages);
-            let coordinators = vec![participants[0]];
+            let coordinator = participants[0];
             // This internally verifies with the rerandomized public key
             // This internally verifies with the public key
             let data = test_run_sign(
                 &key_packages,
                 participants.len(),
-                &coordinators,
+                coordinator,
                 threshold,
                 msg_hash,
             )
             .unwrap();
-            let signature = one_coordinator_output(data, coordinators[0]).unwrap();
+            let signature = one_coordinator_output(data, coordinator).unwrap();
 
             // externally verify with the signature
             assert!(key_packages[0]

@@ -404,7 +404,7 @@ pub fn ed25519_prepare_sign<R: CryptoRngCore + SeedableRng + Send + 'static>(
             *p,
             coordinator,
             keygen_out.clone(),
-
+            presign,
             message.clone(),
         )
         .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = eddsa::SignatureOption>>)

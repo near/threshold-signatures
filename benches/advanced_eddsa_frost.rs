@@ -75,6 +75,7 @@ fn prepare_simulated_sign(threshold: ReconstructionLowerBound) -> PreparedSimula
         real_participant,
         keygen_out,
         preps.message,
+        preps.presign,
         rng,
     )
     .map(|sig| Box::new(sig) as Box<dyn Protocol<Output = SignatureOption>>)

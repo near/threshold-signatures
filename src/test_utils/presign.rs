@@ -1,13 +1,12 @@
 use frost_core::{Field, Group};
 use k256::AffinePoint;
-use rand::SeedableRng;
 use rand_core::CryptoRngCore;
 use std::error::Error;
 
 use crate::ecdsa::{RerandomizationArguments, Tweak};
 use crate::frost_secp256k1::Secp256K1Sha256;
 use crate::{Ciphersuite, Participant, ParticipantList, ReconstructionLowerBound, Scalar, VerifyingKey};
-use crate::test_utils::{run_protocol, GenProtocol, MockCryptoRng};
+use crate::test_utils::{run_protocol, GenProtocol};
 
 /// Generates at random 32 bytes
 fn random_32_bytes(rng: &mut impl CryptoRngCore) -> [u8; 32] {
@@ -52,6 +51,7 @@ pub fn frost_run_presignature<C>(
     participants: &[(Participant, crate::KeygenOutput<C>)],
     threshold: impl Into<ReconstructionLowerBound> + Copy,
     actual_signers: usize,
+    mut rng: impl CryptoRngCore + Send + Clone + 'static,
 ) -> Result<Vec<(Participant, crate::frost::PresignOutput<C>)>, Box<dyn Error>>
 where C: Ciphersuite + Send,
 <<<C as frost_core::Ciphersuite>::Group as Group>::Field as Field>::Scalar: Send,
@@ -66,13 +66,13 @@ where C: Ciphersuite + Send,
         .collect::<Vec<_>>();
 
     for (participant, keygen_out) in participants.iter().take(actual_signers) {
-        let rng = MockCryptoRng::seed_from_u64(42);
         let args = crate::frost::PresignArguments {
             keygen_out: keygen_out.clone(),
             threshold: threshold.into(),
         };
+        rng.next_u64();
         // run the signing scheme
-        let protocol = crate::frost::presign::<C>(&participants_list, *participant, &args, rng)?;
+        let protocol = crate::frost::presign::<C>(&participants_list, *participant, &args, rng.clone())?;
 
         protocols.push((*participant, Box::new(protocol)));
     }
