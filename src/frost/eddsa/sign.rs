@@ -87,10 +87,10 @@ async fn do_sign_coordinator(
     signature_shares.insert(me.to_identifier()?, signature_share);
 
     let sign_waitpoint = chan.next_waitpoint();
-    println!("Me:{:?}, Participants {:?}, waitpoint:{:?}", me, participants.participants(), sign_waitpoint);
-    for (from, signature_share) in recv_from_others(&chan, sign_waitpoint, &participants, me).await? {
+    for (from, signature_share) in
+        recv_from_others(&chan, sign_waitpoint, &participants, me).await?
+    {
         signature_shares.insert(from.to_identifier()?, signature_share);
-        println!("Received from:{:?}", from);
     }
 
     // --- Signature aggregation.
@@ -145,7 +145,6 @@ fn do_sign_participant(
         .map_err(|e| ProtocolError::AssertionFailed(e.to_string()))?;
 
     let sign_waitpoint = chan.next_waitpoint();
-    println!("Sent:{:?}, Coordinator: {:?}, WaitPoint: {:?}", me, coordinator, sign_waitpoint);
     chan.send_private(sign_waitpoint, coordinator, &signature_share)?;
 
     Ok(None)

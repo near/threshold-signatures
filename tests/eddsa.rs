@@ -2,8 +2,7 @@
 mod common;
 
 use common::{
-    choose_coordinator_at_random, generate_participants, run_keygen, run_protocol,
-    GenProtocol,
+    choose_coordinator_at_random, generate_participants, run_keygen, run_protocol, GenProtocol,
 };
 
 use rand_core::OsRng;
@@ -77,11 +76,12 @@ fn test_run_sign() {
     keys.pop();
     let msg_hash = *b"hello world";
     let presign = frost_run_presignature(&keys, threshold, actual_signers, OsRng).unwrap();
-    let active_participants: Vec<Participant> = presign.iter()
+    let active_participants: Vec<Participant> = presign
+        .iter()
         .map(|(participant, _)| *participant)
         .collect();
     let coordinator = choose_coordinator_at_random(&active_participants);
-    
+
     let participant_keys = keys.into_iter().collect::<Vec<_>>();
     let all_sigs = run_sign(
         threshold.into(),
