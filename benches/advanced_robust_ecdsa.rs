@@ -64,7 +64,7 @@ fn bench_sign(c: &mut Criterion) {
 
     let mut rng = MockCryptoRng::seed_from_u64(42);
     let preps = robust_ecdsa_prepare_presign(num, &mut rng);
-    let result = run_protocol(preps.protocols).expect("Prepare sign should not");
+    let result = run_protocol(preps.protocols).expect("Prepare sign should not fail");
     let pk = preps.key_packages[0].1.public_key;
 
     let mut group = c.benchmark_group("sign");
