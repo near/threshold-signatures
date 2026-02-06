@@ -1,6 +1,6 @@
 use crate::crypto::hash::HashOutput;
-use crate::frost::eddsa::{sign::sign, KeygenOutput, SignatureOption};
-use crate::participants::{Participant, ParticipantList};
+use crate::frost::eddsa::{sign::sign, KeygenOutput, PresignOutput, SignatureOption};
+use crate::participants::Participant;
 use crate::test_utils::{
     generate_participants, run_protocol, GenOutput, GenProtocol, MockCryptoRng,
 };
@@ -11,7 +11,7 @@ use frost_ed25519::{keys::SigningShare, Ed25519Sha512, SigningKey, VerifyingKey}
 
 type C = Ed25519Sha512;
 use rand::SeedableRng;
-use rand_core::{CryptoRngCore, RngCore};
+use rand_core::CryptoRngCore;
 use std::error::Error;
 
 /// this is a centralized key generation
@@ -57,29 +57,40 @@ pub fn build_key_packages_with_dealer(
         .collect::<Vec<_>>()
 }
 
-pub fn test_run_signature_protocols(
+pub fn run_presign(
+    participants: &[(Participant, KeygenOutput)],
+    threshold: impl Into<ReconstructionLowerBound> + Copy,
+    actual_signers: usize,
+    rng: impl CryptoRngCore + Send + Clone + 'static,
+) -> Result<Vec<(Participant, PresignOutput)>, Box<dyn Error>> {
+    crate::test_utils::frost_run_presignature(participants, threshold, actual_signers, rng)
+}
+
+pub fn test_run_sign(
     participants: &[(Participant, KeygenOutput)],
     actual_signers: usize,
-    coordinators: &[Participant],
+    coordinator: Participant,
     threshold: impl Into<ReconstructionLowerBound> + Copy + 'static,
     msg_hash: HashOutput,
 ) -> Result<Vec<(Participant, SignatureOption)>, Box<dyn Error>> {
     let mut protocols: GenProtocol<SignatureOption> = Vec::with_capacity(participants.len());
+    let rng = MockCryptoRng::seed_from_u64(42);
+    let presig = run_presign(participants, threshold, actual_signers, rng)?;
 
     let participants_list = participants
         .iter()
         .take(actual_signers)
         .map(|(id, _)| *id)
         .collect::<Vec<_>>();
-    let coordinators = ParticipantList::new(coordinators).unwrap();
-    for (participant, key_pair) in participants.iter().take(actual_signers) {
-        let mut rng_p = MockCryptoRng::seed_from_u64(42);
-        let mut coordinator = *participant;
-
-        if !coordinators.contains(coordinator) {
-            // pick any coordinator
-            let index = rng_p.next_u32() as usize % coordinators.len();
-            coordinator = coordinators.get_participant(index).unwrap();
+    let mut is_valid_coordinator = false;
+    for ((participant, key_pair), (participant_redundancy, presignature)) in
+        participants.iter().zip(presig.iter())
+    {
+        if coordinator == *participant {
+            is_valid_coordinator = true;
+        }
+        if participant != participant_redundancy {
+            return Err("Incompatible Participants".into());
         }
         // run the signing scheme
         let protocol = sign(
@@ -88,12 +99,15 @@ pub fn test_run_signature_protocols(
             *participant,
             coordinator,
             key_pair.clone(),
+            presignature.clone(),
             msg_hash.as_ref().to_vec(),
-            rng_p,
         )?;
         protocols.push((*participant, Box::new(protocol)));
     }
 
+    if !is_valid_coordinator {
+        return Err("Invalid Coordinator".into());
+    }
     Ok(run_protocol(protocols)?)
 }
 
