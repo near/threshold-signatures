@@ -1,9 +1,11 @@
-use serde::{Deserialize, Serialize};
-use rand_core::CryptoRngCore;
-use std::collections::BTreeMap;
 use frost_core::{
-    keys::SigningShare, round1::{commit, SigningCommitments, SigningNonces}, Field, Group, Identifier
+    keys::SigningShare,
+    round1::{commit, SigningCommitments, SigningNonces},
+    Field, Group, Identifier,
 };
+use rand_core::CryptoRngCore;
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 use crate::{
     errors::{InitializationError, ProtocolError},
@@ -13,7 +15,7 @@ use crate::{
         internal::{make_protocol, Comms, SharedChannel},
         Protocol,
     },
-    Ciphersuite, ReconstructionLowerBound, KeygenOutput,
+    Ciphersuite, KeygenOutput, ReconstructionLowerBound,
 };
 
 pub mod eddsa;
@@ -38,17 +40,18 @@ pub struct PresignOutput<C: Ciphersuite + Send + 'static> {
     pub commitments_map: BTreeMap<Identifier<C>, SigningCommitments<C>>,
 }
 
-/// Runs Presigning of either EdDSA or RedDSA
+/// Runs Presigning of either `EdDSA` or `RedDSA`
 pub fn presign<C>(
     participants: &[Participant],
     me: Participant,
     args: &PresignArguments<C>,
     rng: impl CryptoRngCore + Send + 'static,
-) -> Result<impl Protocol<Output = PresignOutput<C>>, InitializationError> 
-where C: Ciphersuite + Send,
-<<<C as frost_core::Ciphersuite>::Group as Group>::Field as Field>::Scalar: Send,
-<<C as frost_core::Ciphersuite>::Group as frost_core::Group>::Element: std::marker::Send,
-    {
+) -> Result<impl Protocol<Output = PresignOutput<C>>, InitializationError>
+where
+    C: Ciphersuite + Send,
+    <<<C as frost_core::Ciphersuite>::Group as Group>::Field as Field>::Scalar: Send,
+    <<C as frost_core::Ciphersuite>::Group as frost_core::Group>::Element: std::marker::Send,
+{
     if participants.len() < 2 {
         return Err(InitializationError::NotEnoughParticipants {
             participants: participants.len(),

@@ -1,7 +1,5 @@
 use crate::crypto::hash::{hash, HashOutput};
-use crate::frost::redjubjub::{
-    sign::sign, KeygenOutput, PresignOutput, SignatureOption,
-};
+use crate::frost::redjubjub::{sign::sign, KeygenOutput, PresignOutput, SignatureOption};
 use crate::participants::Participant;
 use crate::test_utils::{
     assert_public_key_invariant, generate_participants, generate_participants_with_random_ids,
@@ -68,12 +66,10 @@ fn run_presign(
     participants: &[(Participant, KeygenOutput)],
     threshold: impl Into<ReconstructionLowerBound> + Copy,
     actual_signers: usize,
-    rng: impl CryptoRngCore + Send + Clone + 'static
+    rng: impl CryptoRngCore + Send + Clone + 'static,
 ) -> Result<Vec<(Participant, PresignOutput)>, Box<dyn Error>> {
     crate::test_utils::frost_run_presignature(participants, threshold, actual_signers, rng)
 }
-
-
 
 #[allow(clippy::panic_in_result_fn)]
 #[allow(clippy::missing_panics_doc)]
@@ -97,14 +93,14 @@ pub fn run_sign_with_presign(
         .take(actual_signers)
         .map(|(id, _)| *id)
         .collect::<Vec<_>>();
-    
+
     let mut is_valid_coordinator = false;
     for ((participant, key_pair), (participant_redundancy, presignature)) in
         participants.iter().zip(presig.iter())
     {
         assert_eq!(participant, participant_redundancy);
-        if coordinator == *participant{
-            is_valid_coordinator = true
+        if coordinator == *participant {
+            is_valid_coordinator = true;
         }
         let randomize = if *participant == coordinator {
             Some(randomizer)
@@ -124,7 +120,9 @@ pub fn run_sign_with_presign(
         )?;
         protocols.push((*participant, Box::new(protocol)));
     }
-    assert!(is_valid_coordinator);
+    if !is_valid_coordinator {
+        return Err("Invalid Coordinator".into());
+    }
     Ok(run_protocol(protocols)?)
 }
 

@@ -1,19 +1,21 @@
 #![allow(clippy::indexing_slicing)]
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use rand_core::SeedableRng;
 use rand::{Rng, RngCore};
+use rand_core::SeedableRng;
 
 mod bench_utils;
 use crate::bench_utils::{
-    analyze_received_sizes, ed25519_prepare_presign, ed25519_prepare_sign, PreparedOutputs, MAX_MALICIOUS, SAMPLE_SIZE,
+    analyze_received_sizes, ed25519_prepare_presign, ed25519_prepare_sign, PreparedOutputs,
+    MAX_MALICIOUS, SAMPLE_SIZE,
 };
 use threshold_signatures::{
-    frost::eddsa::{sign::sign, presign, PresignArguments, PresignOutput, SignatureOption},
+    frost::eddsa::{presign, sign::sign, PresignArguments, PresignOutput, SignatureOption},
     participants::Participant,
     protocol::Protocol,
     test_utils::{
-        run_protocol, run_protocol_and_take_snapshots, run_simulated_protocol, MockCryptoRng, Simulator,
+        run_protocol, run_protocol_and_take_snapshots, run_simulated_protocol, MockCryptoRng,
+        Simulator,
     },
     ReconstructionLowerBound,
 };
@@ -81,7 +83,7 @@ criterion_group!(benches, bench_presign, bench_sign);
 criterion_main!(benches);
 
 /****************************** Helpers ******************************/
-/// Used to simulate frost_Ed25519 presignatures for benchmarking
+/// Used to simulate Frost Ed25519 presignatures for benchmarking
 fn prepare_simulate_presign(num_participants: usize) -> PreparedPresig {
     // Running presign a first time with snapshots
     let mut rng = MockCryptoRng::seed_from_u64(42);
@@ -124,10 +126,8 @@ fn prepare_simulate_presign(num_participants: usize) -> PreparedPresig {
     }
 }
 
-/// Used to simulate frost Ed25519 signatures for benchmarking
-fn prepare_simulated_sign(
-    threshold: ReconstructionLowerBound
-) -> PreparedSimulatedSig {
+/// Used to simulate Frost Ed25519 signatures for benchmarking
+fn prepare_simulated_sign(threshold: ReconstructionLowerBound) -> PreparedSimulatedSig {
     let mut rng = MockCryptoRng::seed_from_u64(41);
     let preps = ed25519_prepare_presign(threshold.value(), &mut rng);
     let result = run_protocol(preps.protocols).expect("Prepare sign should not fail");

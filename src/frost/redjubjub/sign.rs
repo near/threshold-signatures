@@ -1,13 +1,13 @@
 //! This module and the frost one are supposed to have the same helper function
 use super::{KeygenOutput, PresignOutput, SignatureOption};
 use crate::errors::{InitializationError, ProtocolError};
+use crate::frost::assert_sign_inputs;
 use crate::participants::{Participant, ParticipantList};
 use crate::protocol::{
     helpers::recv_from_others,
     internal::{make_protocol, Comms, SharedChannel},
     Protocol,
 };
-use crate::frost::assert_sign_inputs;
 use crate::ReconstructionLowerBound;
 
 use reddsa::frost::redjubjub::{
@@ -276,8 +276,7 @@ mod test {
         let mut signature = None;
         for threshold in 2..max_signers {
             for actual_signers in threshold..=max_signers {
-                let key_packages =
-                    build_key_packages_with_dealer(max_signers, threshold, &mut rng);
+                let key_packages = build_key_packages_with_dealer(max_signers, threshold, &mut rng);
                 let threshold: usize = threshold.into();
                 let coordinator = key_packages[0].0;
                 let data = run_sign_with_presign(

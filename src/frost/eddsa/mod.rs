@@ -3,7 +3,6 @@ pub mod sign;
 #[cfg(test)]
 mod test;
 
-use rand_core::CryptoRngCore;
 use crate::{
     crypto::ciphersuite::{BytesOrder, ScalarSerializationFormat},
     errors::InitializationError,
@@ -11,7 +10,7 @@ use crate::{
     protocol::Protocol,
     Ciphersuite,
 };
-
+use rand_core::CryptoRngCore;
 
 pub use frost_ed25519::Ed25519Sha512;
 

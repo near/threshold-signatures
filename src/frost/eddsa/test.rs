@@ -1,5 +1,5 @@
 use crate::crypto::hash::HashOutput;
-use crate::frost::eddsa::{sign::sign, PresignOutput, KeygenOutput, SignatureOption};
+use crate::frost::eddsa::{sign::sign, KeygenOutput, PresignOutput, SignatureOption};
 use crate::participants::Participant;
 use crate::test_utils::{
     generate_participants, run_protocol, GenOutput, GenProtocol, MockCryptoRng,
@@ -87,9 +87,11 @@ pub fn test_run_sign(
         participants.iter().zip(presig.iter())
     {
         if coordinator == *participant {
-            is_valid_coordinator = true
+            is_valid_coordinator = true;
         }
-        assert_eq!(participant, participant_redundancy);
+        if participant != participant_redundancy {
+            return Err("Incompatible Participants".into());
+        }
         // run the signing scheme
         let protocol = sign(
             &participants_list,
@@ -103,7 +105,9 @@ pub fn test_run_sign(
         protocols.push((*participant, Box::new(protocol)));
     }
 
-    assert!(is_valid_coordinator);
+    if !is_valid_coordinator {
+        return Err("Invalid Coordinator".into());
+    }
     Ok(run_protocol(protocols)?)
 }
 

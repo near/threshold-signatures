@@ -2,17 +2,17 @@
 //!  into `cait-sith::Protocol` representation.
 use super::{KeygenOutput, PresignOutput, SignatureOption};
 use crate::errors::{InitializationError, ProtocolError};
+use crate::frost::assert_sign_inputs;
 use crate::participants::{Participant, ParticipantList};
 use crate::protocol::{
     helpers::recv_from_others,
     internal::{make_protocol, Comms, SharedChannel},
-    Protocol
+    Protocol,
 };
 use crate::ReconstructionLowerBound;
-use crate::frost::assert_sign_inputs;
 
 use frost_ed25519::keys::{KeyPackage, PublicKeyPackage, SigningShare};
-use frost_ed25519::{aggregate, SigningPackage, round2, VerifyingKey};
+use frost_ed25519::{aggregate, round2, SigningPackage, VerifyingKey};
 use std::collections::BTreeMap;
 use zeroize::Zeroizing;
 
@@ -71,7 +71,8 @@ async fn do_sign_coordinator(
     message: Vec<u8>,
 ) -> Result<SignatureOption, ProtocolError> {
     // --- Round 1
-    let signing_package = frost_ed25519::SigningPackage::new(presignature.commitments_map, message.as_slice());
+    let signing_package =
+        frost_ed25519::SigningPackage::new(presignature.commitments_map, message.as_slice());
 
     let mut signature_shares: BTreeMap<frost_ed25519::Identifier, round2::SignatureShare> =
         BTreeMap::new();
@@ -80,7 +81,8 @@ async fn do_sign_coordinator(
     // * Wait for each other's signature share
     // Step 2.3 (2.1 and 2.2 are implicit)
     let vk_package = keygen_output.public_key;
-    let key_package = construct_key_package(threshold, me, keygen_output.private_share, &vk_package)?;
+    let key_package =
+        construct_key_package(threshold, me, keygen_output.private_share, &vk_package)?;
     let key_package = Zeroizing::new(key_package);
     let signature_share = round2::sign(&signing_package, &presignature.nonces, &key_package)
         .map_err(|e| ProtocolError::AssertionFailed(e.to_string()))?;
@@ -88,8 +90,7 @@ async fn do_sign_coordinator(
     // Step 2.5 (2.4 is implicit)
     signature_shares.insert(me.to_identifier()?, signature_share);
     let wait_rcv = chan.next_waitpoint();
-    for (from, signature_share) in recv_from_others(&chan, wait_rcv, &participants, me).await?
-    {
+    for (from, signature_share) in recv_from_others(&chan, wait_rcv, &participants, me).await? {
         signature_shares.insert(from.to_identifier()?, signature_share);
     }
 
@@ -117,14 +118,14 @@ async fn do_sign_coordinator(
 /// creating a specific ciphersuite for this, and not just sending the hash
 /// as if it were the message.
 /// For reference, see how RFC 8032 handles "pre-hashing".
-async fn do_sign_participant(
+fn do_sign_participant(
     mut chan: SharedChannel,
     threshold: ReconstructionLowerBound,
     me: Participant,
     coordinator: Participant,
-    keygen_output: KeygenOutput,
+    keygen_output: &KeygenOutput,
     presignature: PresignOutput,
-    message: Vec<u8>,
+    message: &[u8],
 ) -> Result<SignatureOption, ProtocolError> {
     // --- Round 1.
     // * Send our signature share.
@@ -137,10 +138,11 @@ async fn do_sign_participant(
     }
 
     let vk_package = keygen_output.public_key;
-    let key_package = construct_key_package(threshold, me, keygen_output.private_share, &vk_package)?;
+    let key_package =
+        construct_key_package(threshold, me, keygen_output.private_share, &vk_package)?;
     // Ensures the values are zeroized on drop
     let key_package = Zeroizing::new(key_package);
-    let signing_package = SigningPackage::new(presignature.commitments_map, &message);
+    let signing_package = SigningPackage::new(presignature.commitments_map, message);
     let signature_share = round2::sign(&signing_package, &presignature.nonces, &key_package)
         .map_err(|e| ProtocolError::AssertionFailed(e.to_string()))?;
 
@@ -200,20 +202,17 @@ async fn fut_wrapper(
             threshold,
             me,
             coordinator,
-            keygen_output,
+            &keygen_output,
             presignature,
-            message,
+            &message,
         )
-        .await
     }
 }
 
 #[cfg(test)]
 mod test {
     use crate::crypto::hash::hash;
-    use crate::frost::eddsa::test::{
-        build_key_packages_with_dealer, test_run_sign
-    };
+    use crate::frost::eddsa::test::{build_key_packages_with_dealer, test_run_sign};
     use crate::participants::{Participant, ParticipantList};
     use crate::test_utils::{
         assert_public_key_invariant, generate_participants, generate_participants_with_random_ids,
@@ -231,7 +230,7 @@ mod test {
         let msg = "hello_near";
         let msg_hash = hash(&msg).unwrap();
 
-        let mut signature = None; 
+        let mut signature = None;
         for min_signers in 2..max_signers {
             for actual_signers in min_signers..=max_signers {
                 let key_packages =

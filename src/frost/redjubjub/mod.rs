@@ -6,7 +6,6 @@ pub mod sign;
 #[cfg(test)]
 mod test;
 
-use rand_core::CryptoRngCore;
 use crate::{
     crypto::ciphersuite::{BytesOrder, ScalarSerializationFormat},
     errors::InitializationError,
@@ -14,6 +13,7 @@ use crate::{
     protocol::Protocol,
     Ciphersuite,
 };
+use rand_core::CryptoRngCore;
 
 use reddsa::frost::redjubjub::Signature;
 
@@ -34,7 +34,7 @@ pub type PresignOutput = super::PresignOutput<JubjubBlake2b512>;
 /// Signature would be Some for coordinator and None for other participants
 pub type SignatureOption = Option<Signature>;
 
-/// RedJubJub presigning function
+/// `RedJubJub` presigning function
 pub fn presign(
     participants: &[Participant],
     me: Participant,

@@ -8,25 +8,29 @@ use common::{
 
 use rand_core::OsRng;
 use threshold_signatures::{
-    self, frost::eddsa::{sign::sign, PresignOutput, Ed25519Sha512, SignatureOption}, participants::Participant, test_utils::frost_run_presignature, ReconstructionLowerBound
+    self,
+    frost::eddsa::{sign::sign, Ed25519Sha512, PresignOutput, SignatureOption},
+    participants::Participant,
+    test_utils::frost_run_presignature,
+    ReconstructionLowerBound,
 };
 
 type C = Ed25519Sha512;
 type KeygenOutput = threshold_signatures::KeygenOutput<C>;
 
-
 fn run_sign(
     threshold: ReconstructionLowerBound,
     participants: &[(Participant, KeygenOutput)],
     coordinator: Participant,
-    presig: Vec<(Participant, PresignOutput)>,
+    presig: &[(Participant, PresignOutput)],
     msg_hash: &[u8],
-) -> Vec<(Participant, SignatureOption)> {   
+) -> Vec<(Participant, SignatureOption)> {
     let mut protocols: GenProtocol<SignatureOption> = Vec::with_capacity(participants.len());
 
     let participants_list: Vec<Participant> = participants.iter().map(|(p, _)| *p).collect();
     for ((p, keygen_output), (participant_redundancy, presignature)) in
-        participants.iter().zip(presig.iter()){
+        participants.iter().zip(presig.iter())
+    {
         assert_eq!(p, participant_redundancy);
         let protocol = sign(
             &participants_list,
@@ -74,12 +78,12 @@ fn test_sign() {
     let coordinator = choose_coordinator_at_random(&participants);
     let presign = frost_run_presignature(&keys, threshold, actual_signers, OsRng).unwrap();
     let participant_keys = keys.into_iter().collect::<Vec<_>>();
-    
+
     let all_sigs = run_sign(
         threshold.into(),
         participant_keys.as_slice(),
         coordinator,
-        presign,
+        &presign,
         &msg_hash,
     );
 

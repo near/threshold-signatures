@@ -369,7 +369,8 @@ pub fn robust_ecdsa_prepare_sign<R: CryptoRngCore + SeedableRng>(
     }
 }
 
-pub type RobustECDSAPreparedPresig = PreparedPresig<robust_ecdsa::PresignOutput, ecdsa::KeygenOutput>;
+pub type RobustECDSAPreparedPresig =
+    PreparedPresig<robust_ecdsa::PresignOutput, ecdsa::KeygenOutput>;
 pub type RobustECDSASig = PreparedSig<robust_ecdsa::RerandomizedPresignOutput>;
 
 /********************* Frost EdDSA *********************/
@@ -407,7 +408,6 @@ pub fn ed25519_prepare_presign<R: CryptoRngCore + SeedableRng + Send + 'static>(
     }
 }
 
-
 /// Used to prepare ed25519 signatures for benchmarking
 pub fn ed25519_prepare_sign<R: CryptoRngCore + SeedableRng + Send + 'static>(
     result: &[(Participant, eddsa::PresignOutput)],
@@ -416,10 +416,8 @@ pub fn ed25519_prepare_sign<R: CryptoRngCore + SeedableRng + Send + 'static>(
 ) -> FrostEd25519Sig {
     let num_participants = threshold.value();
     // collect all participants
-    let participants : Vec<Participant> = result
-        .iter()
-        .map(|(participant, _)| *participant)
-        .collect();
+    let participants: Vec<Participant> =
+        result.iter().map(|(participant, _)| *participant).collect();
     let key_packages = run_keygen(&participants, *MAX_MALICIOUS + 1, rng);
 
     // choose a coordinator at random
@@ -434,7 +432,7 @@ pub fn ed25519_prepare_sign<R: CryptoRngCore + SeedableRng + Send + 'static>(
     let mut message: [u8; 32] = [0u8; 32];
     rng.fill_bytes(&mut message);
     let message = message.to_vec();
-    
+
     for ((p, keygen_out), (p_redundancy, presign)) in key_packages.iter().zip(result) {
         assert_eq!(p, p_redundancy);
         let protocol = eddsa::sign::sign(
