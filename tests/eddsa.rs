@@ -66,7 +66,7 @@ fn test_run_presign() {
 }
 
 #[test]
-fn test_sign() {
+fn test_run_sign() {
     let participants = generate_participants(5);
     let threshold = 4;
     let actual_signers = 4;

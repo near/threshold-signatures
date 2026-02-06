@@ -150,7 +150,7 @@ fn run_sign_with_rerandomization(
 }
 
 #[test]
-fn test_sign() {
+fn test_run_sign() {
     let participants = generate_participants(11);
     let max_malicious = 5;
     let threshold = max_malicious + 1;
