@@ -30,6 +30,7 @@ pub fn hash<T: Serialize>(val: &T) -> Result<HashOutput, ProtocolError> {
     Ok(HashOutput(hasher.finalize().into()))
 }
 
+#[derive(Clone)]
 pub struct DomainSeparator(u32);
 
 impl DomainSeparator {
@@ -39,10 +40,6 @@ impl DomainSeparator {
 
     pub fn increment(&mut self) {
         self.0 += 1;
-    }
-
-    pub fn copy_state(&self) -> Self {
-        Self(self.0)
     }
 
     pub fn to_le_bytes(&self) -> [u8; 4] {
@@ -86,7 +83,7 @@ pub mod test {
     fn test_same_inputs_domain_separate_hash() {
         let val = ("abc", 123);
         let mut domain_separator = DomainSeparator::new();
-        let hash1 = domain_separate_hash(&mut domain_separator.copy_state(), &val).unwrap();
+        let hash1 = domain_separate_hash(&mut domain_separator.clone(), &val).unwrap();
         let hash2 = domain_separate_hash(&mut domain_separator, &val).unwrap();
         assert_eq!(hash1.0, hash2.0);
     }
@@ -105,7 +102,7 @@ pub mod test {
         let val1 = ("abc", 123);
         let val2 = ("abc", 124);
         let mut domain_separator = DomainSeparator::new();
-        let hash1 = domain_separate_hash(&mut domain_separator.copy_state(), &val1).unwrap();
+        let hash1 = domain_separate_hash(&mut domain_separator.clone(), &val1).unwrap();
         let hash2 = domain_separate_hash(&mut domain_separator, &val2).unwrap();
         assert_ne!(hash1.0, hash2.0);
 
