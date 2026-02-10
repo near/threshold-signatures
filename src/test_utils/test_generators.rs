@@ -177,7 +177,7 @@ impl TestGenerators {
         let leader = self.participants[0];
         for participant in &self.participants {
             let msg_hash_bytes: [u8; 32] = msg_hash.to_bytes().into();
-            let presign_out = presignatures[participant].clone();
+            let presign_out = &presignatures[participant];
             let entropy = [0u8; 32];
 
             let tweak = [1u8; 32];
@@ -200,7 +200,7 @@ impl TestGenerators {
 
             let rerandomized_presignature =
                 ecdsa::ot_based_ecdsa::RerandomizedPresignOutput::rerandomize_presign(
-                    &presign_out,
+                    presign_out,
                     &rerand_args,
                 )
                 .unwrap();

@@ -43,7 +43,8 @@ pub struct PresignArguments {
 ///
 /// This output is basically all the parts of the signature that we can perform
 /// without knowing the message.
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[cfg_attr(feature = "test-utils", derive(Clone))]
 pub struct PresignOutput {
     /// The public nonce commitment.
     pub nonces: SigningNonces,

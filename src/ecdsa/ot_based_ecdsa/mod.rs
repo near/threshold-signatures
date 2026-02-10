@@ -37,7 +37,7 @@ pub struct PresignArguments {
 ///
 /// This output is basically all the parts of the signature that we can perform
 /// without knowing the message.
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, ZeroizeOnDrop)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, ZeroizeOnDrop)]
 pub struct PresignOutput {
     /// The public nonce commitment.
     #[zeroize[skip]]
@@ -51,7 +51,8 @@ pub struct PresignOutput {
 /// The output of the presigning protocol.
 /// Contains the signature precomputed elements
 /// independently of the message
-#[derive(Debug, Clone, Serialize, Deserialize, ZeroizeOnDrop)]
+#[derive(Debug, Serialize, Deserialize, ZeroizeOnDrop)]
+#[cfg_attr(feature = "test-utils", derive(Clone))]
 pub struct RerandomizedPresignOutput {
     /// The rerandomized public nonce commitment.
     #[zeroize[skip]]
