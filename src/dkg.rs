@@ -395,7 +395,7 @@ async fn do_keyshare<C: Ciphersuite>(
             rng,
         )?)
     } else {
-        // incremente domain separator to match the old participants
+        // increment domain separator to match the old participants
         domain_separator.increment();
         None
     };
