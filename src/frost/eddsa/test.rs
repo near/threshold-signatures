@@ -10,7 +10,7 @@ use frost_ed25519::{keys::SigningShare, Ed25519Sha512, SigningKey, VerifyingKey}
 
 type C = Ed25519Sha512;
 use rand::SeedableRng;
-use rand_core::{CryptoRngCore, RngCore};
+use rand_core::CryptoRngCore;
 use std::error::Error;
 
 /// this is a centralized key generation
@@ -62,8 +62,8 @@ pub fn run_sign(
     coordinator: Participant,
     threshold: impl Into<ReconstructionLowerBound> + Copy + 'static,
     msg_hash: HashOutput,
+    rng: &mut impl CryptoRngCore,
 ) -> Result<Vec<(Participant, SignatureOption)>, Box<dyn Error>> {
-    let mut rng = MockCryptoRng::seed_from_u64(644_221);
     let mut protocols: GenProtocol<SignatureOption> = Vec::with_capacity(participants.len());
 
     let participants_list = participants
@@ -71,9 +71,10 @@ pub fn run_sign(
         .take(actual_signers)
         .map(|(id, _)| *id)
         .collect::<Vec<_>>();
-
+    
     let mut is_valid_coordinator = false;
     for (participant, key_pair) in participants.iter().take(actual_signers) {
+        let rng_p = MockCryptoRng::seed_from_u64(rng.next_u64());
         if coordinator == *participant {
             is_valid_coordinator = true;
         }
@@ -85,9 +86,8 @@ pub fn run_sign(
             coordinator,
             key_pair.clone(),
             msg_hash.as_ref().to_vec(),
-            rng.clone(),
+            rng_p,
         )?;
-        rng.next_u64();
         protocols.push((*participant, Box::new(protocol)));
     }
     if !is_valid_coordinator {
