@@ -71,7 +71,7 @@ pub fn run_sign(
         .take(actual_signers)
         .map(|(id, _)| *id)
         .collect::<Vec<_>>();
-    
+
     let mut is_valid_coordinator = false;
     for (participant, key_pair) in participants.iter().take(actual_signers) {
         let rng_p = MockCryptoRng::seed_from_u64(rng.next_u64());
