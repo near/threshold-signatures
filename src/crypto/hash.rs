@@ -108,7 +108,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_domain_separate_hash_increments_separator(){
+    fn test_domain_separate_hash_increments_separator() {
         let val = ("abc", 123);
         let mut domain_separator = DomainSeparator::new();
         let hash1 = domain_separate_hash(&mut domain_separator, &val).unwrap();
