@@ -105,8 +105,14 @@ pub mod test {
         let hash1 = domain_separate_hash(&mut domain_separator.clone(), &val1).unwrap();
         let hash2 = domain_separate_hash(&mut domain_separator, &val2).unwrap();
         assert_ne!(hash1.0, hash2.0);
+    }
 
-        let hash2 = domain_separate_hash(&mut domain_separator, &val1).unwrap();
+    #[test]
+    fn test_domain_separate_hash_increments_separator(){
+        let val = ("abc", 123);
+        let mut domain_separator = DomainSeparator::new();
+        let hash1 = domain_separate_hash(&mut domain_separator, &val).unwrap();
+        let hash2 = domain_separate_hash(&mut domain_separator, &val).unwrap();
         assert_ne!(hash1.0, hash2.0);
     }
 
