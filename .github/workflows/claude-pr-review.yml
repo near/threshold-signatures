@@ -1,23 +1,74 @@
+# =============================================================================
+# Claude Code Review — Automated AI PR review for threshold-signatures
+# =============================================================================
+#
+# WHAT THIS DOES:
+#   Runs an AI-powered code review (via Claude) on pull requests, focusing on
+#   cryptographic correctness, Rust best practices, and code quality.
+#
+# TRIGGERS:
+#   1. Automatically — when a PR is opened, marked ready, or receives new commits
+#   2. Manually     — when someone comments "@claude review" on a PR
+#
+# TUNING GUIDE:
+#   - To change WHAT gets reviewed:        edit the "paths" filter below
+#   - To change HOW it reviews:            edit the <review_instructions> prompt
+#   - To change WHAT tools Claude can use:  edit "claude_args" at the bottom
+#   - To skip review on a PR:              add the "skip-review" label
+#   - To force review on non-code PRs:     comment "@claude review" on the PR
+#
+# SECRETS REQUIRED:
+#   - ANTHROPIC_API: Anthropic API key (set in repo Settings > Secrets)
+#
+# =============================================================================
+
 name: Claude Code Review
 
+# -----------------------------------------------------------------------------
+# TRIGGERS
+# -----------------------------------------------------------------------------
+# pull_request: fires on PR lifecycle events, filtered to code-only paths
+# issue_comment: fires on any new comment (we filter for @claude mentions below)
 on:
   pull_request:
-    types: [opened, ready_for_review, synchronize]
+    types:
+      - opened            # New PR created
+      - ready_for_review  # Draft PR marked as ready
+      - synchronize       # New commits pushed to an existing PR
+    # Only trigger for changes to actual code — skip docs, CI, README, etc.
+    # To review more paths, add them here. The @claude manual trigger bypasses
+    # this filter.
     paths:
       - 'src/**'
       - 'benches/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
   issue_comment:
-    types: [created]  # Listen for @claude mentions in PR comments
+    types: [created]
 
+# -----------------------------------------------------------------------------
+# CONCURRENCY
+# -----------------------------------------------------------------------------
+# If a new review is triggered while one is already running for the same PR,
+# cancel the in-progress run. This prevents duplicate/stale reviews when
+# multiple commits are pushed in quick succession.
 concurrency:
   group: claude-review-${{ github.event.pull_request.number || github.event.issue.number }}
   cancel-in-progress: true
 
+# =============================================================================
+# JOB
+# =============================================================================
 jobs:
   claude-review:
-    # Run if: (PR opened/ready/updated AND not draft AND no skip label) OR @claude review in PR comment
+
+    # -------------------------------------------------------------------------
+    # CONDITION: when should this job actually run?
+    # -------------------------------------------------------------------------
+    # Case 1: PR event — run if NOT draft AND does NOT have "skip-review" label
+    # Case 2: Comment event — run if the comment is on a PR (not a plain issue)
+    #          and contains the trigger phrase "@claude review" or
+    #          "@claude code review"
     if: |
       (github.event_name == 'pull_request' &&
        !github.event.pull_request.draft &&
@@ -28,7 +79,18 @@ jobs:
         contains(github.event.comment.body, '@claude code review')))
 
     runs-on: ubuntu-latest
+
+    # 15 min is generous for a review. Prevents runaway jobs from burning
+    # through the Actions minutes budget (GitHub default is 6 hours).
     timeout-minutes: 15
+
+    # -------------------------------------------------------------------------
+    # PERMISSIONS
+    # -------------------------------------------------------------------------
+    # contents:read       — clone the repo
+    # pull-requests:write — post review comments and inline annotations
+    # issues:read         — read issue/PR comment data for the @claude trigger
+    # id-token:write      — OIDC token for claude-code-action authentication
     permissions:
       contents: read
       pull-requests: write
@@ -36,12 +98,32 @@ jobs:
       id-token: write
 
     steps:
+      # -----------------------------------------------------------------------
+      # STEP 1: Checkout
+      # -----------------------------------------------------------------------
+      # Shallow clone (depth=1) is enough — Claude reads the diff via the
+      # gh CLI ("gh pr diff"), not the local git history.
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
         with:
           fetch-depth: 1
           persist-credentials: false
 
+      # -----------------------------------------------------------------------
+      # STEP 2: Fetch existing PR discussion context
+      # -----------------------------------------------------------------------
+      # Uses GitHub's GraphQL API to pull all comments, reviews, and review
+      # threads so Claude is aware of what's already been discussed.
+      # This prevents Claude from:
+      #   - Repeating feedback that was already given
+      #   - Re-raising issues that have been resolved
+      #   - Contradicting previous reviewer consensus
+      #
+      # The raw JSON is formatted into readable markdown by the Python script
+      # at .github/scripts/format_pr_comments.py
+      #
+      # If the API call fails, the workflow continues without context rather
+      # than failing the entire review.
       - name: Fetch PR Comments Context
         id: fetch-comments
         env:
@@ -50,7 +132,13 @@ jobs:
           REPO_OWNER: ${{ github.repository_owner }}
           REPO_NAME: ${{ github.event.repository.name }}
         run: |
-          # GraphQL query to fetch all PR comments and review threads
+          # GraphQL query fetches three types of PR data:
+          #   - comments (first 100)          — general PR-level discussion
+          #   - reviewThreads (first 100)     — inline code review threads (50 replies each)
+          #   - reviews (first 50)            — review summaries (APPROVED, CHANGES_REQUESTED, etc.)
+          #
+          # Increase "first:" values if your PRs regularly exceed these limits,
+          # but beware of increased token usage in Claude's prompt.
           QUERY='query($owner: String!, $repo: String!, $prNumber: Int!) {
             repository(owner: $owner, name: $repo) {
               pullRequest(number: $prNumber) {
@@ -92,7 +180,7 @@ jobs:
             }
           }'
 
-          # Execute GraphQL query and check for errors
+          # Execute GraphQL query — gracefully degrade on failure
           if ! COMMENTS_JSON=$(gh api graphql \
             -f query="$QUERY" \
             -f owner="$REPO_OWNER" \
@@ -103,15 +191,37 @@ jobs:
             exit 0
           fi
 
-          # Format comments for Claude using external Python script
+          # Pipe through the Python formatter for clean markdown output
           export COMMENTS_JSON
           python3 .github/scripts/format_pr_comments.py > /tmp/pr_comments_context.txt
 
+      # -----------------------------------------------------------------------
+      # STEP 3: Run Claude Code Review
+      # -----------------------------------------------------------------------
+      # This step sends the PR diff + existing discussion context to Claude
+      # via the official claude-code-action. Claude reads the diff using
+      # "gh pr diff", analyzes it against the review checklist, and posts
+      # its findings as a PR comment.
+      #
+      # To update the action version:
+      #   1. Check https://github.com/anthropics/claude-code-action/releases
+      #   2. Update the SHA below and the version comment
       - name: Run Claude Code Review
         id: claude-review
         uses: anthropics/claude-code-action@23ed4cb53d6eacddbc22ec16652c98bcc54e0476 #v1.0.48
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API }}
+
+          # -----------------------------------------------------------------
+          # THE PROMPT — Claude's full instruction set
+          # -----------------------------------------------------------------
+          # Three sections:
+          #   <pr_context>           — metadata (repo, PR number, language, domain)
+          #   <existing_discussions> — formatted prior comments from Step 2
+          #   <review_instructions>  — review checklist + output style guide
+          #
+          # To customize what Claude checks for:  edit <review_instructions>
+          # To change output format:              edit the REVIEW STYLE section
           prompt: |
             <pr_context>
             REPO: ${{ github.repository }}
@@ -134,6 +244,7 @@ jobs:
             - Build upon previous feedback rather than duplicating it
 
             PRIORITY CHECKS (report only if found):
+
             1. Logic & Functionality
                - Logic flaws or incorrect implementations
                - Missing edge cases (empty inputs, boundary conditions, None/Some variants)
@@ -141,6 +252,7 @@ jobs:
                - Backward compatibility issues with existing APIs/data formats
 
             2. Cryptographic Safety
+               This is a cryptographic library — these checks are critical:
                - Secret comparisons must use constant-time operations (subtle::ConstantTimeEq), never == or !=
                - Secret key types must derive Zeroize/ZeroizeOnDrop; secrets must not linger in memory
                - Only cryptographically secure RNGs (OsRng) in non-test code; never thread_rng()
@@ -151,8 +263,9 @@ jobs:
                - Unsafe code in crypto paths requires extra scrutiny and safety comments
 
             3. Rust-Specific Concerns
-               - Note: clippy already enforces deny(indexing-slicing, panic) and warn(unwrap-used, pedantic, nursery)
-               - Focus on issues clippy CANNOT catch: logic errors, incorrect trait implementations, wrong algorithm choices
+               Note: clippy already enforces deny(indexing-slicing, panic) and
+               warn(unwrap-used, pedantic, nursery). Focus on issues clippy CANNOT catch:
+               - Logic errors, incorrect trait implementations, wrong algorithm choices
                - Unnecessary .clone() calls (suggest borrows/references instead)
                - Unsafe code without safety comments explaining invariants
                - Incorrect ownership patterns or lifetime issues
@@ -175,4 +288,17 @@ jobs:
             Use `gh pr comment` to post your review.
             </review_instructions>
 
-          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr review:*)"'
+          # -----------------------------------------------------------------
+          # TOOL PERMISSIONS — what CLI commands Claude is allowed to run
+          # -----------------------------------------------------------------
+          # All entries are read-only GitHub operations EXCEPT:
+          #   - gh pr comment — post general PR comments
+          #   - gh pr review  — post inline review annotations on specific lines
+          #
+          # To let Claude do more (e.g., add labels):  add tools here
+          # To restrict further:                       remove entries
+          #
+          # Format: Bash(command-prefix:*) — the * is a wildcard for arguments
+          claude_args: >-
+            --allowed-tools
+            "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr review:*)"
