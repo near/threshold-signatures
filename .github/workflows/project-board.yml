@@ -1,0 +1,221 @@
+name: Project board automation
+
+# Consolidates all project-board automation for near/projects/179:
+#   - New issues are automatically added to the board.
+#   - PRs with closing keywords (e.g. "Closes #42") set linked issues to:
+#       Draft PRs  → "On hold"
+#       Ready PRs  → "In review"
+#   - Reacts to converted_to_draft / ready_for_review transitions.
+
+on:
+  issues:
+    types:
+      - opened
+  pull_request:
+    types:
+      - opened
+      - edited
+      - reopened
+      - converted_to_draft
+      - ready_for_review
+
+env:
+  PROJECT_ORG: near
+  PROJECT_NUMBER: "179"
+
+jobs:
+  # -----------------------------------------------------------------
+  # Job 1: Add every new issue to the project board
+  # -----------------------------------------------------------------
+  add-to-project:
+    if: github.event_name == 'issues'
+    name: Add issue to project
+    runs-on: ubuntu-latest
+    permissions:
+      issues: read
+    steps:
+      - uses: actions/add-to-project@244f685bbc3b7adfa8466e08b698b5577571133e # v1.0.2
+        with:
+          project-url: https://github.com/orgs/near/projects/179
+          github-token: ${{ secrets.PROJECT_GH_TOKEN }}
+
+  # -----------------------------------------------------------------
+  # Job 2: Update linked issue status when a PR is opened / changed
+  # -----------------------------------------------------------------
+  update-pr-status:
+    if: github.event_name == 'pull_request'
+    name: Update project status for linked issues
+    runs-on: ubuntu-latest
+    permissions:
+      issues: read
+    concurrency:
+      group: pr-project-status-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - name: Update linked issue status on project board
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_GH_TOKEN }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          set -euo pipefail
+
+          # ---------------------------------------------------------------
+          # 1. Determine target status based on PR draft state
+          # ---------------------------------------------------------------
+          if [ "$PR_DRAFT" = "true" ]; then
+            TARGET_STATUS="On hold"
+          else
+            TARGET_STATUS="In review"
+          fi
+          echo "PR is draft=$PR_DRAFT → target status: '$TARGET_STATUS'"
+
+          # ---------------------------------------------------------------
+          # 2. Extract issue numbers from closing keywords in the PR body
+          #    Supports: "Closes #1", "Fixes #1, #2, #3", "Resolves #1 #2"
+          # ---------------------------------------------------------------
+          ISSUE_NUMBERS=$(echo "$PR_BODY" | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?)\s+#[0-9]+([\s,]+#[0-9]+)*' | grep -oE '[0-9]+' || true)
+          # Deduplicate in case the same issue is referenced more than once
+          ISSUE_NUMBERS=$(echo "$ISSUE_NUMBERS" | sort -un || true)
+
+          if [ -z "$ISSUE_NUMBERS" ]; then
+            echo "No closing keywords found in PR body — nothing to do."
+            exit 0
+          fi
+
+          ISSUE_LIST=$(echo "$ISSUE_NUMBERS" | tr '\n' ' ')
+          echo "Linked issues found: $ISSUE_LIST"
+
+          # ---------------------------------------------------------------
+          # 3. Fetch project board metadata via GraphQL
+          #    - Project node ID
+          #    - "Status" single-select field ID
+          #    - Target option ID within that field
+          # ---------------------------------------------------------------
+          echo "Querying project board: $PROJECT_ORG/projects/$PROJECT_NUMBER ..."
+
+          PROJECT_DATA=$(gh api graphql -f query='
+            query($org: String!, $number: Int!) {
+              organization(login: $org) {
+                projectV2(number: $number) {
+                  id
+                  field(name: "Status") {
+                    ... on ProjectV2SingleSelectField {
+                      id
+                      options {
+                        id
+                        name
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ' -f org="$PROJECT_ORG" -F number="$PROJECT_NUMBER")
+
+          PROJECT_ID=$(echo "$PROJECT_DATA" | jq -r '.data.organization.projectV2.id')
+          STATUS_FIELD_ID=$(echo "$PROJECT_DATA" | jq -r '.data.organization.projectV2.field.id')
+          TARGET_OPTION_ID=$(echo "$PROJECT_DATA" | jq -r --arg name "$TARGET_STATUS" '.data.organization.projectV2.field.options[] | select(.name == $name) | .id')
+
+          if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "null" ]; then
+            echo "::error::Could not find project board $PROJECT_ORG/projects/$PROJECT_NUMBER."
+            exit 1
+          fi
+
+          if [ -z "$STATUS_FIELD_ID" ] || [ "$STATUS_FIELD_ID" = "null" ]; then
+            echo "::error::Could not find a 'Status' single-select field on the project board."
+            exit 1
+          fi
+
+          if [ -z "$TARGET_OPTION_ID" ] || [ "$TARGET_OPTION_ID" = "null" ]; then
+            echo "::error::The 'Status' field has no '$TARGET_STATUS' option. Available options:"
+            echo "$PROJECT_DATA" | jq -r '.data.organization.projectV2.field.options[].name'
+            exit 1
+          fi
+
+          echo "Project board resolved (project=$PROJECT_ID, statusField=$STATUS_FIELD_ID, targetOption=$TARGET_OPTION_ID)"
+
+          # ---------------------------------------------------------------
+          # 4. For each linked issue, look it up on the board and update
+          #    its Status. Warn and continue on failures.
+          # ---------------------------------------------------------------
+          UPDATED=0
+          SKIPPED=0
+
+          for ISSUE_NUMBER in $ISSUE_NUMBERS; do
+            echo ""
+            echo "--- Issue #$ISSUE_NUMBER ---"
+
+            # 4a. Resolve the issue's GraphQL node ID
+            echo "  Looking up issue #$ISSUE_NUMBER in $REPO_OWNER/$REPO_NAME ..."
+            ISSUE_NODE_ID=$(gh api graphql -f query='
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  issue(number: $number) {
+                    id
+                  }
+                }
+              }
+            ' -f owner="$REPO_OWNER" -f repo="$REPO_NAME" -F number="$ISSUE_NUMBER" \
+              --jq '.data.repository.issue.id' 2>/dev/null || true)
+
+            if [ -z "$ISSUE_NODE_ID" ] || [ "$ISSUE_NODE_ID" = "null" ]; then
+              echo "::warning::Issue #$ISSUE_NUMBER not found in $REPO_OWNER/$REPO_NAME. Skipping."
+              SKIPPED=$((SKIPPED + 1))
+              continue
+            fi
+
+            # 4b. Find the issue's item on the project board
+            echo "  Checking if issue is on the project board ..."
+            ITEM_ID=$(gh api graphql -f query='
+              query($itemId: ID!) {
+                node(id: $itemId) {
+                  ... on Issue {
+                    projectItems(first: 100) {
+                      nodes {
+                        id
+                        project {
+                          id
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ' -f itemId="$ISSUE_NODE_ID" \
+              --jq ".data.node.projectItems.nodes[] | select(.project.id == \"$PROJECT_ID\") | .id" 2>/dev/null || true)
+
+            if [ -z "$ITEM_ID" ] || [ "$ITEM_ID" = "null" ]; then
+              echo "::warning::Issue #$ISSUE_NUMBER exists but is not on the project board. Skipping."
+              SKIPPED=$((SKIPPED + 1))
+              continue
+            fi
+
+            # 4c. Update the item's Status field
+            echo "  Setting status to '$TARGET_STATUS' ..."
+            gh api graphql -f query='
+              mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                updateProjectV2ItemFieldValue(input: {
+                  projectId: $projectId
+                  itemId: $itemId
+                  fieldId: $fieldId
+                  value: { singleSelectOptionId: $optionId }
+                }) {
+                  projectV2Item {
+                    id
+                  }
+                }
+              }
+            ' -f projectId="$PROJECT_ID" -f itemId="$ITEM_ID" -f fieldId="$STATUS_FIELD_ID" -f optionId="$TARGET_OPTION_ID"
+
+            echo "  Issue #$ISSUE_NUMBER moved to '$TARGET_STATUS'."
+            UPDATED=$((UPDATED + 1))
+          done
+
+          # ---------------------------------------------------------------
+          # 5. Summary
+          # ---------------------------------------------------------------
+          echo ""
+          echo "Done. Target status: '$TARGET_STATUS'. Updated: $UPDATED, Skipped: $SKIPPED."
