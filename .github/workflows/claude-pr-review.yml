@@ -2,24 +2,36 @@ name: Claude Code Review
 
 on:
   pull_request:
-    types: [opened, ready_for_review]  # When PR is ready for review (not draft)
+    types: [opened, ready_for_review, synchronize]
+    paths:
+      - 'src/**'
+      - 'benches/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
   issue_comment:
     types: [created]  # Listen for @claude mentions in PR comments
 
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
 jobs:
   claude-review:
-    # Run if: (PR opened/ready AND not draft) OR @claude review in PR comment
+    # Run if: (PR opened/ready/updated AND not draft AND no skip label) OR @claude review in PR comment
     if: |
-      (github.event_name == 'pull_request' && !github.event.pull_request.draft) ||
+      (github.event_name == 'pull_request' &&
+       !github.event.pull_request.draft &&
+       !contains(github.event.pull_request.labels.*.name, 'skip-review')) ||
       (github.event_name == 'issue_comment' &&
        github.event.issue.pull_request &&
        (contains(github.event.comment.body, '@claude review') ||
         contains(github.event.comment.body, '@claude code review')))
 
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write
       issues: read
       id-token: write
 
@@ -105,6 +117,7 @@ jobs:
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
             LANGUAGE: Rust
+            DOMAIN: Cryptographic threshold signatures library (FROST, ECDSA, EdDSA, BLS)
             </pr_context>
 
             <existing_discussions>
@@ -127,38 +140,29 @@ jobs:
                - Unhandled error paths or panics in production code
                - Backward compatibility issues with existing APIs/data formats
 
-            2. Production Safety (multi-cluster deployment context)
-               - Breaking changes that could fail during rolling updates
-               - State migration issues between old/new versions
-               - Race conditions or data consistency problems
-               - Resource leaks (memory, file handles, connections)
+            2. Cryptographic Safety
+               - Secret comparisons must use constant-time operations (subtle::ConstantTimeEq), never == or !=
+               - Secret key types must derive Zeroize/ZeroizeOnDrop; secrets must not linger in memory
+               - Only cryptographically secure RNGs (OsRng) in non-test code; never thread_rng()
+               - No secret material leaked in error messages, Display/Debug impls, or logs
+               - No branching or indexing conditioned on secret data (timing side channels)
+               - Verify scalar/point arithmetic uses the correct curve group
+               - Serialization/deserialization of curve points must validate subgroup membership
+               - Unsafe code in crypto paths requires extra scrutiny and safety comments
 
-            3. Database & Data Handling
-               - SQL injection risks or unsafe query construction
-               - N+1 query problems (queries in loops)
-               - Missing indexes causing slow queries (check query patterns)
-               - Missing or improper transaction boundaries
-               - Database migrations: ensure backward compatibility, no data loss
-
-            4. Performance & Efficiency
-               - Blocking operations in async functions (sync I/O, CPU-intensive work)
-               - Excessive memory allocations or large data structures
-               - Sequential operations that should be parallel (use tokio::join!/select!)
-               - Missing timeouts on external calls (HTTP, database, vLLM)
-               - Connection pool exhaustion risks
-
-            5. Rust-Specific Concerns
+            3. Rust-Specific Concerns
+               - Note: clippy already enforces deny(indexing-slicing, panic) and warn(unwrap-used, pedantic, nursery)
+               - Focus on issues clippy CANNOT catch: logic errors, incorrect trait implementations, wrong algorithm choices
                - Unnecessary .clone() calls (suggest borrows/references instead)
                - Unsafe code without safety comments explaining invariants
                - Incorrect ownership patterns or lifetime issues
                - Improper error handling (unwrap/expect in library code)
-               - Concurrency issues (Arc/Mutex misuse, data races)
 
-            6. Code Quality
+            4. Code Quality
                - Poor modularity (functions >100 lines, god objects)
                - Unclear naming or missing documentation for public APIs
                - Violated Single Responsibility Principle
-               - Security vulnerabilities (injection, hardcoded secrets)
+               - Hardcoded secrets or test keys leaking into non-test code
 
             REVIEW STYLE:
             - List only CRITICAL issues that need fixing before merge
@@ -171,4 +175,4 @@ jobs:
             Use `gh pr comment` to post your review.
             </review_instructions>
 
-          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
+          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr review:*)"'
