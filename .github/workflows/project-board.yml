@@ -54,7 +54,8 @@ jobs:
     name: Update project status for linked issues
     runs-on: ubuntu-latest
     permissions:
-      issues: read # needed to query issue metadata; writes use PROJECT_GH_TOKEN PAT
+      contents: read # needed by actions/checkout to clone the repository
+      issues: read   # needed to query issue metadata; writes use PROJECT_GH_TOKEN PAT
     concurrency:
       group: pr-project-status-${{ github.event.pull_request.number }}
       cancel-in-progress: true
@@ -62,6 +63,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
 
       - name: Update linked issue status on project board
