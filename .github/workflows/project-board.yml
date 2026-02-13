@@ -6,6 +6,7 @@ name: Project board automation
 #       Draft PRs  → "On hold"
 #       Ready PRs  → "In review"
 #   - Reacts to converted_to_draft / ready_for_review transitions.
+#   - Linked issues are assigned to the PR author (if not already assigned).
 
 on:
   issues:
@@ -59,6 +60,7 @@ jobs:
           PR_DRAFT: ${{ github.event.pull_request.draft }}
           REPO_OWNER: ${{ github.repository_owner }}
           REPO_NAME: ${{ github.event.repository.name }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
           set -euo pipefail
 
@@ -210,7 +212,12 @@ jobs:
               }
             ' -f projectId="$PROJECT_ID" -f itemId="$ITEM_ID" -f fieldId="$STATUS_FIELD_ID" -f optionId="$TARGET_OPTION_ID"
 
-            echo "  Issue #$ISSUE_NUMBER moved to '$TARGET_STATUS'."
+            # 4d. Assign the PR author to the issue (idempotent — no-op if already assigned)
+            echo "  Assigning $PR_AUTHOR to issue #$ISSUE_NUMBER ..."
+            gh issue edit "$ISSUE_NUMBER" --add-assignee "$PR_AUTHOR" -R "$REPO_OWNER/$REPO_NAME" 2>/dev/null || \
+              echo "::warning::Could not assign $PR_AUTHOR to issue #$ISSUE_NUMBER."
+
+            echo "  Issue #$ISSUE_NUMBER moved to '$TARGET_STATUS' and assigned to $PR_AUTHOR."
             UPDATED=$((UPDATED + 1))
           done
 
