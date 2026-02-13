@@ -12,7 +12,9 @@ on:
   issues:
     types:
       - opened
-  pull_request:
+  # pull_request_target runs against the base branch, giving access to secrets
+  # even for fork PRs. Safe here because we never checkout PR code.
+  pull_request_target:
     types:
       - opened
       - edited
@@ -44,7 +46,7 @@ jobs:
   # Job 2: Update linked issue status when a PR is opened / changed
   # -----------------------------------------------------------------
   update-pr-status:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request_target'
     name: Update project status for linked issues
     runs-on: ubuntu-latest
     permissions:
@@ -56,7 +58,7 @@ jobs:
       - name: Update linked issue status on project board
         env:
           GH_TOKEN: ${{ secrets.PROJECT_GH_TOKEN }}
-          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NODE_ID: ${{ github.event.pull_request.node_id }}
           PR_DRAFT: ${{ github.event.pull_request.draft }}
           REPO_OWNER: ${{ github.repository_owner }}
           REPO_NAME: ${{ github.event.repository.name }}
@@ -75,20 +77,37 @@ jobs:
           echo "PR is draft=$PR_DRAFT → target status: '$TARGET_STATUS'"
 
           # ---------------------------------------------------------------
-          # 2. Extract issue numbers from closing keywords in the PR body
-          #    Supports: "Closes #1", "Fixes #1, #2, #3", "Resolves #1 #2"
+          # 2. Fetch linked issues via GitHub's closingIssuesReferences API
+          #    This uses GitHub's own keyword parser — no regex needed.
           # ---------------------------------------------------------------
-          ISSUE_NUMBERS=$(echo "$PR_BODY" | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?)\s+#[0-9]+([\s,]+#[0-9]+)*' | grep -oE '[0-9]+' || true)
-          # Deduplicate in case the same issue is referenced more than once
-          ISSUE_NUMBERS=$(echo "$ISSUE_NUMBERS" | sort -un || true)
+          echo "Querying closing issue references for PR ..."
 
-          if [ -z "$ISSUE_NUMBERS" ]; then
-            echo "No closing keywords found in PR body — nothing to do."
+          LINKED_ISSUES=$(gh api graphql -f query='
+            query($prId: ID!) {
+              node(id: $prId) {
+                ... on PullRequest {
+                  closingIssuesReferences(first: 20) {
+                    nodes {
+                      id
+                      number
+                    }
+                  }
+                }
+              }
+            }
+          ' -f prId="$PR_NODE_ID" \
+            --jq '.data.node.closingIssuesReferences.nodes[]' 2>/dev/null || true)
+
+          if [ -z "$LINKED_ISSUES" ]; then
+            echo "No closing issue references found — nothing to do."
             exit 0
           fi
 
-          ISSUE_LIST=$(echo "$ISSUE_NUMBERS" | tr '\n' ' ')
-          echo "Linked issues found: $ISSUE_LIST"
+          # Parse into parallel arrays of node IDs and issue numbers
+          ISSUE_NODE_IDS=$(echo "$LINKED_ISSUES" | jq -r '.id')
+          ISSUE_NUMBERS=$(echo "$LINKED_ISSUES" | jq -r '.number')
+
+          echo "Linked issues found: $(echo "$ISSUE_NUMBERS" | tr '\n' ' ')"
 
           # ---------------------------------------------------------------
           # 3. Fetch project board metadata via GraphQL
@@ -146,30 +165,12 @@ jobs:
           UPDATED=0
           SKIPPED=0
 
-          for ISSUE_NUMBER in $ISSUE_NUMBERS; do
+          # Iterate over node IDs and numbers in lockstep
+          paste <(echo "$ISSUE_NODE_IDS") <(echo "$ISSUE_NUMBERS") | while IFS=$'\t' read -r ISSUE_NODE_ID ISSUE_NUMBER; do
             echo ""
             echo "--- Issue #$ISSUE_NUMBER ---"
 
-            # 4a. Resolve the issue's GraphQL node ID
-            echo "  Looking up issue #$ISSUE_NUMBER in $REPO_OWNER/$REPO_NAME ..."
-            ISSUE_NODE_ID=$(gh api graphql -f query='
-              query($owner: String!, $repo: String!, $number: Int!) {
-                repository(owner: $owner, name: $repo) {
-                  issue(number: $number) {
-                    id
-                  }
-                }
-              }
-            ' -f owner="$REPO_OWNER" -f repo="$REPO_NAME" -F number="$ISSUE_NUMBER" \
-              --jq '.data.repository.issue.id' 2>/dev/null || true)
-
-            if [ -z "$ISSUE_NODE_ID" ] || [ "$ISSUE_NODE_ID" = "null" ]; then
-              echo "::warning::Issue #$ISSUE_NUMBER not found in $REPO_OWNER/$REPO_NAME. Skipping."
-              SKIPPED=$((SKIPPED + 1))
-              continue
-            fi
-
-            # 4b. Find the issue's item on the project board
+            # 4a. Find the issue's item on the project board
             echo "  Checking if issue is on the project board ..."
             ITEM_ID=$(gh api graphql -f query='
               query($itemId: ID!) {
@@ -195,7 +196,7 @@ jobs:
               continue
             fi
 
-            # 4c. Update the item's Status field
+            # 4b. Update the item's Status field
             echo "  Setting status to '$TARGET_STATUS' ..."
             gh api graphql -f query='
               mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
@@ -212,7 +213,7 @@ jobs:
               }
             ' -f projectId="$PROJECT_ID" -f itemId="$ITEM_ID" -f fieldId="$STATUS_FIELD_ID" -f optionId="$TARGET_OPTION_ID"
 
-            # 4d. Assign the PR author to the issue (idempotent — no-op if already assigned)
+            # 4c. Assign the PR author to the issue (idempotent — no-op if already assigned)
             echo "  Assigning $PR_AUTHOR to issue #$ISSUE_NUMBER ..."
             gh issue edit "$ISSUE_NUMBER" --add-assignee "$PR_AUTHOR" -R "$REPO_OWNER/$REPO_NAME" 2>/dev/null || \
               echo "::warning::Could not assign $PR_AUTHOR to issue #$ISSUE_NUMBER."
