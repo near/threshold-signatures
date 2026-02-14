@@ -476,6 +476,7 @@ mod test {
                     coordinator,
                     min_signers,
                     msg_hash,
+                    &mut rng,
                 )
                 .unwrap();
                 one_coordinator_output(data, coordinator).unwrap();
@@ -503,6 +504,7 @@ mod test {
                     coordinator,
                     min_signers,
                     msg_hash,
+                    MockCryptoRng::seed_from_u64(rng.next_u64()),
                 )
                 .unwrap();
                 one_coordinator_output(data, coordinator).unwrap();
@@ -618,6 +620,7 @@ mod test {
                 coordinator,
                 threshold,
                 msg_hash,
+                &mut rng,
             )
             .unwrap();
             let signature = one_coordinator_output(data, coordinator).unwrap();
@@ -652,6 +655,7 @@ mod test {
                 coordinator,
                 threshold,
                 msg_hash,
+                MockCryptoRng::seed_from_u64(rng.next_u64()),
             )
             .unwrap();
             let signature = one_coordinator_output(data, coordinator).unwrap();
@@ -702,6 +706,7 @@ mod test {
                 coordinator,
                 threshold,
                 msg_hash,
+                &mut rng,
             )
             .unwrap();
             let signature = one_coordinator_output(data, coordinator).unwrap();
@@ -762,6 +767,7 @@ mod test {
                 coordinator,
                 threshold,
                 msg_hash,
+                MockCryptoRng::seed_from_u64(rng.next_u64()),
             )
             .unwrap();
             let signature = one_coordinator_output(data, coordinator).unwrap();
@@ -823,6 +829,7 @@ mod test {
                 coordinator,
                 threshold,
                 msg_hash,
+                &mut rng,
             )
             .unwrap();
             let signature = one_coordinator_output(data, coordinator).unwrap();
@@ -884,6 +891,7 @@ mod test {
                 coordinator,
                 threshold,
                 msg_hash,
+                MockCryptoRng::seed_from_u64(rng.next_u64()),
             )
             .unwrap();
             let signature = one_coordinator_output(data, coordinator).unwrap();
