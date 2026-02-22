@@ -19,7 +19,7 @@ derive_more = { version = "2.1.1", features = [
   "into",
   "as_ref",
 ] }
-digest = "0.10.7"
+digest = "0.11.0"
 ecdsa = { version = "0.16.9", features = ["digest", "hazmat"] }
 elliptic-curve = { version = "0.13.8" }
 frost-core = { version = "2.2.0", default-features = false, features = [
