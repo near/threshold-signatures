@@ -38,3 +38,6 @@ pub fn presign(
 ) -> Result<impl Protocol<Output = PresignOutput>, InitializationError> {
     super::presign(participants, me, args, rng)
 }
+
+// for backwards compatibility
+pub use sign::sign_v1 as sign;
