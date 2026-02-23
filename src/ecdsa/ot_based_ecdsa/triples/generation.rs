@@ -24,10 +24,7 @@ use crate::{
     },
 };
 
-use super::{
-    multiplication::multiplication_many,
-    TriplePub, TripleShare,
-};
+use super::{multiplication::multiplication_many, TriplePub, TripleShare};
 
 /// Creates a transcript and internally encodes the following data:
 ///     LABEL, NAME, Participants, threshold
@@ -57,15 +54,6 @@ pub type TripleGenerationOutput = (TripleShare, TriplePub);
 pub type TripleGenerationOutputMany = Vec<(TripleShare, TriplePub)>;
 type C = Secp256K1Sha256;
 
-struct ParallelToMultiplicationTaskOutput {
-    big_e: PolynomialCommitment,
-    big_f: PolynomialCommitment,
-    big_l: PolynomialCommitment,
-    big_c: ProjectivePoint,
-    a_i: Scalar,
-    b_i: Scalar,
-}
-
 #[derive(Serialize, Deserialize)]
 struct PolynomialCommitmentsMessage {
     big_e: PolynomialCommitment,
@@ -88,9 +76,11 @@ async fn do_generation(
 ) -> Result<TripleGenerationOutput, ProtocolError> {
     let mut triple = do_generation_many::<1>(comms, participants, me, threshold, rng).await?;
     if triple.len() != 1 {
-        return Err(ProtocolError::Other("Triple generation did not output one element".to_string()))
+        return Err(ProtocolError::Other(
+            "Triple generation did not output one element".to_string(),
+        ));
     }
-    let triple = triple.pop().expect("The triple exist"); 
+    let triple = triple.pop().expect("The triple exist");
     Ok(triple)
 }
 
