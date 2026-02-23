@@ -107,7 +107,7 @@ pub fn prove_with_nonce<C: Ciphersuite>(
     statement: Statement<'_, C>,
     witness: Witness<C>,
     k: Scalar<C>,
-) -> Result<Proof<C>, ProtocolError> 
+) -> Result<Proof<C>, ProtocolError>
 where
     Element<C>: ConstantTimeEq,
 {
@@ -192,13 +192,8 @@ mod test {
         let k = frost_core::random_nonzero::<Secp256K1Sha256, _>(&mut rng);
         let transcript = Transcript::new(b"protocol");
 
-        let proof = prove_with_nonce(
-            &mut transcript.fork(b"party", &[1]),
-            statement,
-            witness,
-            k,
-        )
-        .unwrap();
+        let proof =
+            prove_with_nonce(&mut transcript.fork(b"party", &[1]), statement, witness, k).unwrap();
 
         let ok = verify(&mut transcript.fork(b"party", &[1]), statement, &proof).unwrap();
 
@@ -224,13 +219,8 @@ mod test {
         let k = frost_core::random_nonzero::<Secp256K1Sha256, _>(&mut rng);
         let transcript = Transcript::new(b"protocol");
 
-        let proof = prove_with_nonce(
-            &mut transcript.fork(b"party", &[1]),
-            statement,
-            witness,
-            k,
-        )
-        .unwrap();
+        let proof =
+            prove_with_nonce(&mut transcript.fork(b"party", &[1]), statement, witness, k).unwrap();
 
         // Snapshot values for deterministic nonce from MockCryptoRng(42)
         insta::assert_snapshot!(format!("{:?}", proof.s.0), @"Scalar(Uint(0x0D5982BE2922D4BF893BFA4F0086C59738CA1F77BCA4316F28F263E2F1347C21))");
@@ -280,17 +270,10 @@ mod test {
         let k = frost_core::random_nonzero::<Secp256K1Sha256, _>(&mut rng);
         let transcript = Transcript::new(b"protocol");
 
-        let proof_result = prove_with_nonce(
-            &mut transcript.fork(b"party", &[1]),
-            statement,
-            witness,
-            k,
-        );
+        let proof_result =
+            prove_with_nonce(&mut transcript.fork(b"party", &[1]), statement, witness, k);
 
-        assert!(matches!(
-            proof_result,
-            Err(ProtocolError::IdentityElement)
-        ));
+        assert!(matches!(proof_result, Err(ProtocolError::IdentityElement)));
     }
 
     #[test]
@@ -318,9 +301,6 @@ mod test {
             &dummy_proof,
         );
 
-        assert!(matches!(
-            verify_result,
-            Err(ProtocolError::IdentityElement)
-        ));
+        assert!(matches!(verify_result, Err(ProtocolError::IdentityElement)));
     }
 }
