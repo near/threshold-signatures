@@ -29,7 +29,7 @@ One-round online signing protocol with a designated coordinator. Takes a rerando
 
 ## Threshold
 
-The threshold parameter is `MaxMalicious`, denoted `t`, tolerating up to `t` Byzantine participants. Both presigning and signing require **exactly** `N = 2t + 1` participants. This constraint is enforced at initialization and prevents split-view attacks where different subsets sign different messages using shares from the same presignature.
+The threshold parameter is `MaxMalicious`, denoted `t`. Both presigning and signing require **exactly** `N = 2t + 1` participants. This constraint is enforced at initialization and prevents split-view attacks where different subsets sign different messages using shares from the same presignature.
 
 Additionally, `msg_hash == 0` is rejected to prevent a related-key split-view attack.
 
