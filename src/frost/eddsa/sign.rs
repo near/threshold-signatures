@@ -568,8 +568,9 @@ mod test {
         let msg = b"hello world with near".to_vec();
 
         let mut rng = MockCryptoRng::seed_from_u64(40);
-        let index = rng.gen_range(0..keys.len());
-        let coordinator = keys[index as usize].0;
+        let coordinator = keys.choose(&mut rng)
+                        .expect("participant is existent")
+                        .0;
 
         // This checks the output signature validity internally
         let result = crate::test_utils::run_sign::<Ed25519Sha512, _, _, _>(
