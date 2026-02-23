@@ -1,15 +1,39 @@
-# Robust ECDSA scheme
+# Zero-Knowledge Proofs (`src/crypto/proofs/`)
 
-This is an amended version of the Robust ECDSA scheme of \[[DJNPO](https://eprint.iacr.org/2020/501.pdf)\].
-The amendment can be found [here](https://docs.google.com/document/d/1FGxPg50lVzU3IRlUAlfinLWp6zh5uQqTJBvFXZj288c/edit?tab=t.0). It does away with several checks that the scheme requires to happen and thus dropping the security from active adversaries (under honest majority assumption) to honest-but-curious adversaries.
+This module implements Maurer \[[Mau09](https://crypto.ethz.ch/publications/files/Maurer09.pdf)\] NIZK (Non-Interactive Zero-Knowledge) sigma proofs using the Fiat-Shamir transform.
 
-This implementation is meant to be integrated into a Trusted Execution Environment (TEE) which is meant prevent an adversary from deviating from the protocol. Additionally, the communication between the parties is assumed to be encrypted under secret keys integrated into the TEE.
+## Modules
 
-## ATTENTION:
-Some papers define the number of malicious parties (eg this exact paper) to be the same as the threshold.
-Other papers seem to define the number of malicious parties to be threshold - 1.
+### `dlog.rs` -- Discrete Log Proof (Schnorr)
 
-The first case corresponds to robust ecdsa implementation (explicit condition on the threshold e.g. $n \geq 3 \cdot t + 1$).
-The second case corresponds to the ot-based ecdsa implementation. (no explicit condition e.g.  $n \geq t$).
+Proves knowledge of a scalar `x` such that `x * G = X` (where `G` is the group generator). This is the standard Schnorr identification protocol made non-interactive.
 
-CARE TO UNIFY THE IMPLEMENTATION such as number of malicious parties = threshold. Discuss with the team such duality!
+**Used in:**
+- OT-based ECDSA triple generation
+
+### `dlogeq.rs` -- Discrete Log Equality Proof
+
+Proves knowledge of a scalar `x` such that `x * G = X0` **and** `x * H = X1` simultaneously (where `G` and `H` are different generators). This ensures the same secret was used in two different group operations.
+
+**Used in:**
+- OT-based ECDSA triple generation
+
+### `strobe_transcript.rs` -- Fiat-Shamir Transcript
+
+A Merlin-style duplex-sponge transcript built on Strobe128. Provides `T.Add(label, data)` and `T.Challenge(label)` operations for the Fiat-Shamir transform. Supports cloning/forking for proof contexts that need to branch.
+
+### `strobe.rs` (private)
+
+Low-level Strobe128 symmetric primitive implementation.
+
+## Protocol
+
+Both proofs follow the same pattern:
+1. Create a `Transcript` with a domain label
+2. Absorb the `Statement` (public values) into the transcript
+3. **Prover**: commit to a caller-provided nonce, derive challenge from the transcript, compute response
+4. **Verifier**: recompute the commitment from challenge + response, check consistency
+
+## Further Reading
+
+- [`docs/crypto/proofs.md`](../../../docs/crypto/proofs.md) -- formal specification with the `Prove`/`Verify` algorithms and notation
