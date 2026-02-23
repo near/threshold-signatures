@@ -23,7 +23,7 @@ One-round online signing protocol with a designated coordinator. Takes a rerando
 
 ## Types
 
-- **`PresignArguments`** -- input to presigning: keygen output + `MaxMalicious` threshold
+- **`PresignArguments`** -- input to presigning: keygen output + maximum number of malicious parties
 - **`PresignOutput`** -- presignature: `(big_r, c, e, alpha, beta)`, serializable, zeroize-on-drop
 - **`RerandomizedPresignOutput`** -- presignature after rerandomization via HKDF-SHA3-256 for a specific signing context
 
