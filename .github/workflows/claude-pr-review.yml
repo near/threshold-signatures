@@ -265,7 +265,8 @@ jobs:
             - Sign off with: ✅ (approved) or ⚠️ (issues found)
 
             Consult the repository's CLAUDE.md file (if present) for project-specific conventions.
-            Use `gh pr comment` to post your review.
+            Don't try to use `gh pr review` you don't have permissions for that and it will fail. 
+            Please always use `gh pr comment` to post your review instead.
             </review_instructions>
 
           # -----------------------------------------------------------------
