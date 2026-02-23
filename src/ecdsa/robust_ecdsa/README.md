@@ -1,39 +1,48 @@
-# Zero-Knowledge Proofs (`src/crypto/proofs/`)
+# Robust Threshold ECDSA (`src/ecdsa/robust_ecdsa/`)
 
-This module implements Maurer \[[Mau09](https://crypto.ethz.ch/publications/files/Maurer09.pdf)\] NIZK (Non-Interactive Zero-Knowledge) sigma proofs using the Fiat-Shamir transform.
+This module implements an amended version of the threshold ECDSA scheme from \[[DJNPO20](https://eprint.iacr.org/2020/501)\]. Unlike OT-based ECDSA, it avoids Beaver triple generation entirely -- the offline phase consists of a single presigning protocol using degree-2t polynomials.
+
+The amendment relaxes security from active adversaries to honest-but-curious, intended for deployment inside a Trusted Execution Environment (TEE) that prevents adversarial deviation.
+
+## Pipeline
+
+```
+Presigning (offline)  -->  Signing (online)
+  3 rounds                   1 round
+```
+
+Each presignature is consumed **exactly once** (one-time use).
 
 ## Modules
 
-### `dlog.rs` -- Discrete Log Proof (Schnorr)
+### `presign.rs`
 
-Proves knowledge of a scalar `x` such that `x * G = X` (where `G` is the group generator). This is the standard Schnorr identification protocol made non-interactive.
+Three-round presigning protocol. Each participant generates 5 polynomials (2 degree-t, 3 degree-2t) and exchanges evaluations to produce a `PresignOutput` containing `(R, c, e, alpha, beta)`.
 
-**Used in:**
-- OT-based ECDSA triple generation
+**Round 1**: Generate random polynomials for nonce `k`, mask `a`, and blinding factors `b`, `d`, `e`; privately send evaluations to all other participants.
 
-### `dlogeq.rs` -- Discrete Log Equality Proof
+**Round 2**: Sum received shares, compute local values, broadcast `(R_i, w_i)` where `R_i = g^{k_i}` and `w_i = a_i * k_i + b_i`.
 
-Proves knowledge of a scalar `x` such that `x * G = X0` **and** `x * H = X1` simultaneously (where `G` and `H` are different generators). This ensures the same secret was used in two different group operations.
+**Round 3**: Verify exponent interpolation of R values, compute final `R` via interpolation at x=0, derive signature share components `(c, e, alpha, beta)`.
 
-**Used in:**
-- OT-based ECDSA triple generation
+### `sign.rs`
 
-### `strobe_transcript.rs` -- Fiat-Shamir Transcript
+One-round online signing protocol. Takes a `RerandomizedPresignOutput` and the message hash, then produces the final ECDSA `Signature`. Non-coordinators send signature shares privately to the coordinator, who aggregates, normalizes to low-S form, and verifies the result.
 
-A Merlin-style duplex-sponge transcript built on Strobe128. Provides `T.Add(label, data)` and `T.Challenge(label)` operations for the Fiat-Shamir transform. Supports cloning/forking for proof contexts that need to branch.
+## Types
 
-### `strobe.rs` (private)
+- **`PresignArguments`** -- input to presigning: keygen output + `MaxMalicious` threshold
+- **`PresignOutput`** -- presignature: `(big_r, c, e, alpha, beta)`, serializable, zeroize-on-drop
+- **`RerandomizedPresignOutput`** -- presignature after rerandomization via HKDF-SHA3-256 for a specific message/context
 
-Low-level Strobe128 symmetric primitive implementation.
+## Threshold
 
-## Protocol
+The threshold parameter is `MaxMalicious(t)`, tolerating up to `t` Byzantine participants. Both presigning and signing require **exactly** `N = 2t + 1` participants. This constraint is enforced at initialization and prevents split-view attacks where different subsets sign different messages using shares from the same presignature.
 
-Both proofs follow the same pattern:
-1. Create a `Transcript` with a domain label
-2. Absorb the `Statement` (public values) into the transcript
-3. **Prover**: commit to a caller-provided nonce, derive challenge from the transcript, compute response
-4. **Verifier**: recompute the commitment from challenge + response, check consistency
+Additionally, `msg_hash == 0` is rejected to prevent a related-key split-view attack.
 
 ## Further Reading
 
-- [`docs/crypto/proofs.md`](../../../docs/crypto/proofs.md) -- formal specification with the `Prove`/`Verify` algorithms and notation
+- [`docs/ecdsa/robust_ecdsa/signing.md`](../../../docs/ecdsa/robust_ecdsa/signing.md) -- protocol specification with security analysis
+- [`docs/ecdsa/preliminaries.md`](../../../docs/ecdsa/preliminaries.md) -- standard ECDSA recap
+- [Parent ECDSA README](../README.md) -- comparison with OT-based ECDSA
