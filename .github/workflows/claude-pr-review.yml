@@ -73,7 +73,7 @@ jobs:
     # id-token:write      — OIDC token for claude-code-action authentication
     permissions:
       contents: read
-      pull-requests: write
+      pull-requests: read
       issues: read
       id-token: write
 
