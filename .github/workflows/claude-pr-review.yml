@@ -31,20 +31,9 @@ name: Claude Code Review
 # issue_comment: fires on any new comment (we filter for @claude mentions below)
 on:
   pull_request:
-    types:
-      - opened            # New PR created
-      - ready_for_review  # Draft PR marked as ready
-      - synchronize       # New commits pushed to an existing PR
-    # Only trigger for changes to actual code — skip docs, CI, README, etc.
-    # To review more paths, add them here. The @claude manual trigger bypasses
-    # this filter.
-    paths:
-      - 'src/**'
-      - 'benches/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
+    types: [opened, ready_for_review]  # When PR is ready for review (not draft)
   issue_comment:
-    types: [created]
+    types: [created]  # Listen for @claude mentions in PR comments
 
 # -----------------------------------------------------------------------------
 # CONCURRENCY
@@ -61,18 +50,9 @@ concurrency:
 # =============================================================================
 jobs:
   claude-review:
-
-    # -------------------------------------------------------------------------
-    # CONDITION: when should this job actually run?
-    # -------------------------------------------------------------------------
-    # Case 1: PR event — run if NOT draft AND does NOT have "skip-review" label
-    # Case 2: Comment event — run if the comment is on a PR (not a plain issue)
-    #          and contains the trigger phrase "@claude review" or
-    #          "@claude code review"
+    # Run if: (PR opened/ready AND not draft) OR @claude review in PR comment
     if: |
-      (github.event_name == 'pull_request' &&
-       !github.event.pull_request.draft &&
-       !contains(github.event.pull_request.labels.*.name, 'skip-review')) ||
+      (github.event_name == 'pull_request' && !github.event.pull_request.draft) ||
       (github.event_name == 'issue_comment' &&
        github.event.issue.pull_request &&
        (contains(github.event.comment.body, '@claude review') ||
