@@ -44,7 +44,7 @@ impl MultiplicationSenderRandomPackage {
     fn generate_random_package(rng: &mut impl CryptoRngCore) -> Self {
         let (delta, x) = batch_random_ot_receiver_random_helper(rng);
         let seed = random_ot_extension_sender_helper(rng);
-        // th2is is the `batch_size` from `multiplication_sender`
+        // this is the `batch_size` from `multiplication_sender`
         let batch_size = BITS + SECURITY_PARAMETER;
         let delta0 = mta_sender_random_helper(batch_size, rng);
         let delta1 = mta_sender_random_helper(batch_size, rng);
