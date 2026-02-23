@@ -30,7 +30,7 @@ See [`robust_ecdsa/README.md`](robust_ecdsa/README.md) for details.
 | | OT-based ECDSA | Robust ECDSA |
 |---|---|---|
 | **Offline phases** | Triple generation + Presigning | Presigning only |
-| **Offline rounds** | 8+ | 3 |
+| **Offline rounds** | 11+ | 3 |
 | **Sign rounds** | 1 | 1 |
 | **Triple requirement** | 2 triples per presignature | None |
 | **Threshold parameter** | `ReconstructionLowerBound` | `MaxMalicious` |
