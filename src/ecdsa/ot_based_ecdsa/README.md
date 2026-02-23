@@ -21,11 +21,11 @@ See [`triples/README.md`](triples/README.md) for the full OT pipeline.
 
 ### `presign.rs`
 
-Two-round presigning protocol. Consumes two Beaver triples to produce a `PresignOutput` containing `(R, k_i, sigma_i)`. The presignature can later be rerandomized for a specific signing context.
+Two-round presigning protocol. Consumes two Beaver triples to produce a `PresignOutput` containing `(R, k_i, sigma_i)`. The presignature can later be rerandomized for a specific signing context. See the [presigning specification](../../../docs/ecdsa/ot_based_ecdsa/signing.md).
 
 ### `sign.rs`
 
-One-round online signing protocol. Takes a `RerandomizedPresignOutput` (produced by rerandomizing a presignature with HKDF-SHA3-256) and the message hash, then produces the final ECDSA `Signature`. The coordinator aggregates partial signatures and returns the result.
+One-round online signing protocol. Takes a `RerandomizedPresignOutput` (produced by rerandomizing a presignature with HKDF-SHA3-256) and the message hash, then produces the final ECDSA `Signature`. The coordinator aggregates partial signatures and returns the result. See the [signing specification](../../../docs/ecdsa/ot_based_ecdsa/signing.md).
 
 ## Types
 
