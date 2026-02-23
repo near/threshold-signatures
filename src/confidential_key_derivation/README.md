@@ -4,16 +4,7 @@ This module implements a threshold protocol for generating deterministic keys in
 
 The intended use case is providing deterministic secrets to applications running inside a TEE (Trusted Execution Environment), where the application can derive a key without any single MPC node learning the derived secret.
 
-## How It Works
-
-1. An application generates an EC ElGamal key pair `(a, A)` where `A = a * G1`
-2. The application sends its public key `A` and an `app_id` to the MPC network
-3. Each MPC node `i` computes a blinded BLS signature share: `C_i = x_i * H(pk, app_id) + y_i * A`
-4. The coordinator aggregates all contributions (Lagrange-weighted) into `(Y, C)`
-5. The application unmasks: `sig = C - a * Y`, recovering the BLS signature `sig = msk * H(pk, app_id)`
-6. The application derives its secret key from `sig` via HKDF
-
-The master secret key `msk` is never reconstructed -- each node only knows its share `x_i`.
+For a detailed description of the protocol, see the [full specification](../../docs/confidential_key_derivation/confidential_key_derivation.md).
 
 ## Modules
 
