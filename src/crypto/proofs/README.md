@@ -31,7 +31,7 @@ Low-level Strobe128 symmetric primitive implementation.
 Both proofs follow the same pattern:
 1. Create a `Transcript` with a domain label
 2. Absorb the `Statement` (public values) into the transcript
-3. **Prover**: commit to a random nonce, derive challenge, compute response
+3. **Prover**: commit to a caller-provided nonce, derive challenge from the transcript, compute response
 4. **Verifier**: recompute the commitment from challenge + response, check consistency
 
 ## Further Reading

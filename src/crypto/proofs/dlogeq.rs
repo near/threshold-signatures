@@ -100,10 +100,9 @@ fn encode_two_points<C: Ciphersuite>(
     Ok(ser1)
 }
 
-/// Prove that a witness satisfies a given statement.
-/// We need some randomness for the proof, and also a transcript, which is
-/// used for the Fiat-Shamir transform.
-#[allow(dead_code)]
+/// Prove that a witness satisfies a given statement, sampling the nonce internally.
+/// Only used in tests; production code uses [`prove_with_nonce`] instead.
+#[cfg(test)]
 pub fn prove<C: Ciphersuite>(
     rng: &mut impl CryptoRngCore,
     transcript: &mut Transcript,
@@ -135,7 +134,9 @@ where
     })
 }
 
-// Same as `prove` but using fixed nonce
+/// Produce a proof for the given statement and witness, using a caller-provided nonce.
+/// The nonce `k` must be sampled from a cryptographically secure RNG by the caller.
+/// The challenge is derived via the Fiat-Shamir transform over the transcript.
 pub fn prove_with_nonce<C: Ciphersuite>(
     transcript: &mut Transcript,
     statement: Statement<'_, C>,
