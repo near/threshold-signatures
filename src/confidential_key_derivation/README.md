@@ -24,7 +24,7 @@ The `ckd()` protocol function -- a **single-round** protocol:
 
 ### `app_id.rs`
 
-The `AppId` type -- an application identifier used in hash-to-curve for domain separation between different applications.
+The `AppId` type -- an application identifier.
 
 ### `scalar_wrapper.rs`
 
