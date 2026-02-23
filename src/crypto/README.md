@@ -19,17 +19,18 @@ The byte ordering is critical for `Participant::scalar<C>()`, which converts par
 
 ### `polynomials.rs`
 
-Shamir secret-sharing arithmetic:
+Polynomial arithmetic and Lagrange interpolation:
 - `Polynomial<C>` -- polynomial with scalar coefficients (constant term first)
 - `PolynomialCommitment<C>` -- commitments to polynomial coefficients (EC points)
 - Lagrange coefficient computation (`compute_lagrange_coefficient`, `batch_compute_lagrange_coefficients`)
 - `batch_invert` for efficient multi-scalar inversion
 
-Used in DKG for secret sharing and in Robust ECDSA for exponent interpolation.
+**Invariants**: Both `Polynomial` and `PolynomialCommitment` reject the zero polynomial -- construction fails with `EmptyOrZeroCoefficients` if all coefficients are zero (or identity for commitments). Trailing zero/identity coefficients are stripped on construction. `PolynomialCommitment` deserialization enforces the same invariant, rejecting all-identity vectors.
+
 
 ### `commitment.rs`
 
-A binding and perfectly hiding hash commitment scheme: `SHA256(NEAR_COMMIT_LABEL || randomness || START_LABEL || msgpack(value))`. Used in DKG round 1 and triple generation for committing to polynomial data before sending to all parties.
+A binding and perfectly hiding hash commitment scheme: `SHA256(NEAR_COMMIT_LABEL || randomness || START_LABEL || msgpack(value))`.
 
 ### `hash.rs`
 
@@ -52,5 +53,4 @@ Maurer \[[Mau09](https://crypto.ethz.ch/publications/files/Maurer09.pdf)\] NIZK 
 
 ## Further Reading
 
-- [DKG documentation](../../docs/dkg.md) -- how polynomials, commitments, and proofs come together in distributed key generation
 - [Proofs documentation](../../docs/crypto/proofs.md) -- formal specification of the Maurer proof framework

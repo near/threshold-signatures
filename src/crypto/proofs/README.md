@@ -9,8 +9,7 @@ This module implements Maurer \[[Mau09](https://crypto.ethz.ch/publications/file
 Proves knowledge of a scalar `x` such that `x * G = X` (where `G` is the group generator). This is the standard Schnorr identification protocol made non-interactive.
 
 **Used in:**
-- DKG (proof of knowledge of the secret polynomial's constant term)
-- OT-based ECDSA triple generation (rounds 2 and 4)
+- OT-based ECDSA triple generation
 
 ### `dlogeq.rs` -- Discrete Log Equality Proof
 
