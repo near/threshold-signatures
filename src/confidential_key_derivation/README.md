@@ -11,7 +11,7 @@ For a detailed description of the protocol, see the [full specification](../../d
 ### `ciphersuite.rs`
 
 Defines the `BLS12381SHA256` ciphersuite:
-- DKG keys live in **G2** (the signing group for `frost_core`)
+- DKG keys live in **G2**
 - CKD output (BLS signatures) live in **G1**
 - Hash-to-curve uses `ExpandMsgXmd` (RFC 9380) with context string `"NEAR-BLS12381-G2-SHA256-v1"`
 
