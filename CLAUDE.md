@@ -7,8 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Quick Reference
 ```bash
 # Build
-cargo build                                    # Debug build
-cargo build --release                          # Release build
+cargo build --profile test-release --all-features  # Build (same profile as tests)
 
 # Test
 cargo test --all-features                      # All tests
