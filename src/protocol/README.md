@@ -21,8 +21,8 @@ External consumers drive protocols by:
 2. Calling `message(from, data)` to deliver incoming messages from other participants
 
 The `Action` enum maps directly to the network layer primitives:
-- `SendMany(data)` -- broadcast to all other participants
-- `SendPrivate(participant, data)` -- encrypted point-to-point message
+- `SendMany(data)` -- send the same message to all other participants (not a reliable broadcast)
+- `SendPrivate(participant, data)` -- private point-to-point message
 - `Wait` -- no progress until a new message arrives
 - `Return(value)` -- protocol completed
 
@@ -30,23 +30,23 @@ The `Action` enum maps directly to the network layer primitives:
 
 Protocol logic is written as ergonomic `async fn` code using channels:
 
-- **`SharedChannel`** -- broadcast communication (send to all, receive from specific participant at a waitpoint)
-- **`PrivateChannel`** -- point-to-point encrypted communication
+- **`SharedChannel`** -- multiplexed communication channel supporting both `send_many` (to all parties) and `send_private` (to one party), plus `recv` (from any party at a waitpoint)
+- **`PrivateChannel`** -- point-to-point channel scoped to a single peer, supporting `send`, `recv`, and `child(i)` for namespaced sub-channels (used to multiplex parallel two-party sub-protocols)
 - **`Waitpoint`** -- round counter separating protocol phases
 
 The `make_protocol(comms, future)` function converts an async future into a `Protocol` implementation by polling it cooperatively without requiring a tokio or other async runtime. Messages are serialized with MessagePack (`rmp_serde`) and prefixed with SHA-256-derived headers for channel multiplexing.
 
 ### Echo Broadcast (`echo_broadcast.rs`)
 
-Implements Authenticated Double-Echo Broadcast (Byzantine Reliable Broadcast) following \[CGR\]:
+Implements Authenticated Double-Echo Broadcast (Byzantine Reliable Broadcast) following \[[CGR](https://link.springer.com/book/10.1007/978-3-642-15260-3)\]. See the [network layer documentation](../../docs/network_layer.md) for the full specification.
 
 ```
-Phase 1: SEND   -- sender broadcasts initial value
+Phase 1: SEND   -- sender sends initial value to all parties
 Phase 2: ECHO   -- all parties echo what they received
 Phase 3: READY  -- parties signal readiness after sufficient echoes
 ```
 
-This provides reliable delivery guarantees even with up to `floor((N-1)/3)` malicious parties. Used exclusively in DKG rounds 1, 3, and 5.5 for commitment and share broadcasting.
+This provides reliable delivery guarantees even with up to `floor((N-1)/3)` malicious parties. Used exclusively in the DKG protocol.
 
 ### Helpers (`helpers.rs`)
 
