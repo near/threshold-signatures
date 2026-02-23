@@ -10,8 +10,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 cargo build --profile test-release --all-features  # Build (same profile as tests)
 
 # Test
-cargo test --all-features                      # All tests
-cargo test --all-features test_name            # Single test
+cargo nextest run --all-features --profile test-release  # All tests
+cargo nextest run --all-features --profile test-release -E 'test(test_name)'  # Single test
 
 # Linting and checks
 cargo make check-all                           # All checks: fmt + check + clippy + test + deny
