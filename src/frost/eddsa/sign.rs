@@ -21,6 +21,9 @@ use rand_core::CryptoRngCore;
 use std::collections::BTreeMap;
 use zeroize::Zeroizing;
 
+// for backwards compatibility
+pub use sign_v1 as sign;
+
 /// Depending on whether the current participant is a coordinator or not,
 /// runs the signature protocol as either a participant or a coordinator.
 ///
