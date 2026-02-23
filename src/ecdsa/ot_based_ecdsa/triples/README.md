@@ -16,17 +16,17 @@ Triples are the foundational building block for OT-based ECDSA presigning -- eac
 The triple generation protocol builds on several layers of OT primitives:
 
 ```
-Batch Random OT          (batch_random_ot.rs)
+Batch Random OT          (batch_random_ot.rs)        -- [CO15]
        |
-Random OT Extension      (random_ot_extension.rs)    -- KOS15 / SoftspokenOT variant
+Random OT Extension      (random_ot_extension.rs)    -- [KOS15] / SoftspokenOT variant
        |
 Correlated OT Extension  (correlated_ot_extension.rs)
        |
 MTA (Multiplicative-to-Additive)  (mta.rs)           -- [HMRT21]
        |
-Multiplication            (multiplication.rs)         -- n-party shared multiplication
+Multiplication            (multiplication.rs)        -- n-party shared multiplication
        |
-Triple Generation          (generation.rs)            -- 5-round protocol
+Triple Generation          (generation.rs)           -- final stage
 ```
 
 ### `batch_random_ot.rs`
@@ -35,7 +35,7 @@ Implements the "Simplest" OT Protocol \[[CO15](https://eprint.iacr.org/2015/267)
 
 ### `random_ot_extension.rs`
 
-Extends a small number of base OTs into many via the KOS15/SoftspokenOT technique, producing random OT correlations efficiently.
+Extends a small number of base OTs into many via the \[[KOS15](https://eprint.iacr.org/2015/546)\] SoftspokenOT scheme, producing random OT correlations efficiently.
 
 ### `correlated_ot_extension.rs`
 
@@ -51,12 +51,7 @@ N-party multiplication protocol. For each pair of parties, runs MTA (with one as
 
 ### `generation.rs`
 
-The full 5-round triple generation protocol:
-1. **Round 1**: Commit to random polynomials for `a` and `b`
-2. **Round 2**: Open commitments, send polynomial commitments + dlog proofs to all parties
-3. **Round 3**: Run multiplication protocol, send consistency proofs (dlogeq) to all parties
-4. **Round 4**: Verify proofs, compute `c` shares
-5. **Round 5**: Final verification of triple consistency
+The full 5-round triple generation protocol that ties together all the layers above. See the [triple generation specification](../../../../docs/ecdsa/ot_based_ecdsa/triples.md) for the round-by-round description.
 
 ### `bits.rs`
 
