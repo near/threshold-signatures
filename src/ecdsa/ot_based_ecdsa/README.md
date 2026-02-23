@@ -30,7 +30,7 @@ One-round online signing protocol. Takes a `RerandomizedPresignOutput` (produced
 ## Types
 
 - **`PresignArguments`** -- input to presigning: two triples + keygen output + threshold
-- **`PresignOutput`** -- presignature: `(big_r, k, sigma)`, serializable, zeroize-on-drop
+- **`PresignOutput`** -- presignature: `(big_r, k, sigma)`
 - **`RerandomizedPresignOutput`** -- presignature after rerandomization for a specific message/context
 
 ## Further Reading
