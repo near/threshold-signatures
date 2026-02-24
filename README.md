@@ -1,3 +1,8 @@
+> **Note: This repository has been archived.** Development has moved to
+> [near/mpc](https://github.com/near/mpc) as a crate under
+> [`crates/threshold-signatures`](https://github.com/near/mpc/tree/main/crates/threshold-signatures).
+> Please file issues and submit PRs there. This repository is kept for historical reference only.
+
 # Threshold Signatures
 
 This repository offers cryptographic implementations of **threshold ECDSA**,
