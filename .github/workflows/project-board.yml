@@ -1,0 +1,77 @@
+name: Project board automation
+
+# Consolidates all project-board automation for near/projects/179:
+#   - New issues are automatically added to the board.
+#   - PRs with closing keywords (e.g. "Closes #42") set linked issues to:
+#       Draft PRs  → "On hold"
+#       Ready PRs  → "In review"
+#   - Reacts to converted_to_draft / ready_for_review transitions.
+#   - Linked issues are assigned to the PR author (if not already assigned).
+
+on:
+  issues:
+    types:
+      - opened
+  pull_request:
+    types:
+      - opened
+      - edited
+      - reopened
+      - converted_to_draft
+      - ready_for_review
+
+# Restrict default GITHUB_TOKEN permissions; jobs declare their own needs.
+permissions: {}
+
+env:
+  PROJECT_ORG: near
+  PROJECT_NUMBER: "179"
+
+jobs:
+  # -----------------------------------------------------------------
+  # Job 1: Add every new issue to the project board
+  # -----------------------------------------------------------------
+  add-to-project:
+    if: github.event_name == 'issues'
+    name: Add issue to project
+    runs-on: ubuntu-latest
+    permissions:
+      issues: read # needed by actions/add-to-project to read issue metadata
+    concurrency:
+      group: add-to-project-${{ github.event.issue.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/add-to-project@244f685bbc3b7adfa8466e08b698b5577571133e # v1.0.2
+        with:
+          project-url: https://github.com/orgs/${{ env.PROJECT_ORG }}/projects/${{ env.PROJECT_NUMBER }}
+          github-token: ${{ secrets.PROJECT_GH_TOKEN }}
+
+  # -----------------------------------------------------------------
+  # Job 2: Update linked issue status when a PR is opened / changed
+  # -----------------------------------------------------------------
+  update-pr-status:
+    if: github.event_name == 'pull_request'
+    name: Update project status for linked issues
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # needed by actions/checkout to clone the repository
+      issues: read   # needed to query issue metadata; writes use PROJECT_GH_TOKEN PAT
+    concurrency:
+      group: pr-project-status-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
+      - name: Update linked issue status on project board
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_GH_TOKEN }}
+          PR_NODE_ID: ${{ github.event.pull_request.node_id }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: .github/scripts/update-linked-issues.sh
